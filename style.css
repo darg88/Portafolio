@@ -288,3 +288,52 @@ body.retro-mode button, body.retro-mode .control-btn { background: #fff !importa
     letter-spacing: 1px !important;
   }
 }
+/* =====================================================================
+   🔥 SOLUCIÓN: UI MÓVIL Y ACCESIBILIDAD (MODALES)
+   ===================================================================== */
+
+/* 1. Blindar el botón de cerrar (X) para que nunca quede atrapado */
+.close-btn {
+  z-index: 100000 !important;
+  top: 15px !important;
+  right: 15px !important;
+  background: rgba(0, 0, 0, 0.9) !important; /* Fondo oscuro para que resalte */
+  padding: 5px 12px !important;
+  border-radius: 4px;
+  border: 1px solid #cc0000 !important; /* Borde rojo táctico */
+}
+
+/* 2. Darle espacio al título para que no se coma a la "X" */
+.modal-ui h2 {
+  padding-right: 50px !important; 
+  line-height: 1.2 !important;
+}
+
+/* 3. Ajustes automáticos solo para celulares */
+@media (max-width: 600px) {
+  /* Achicar el título superior (DANIEL_OS) */
+  #portfolio-header {
+    font-size: 0.75rem !important; 
+    padding: 5px !important;
+  }
+  
+  /* Ajustar las ventanas para que no se salgan de la pantalla */
+  .modal-ui {
+    width: 92% !important;
+    max-height: 80vh !important; /* Evita que crezca más allá de la pantalla */
+    padding: 15px !important;
+    overflow-y: auto !important; /* Permite hacer scroll interno si el texto es muy largo */
+  }
+}
+
+/* =====================================================================
+   🔥 SOLUCIÓN: TRANSPARENCIA REALIDAD AUMENTADA (AR)
+   ===================================================================== */
+/* Esta clase destruye cualquier fondo negro de la web para dejar ver la cámara */
+body.ar-active, 
+body.ar-active #bg-canvas,
+html.ar-active {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}

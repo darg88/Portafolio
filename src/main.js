@@ -1816,6 +1816,8 @@ renderer.xr.addEventListener('sessionstart', () => {
   // 🔥 NUEVO: Lógica de botones AR/VR
   currentXRSession = renderer.xr.getSession(); 
   if (window.isARSession) {
+    scene.background = null; 
+    document.body.classList.add('ar-active')
     if (customArBtn) customArBtn.innerText = 'SALIR AR';
     if (customVrBtn) customVrBtn.style.display = 'none';
   } else {
@@ -1858,7 +1860,7 @@ renderer.xr.addEventListener('sessionstart', () => {
 
 renderer.xr.addEventListener('sessionend', () => { 
   window.isARSession = false;
-
+document.body.classList.remove('ar-active');
   // Lógica de botones AR/VR
   if (typeof currentXRSession !== 'undefined') currentXRSession = null; 
   if (typeof customVrBtn !== 'undefined' && customVrBtn) customVrBtn.innerText = 'VR';
