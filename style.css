@@ -251,3 +251,40 @@ body.retro-mode button, body.retro-mode .control-btn { background: #fff !importa
   .touch-btn { background: rgba(10, 10, 10, 0.8) !important; border: 1px solid #fff !important; color: #fff !important; border-radius: 0 !important;}
   .touch-btn.shoot { background: rgba(200, 0, 0, 0.8) !important; border-color: #cc0000 !important; }
 }
+/* =====================================================================
+   🚧 BANNER DE CONSTRUCCIÓN (WIP) 🚧
+   ===================================================================== */
+#wip-banner {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  background: rgba(200, 0, 0, 0.15) !important; /* Fondo rojo semitransparente */
+  border-top: 1px solid #cc0000 !important; /* Línea dura superior */
+  color: #cc0000 !important;
+  text-align: center !important;
+  padding: 6px 0 !important;
+  font-family: 'Share Tech Mono', monospace !important;
+  font-size: 0.8rem !important;
+  letter-spacing: 2px !important;
+  z-index: 1000000 !important; /* Asegura que esté por encima de todo */
+  pointer-events: none !important; /* CRÍTICO: Permite hacer clic "a través" de la barra */
+  text-transform: uppercase !important;
+  animation: wipPulse 2s infinite !important;
+}
+
+/* Animación de alerta de sistema */
+@keyframes wipPulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; background: rgba(200, 0, 0, 0.35) !important; }
+  100% { opacity: 0.8; }
+}
+
+/* Ajuste preventivo para móviles para que no se superponga demasiado */
+@media (max-width: 768px) {
+  #wip-banner {
+    font-size: 0.65rem !important;
+    padding: 4px 0 !important;
+    letter-spacing: 1px !important;
+  }
+}
