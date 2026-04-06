@@ -3,8 +3,8 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { VRButton } from 'three/addons/webxr/VRButton.js';
-import { ARButton } from 'three/addons/webxr/ARButton.js';
+//import { VRButton } from 'three/addons/webxr/VRButton.js';
+//import { ARButton } from 'three/addons/webxr/ARButton.js';
 import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
 import { categoryPlanetData, whaleData } from './data.js';
 
@@ -97,67 +97,246 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); renderer.setSize(w
 renderer.xr.enabled = true;
 
 // ==========================================
-// 🔥 SISTEMA WEBXR NATIVO Y FUNCIONAL 🔥
+// 🔥 SISTEMA WEBXR NATIVO Y FUNCIONAL - CORREGIDO 🔥
 // ==========================================
-window.isARSession = false; // Variable global para el estado del visor
 
-// 1. Instanciar botón VR oficial de Three.js
-const vrButton = VRButton.createButton(renderer);
-vrButton.addEventListener('click', () => { 
-  window.isARSession = false; // Activa modo Realidad Virtual
-});
-document.body.appendChild(vrButton);
+window.isARSession = false;
+let hitTestSource = null;
+let hitTestSourceRequested = false;
+let currentXRSession = null;
 
-// 2. Instanciar botón AR oficial (con soporte para detección de superficies)
-const arButton = ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] });
-arButton.addEventListener('click', () => { 
-  window.isARSession = true; // Activa modo Realidad Aumentada
-});
-document.body.appendChild(arButton);
+// Configuración de botones AR/VR personalizados
+const customVrBtn = document.createElement('button');
+customVrBtn.id = 'custom-vr-btn';
+customVrBtn.innerText = 'VR';
+customVrBtn.className = 'control-btn'; // Usamos tu clase de botones existente
+customVrBtn.style.cssText = "position: absolute; top: 15px; right: 100px; z-index: 1000;";
+document.body.appendChild(customVrBtn);
 
+const customArBtn = document.createElement('button');
+customArBtn.id = 'custom-ar-btn';
+customArBtn.innerText = 'AR';
+customArBtn.className = 'control-btn';
+customArBtn.style.cssText = "position: absolute; top: 15px; right: 160px; z-index: 1000;";
+document.body.appendChild(customArBtn);
 
-const renderScene = new RenderPass(scene, camera);
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.6, 0.6);
-const composer = new EffectComposer(renderer); composer.addPass(renderScene); composer.addPass(bloomPass);
-
-let isSoundEnabled = true; let audioCtx = null; 
-function playSound(type, targetPosition = null) {
-  if (type === 'laser') vibrateDevice(20);         
-  if (type === 'explosion') vibrateDevice(80);     
-  if (type === 'damage') vibrateDevice(300);       
-  if (type === 'boss_hit') vibrateDevice(50);      
-  
-  if (!isSoundEnabled) return;
-  try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    let volumeBase = 1.0; if (targetPosition) volumeBase = Math.max(0, 1 - (ship.position.distanceTo(targetPosition) / 40)); 
-    if(type === 'laser') { osc.type = 'square'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.1 * volumeBase, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.1); }
-    else if(type === 'damage') { osc.type = 'triangle'; osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.4 * volumeBase, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3); }
-    else if(type === 'explosion') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.3 * volumeBase, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3); }
-    else if(type === 'levelup') { osc.type = 'sine'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.setValueAtTime(554, audioCtx.currentTime + 0.1); osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2); osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.2, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.3); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6); osc.start(); osc.stop(audioCtx.currentTime + 0.6); }
-    else if(type === 'boss_hit') { osc.type = 'square'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.2); gain.gain.setValueAtTime(0.4, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime + 0.2); }
-    else if(type === 'ui') { osc.type = 'square'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.1); }
-  } catch(e) {}
+// Función para verificar soporte AR/VR
+async function checkXRSupport() {
+    if (!navigator.xr) {
+        if (customArBtn) customArBtn.style.display = 'none';
+        if (customVrBtn) customVrBtn.style.display = 'none';
+        return;
+    }
+    
+    try {
+        const arSupported = await navigator.xr.isSessionSupported('immersive-ar');
+        if (customArBtn) customArBtn.style.display = arSupported ? 'block' : 'none';
+        
+        const vrSupported = await navigator.xr.isSessionSupported('immersive-vr');
+        if (customVrBtn) customVrBtn.style.display = vrSupported ? 'block' : 'none';
+    } catch (error) {
+        console.error("Error comprobando soporte XR:", error);
+        if (customArBtn) customArBtn.style.display = 'none';
+        if (customVrBtn) customVrBtn.style.display = 'none';
+    }
 }
-function showSystemToast(msg, color) {
-  const toast = document.getElementById('system-toast');
-  if(!toast) return;
-  toast.innerText = msg;
-  toast.style.color = '#cc0000'; // Forzamos el rojo siempre
-  toast.style.textShadow = 'none'; // 🔥 Bloqueamos el neón
-  toast.classList.remove('hidden');
-  toast.style.opacity = '1';
-  if(window.toastTimer) clearTimeout(window.toastTimer);
-  window.toastTimer = setTimeout(() => {
-    toast.style.opacity = '0';
-    setTimeout(() => toast.classList.add('hidden'), 500);
-  }, 2500);
+
+// Evento Botón VR
+if (customVrBtn) {
+    customVrBtn.addEventListener('click', async () => {
+        try {
+            if (renderer.xr.isPresenting) {
+                await renderer.xr.getSession()?.end();
+                return;
+            }
+            window.isARSession = false;
+            const session = await navigator.xr.requestSession('immersive-vr', {
+                requiredFeatures: ['local-floor']
+            });
+            await renderer.xr.setSession(session);
+            if (typeof playSound === 'function') playSound('levelup');
+        } catch (error) {
+            console.error("Error iniciando VR:", error);
+            if (typeof showSystemToast === 'function') showSystemToast('Error: No se pudo iniciar VR', '#ff0000');
+        }
+    });
 }
-let isGameStarted = false; let isPaused = false; let isUIOpen = false; let shakeIntensity = 0;
-document.addEventListener('visibilitychange', () => { isPaused = document.hidden; });
+
+// Evento Botón AR
+if (customArBtn) {
+    customArBtn.addEventListener('click', async () => {
+        try {
+            if (renderer.xr.isPresenting) {
+                await renderer.xr.getSession()?.end();
+                return;
+            }
+            window.isARSession = true;
+            const session = await navigator.xr.requestSession('immersive-ar', {
+                requiredFeatures: ['hit-test']
+            });
+            await renderer.xr.setSession(session);
+            if (typeof playSound === 'function') playSound('levelup');
+            if (typeof showSystemToast === 'function') showSystemToast('AR Activado - Busca una superficie plana', '#00ff00');
+        } catch (error) {
+            console.error("Error iniciando AR:", error);
+            window.isARSession = false;
+            if (typeof showSystemToast === 'function') showSystemToast('Error: Dispositivo sin soporte AR', '#ff0000');
+        }
+    });
+}
+
+// Reticle para apuntar en AR
+const reticle = new THREE.Mesh(
+    new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.8 })
+);
+reticle.matrixAutoUpdate = false;
+reticle.visible = false;
+scene.add(reticle);
+
+// Función vital para escanear el entorno en AR
+async function setupARHitTest(session) {
+    try {
+        const referenceSpace = await session.requestReferenceSpace('viewer');
+        hitTestSource = await session.requestHitTestSource({ space: referenceSpace });
+        hitTestSourceRequested = true;
+        
+        session.addEventListener('end', () => {
+            hitTestSourceRequested = false;
+            if (hitTestSource) {
+                hitTestSource.cancel();
+                hitTestSource = null;
+            }
+            reticle.visible = false;
+        });
+    } catch (error) {
+        console.error("Error configurando Hit Test:", error);
+    }
+}
+
+// Manejo del INICIO de la sesión
+renderer.xr.addEventListener('sessionstart', () => {
+    if (typeof isGameStarted !== 'undefined') isGameStarted = true;
+    renderer.setRenderTarget(null);
+    
+    currentXRSession = renderer.xr.getSession();
+    
+    if (window.isARSession) {
+        scene.background = null;
+        document.body.classList.add('ar-active'); // Usa la clase CSS que creamos antes
+        if (customArBtn) customArBtn.innerText = 'SALIR AR';
+        if (customVrBtn) customVrBtn.style.display = 'none';
+        
+        setupARHitTest(currentXRSession); // Inicia el escáner espacial
+    } else {
+        if (customVrBtn) customVrBtn.innerText = 'SALIR VR';
+        if (customArBtn) customArBtn.style.display = 'none';
+    }
+    
+    // Apagar la interfaz 2D para inmersión
+    const crtOverlay = document.querySelector('.crt-overlay');
+    if (crtOverlay) crtOverlay.style.display = 'none';
+    if (typeof window.closeAllUIs === 'function') window.closeAllUIs();
+    
+    ['start-screen', 'portfolio-header', 'unified-hud', 'universe-legend', 'touch-controls', 'combat-toggle-btn', 'menu-toggle'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    
+    if (window.isARSession) {
+        if (typeof particlesMesh !== 'undefined') particlesMesh.visible = false;
+        if (typeof ship !== 'undefined') ship.visible = false;
+        if (typeof satelliteGroup !== 'undefined') satelliteGroup.visible = false;
+        if (typeof constellationLine !== 'undefined') constellationLine.visible = false;
+        if (typeof categoryPlanets !== 'undefined') categoryPlanets.forEach(p => p.visible = false);
+        if (typeof asteroids !== 'undefined') asteroids.forEach(a => a.visible = false);
+        if (typeof ambientWhales !== 'undefined') ambientWhales.forEach(w => w.visible = false);
+        if (typeof discoveredVoyagers !== 'undefined') discoveredVoyagers.forEach(v => v.visible = false);
+        if (typeof guardianCats !== 'undefined') guardianCats.forEach(c => c.visible = false);
+        if (typeof scrollKeywords !== 'undefined') scrollKeywords.forEach(k => k.visible = false);
+        if (typeof bossEntity !== 'undefined' && bossEntity) bossEntity.visible = false;
+        
+        userGroup.position.set(0, 0, 0);
+    } else {
+        userGroup.position.set(0, 0, 15);
+        if (typeof ship !== 'undefined') {
+            ship.position.set(0, -3, 0);
+            ship.scale.set(0.3, 0.3, 0.3);
+        }
+    }
+});
+
+// Manejo del FIN de la sesión
+renderer.xr.addEventListener('sessionend', () => {
+    window.isARSession = false;
+    document.body.classList.remove('ar-active');
+    
+    if (currentXRSession) currentXRSession = null;
+    
+    if (customVrBtn) customVrBtn.innerText = 'VR';
+    if (customArBtn) customArBtn.innerText = 'AR';
+    checkXRSupport(); // Restaura la visibilidad de los botones
+    
+    const crtOverlay = document.querySelector('.crt-overlay');
+    if (crtOverlay) crtOverlay.style.display = 'block';
+    
+    ['portfolio-header', 'universe-legend'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'block';
+    });
+    ['unified-hud', 'menu-toggle', 'combat-toggle-btn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'flex';
+    });
+    
+    if (typeof particlesMesh !== 'undefined') particlesMesh.visible = true;
+    if (typeof ship !== 'undefined') ship.visible = true;
+    if (typeof satelliteGroup !== 'undefined') satelliteGroup.visible = true;
+    if (typeof categoryPlanets !== 'undefined') categoryPlanets.forEach(p => p.visible = true);
+    if (typeof asteroids !== 'undefined') asteroids.forEach(a => a.visible = true);
+    if (typeof ambientWhales !== 'undefined') ambientWhales.forEach(w => w.visible = true);
+    if (typeof discoveredVoyagers !== 'undefined') discoveredVoyagers.forEach(v => v.visible = true);
+    if (typeof guardianCats !== 'undefined') guardianCats.forEach(c => c.visible = true);
+    if (typeof scrollKeywords !== 'undefined') scrollKeywords.forEach(k => k.visible = true);
+    if (typeof bossEntity !== 'undefined' && bossEntity) bossEntity.visible = true;
+    
+    if (typeof isShooting !== 'undefined') isShooting = false;
+    
+    setTimeout(() => {
+        renderer.xr.isPresenting = false;
+        renderer.setRenderTarget(null);
+        
+        camera.fov = 75;
+        camera.quaternion.identity();
+        camera.position.set(0, 0, 0);
+        camera.rotation.set(0, 0, 0);
+        
+        const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        userGroup.position.set(0, 0, (isTouch || window.innerWidth < 600) ? 30 : 50);
+        userGroup.rotation.set(0, 0, 0);
+        
+        if (typeof ship !== 'undefined') {
+            ship.position.set(0, -15, 0);
+            ship.scale.set(0.6, 0.6, 0.6);
+        }
+        
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        if (typeof composer !== 'undefined') composer.setSize(window.innerWidth, window.innerHeight);
+        
+        const canvas = document.getElementById('bg-canvas');
+        if (canvas) {
+            canvas.style.display = 'block';
+            canvas.style.opacity = '1';
+        }
+        
+        window.dispatchEvent(new Event('resize'));
+    }, 300);
+});
+
+// Comprobar soporte al cargar la página
+checkXRSupport();
 // ==========================================
 // 🔥 MODO CONCENTRACIÓN (ATENUAR PLANETAS)
 // ==========================================
@@ -1805,122 +1984,14 @@ xrController1.addEventListener('selectend', () => {
 });
 
 const reticle = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x00ff00 })); 
-reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
+reticle.matrixAutoUpdate = false; 
+reticle.visible = false; scene.add(reticle);
 
-let hitTestSource = null; let hitTestSourceRequested = false;
-
-renderer.xr.addEventListener('sessionstart', () => { 
-  isGameStarted = true;
-  renderer.setRenderTarget(null); 
-  
-  // 🔥 NUEVO: Lógica de botones AR/VR
-  currentXRSession = renderer.xr.getSession(); 
-  if (window.isARSession) {
-    scene.background = null; 
-    document.body.classList.add('ar-active')
-    if (customArBtn) customArBtn.innerText = 'SALIR AR';
-    if (customVrBtn) customVrBtn.style.display = 'none';
-  } else {
-    if (customVrBtn) customVrBtn.innerText = 'SALIR VR';
-    if (customArBtn) customArBtn.style.display = 'none';
-  }
-  if (xrSeparator) xrSeparator.style.display = 'none';
-  // 🔥 FIN NUEVO
-
-  document.querySelector('.crt-overlay').style.display = 'none'; 
-  window.closeAllUIs(); 
-  if(document.getElementById('start-screen')) document.getElementById('start-screen').style.display = 'none'; 
-  if(document.getElementById('portfolio-header')) document.getElementById('portfolio-header').style.display = 'none';
-  if(document.getElementById('unified-hud')) document.getElementById('unified-hud').style.display = 'none';
-  if(document.getElementById('universe-legend')) document.getElementById('universe-legend').style.display = 'none';
-
-  if (document.getElementById('touch-controls')) document.getElementById('touch-controls').style.display = 'none';
-  if (document.getElementById('combat-toggle-btn')) document.getElementById('combat-toggle-btn').style.display = 'none';
-  if (document.getElementById('menu-toggle')) document.getElementById('menu-toggle').style.display = 'none';
-
-  const session = renderer.xr.getSession();
-  
-  if (window.isARSession) { 
-    scene.background = null;
-    particlesMesh.visible = false; ship.visible = false; satelliteGroup.visible = false; 
-    if(typeof constellationLine !== 'undefined') constellationLine.visible = false;
-    categoryPlanets.forEach(p => p.visible = false); 
-    asteroids.forEach(a => a.visible = false); 
-    ambientWhales.forEach(w => w.visible = false);
-    discoveredVoyagers.forEach(v => v.visible = false);
-    guardianCats.forEach(c => c.visible = false);
-    scrollKeywords.forEach(k => k.visible = false);
-    if(bossEntity) bossEntity.visible = false;
-    
-    userGroup.position.set(0, 0, 0);
-  } else { 
-    userGroup.position.set(0, 0, 15); ship.position.set(0, -3, 0); ship.scale.set(0.3, 0.3, 0.3); 
-  }
-});
-
-renderer.xr.addEventListener('sessionend', () => { 
-  window.isARSession = false;
-document.body.classList.remove('ar-active');
-  // Lógica de botones AR/VR
-  if (typeof currentXRSession !== 'undefined') currentXRSession = null; 
-  if (typeof customVrBtn !== 'undefined' && customVrBtn) customVrBtn.innerText = 'VR';
-  if (typeof customArBtn !== 'undefined' && customArBtn) customArBtn.innerText = 'AR';
-  if (typeof checkXRSupport === 'function') checkXRSupport();
-
-  document.querySelector('.crt-overlay').style.display = 'block'; 
-
-  if(document.getElementById('portfolio-header')) document.getElementById('portfolio-header').style.display = 'block';
-  if(document.getElementById('unified-hud')) document.getElementById('unified-hud').style.display = 'flex';
-  if(document.getElementById('universe-legend')) document.getElementById('universe-legend').style.display = 'block';
-  if (document.getElementById('menu-toggle')) document.getElementById('menu-toggle').style.display = 'flex';
-  if (document.getElementById('combat-toggle-btn')) document.getElementById('combat-toggle-btn').style.display = 'flex';
-
-  particlesMesh.visible = true; ship.visible = true; satelliteGroup.visible = true; 
-  categoryPlanets.forEach(p => p.visible = true); asteroids.forEach(a => a.visible = true);
-  ambientWhales.forEach(w => w.visible = true); discoveredVoyagers.forEach(v => v.visible = true);
-  guardianCats.forEach(c => c.visible = true); scrollKeywords.forEach(k => k.visible = true);
-  if(typeof bossEntity !== 'undefined' && bossEntity) bossEntity.visible = true;
-  
-  isShooting = false;
-  
-  // 🔥 ARREGLO VR: Protegemos el reseteo de la cámara dentro del retraso de 300ms
-  setTimeout(() => {
-    renderer.xr.isPresenting = false; 
-    renderer.setRenderTarget(null); 
-    
-    // 1. Reseteo puro de cámara
-    camera.fov = 75; camera.quaternion.identity(); 
-    camera.position.set(0, 0, 0); camera.rotation.set(0, 0, 0); 
-    
-    // 2. Reseteo inteligente del grupo (Respeta si estás en móvil o PC)
-    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-    userGroup.position.set(0, 0, (isTouch || window.innerWidth < 600) ? 30 : 50); 
-    userGroup.rotation.set(0,0,0);
-    
-    // 3. Reseteo de la nave
-    ship.position.set(0, -15, 0); ship.scale.set(0.6, 0.6, 0.6); 
-    
-    camera.aspect = window.innerWidth / window.innerHeight; 
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight); 
-    if (typeof composer !== 'undefined') composer.setSize(window.innerWidth, window.innerHeight);
-    
-    const canvas = document.getElementById('bg-canvas');
-    if (canvas) {
-      canvas.style.display = 'block';
-      canvas.style.opacity = '1';
-    }
-
-    let retries = 0;
-    const recoveryInterval = setInterval(() => {
-      window.dispatchEvent(new Event('resize'));
-      retries++;
-      if (retries > 10) clearInterval(recoveryInterval); 
-    }, 100);
-
-  }, 300); 
-});
-window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight); });
+//aqui
+window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; 
+  camera.updateProjectionMatrix(); 
+  renderer.setSize(window.innerWidth, window.innerHeight);
+   composer.setSize(window.innerWidth, window.innerHeight); });
 
 const secretGeo = new THREE.IcosahedronGeometry(2, 0); 
 const secretMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
@@ -1999,10 +2070,17 @@ renderer.setAnimationLoop((timestamp, frame) => {
 
   if (isShooting && isGameStarted && !isUIOpen && !isAR) { if (now - lastShotTime > FIRE_COOLDOWN) { fireLaser(); lastShotTime = now; } }
 
-  if (isAR && frame) {
-    const referenceSpace = renderer.xr.getReferenceSpace(); 
-    if (!hitTestSourceRequested) { session.requestReferenceSpace('viewer').then((refSpace) => { session.requestHitTestSource({ space: refSpace }).then((source) => { hitTestSource = source; }); }); session.addEventListener('end', () => { hitTestSourceRequested = false; hitTestSource = null; reticle.visible = false; }); hitTestSourceRequested = true; }
-    if (hitTestSource) { const hitTestResults = frame.getHitTestResults(hitTestSource); if (hitTestResults.length > 0) { const hit = hitTestResults[0]; reticle.visible = true; reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix); } else { reticle.visible = false; } }
+ // LÓGICA DE ACTUALIZACIÓN AR (Dentro de tu AnimationLoop)
+  if (isAR && frame && hitTestSource) {
+    const referenceSpace = renderer.xr.getReferenceSpace();
+    const hitTestResults = frame.getHitTestResults(hitTestSource);
+    if (hitTestResults.length > 0) {
+      const hit = hitTestResults[0];
+      reticle.visible = true;
+      reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
+    } else {
+      reticle.visible = false;
+    }
   }
 
   if (!isAR) {
