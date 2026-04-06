@@ -1,0 +1,253 @@
+/* ==========================================
+   1. RESET Y ESTILOS BASE
+   ========================================== */
+body, html {
+  margin: 0; padding: 0; overflow: hidden; background-color: #030303;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  user-select: none; color: #cccccc; overscroll-behavior-y: none; touch-action: none;
+}
+
+/* ==========================================
+   2. CAPAS Y OVERLAYS TÉCNICOS
+   ========================================== */
+.crt-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  /* Fondo más oscuro, scanlines muy sutiles, SIN NEÓN */
+  background: linear-gradient(rgba(5, 5, 5, 0) 50%, rgba(0, 0, 0, 0.4) 50%),
+              linear-gradient(90deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0.02));
+  background-size: 100% 4px, 3px 100%; pointer-events: none; z-index: 9998;
+  box-shadow: inset 0 0 150px rgba(0, 0, 0, 0.95);
+}
+#bg-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; transition: filter 0.3s ease; cursor: crosshair; }
+.canvas-blurred { filter: blur(8px) brightness(0.4); } /* Más oscuro al abrir menú */
+.hidden { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
+
+/* ==========================================
+   3. PANTALLAS DE CARGA Y START
+   ========================================== */
+#loading-screen {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #050505;
+  z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center;
+  color: #ffffff; text-align: center; transition: opacity 0.5s ease;
+}
+.loading-bar-container { width: 80%; max-width: 400px; height: 10px; border: 1px solid #555555; margin-top: 20px; box-shadow: none; background: rgba(255,255,255,0.05); }
+#loading-bar { width: 0%; height: 100%; background-color: #cc0000; box-shadow: none; transition: width 0.2s ease; }
+#loading-text { font-size: 1.2rem; letter-spacing: 2px; text-shadow: none; margin: 0; font-family: 'Share Tech Mono', monospace; color: #ffffff;}
+
+#start-screen {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #050505 !important;
+  z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center;
+  color: #ffffff; text-align: center; transition: opacity 1.5s ease-in-out;
+}
+#start-screen h1 { font-size: 4rem; text-shadow: none; margin: 0 0 10px 0; letter-spacing: 5px; text-transform: uppercase; font-family: 'Share Tech Mono', monospace; color: #ffffff;}
+#start-screen span { color: #888888 !important; }
+#start-btn { margin-top: 50px; background: transparent; border: 1px solid rgba(255,255,255,0.3); color: #fff; font-size: 1.2rem; padding: 20px 40px; cursor: pointer; font-family: 'Share Tech Mono', monospace; transition: all 0.3s ease; }
+#start-btn:hover { background: #ffffff; color: #000000; border-color: #ffffff; }
+#skip-btn { margin-top: 20px; background: transparent; border: none; color: #888888; font-family: 'Share Tech Mono', monospace; font-size: 1.1rem; cursor: pointer; text-decoration: underline; transition: 0.3s; padding: 10px; }
+#skip-btn:hover { color: #ffffff; }
+
+/* ==========================================
+   4. HUD SUPERIOR Y MARCADORES
+   ========================================== */
+#unified-hud {
+  position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: auto; min-width: 400px;
+  background: rgba(5, 5, 5, 0.9); border: 1px solid rgba(255, 255, 255, 0.15); border-top: none;
+  border-radius: 0 0 8px 8px; padding: 10px 40px; gap: 40px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px); z-index: 10000; display: flex; justify-content: space-around; align-items: center; transition: opacity 0.3s;
+}
+.hud-item { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+.hud-label { font-size: 0.75rem; color: #666666; letter-spacing: 1px; font-family: 'Share Tech Mono', monospace; text-transform: uppercase; }
+.hud-val { font-size: 1.1rem; font-weight: 500; color: #ffffff; font-family: 'Share Tech Mono', monospace; text-transform: uppercase; text-shadow: none !important;}
+#lives-value { color: #cc0000 !important; letter-spacing: 3px; font-weight: bold; }
+
+/* ==========================================
+   5. LEYENDA DEL SISTEMA
+   ========================================== */
+#universe-legend {
+  position: fixed; top: 90px; left: 10px; max-width: 230px; padding: 10px;
+  background: rgba(5, 5, 5, 0.9); border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8); z-index: 10002; pointer-events: auto;
+}
+#legend-header { cursor: pointer; white-space: nowrap; font-size: 0.75rem; font-family: 'Share Tech Mono', monospace; color: #cccccc;}
+#legend-content { position: relative; top: 0; left: 0; background: transparent; border: none; max-width: 100%; font-family: -apple-system, sans-serif; font-size: 0.85rem; color: #cccccc;}
+#legend-content span { text-shadow: none !important; }
+
+/* ==========================================
+   6. MENÚ LATERAL (ESTILO RE ENGINE)
+   ========================================== */
+#side-menu {
+  position: fixed; top: 0; right: -350px; width: 320px; height: 100vh;
+  background: rgba(5, 5, 5, 0.98); backdrop-filter: blur(10px); border-left: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 999999; padding: 40px 20px; transition: right 0.4s ease; display: flex; flex-direction: column;
+  overflow-y: auto; box-sizing: border-box; box-shadow: -10px 0 30px rgba(0, 0, 0, 0.8); overscroll-behavior: contain;
+}
+#side-menu.open { right: 0; }
+#side-menu h2 { color: #ffffff !important; font-weight: 300; letter-spacing: 3px; border-bottom: 1px solid rgba(255,255,255,0.2); font-family: 'Share Tech Mono', monospace; text-transform: uppercase;}
+#side-menu ul { list-style: none; padding: 0; margin-top: 10px; }
+#menu-close { background: none; border: none; color: #aaaaaa; font-size: 30px; cursor: pointer; align-self: flex-end; transition: 0.3s; }
+#menu-close:hover { background: #ffffff; color: #000000; }
+.menu-item, .social-item {
+  display: block; text-decoration: none; color: #999999 !important; padding: 15px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.1s ease; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.menu-item:hover, .social-item:hover { color: #ffffff !important; background: linear-gradient(90deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%); border-left: 3px solid #ffffff; padding-left: 23px; }
+
+/* ==========================================
+   7. MODALES Y VENTANAS (CRISTAL TÁCTICO)
+   ========================================== */
+#modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(8px); z-index: 10004; transition: opacity 0.3s; }
+.modal-ui {
+  position: fixed !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) !important;
+  background: #080808 !important; border: 1px solid rgba(255, 255, 255, 0.15) !important; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9) !important;
+  color: white !important; padding: 30px !important; z-index: 10005 !important; width: 90% !important; max-width: 750px !important;
+  max-height: 85vh !important; overflow-y: auto !important; transition: max-width 0.4s ease !important; border-radius: 0 !important;
+  animation: modalFadeIn 0.3s ease-out forwards;
+}
+@keyframes modalFadeIn { from { opacity: 0; transform: translate(-50%, -45%) scale(0.95); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+.expanded-modal { max-width: 1050px !important; }
+#project-title, .modal-ui h2, .modal-ui h1 { color: #cc0000 !important; text-shadow: none !important; font-weight: 500 !important; letter-spacing: 2px !important; text-transform: uppercase !important; border-left: 4px solid #cc0000 !important; background: rgba(200, 0, 0, 0.05) !important; padding: 8px 15px !important; margin-bottom: 20px !important; font-family: -apple-system, sans-serif !important;}
+.modal-ui p, .modal-ui div, #project-long-desc, #tutorial-ui li { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important; color: #cccccc !important; line-height: 1.5 !important; }
+.close-btn { position: absolute !important; top: 10px !important; right: 10px !important; background: #111111 !important; color: #aaaaaa !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; border-radius: 0 !important; width: 35px !important; height: 35px !important; font-size: 1.8rem !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; transition: 0.2s !important; font-family: 'Share Tech Mono', monospace; }
+.close-btn:hover { background: #ffffff !important; color: #000000 !important; }
+input, textarea { width: 100%; background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; color: #ffffff !important; padding: 10px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin-bottom: 15px; box-sizing: border-box; border-radius: 0; }
+input:focus, textarea:focus { border-color: #ffffff !important; background: rgba(255, 255, 255, 0.1) !important; outline: none; }
+textarea[name="mensaje"] { white-space: pre-wrap; word-wrap: break-word; resize: vertical; overflow-y: auto; }
+button, #project-link, .carousel-btn { font-family: -apple-system, sans-serif !important; background: rgba(255,255,255,0.02) !important; color: #aaaaaa !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; border-radius: 0 !important; text-transform: uppercase !important; cursor: pointer !important; transition: all 0.2s ease !important; padding: 10px !important; text-shadow: none !important;}
+button:hover, #project-link:hover, .carousel-btn:hover { background: #ffffff !important; color: #000000 !important; border-color: #ffffff !important; }
+#project-media { position: relative; width: 100%; height: 250px; background: #050505; border: 1px solid rgba(255,255,255,0.15); margin-bottom: 15px; display: flex; justify-content: center; align-items: center; overflow: hidden; border-radius: 0; }
+
+/* ==========================================
+   8. ANIMACIONES Y BOSS UI
+   ========================================== */
+#boss-ui { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; text-align: center; z-index: 10; }
+#boss-title { color: #cc0000; font-size: 20px; font-weight: bold; margin-bottom: 5px; letter-spacing: 2px; font-family: 'Share Tech Mono', monospace;}
+#boss-hp-bg { width: 100%; height: 15px; background: rgba(200, 0, 0, 0.2); border: 2px solid #cc0000; }
+#boss-hp-fill { width: 100%; height: 100%; background: #cc0000; transition: width 0.2s ease; }
+@keyframes levelUpPop { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 80% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
+#level-up-anim { position: fixed; top: 30%; left: 50%; transform: translate(-50%, -50%); color: #cc0000 !important; font-size: 50px; font-weight: bold; z-index: 100; pointer-events: none; white-space: nowrap; opacity: 0; text-shadow: none !important; font-family: 'Share Tech Mono', monospace;}
+#level-up-anim.active { animation: levelUpPop 2s ease-out forwards; }
+#onboarding-ui { position: fixed; bottom: 15vh; width: 100vw; text-align: center; color: #888888 !important; font-size: 1rem; z-index: 100; pointer-events: none; font-family: -apple-system, sans-serif; letter-spacing: 1px; text-shadow: none !important;}
+#scroll-hint { position: fixed; bottom: 10vh; width: 100vw; text-align: center; color: #888888 !important; font-size: 1rem; z-index: 100; pointer-events: none; font-family: -apple-system, sans-serif; letter-spacing: 1px; text-shadow: none !important;}
+#system-toast { position: fixed; top: 25%; left: 50%; transform: translate(-50%, -50%); font-size: 1.2rem; font-weight: bold; color: #cc0000 !important; z-index: 10000; pointer-events: none; transition: opacity 0.5s; font-family: -apple-system, sans-serif; text-transform: uppercase; text-shadow: none !important;}
+
+/* ==========================================
+   9. MODOS ESPECIALES Y ACCESIBILIDAD
+   ========================================== */
+body.inverted-mode { filter: invert(1) hue-rotate(180deg); background-color: #eee; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
+body.inverted-mode img, body.inverted-mode video, body.inverted-mode iframe { filter: invert(1) hue-rotate(180deg) !important; border: 2px solid #000 !important; }
+body.retro-mode #bg-canvas { filter: grayscale(100%) contrast(200%); }
+body.retro-mode #unified-hud, body.retro-mode .modal-ui, body.retro-mode #side-menu { background: #dfdfdf !important; border: 2px solid #000 !important; box-shadow: 5px 5px 0px #000 !important; border-radius: 0 !important; color: #000 !important;}
+body.retro-mode .hud-val, body.retro-mode .hud-label, body.retro-mode h2, body.retro-mode p { color: #000 !important; }
+body.retro-mode button, body.retro-mode .control-btn { background: #fff !important; color: #000 !important; border: 2px solid #000 !important; box-shadow: 2px 2px 0px #000 !important; }
+*:focus-visible { outline: 2px dashed #ffffff !important; outline-offset: 4px !important; box-shadow: none !important;}
+::-webkit-scrollbar { width: 5px !important; }
+::-webkit-scrollbar-track { background: #0a0a0a !important; }
+::-webkit-scrollbar-thumb { background: #444444 !important; border-radius: 0 !important;}
+::-webkit-scrollbar-thumb:hover { background: #888888 !important; }
+
+/* =====================================================================
+   🔥 10. RESPONSIVE: ESCRITORIO (min-width: 769px) 🔥
+   ===================================================================== */
+@media (min-width: 769px) {
+  /* Título en Escritorio */
+  #portfolio-header { top: 20px !important; left: 20px !important; transform: none !important; text-align: left !important; width: auto !important; }
+  
+  /* Botones base de Control */
+  #menu-toggle, #lang-toggle-btn, #combat-toggle-btn, #ARButton, #VRButton {
+    position: fixed !important; top: 20px !important; bottom: auto !important;
+    width: 50px !important; min-width: 50px !important; height: 50px !important; padding: 0 !important;
+    background: rgba(10, 10, 10, 0.7) !important; border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important;
+    font-family: 'Share Tech Mono', monospace !important; color: #cccccc !important; cursor: pointer !important;
+    z-index: 10001 !important; backdrop-filter: blur(5px) !important; transition: all 0.3s ease !important;
+    text-shadow: none !important;
+  }
+  #menu-toggle:hover, #lang-toggle-btn:hover, #combat-toggle-btn:hover, #ARButton:hover, #VRButton:hover { background: #ffffff !important; color: #000000 !important; border-color: #ffffff !important; }
+  
+  /* Botones AR/VR con texto inyectado */
+  #ARButton, #VRButton { color: transparent !important; overflow: hidden !important; white-space: nowrap !important; }
+  #ARButton::after { content: 'AR'; color: #cccccc !important; position: absolute; font-size: 16px !important; font-weight: bold !important; text-shadow: none !important;}
+  #VRButton::after { content: 'VR'; color: #cccccc !important; position: absolute; font-size: 16px !important; font-weight: bold !important; text-shadow: none !important;}
+  #ARButton:hover::after, #VRButton:hover::after { color: #000000 !important; }
+
+  /* Posiciones Matemáticas Exactas */
+  #menu-toggle       { right: 20px !important; left: auto !important; }
+  #lang-toggle-btn   { right: 80px !important; left: auto !important; }
+  #combat-toggle-btn { right: 140px !important; left: auto !important; }
+  #VRButton          { right: 200px !important; left: auto !important; }
+  #ARButton          { right: 260px !important; left: auto !important; }
+
+  /* Controles Inferiores */
+  #btn-recenter, #helpBtn {
+    position: fixed; right: 25px; width: 45px; height: 45px; border-radius: 0 !important; background: rgba(10,10,10,0.7) !important;
+    color: #cccccc !important; border: 1px solid rgba(255,255,255,0.2) !important; font-family: 'Share Tech Mono', monospace !important; font-size: 20px !important;
+    cursor: pointer; display: flex; justify-content: center; align-items: center; z-index: 99900; backdrop-filter: blur(5px); transition: 0.3s;
+  }
+  #btn-recenter:hover, #helpBtn:hover { background: #ffffff !important; color: #000000 !important; border-color: #ffffff !important; }
+  #helpBtn { bottom: 95px; }
+  #btn-recenter { bottom: 150px; }
+}
+
+/* =====================================================================
+   🔥 11. RESPONSIVE: MÓVIL (max-width: 768px) 🔥
+   ===================================================================== */
+@media (max-width: 768px) {
+  
+  /* Título Móvil */
+  #portfolio-header { top: 5px !important; left: 50% !important; transform: translateX(-50%) !important; width: 100% !important; font-size: 0.9rem !important; }
+
+  /* HUD Superior Blindado */
+  #unified-hud {
+    top: 25px !important; flex-wrap: nowrap !important; height: auto !important; min-height: 45px !important; padding: 5px !important;
+    width: 98% !important; justify-content: space-between !important; overflow-x: auto !important; border-radius: 0 0 4px 4px !important;
+  }
+  .hud-item { gap: 2px !important; }
+  .hud-val { white-space: nowrap !important; font-size: 0.85rem !important; }
+  .hud-label { white-space: nowrap !important; font-size: 0.55rem !important; }
+
+  /* Leyenda Compacta */
+  #universe-legend { top: 80px !important; left: 10px !important; width: auto !important; max-width: 140px !important; padding: 6px 8px !important; }
+  #legend-header, #legend-content { position: relative !important; top: 0 !important; left: 0 !important; }
+  #legend-header { white-space: nowrap !important; font-size: 0.65rem !important; }
+
+  /* Familia de Botones Superiores (Todos 40x40 idénticos) */
+  #menu-toggle, #lang-toggle-btn, #combat-toggle-btn, #ARButton, #VRButton {
+    position: fixed !important; top: 80px !important; bottom: auto !important; left: auto !important; transform: none !important;
+    width: 40px !important; min-width: 40px !important; height: 40px !important; padding: 0 !important; margin: 0 !important;
+    border-radius: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important;
+    background: rgba(10, 10, 10, 0.8) !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; box-sizing: border-box !important;
+    font-family: 'Share Tech Mono', monospace !important; color: #cccccc !important; z-index: 10001 !important; text-shadow: none !important;
+  }
+  
+  /* Textos AR/VR Inyectados */
+  #ARButton, #VRButton { color: transparent !important; overflow: hidden !important; white-space: nowrap !important; }
+  #ARButton::after { content: 'AR'; color: #ffffff !important; position: absolute; font-size: 0.8rem !important; font-weight: bold !important; text-shadow: none !important; }
+  #VRButton::after { content: 'VR'; color: #ffffff !important; position: absolute; font-size: 0.8rem !important; font-weight: bold !important; text-shadow: none !important; }
+
+  /* Posiciones Matemáticas Exactas (Derecha a Izquierda, Gap 8px) */
+  #menu-toggle       { right: 10px !important; }
+  #lang-toggle-btn   { right: 58px !important; }  
+  #combat-toggle-btn { right: 106px !important; } 
+  #VRButton          { right: 154px !important; } 
+  #ARButton          { right: 202px !important; } 
+
+  /* Controles Flotantes Inferiores */
+  #btn-recenter, #helpBtn {
+    position: fixed; right: 25px; width: 40px !important; height: 40px !important; border-radius: 0 !important; background: rgba(10,10,10,0.7) !important;
+    color: #cccccc !important; border: 1px solid rgba(255,255,255,0.2) !important; font-family: 'Share Tech Mono', monospace !important; font-size: 18px !important;
+    cursor: pointer; display: flex; justify-content: center; align-items: center; z-index: 99900; backdrop-filter: blur(5px);
+  }
+  #helpBtn { bottom: 125px !important; }
+  #btn-recenter { bottom: 175px !important; }
+  
+  /* Otros ajustes móviles */
+  #scroll-hint { bottom: 140px !important; font-size: 0.8rem !important; width: 100% !important; left: 0 !important; position: fixed !important; }
+  #system-toast { font-size: 0.85rem !important; width: 90% !important; left: 5% !important; padding: 10px !important; top: 22% !important; position: fixed !important; transform: translateX(0) !important; text-align: center !important;}
+  .modal-ui { padding: 20px 15px !important; width: 95% !important; max-height: 90vh !important; }
+  .close-btn { top: 10px !important; right: 10px !important; width: 40px !important; height: 40px !important; font-size: 20px !important; }
+  
+  /* Destruir estilos táctiles coloridos de Arcadia en móvil */
+  .touch-btn { background: rgba(10, 10, 10, 0.8) !important; border: 1px solid #fff !important; color: #fff !important; border-radius: 0 !important;}
+  .touch-btn.shoot { background: rgba(200, 0, 0, 0.8) !important; border-color: #cc0000 !important; }
+}

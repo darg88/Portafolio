@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, touch-action=none" />
+    <title>Daniel | Portafolio Interactivo </title>
+    <meta name="description" content="Portafolio de Daniel. Director del GameLab Tadeo. Experiencias inmersivas, WebXR y diseño interactivo." />
+
+    <!-- Open Graph y Twitter Cards -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tu-dominio.com/" />
+    <meta property="og:title" content="Daniel | Portafolio Interactivo" />
+    <meta property="og:description" content="Explora el portafolio interactivo de Daniel. Investigador principal del GameLab Tadeo." />
+    <meta property="og:image" content="https://tu-dominio.com/imge/portfolio-preview.jpg" />
+
+    <!-- Fuentes y Estilos -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  
+  <body>
+    <!-- Efecto Retro -->
+    <div class="crt-overlay"></div>
+    
+    <!-- Lector de pantalla -->
+    <div class="sr-only" aria-live="polite">
+      <h1>Portafolio de Daniel - Sistema Operativo Cyberpunk</h1>
+      <p>Bienvenido. Presiona la tecla Tabulador (Tab) para navegar.</p>
+    </div>
+
+    <!-- Pantalla de Carga -->
+    <div id="loading-screen">
+      <h2 id="loading-text">INICIANDO KERNEL...</h2>
+      <div class="loading-bar-container"><div id="loading-bar"></div></div>
+    </div>
+
+    <!-- Pantalla de Inicio -->
+    <div id="start-screen">
+      <h1 style="color: #ff0000; line-height: 1.2;">
+        DANIEL_OS <br>
+        <span style="font-size:1.5rem; color:#aaaaaa; font-weight: normal; letter-spacing: 3px;">> SISTEMA EN ESPERA...</span>
+      </h1>
+      <button id="start-btn" style="display: none;">> EXPLORAR PORTAFOLIO _</button>
+      <button id="skip-btn" style="display: none; margin-top: 30px; font-size: 1rem; color: #888; text-decoration: none; border-bottom: 1px dashed #888; padding-bottom: 5px;">[ JUGAR MINIJUEGO ARCADIA ]</button>
+    </div>
+
+    <!-- Canvas Principal 3D -->
+    <canvas id="bg-canvas" role="img" aria-label="Simulación 3D del espacio con planetas que representan proyectos."></canvas>
+
+    <!-- Guías visuales -->
+    <div id="onboarding-ui" class="hidden">
+      > SISTEMA: PORTAFOLIO DETECTADO <br>
+      <span style="color:#fff; font-size:1rem;">> USA [A]/[D] O EL RATÓN PARA NAVEGAR</span><br>
+      <span style="color:#ffff00; font-size:1rem;">> HAZ CLIC EN LOS PLANETAS PARA VER PROYECTOS</span>
+    </div>
+    <div id="scroll-hint" class="hidden">[ DESLIZA / SCROLL PARA EXPLORAR ↓ ]</div>
+
+    <!-- Título Principal Superior -->
+    <div id="portfolio-header" style="position: fixed; top: 20px; left: 7.8%; transform: translateX(-50%); color: #ff0000; font-size: 1.2rem; font-weight: bold; text-shadow: 0 0 10px #ff0000; z-index: 100000; pointer-events: none; letter-spacing: 2px; text-align: center;">
+      DANIEL_OS <span style="color: #fff; font-weight: normal; font-size: 0.85rem;">// PORTAFOLIO INTERACTIVO</span>
+    </div>
+
+    <!-- HUD y Contadores -->
+    <div id="unified-hud">
+      <div class="hud-item hud-score">
+        <span class="hud-label" id="label-score">SCORE</span>
+        <span id="score-value" class="hud-val">0</span>
+      </div>
+      <div class="hud-item hud-lives">
+        <span class="hud-label" id="label-lives">VIDAS</span>
+        <span id="lives-value" class="hud-val">■ ■ ■</span>
+      </div>
+      <div class="hud-item hud-level">
+        <span class="hud-label" id="label-level">LEVEL</span>
+        <span id="level-value" class="hud-val">1</span>
+      </div>
+      <div class="hud-item hud-files">
+        <span class="hud-label" id="label-files">ARCHIVOS</span>
+        <span class="hud-val"><span id="progress-value">0</span> / 13</span>
+      </div>
+      <div class="hud-item" style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 15px; margin-left: 10px;">
+        <span class="hud-label">COMBO</span>
+        <span id="combo-value" class="hud-val" style="color: #ffffff; text-shadow: 0 0 5px #ffffff;">x0</span>
+      </div>
+    </div>
+
+    <!-- Leyenda -->
+    <div id="universe-legend" style="position: fixed; top: 80px; left: 20px; background: rgba(5, 5, 5, 0.9); border: 1px solid rgba(255,255,255,0.15); padding: 10px; border-radius: 0; z-index: 10002; font-size: 0.85rem; color: #ccc; backdrop-filter: blur(5px); box-shadow: 0 10px 30px rgba(0,0,0,0.8); pointer-events: auto;">
+      <div id="legend-header" onclick="const c = document.getElementById('legend-content'); const i = document.getElementById('legend-icon'); if(c.style.display==='none'){ c.style.display='block'; i.innerText='[-]'; } else { c.style.display='none'; i.innerText='[+]'; }" style="color: #ccc; font-weight: normal; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+        <span>LEYENDA DE SISTEMA</span>
+        <span id="legend-icon" style="color: #cc0000;">[+]</span>
+      </div>
+      <div id="legend-content" style="display: none; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+        <div style="margin-bottom: 4px;"><span style="color: #ff0055;">■</span> GameLab & Tech</div>
+        <div style="margin-bottom: 4px;"><span style="color: #00aaff;">■</span> Hardware & Código</div>
+        <div style="margin-bottom: 4px;"><span style="color: #ffff00;">■</span> Docencia & Gestión</div>
+        <div><span style="color: #aa00ff;">■</span> VR & Prototipado</div>
+      </div>
+    </div>
+
+    <!-- Elementos del Jefe -->
+    <div id="level-up-anim">¡LEVEL UP!</div>
+    <div id="boss-ui" class="hidden">
+      <div id="boss-title">!!! ALIEN MOTHERSHIP !!!</div>
+      <div id="boss-hp-bg"><div id="boss-hp-fill"></div></div>
+    </div>
+
+    <!-- Botones Superiores (Se controlarán desde CSS para Desktop/Móvil) -->
+    <button id="menu-toggle" class="control-btn" style="display: none;" title="Menú Principal">
+      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+    </button>
+    <button id="lang-toggle-btn" class="control-btn">EN</button>
+    <button id="combat-toggle-btn" class="control-btn" style="display: none;" title="Modo Combate">▶</button>
+    
+    <!-- Menú Lateral -->
+    <div id="side-menu" class="hidden-menu">
+      <button id="menu-close">X</button> <h2 style="color: #00ff00;">SISTEMA</h2>
+      <ul>
+        <li><a href="#" class="menu-item" id="menu-bloom" style="color: #00ffaa;">[*] Efecto Neón: ON</a></li>
+        <li><a href="#" class="menu-item" id="menu-align" style="color: #ffaa00;">[O] Vista: CONSTELACIÓN</a></li>
+        <li><a href="#" class="menu-item" data-id="1">1. GameLab Tadeo</a></li>
+        <li><a href="#" class="menu-item" data-id="2">2. Toolbox Arduino</a></li>
+        <li><a href="#" class="menu-item" data-id="3">3. MediaLab Cinemateca</a></li>
+        <li><a href="#" class="menu-item" data-id="4">4. Docencia Diseño</a></li>
+        <li><a href="#" class="menu-item" data-id="5">5. Games for Change</a></li>
+        <li><a href="#" class="menu-item" data-id="6">6. VR / Entornos 3D</a></li>
+        <li><a href="#" class="menu-item" data-id="7" style="color: #ffaa00;">> DIR: /Galería_Archivos</a></li>
+        <li><a href="#" id="menu-leaderboard" class="menu-item" style="color: #ff0000; font-weight: bold;">> Salón_de_Fama</a></li>
+        <li style="margin-top: 15px; border-top: 1px dashed #555; padding-top: 10px;"><a href="#" id="menu-about" class="menu-item" style="color: #00ffff;">> User_Profile</a></li>
+        <li><a href="#" id="menu-contact" class="menu-item" style="color: #ffff00;">> Enviar Transmisión</a></li>
+        <li><a href="#" id="menu-faq" class="menu-item" style="color: #00ffaa;">> F.A.Q. / Ayuda</a></li>
+        <li><a href="#" class="menu-item" id="menu-retro" style="color: #fff; font-weight: bold;">[■] MODO: RETRO B&W</a></li>
+        <li style="margin-top: 15px; border-top: 1px dashed #555; padding-top: 15px;">
+          <span style="color: #777; font-size: 0.75rem; letter-spacing: 2px;">> ENLACES_EXTERNOS</span>
+        </li>
+        <li><a href="https://www.youtube.com/@GameLabTadeo" target="_blank" class="social-item" style="color: #ff0055;">[▶] YouTube</a></li>
+        <li><a href="https://www.instagram.com/danielrodgarc/" target="_blank" class="social-item" style="color: #ff00ff;">[@] Instagram</a></li>
+        <li><a href="https://www.linkedin.com/in/dargdesigner/" target="_blank" class="social-item" style="color: #00aaff;">[in] LinkedIn</a></li>
+        <li><a href="https://github.com/darg88" target="_blank" class="social-item" style="color: #aaaaaa;">[&lt;/&gt;] GitHub</a></li>
+        <li><a href="#" id="menu-blog" class="menu-item" style="color: #00ffaa; font-weight: bold;">> Bitácora_del_juego</a></li>
+      </ul>
+    </div>
+    
+    <div id="system-toast" class="hidden" aria-live="assertive" aria-atomic="true" style="position: fixed; top: 25%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: bold; text-shadow: 0 0 20px; z-index: 10000; pointer-events: none; transition: opacity 0.5s;"></div>    
+    <div id="modal-overlay" class="hidden" onclick="window.closeAllUIs()"></div>
+    
+    <!-- Ventana de Proyecto -->
+    <div id="portfolio-ui" class="modal-ui hidden" style="border-color: #00ff00;">
+      <button class="close-btn" onclick="window.closeAllUIs()">X</button>
+      <div id="project-nav-bar" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #00ff00; padding-bottom: 10px; margin-bottom: 15px; margin-top: 45px;">
+        <button id="btn-prev-project" style="background: transparent; border: 1px solid #00ff00; color: #00ff00; padding: 5px 15px; cursor: pointer; font-family: 'Share Tech Mono', monospace; transition: 0.3s;">&lt;</button>
+        <h1 id="project-title" style="color: #00ff00; margin: 0; font-size: 1.4rem; text-align: center; flex-grow: 1; text-transform: uppercase;">Título</h1>
+        <button id="btn-next-project" style="background: transparent; border: 1px solid #00ff00; color: #00ff00; padding: 5px 15px; cursor: pointer; font-family: 'Share Tech Mono', monospace; transition: 0.3s;">&gt;</button>
+      </div>
+      <div id="project-role" style="font-size: 0.95rem; color: #aaa; margin-bottom: 10px; font-weight: bold;"></div>
+      <div id="project-tech-stack" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px;"></div>
+      <div id="project-media" style="width: 100%; height: 400px; background: #111; display: flex; justify-content: center; align-items: center; overflow: hidden; margin-bottom: 15px; border: 1px solid #333;"></div>      
+      <p id="project-desc" style="font-size: 1.1rem; color: #ccc;">Descripción...</p>
+      <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+        <a id="project-link" href="#" target="_blank" style="display: none; background: #00ff00; color: #050505; padding: 10px; text-decoration: none; font-weight: bold; text-align: center;">VER ENLACE EXTERNO ↗</a>
+        <button id="project-expand-btn" style="background: transparent; border: 1px dashed #00ff00; color: #00ff00; padding: 8px; cursor: pointer;">+ LEER MÁS DETALLES ↓</button>
+      </div>
+      <div id="project-long-desc" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #333; color: #aaa; font-size: 0.9rem; line-height: 1.6; padding-bottom: 20px;"></div>    
+    </div>
+
+    <!-- Ventana de Leaderboard -->
+    <div id="leaderboard-ui" class="modal-ui hidden" style="border-color: #ff0000;">
+      <button class="close-btn" onclick="window.closeAllUIs()">X</button>
+      <h1 style="text-align:center; color:#ff0000; text-shadow:0 0 10px #ff0000; margin-top:0;">¡BATALLA FINALIZADA!</h1>
+      <p style="text-align:center;">El encuentro con la nave nodriza ha concluido.</p>
+      <div style="text-align:center; font-size: 24px; margin: 20px 0;">TU PUNTUACIÓN: <span id="final-score-display" style="color:#00ffff; font-weight:bold;">0</span></div>
+      <form id="score-form" style="margin-bottom: 20px;">
+        <label style="color:#00ffff;">REGISTRA TU NOMBRE DE PILOTO:</label>
+        <div style="display: flex; gap:10px; margin-top: 5px;">
+          <input type="text" id="player-name" required placeholder="Ej: Neo..." maxlength="10" style="border-color:#00ffff; color:#00ffff;">
+          <button type="submit" style="padding: 10px; background: #00ffff; color: #000; border: none; font-family: 'Share Tech Mono'; font-weight: bold; cursor: pointer;">GUARDAR</button>
+        </div>
+      </form>
+      <h2 style="border-bottom: 1px solid #555; padding-bottom: 5px; color:#ffaa00;">> HALL OF FAME</h2>
+      <ul id="score-list" style="list-style: none; padding: 0; margin: 0; color: #ccc;">
+        <li>Cargando datos del servidor...</li>
+      </ul>
+    </div>
+
+    <!-- Ventana de Blog -->
+    <div id="blog-ui" class="modal-ui hidden" style="border-color: #00ffaa; width: 95%; max-width: 900px; height: 85vh; padding: 20px 10px;">
+      <button class="close-btn" onclick="window.closeAllUIs()" style="color: #00ffaa; border-color: #00ffaa;">X</button>
+      <h2 style="color: #00ffaa; text-align: center; margin-top: 0; margin-bottom: 10px; font-size: 1.5rem;">> BITÁCORA_DIARIA</h2>
+      <div style="width: 100%; height: calc(100% - 50px); border: 1px solid #00ffaa; border-radius: 5px; overflow: hidden;">
+        <iframe src="https://videoludens-blog.tumblr.com/" width="100%" height="100%" frameborder="0" style="background: #fff;"></iframe>
+      </div>
+    </div>
+
+    <!-- Ventana de Tutorial -->
+    <div id="tutorial-ui" class="modal-ui hidden" style="border-color: #333; max-width: 650px;">
+      <button class="close-btn" onclick="window.closeAllUIs()">X</button>
+      <h2 style="color: #ffffff; text-align: left; margin-top: 0; text-transform: uppercase; border-left: 4px solid #ffffff; background: rgba(255, 255, 255, 0.1); padding: 8px 15px; font-weight: 400; font-size: 1.2rem; clip-path: polygon(0 0, 98% 0, 100% 100%, 0% 100%);">> MANUAL_DE_USUARIO</h2>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <p style="color: #cccccc; font-size: 1rem; line-height: 1.5; margin-bottom: 20px;">Has accedido a la simulación interactiva 3D. Revisa los controles antes de proceder:</p>
+        <ul style="color: #999999; text-align: left; line-height: 1.8; margin-bottom: 30px; list-style-type: none; padding-left: 0;">
+          <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px;"><strong style="color: #ffffff;">[ NAVEGAR ]</strong> Arrastra el espacio vacío para girar la vista.</li>
+          <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-top: 5px;"><strong style="color: #ffffff;">[ EXPLORAR ]</strong> Toca cualquier planeta para abrir los archivos del proyecto.</li>
+          <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-top: 5px;"><strong style="color: #ffffff;">[ CONSTRUIR ]</strong> Arrastra y suelta los planetas para diseñar tu propia constelación.</li>
+          <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-top: 5px;"><strong style="color: #ffffff;">[ COMBATE ]</strong> Activa el Modo Combate (▶) en el menú lateral para defenderte.</li>
+        </ul>
+        <h2 style="color: #ffffff; text-align: left; margin-top: 0; text-transform: uppercase; border-left: 4px solid #ffffff; background: rgba(255, 255, 255, 0.1); padding: 8px 15px; font-weight: 400; font-size: 1.1rem; clip-path: polygon(0 0, 98% 0, 100% 100%, 0% 100%);">> BASE_DE_CONOCIMIENTO (F.A.Q.)</h2>
+        <div style="text-align: left; color: #ccc; line-height: 1.5; font-size: 0.9rem; max-height: 180px; overflow-y: auto; padding-right: 10px; margin-bottom: 20px;">
+          <p style="margin-top: 10px;"><strong style="color: #fff;">Q: ¿Qué motor usa este portafolio?</strong><br>A: Está construido con Three.js y WebGL nativo, optimizado para navegadores web sin plugins.</p>
+          <p><strong style="color: #fff;">Q: ¿Cómo accedo a los módulos de Realidad Aumentada?</strong><br>A: Desde un dispositivo móvil compatible con WebXR. Aparecerá un botón [AR] en tu pantalla.</p>
+          <p><strong style="color: #fff;">Q: ¿Hay algún secreto en la simulación?</strong><br>A: Los registros indican que existe un archivo anómalo fuera de los límites convencionales. Mantén los ojos abiertos.</p>
+          <p><strong style="color: #fff;">Q: ¿Puedo usar este código?</strong><br>A: Revisa mi repositorio en GitHub en la sección de enlaces externos.</p>
+        </div>
+      </div>
+      <button onclick="window.closeAllUIs()" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); color: #aaaaaa; border: 1px solid rgba(255,255,255,0.2); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.3s; text-transform: uppercase;" onmouseover="this.style.background='#ffffff'; this.style.color='#000000'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#aaaaaa'">CERRAR MANUAL</button>
+    </div>
+
+    <!-- Ventana de Acerca De (Perfil) -->
+    <div id="about-ui" class="modal-ui hidden" style="border-color: #00ffff;">
+      <button class="close-btn" onclick="window.closeAllUIs()">X</button>
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button onclick="window.closeAllUIs(); document.getElementById('contact-ui').classList.remove('hidden');" style="margin-top: 20px; width: 100%; padding: 10px; background: transparent; color: #00ffff; border: 2px solid #00ffff; font-family:'Share Tech Mono'; font-weight: bold; font-size:1.2rem; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='#00ffff'; this.style.color='#000'" onmouseout="this.style.background='transparent'; this.style.color='#00ffff'">✉ INICIAR CONEXIÓN</button>
+        <a href="/docs/CV_Daniel.pdf" target="_blank" onclick="window.trackEvent('Descarga', 'CV_PDF')" style="display: block; margin-top: 10px; width: 100%; box-sizing: border-box; padding: 10px; background: #00ffff; color: #000; text-align: center; text-decoration: none; font-family:'Share Tech Mono'; font-weight: bold; font-size:1.1rem; transition: 0.3s; box-shadow: 0 0 15px rgba(0,255,255,0.4);">📄 DESCARGAR CV</a>
+      </div>
+      <h2 style="color: #00ffff; border-bottom: 1px dashed #00ffff; padding-bottom: 5px; margin-top: 0;">> USER_PROFILE</h2>
+      <div style="text-align: center; margin-bottom: 15px;">
+        <img src="/imge/perfil.jpg" alt="Daniel" style="width: 120px; height: 120px; border-radius: 50%; border: 2px solid #00ffff; object-fit: cover; box-shadow: 0 0 15px rgba(0,255,255,0.5);">
+      </div>
+      <div style="line-height: 1.6; font-size: 1.1rem; color: #ddd; text-align: left;">
+        <p><strong style="color:#00ffff;">Nombre:</strong> Daniel [Rodriguez Garcia]</p>
+        <p><strong style="color:#00ffff;">Ocupación:</strong> Profesor Diseño Interactivo | Dir. GameLab Tadeo</p>
+        <p><strong style="color:#00ffff;">Background:</strong> Candidato a Doctorado en Diseño, Arte y Ciencia. Ex-coordinador MediaLab Cinemateca. Profesor de Planta Universidad Jorge Tadeo Lozano.</p>
+        <p><strong style="color:#00ffff;">About:</strong> Mi preparación y experiencia se enfocan en el diseño, creación y producción de videojuegos y experiencias interactivas en espectro de lo virtual y otras disciplinas, especialmente en su aspecto artístico y técnico, pero también en su conceptualización, en el ambiente interdisciplinario propio del diseño y producción.</p>
+        <p><strong style="color:#00ffff;">Skills:</strong> Game Mechanics, TouchDesigner, VR/AR, WebXR., Blender, Unity, Unreal, Godot</p>
+        <p><strong style="color:#00ffff;">Redes:</strong> <a href="https://www.linkedin.com/in/dargdesigner/" target="_blank" style="color: #ffaa00; text-decoration: none;">[LinkedIn ↗]</a> | <a href="https://github.com/darg88" target="_blank" style="color: #ffaa00; text-decoration: none;">[GitHub ↗]</a></p>
+      </div>
+      <button onclick="window.closeAllUIs(); document.getElementById('contact-ui').classList.remove('hidden');" style="margin-top: 20px; width: 100%; padding: 10px; background: transparent; color: #00ffff; border: 2px solid #00ffff; font-family:'Share Tech Mono'; font-weight: bold; font-size:1.2rem; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='#00ffff'; this.style.color='#000'" onmouseout="this.style.background='transparent'; this.style.color='#00ffff'">INICIAR CONEXIÓN</button>
+    </div>
+
+    <!-- Ventana de Contacto -->
+    <div id="contact-ui" class="modal-ui hidden" style="border-color: #ffff00;">
+      <button class="close-btn" onclick="window.closeAllUIs()">X</button>
+      <h2 style="color: #ffff00; margin-top: 0;">> TRANSMISIÓN_ENTRANTE</h2>
+      <p style="color: #ccc; font-size: 0.9rem;">Estableciendo conexión segura...</p>
+      <form id="hacker-contact-form">
+        <label style="color:#cccccc; font-size:0.85rem; font-family: -apple-system, sans-serif; letter-spacing: 1px;">IDENTIFICACIÓN:</label>
+        <input type="text" name="identificacion" required placeholder="Tu Nombre / Organización">
+        <label style="color:#cccccc; font-size:0.85rem; font-family: -apple-system, sans-serif; letter-spacing: 1px; display:block; margin-top:10px;">CORREO ELECTRÓNICO:</label>
+        <input type="email" name="email" required placeholder="correo@sistema.com">
+        <label style="color:#cccccc; font-size:0.85rem; font-family: -apple-system, sans-serif; letter-spacing: 1px; display:block; margin-top:10px;">MENSAJE DE DATOS:</label>
+        <textarea rows="4" name="mensaje" required placeholder="Ingresa tu transmisión aquí..."></textarea>
+        <button type="submit" id="btn-submit-contacto" style="width: 100%; margin-top: 15px; padding: 12px; background: transparent; font-family: -apple-system, sans-serif; font-size:1rem; border: 1px solid #cccccc; color: #cccccc; font-weight: bold; cursor: pointer; transition: 0.3s; text-transform: uppercase;">ENVIAR PAQUETE</button>
+        <p id="form-status" style="color: #00ff00; font-size: 0.9rem; margin-top: 10px; display: none; text-align: center;"></p>
+      </form>
+    </div>
+
+    <!-- Controles Táctiles Minijuego -->
+    <div id="touch-controls" style="display: none; position: fixed; bottom: 30px; left: 0; width: 100vw; justify-content: space-between; padding: 0 30px; box-sizing: border-box; z-index: 999999; pointer-events: none;">
+      <div id="dpad" style="display: flex; gap: 15px; pointer-events: auto;">
+        <button id="btn-left" style="width: 70px; height: 70px; background: rgba(0, 255, 0, 0.2); border: 2px solid #00ff00; color: #00ff00; border-radius: 50%; touch-action: none; cursor: pointer; display: flex; justify-content: center; align-items: center;"><svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" fill="none" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+        <button id="btn-right" style="width: 70px; height: 70px; background: rgba(0, 255, 0, 0.2); border: 2px solid #00ff00; color: #00ff00; border-radius: 50%; touch-action: none; cursor: pointer; display: flex; justify-content: center; align-items: center;"><svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+      </div>
+      <button id="btn-shoot" style="pointer-events: auto; width: 70px; height: 70px; background: rgba(255, 255, 0, 0.2); border: 2px solid #ffff00; color: #ffff00; border-radius: 50%; touch-action: none; cursor: pointer; display: flex; justify-content: center; align-items: center;"><svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle></svg></button>
+    </div>
+
+    <!-- Script Principal -->
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
