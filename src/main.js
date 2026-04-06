@@ -1983,9 +1983,7 @@ xrController1.addEventListener('selectend', () => {
   isShooting = false; 
 });
 
-const reticle = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x00ff00 })); 
-reticle.matrixAutoUpdate = false; 
-reticle.visible = false; scene.add(reticle);
+
 
 //aqui
 window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; 
