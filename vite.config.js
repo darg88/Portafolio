@@ -1,7 +1,10 @@
 import { defineConfig } from 'vite'
 
-export default defineConfig({
-  // Reemplaza 'Portafolio' si tu repositorio en GitHub se llama diferente.
-  // Es muy importante que lleve las barras diagonales al inicio y al final.
-  base: '/Portafolio/', 
+export default defineConfig(({ command }) => {
+  return {
+    // CONDICIONAL INTELIGENTE:
+    // Si el comando es 'build' (lo que usa GitHub Actions), usa la ruta de tu repositorio.
+    // De lo contrario (cuando usas 'npm run dev' localmente), usa la ruta raíz '/'.
+    base: command === 'build' ? '/Portafolio/' : '/',
+  }
 })

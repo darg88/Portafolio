@@ -92,6 +92,7 @@ try {
   throw new Error("Sistema abortado por falta de WebGL."); 
 }
 const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#bg-canvas'), antialias: true, alpha: true });
+renderer.setClearColor(0x000000, 0); // 🔥 ARREGLO AR: Fondo 100% transparente
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
 
@@ -1838,6 +1839,7 @@ renderer.xr.addEventListener('sessionstart', () => {
   const session = renderer.xr.getSession();
   
   if (window.isARSession) { 
+    scene.background = null;
     particlesMesh.visible = false; ship.visible = false; satelliteGroup.visible = false; 
     if(typeof constellationLine !== 'undefined') constellationLine.visible = false;
     categoryPlanets.forEach(p => p.visible = false); 
@@ -1857,12 +1859,11 @@ renderer.xr.addEventListener('sessionstart', () => {
 renderer.xr.addEventListener('sessionend', () => { 
   window.isARSession = false;
 
-  // 🔥 NUEVO: Lógica de botones AR/VR
-  currentXRSession = null; 
-  if (customVrBtn) customVrBtn.innerText = 'VR';
-  if (customArBtn) customArBtn.innerText = 'AR';
+  // Lógica de botones AR/VR
+  if (typeof currentXRSession !== 'undefined') currentXRSession = null; 
+  if (typeof customVrBtn !== 'undefined' && customVrBtn) customVrBtn.innerText = 'VR';
+  if (typeof customArBtn !== 'undefined' && customArBtn) customArBtn.innerText = 'AR';
   if (typeof checkXRSupport === 'function') checkXRSupport();
-  // 🔥 FIN NUEVO
 
   document.querySelector('.crt-overlay').style.display = 'block'; 
 
@@ -1876,17 +1877,26 @@ renderer.xr.addEventListener('sessionend', () => {
   categoryPlanets.forEach(p => p.visible = true); asteroids.forEach(a => a.visible = true);
   ambientWhales.forEach(w => w.visible = true); discoveredVoyagers.forEach(v => v.visible = true);
   guardianCats.forEach(c => c.visible = true); scrollKeywords.forEach(k => k.visible = true);
-  if(bossEntity) bossEntity.visible = true;
+  if(typeof bossEntity !== 'undefined' && bossEntity) bossEntity.visible = true;
   
-  camera.fov = 75; camera.quaternion.identity(); 
-  camera.position.set(0, 0, 0); camera.rotation.set(0, 0, 0); 
-  userGroup.position.set(0, 0, 50); userGroup.rotation.set(0,0,0);
-  ship.position.set(0, -15, 0); ship.scale.set(0.6, 0.6, 0.6); 
   isShooting = false;
   
+  // 🔥 ARREGLO VR: Protegemos el reseteo de la cámara dentro del retraso de 300ms
   setTimeout(() => {
     renderer.xr.isPresenting = false; 
     renderer.setRenderTarget(null); 
+    
+    // 1. Reseteo puro de cámara
+    camera.fov = 75; camera.quaternion.identity(); 
+    camera.position.set(0, 0, 0); camera.rotation.set(0, 0, 0); 
+    
+    // 2. Reseteo inteligente del grupo (Respeta si estás en móvil o PC)
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    userGroup.position.set(0, 0, (isTouch || window.innerWidth < 600) ? 30 : 50); 
+    userGroup.rotation.set(0,0,0);
+    
+    // 3. Reseteo de la nave
+    ship.position.set(0, -15, 0); ship.scale.set(0.6, 0.6, 0.6); 
     
     camera.aspect = window.innerWidth / window.innerHeight; 
     camera.updateProjectionMatrix();
