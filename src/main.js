@@ -685,12 +685,25 @@ window.closeAllUIs = function() {
 }
 
 function openUIWindow(elementId) { 
+  // Cerrar todo primero
   window.closeAllUIs(); 
-  document.body.classList.add('ui-active'); // 🔥 Aplica la regla CSS que destruye los botones temporalmente
-  document.getElementById('modal-overlay')?.classList.remove('hidden');
   
-  document.getElementById(elementId).classList.remove('hidden'); 
-  isUIOpen = true; document.getElementById('bg-canvas').classList.add('canvas-blurred'); 
+  // Asegurarse de que el modal overlay esté visible
+  const overlay = document.getElementById('modal-overlay');
+  if (overlay) overlay.classList.remove('hidden');
+  
+  // Mostrar la ventana solicitada
+  const targetWindow = document.getElementById(elementId);
+  if (targetWindow) {
+    targetWindow.classList.remove('hidden');
+  }
+  
+  document.body.classList.add('ui-active');
+  isUIOpen = true; 
+  
+  const canvas = document.getElementById('bg-canvas');
+  if (canvas) canvas.classList.add('canvas-blurred');
+  
   playSound('ui'); 
 }
 
@@ -975,37 +988,65 @@ function updateLivesUI() {
 if (livesEl) livesEl.innerText = '■ '.repeat(Math.max(0, playerLives));}
 
 // ==========================================
-// 🔥 REPARACIÓN: GAME OVER BLINDADO 🔥
+// 🔥 REPARACIÓN: GAME OVER BLINDADO (SIN CONGELAMIENTO)
 // ==========================================
 function triggerGameOver() {
   try {
     playSound('explosion');
     createExplosion(ship.position.x, ship.position.y, ship.position.z);
     
-    if(bossEntity) { scene.remove(bossEntity); bossEntity = null; }
-    document.getElementById('boss-ui').classList.add('hidden');
+    if(bossEntity) { 
+      scene.remove(bossEntity); 
+      bossEntity = null; 
+    }
+    document.getElementById('boss-ui')?.classList.add('hidden');
     isBossBattle = false;
     hasFoughtBoss = false; 
     
-    // 1. Mostramos el puntaje antes de reiniciar nada
-    showLeaderboard();
+    // 🔥 IMPORTANTE: Salir del modo combate ANTES de mostrar UI
+    isCombatActive = false;
     
-    const lbTitle = document.querySelector('#leaderboard-ui h1');
-    if(lbTitle) {
-        lbTitle.innerText = "¡SISTEMA REINICIADO!";
-        lbTitle.style.color = "#ffaa00";
+    // Limpiar todos los elementos de combate
+    if(typeof asteroids !== 'undefined') { 
+      asteroids.forEach(a => { try { scene.remove(a); } catch(e) {} }); 
+      asteroids.length = 0; 
+    }
+    if(typeof enemyProjectiles !== 'undefined') { 
+      enemyProjectiles.forEach(p => { try { scene.remove(p); } catch(e) {} }); 
+      enemyProjectiles.length = 0; 
+    }
+    if(typeof fighters !== 'undefined') { 
+      fighters.forEach(f => { try { scene.remove(f); } catch(e) {} }); 
+      fighters.length = 0; 
+    }
+    if(typeof projectiles !== 'undefined') { 
+      projectiles.forEach(p => { try { scene.remove(p); } catch(e) {} }); 
+      projectiles.length = 0; 
     }
     
-    // 2. 🔥 REINICIO TOTAL DE LA DIFICULTAD 🔥
+    // Restaurar botón de combate
+    const btnCombat = document.getElementById('combat-toggle-btn');
+    if(btnCombat) { 
+      btnCombat.innerText = '▶'; 
+      btnCombat.style.borderColor = '#00ff00'; 
+      btnCombat.style.color = '#00ff00'; 
+    }
+    
+    if(typeof toggleCombatDimming === 'function') toggleCombatDimming(false);
+    
+    // Guardar puntaje para el leaderboard
+    const finalScore = score;
+    
+    // 🔥 REINICIO TOTAL DE LA DIFICULTAD 🔥
     score = 0; 
-    currentLevel = 1; // Devuelve la velocidad a la normalidad
+    currentLevel = 1;
     weaponLevel = 1; 
     playerLives = 3; 
     shipSpeed = 0.5; 
     hasShield = false;
-    combatCombo = 0; // Limpia tus combos acumulados
-    scrollSpeedBoost = 0; // Quita cualquier aceleración extra
-    bossHealth = bossMaxHealth; // Cura al jefe para la próxima partida
+    combatCombo = 0;
+    scrollSpeedBoost = 0;
+    bossHealth = bossMaxHealth;
     if (typeof comboTimer !== 'undefined') clearTimeout(comboTimer);
     
     if (typeof shieldMesh !== 'undefined' && shieldMesh) shieldMesh.visible = false;
@@ -1013,22 +1054,30 @@ function triggerGameOver() {
     document.getElementById('score-value').innerText = score;
     document.getElementById('level-value').innerText = currentLevel;
     if(typeof updateLivesUI === 'function') updateLivesUI();
-
-    // 3. Restaurar el modo exploración (Paz)
-    isCombatActive = false;
-    if(typeof asteroids !== 'undefined') { asteroids.forEach(a => scene.remove(a)); asteroids.length = 0; }
-    if(typeof enemyProjectiles !== 'undefined') { enemyProjectiles.forEach(p => scene.remove(p)); enemyProjectiles.length = 0; }
-    if(typeof fighters !== 'undefined') { fighters.forEach(f => scene.remove(f)); fighters.length = 0; }
     
-    const btnCombat = document.getElementById('combat-toggle-btn');
-    if(btnCombat) { btnCombat.innerText = '▶'; btnCombat.style.borderColor = '#00ff00'; btnCombat.style.color = '#00ff00'; }
+    // 🔥 CRÍTICO: Esperar un momento antes de abrir el leaderboard
+    setTimeout(() => {
+      try {
+        // Actualizar el score final en el leaderboard ANTES de abrirlo
+        const finalScoreDisplay = document.getElementById('final-score-display');
+        if (finalScoreDisplay) finalScoreDisplay.innerText = finalScore;
+        
+        // Abrir leaderboard
+        openUIWindow('leaderboard-ui');
+        
+        // Actualizar la lista
+        updateLeaderboardUI();
+        
+        showSystemToast('¡GAME OVER! Puntaje registrado', '#ff0000');
+      } catch(e) {
+        console.error("Error mostrando leaderboard:", e);
+      }
+    }, 100);
     
-    if(typeof toggleCombatDimming === 'function') toggleCombatDimming(false); 
   } catch (error) {
     console.error("Bloqueo evitado en GameOver:", error);
   }
 }
-
 function updateScore(points) {
   score += points; document.getElementById('score-value').innerText = score;
   if (score >= 5000 && !isBossBattle && !hasFoughtBoss) { isBossBattle = true; spawnBoss(); playSound('explosion'); shakeIntensity = 1.0; } else if (!isBossBattle) { checkLevelUp(); }
@@ -2273,36 +2322,97 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
            bossEntity.children[0].material.uniforms.color.value.setHex(0xffffff); setTimeout(() => {if(bossEntity) bossEntity.children[0].material.uniforms.color.value.setHex(0xff0000)}, 100);
            document.getElementById('boss-hp-fill').style.width = (bossHealth / bossMaxHealth * 100) + '%'; 
            if (bossHealth <= 0) { 
-             hasFoughtBoss = true; isBossBattle = false; playSound('explosion'); createExplosion(bossEntity.position.x, bossEntity.position.y, bossEntity.position.z); 
-             
-             let bossBonus = 500 + (typeof combatCombo !== 'undefined' ? combatCombo * 10 : 0);
-             updateScore(bossBonus); 
-             if (typeof showFloatingText === 'function') showFloatingText('+' + bossBonus + ' PTS (COMBO BONUS!)', '#ffaa00', 0, 35, 0);   
-             scene.remove(bossEntity); bossEntity = null;       
-             document.getElementById('boss-ui').classList.add('hidden'); 
-             
-             isCombatActive = false; asteroids.forEach(a => scene.remove(a)); asteroids.length = 0; 
-             enemyProjectiles.forEach(p => scene.remove(p)); enemyProjectiles.length = 0; fighters.forEach(f => scene.remove(f)); 
-             fighters.length = 0;
-             const btnCombat = document.getElementById('combat-toggle-btn'); if(btnCombat) { btnCombat.innerText = '▶'; btnCombat.style.borderColor = '#00ff00'; btnCombat.style.color = '#00ff00'; }
-             
-             // 1. Mostramos el tablero de puntajes
-             showLeaderboard(); 
-             showSystemToast('AMENAZA NEUTRALIZADA. MODO EXPLORACIÓN RESTAURADO.', '#00ff00');
-             if (typeof toggleCombatDimming === 'function') toggleCombatDimming(false);
-             
-             // 2. 🔥 REINICIO TOTAL DE LA DIFICULTAD PARA LA NUEVA PARTIDA 🔥
-             score = 0;
-             currentLevel = 1; // Devuelve la velocidad a la normalidad
-             combatCombo = 0; // Limpia tus combos acumulados
-             scrollSpeedBoost = 0; // Quita cualquier aceleración extra
-             bossHealth = bossMaxHealth; // Cura al jefe para la próxima partida
-             if (typeof comboTimer !== 'undefined') clearTimeout(comboTimer);
-             
-             // 3. Actualizamos los textos en pantalla a cero
-             document.getElementById('score-value').innerText = score;
-             document.getElementById('level-value').innerText = currentLevel;
-           }
+  hasFoughtBoss = true; 
+  isBossBattle = false; 
+  playSound('explosion'); 
+  createExplosion(bossEntity.position.x, bossEntity.position.y, bossEntity.position.z); 
+  
+  let bossBonus = 500 + (typeof combatCombo !== 'undefined' ? combatCombo * 10 : 0);
+  
+  // 🔥 Guardar puntaje ANTES de resetear
+  const finalScoreValue = score + bossBonus;
+  
+  updateScore(bossBonus); 
+  
+  if (typeof showFloatingText === 'function') showFloatingText('+' + bossBonus + ' PTS (COMBO BONUS!)', '#ffaa00', 0, 35, 0);   
+  
+  scene.remove(bossEntity); 
+  bossEntity = null;       
+  document.getElementById('boss-ui').classList.add('hidden'); 
+  
+  // 🔥 Salir del modo combate
+  isCombatActive = false;
+  
+  // Limpiar TODOS los elementos enemigos (con try/catch por seguridad)
+  try {
+    asteroids.forEach(a => { try { scene.remove(a); } catch(e) {} });
+    asteroids.length = 0;
+  } catch(e) {}
+  
+  try {
+    enemyProjectiles.forEach(p => { try { scene.remove(p); } catch(e) {} });
+    enemyProjectiles.length = 0;
+  } catch(e) {}
+  
+  try {
+    fighters.forEach(f => { try { scene.remove(f); } catch(e) {} });
+    fighters.length = 0;
+  } catch(e) {}
+  
+  try {
+    if (typeof projectiles !== 'undefined') {
+      projectiles.forEach(p => { try { scene.remove(p); } catch(e) {} });
+      projectiles.length = 0;
+    }
+  } catch(e) {}
+  
+  const btnCombat = document.getElementById('combat-toggle-btn'); 
+  if(btnCombat) { 
+    btnCombat.innerText = '▶'; 
+    btnCombat.style.borderColor = '#00ff00'; 
+    btnCombat.style.color = '#00ff00'; 
+  }
+  
+  if (typeof toggleCombatDimming === 'function') toggleCombatDimming(false);
+  
+  // 🔥 REINICIO DE DIFICULTAD (pero NO resetear score visual aún)
+  const tempScore = score; // Guardamos el score real para el leaderboard
+  score = 0;
+  currentLevel = 1;
+  combatCombo = 0;
+  scrollSpeedBoost = 0;
+  bossHealth = bossMaxHealth;
+  if (typeof comboTimer !== 'undefined') clearTimeout(comboTimer);
+  
+  // Actualizar UI
+  document.getElementById('score-value').innerText = score;
+  document.getElementById('level-value').innerText = currentLevel;
+  
+  showSystemToast('¡AMENAZA NEUTRALIZADA! Victoria registrada', '#00ff00');
+  
+  // 🔥 CRÍTICO: Esperar un momento para mostrar el leaderboard (evita congelamiento)
+  setTimeout(() => {
+    try {
+      // Actualizar el score en el leaderboard
+      const finalScoreDisplay = document.getElementById('final-score-display');
+      if (finalScoreDisplay) finalScoreDisplay.innerText = tempScore;
+      
+      // Abrir leaderboard
+      openUIWindow('leaderboard-ui');
+      
+      // Actualizar la lista de puntajes
+      updateLeaderboardUI();
+      
+      // Asegurar que el modo combate siga desactivado
+      isCombatActive = false;
+      
+    } catch(e) {
+      console.error("Error mostrando leaderboard:", e);
+      // Fallback: mostrar toast en lugar de leaderboard
+      showSystemToast('¡VICTORIA! Puntaje: ' + tempScore, '#00ff00');
+    }
+  }, 150);
+}
         }
         
         // B. Láser vs Cazas Enemigos
@@ -2947,6 +3057,7 @@ if (nameInput && emailInput && msgInput) {
   msgInput.addEventListener('keydown', (e) => e.stopPropagation());
   
   validateContactForm(); 
+  
   // ==========================================
 // 🔥 LÓGICA DE LA NUEVA BARRA IZQUIERDA (LEYENDA)
 // ==========================================
