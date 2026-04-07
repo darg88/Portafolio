@@ -119,21 +119,119 @@ customArBtn.innerText = 'AR';
 customArBtn.className = 'control-btn';
 // 🔥 QUITA el style.cssText inline - el CSS lo manejará automáticamente
 document.body.appendChild(customArBtn);
+// ==========================================
+// 🔥 INICIALIZACIÓN AR - SOLO MÓVILES COMPATIBLES
+// ==========================================
 
-// Función para verificar soporte AR/VR
-async function checkXRSupport() {
-    if (!navigator.xr) {
-        if (customArBtn) customArBtn.style.display = 'none';
-        if (customVrBtn) customVrBtn.style.display = 'none';
+// Función para detectar si es dispositivo móvil
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+// Función para inicializar botón AR (solo en dispositivos compatibles)
+async function initARButton() {
+    const isMobile = isMobileDevice();
+    const hasXR = !!navigator.xr;
+    
+    console.log("📱 ¿Es móvil?", isMobile);
+    console.log("🔍 ¿Tiene WebXR?", hasXR);
+    
+    if (!isMobile || !hasXR) {
+        if (customArBtn) {
+            customArBtn.style.display = 'none';
+            console.log("🔘 Botón AR ocultado - No es móvil o no tiene WebXR");
+            
+            // Mostrar mensaje informativo en escritorio
+            const arMsg = document.createElement('div');
+            arMsg.id = 'ar-desktop-msg';
+            arMsg.innerHTML = '📱 AR disponible SOLO en dispositivos móviles<br>➤ Chrome Android o Safari iOS';
+            arMsg.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: rgba(0,0,0,0.85);
+                color: #ffaa00;
+                font-size: 0.7rem;
+                padding: 8px 12px;
+                border-left: 3px solid #ffaa00;
+                font-family: monospace;
+                z-index: 100000;
+                pointer-events: none;
+                backdrop-filter: blur(5px);
+                text-align: right;
+                border-radius: 0;
+            `;
+            document.body.appendChild(arMsg);
+        }
         return;
     }
     
     try {
         const arSupported = await navigator.xr.isSessionSupported('immersive-ar');
-        if (customArBtn) customArBtn.style.display = arSupported ? 'block' : 'none';
+        console.log("🔍 AR soportado en este dispositivo:", arSupported);
         
+        if (!arSupported) {
+            if (customArBtn) customArBtn.style.display = 'none';
+            console.log("🔘 Botón AR ocultado - Dispositivo no soporta AR");
+        } else {
+            if (customArBtn) {
+                customArBtn.style.display = 'flex';
+                customArBtn.title = 'Activar Realidad Aumentada';
+            }
+            console.log("✅ Botón AR visible - Dispositivo compatible");
+        }
+    } catch(e) {
+        console.error("Error verificando soporte AR:", e);
+        if (customArBtn) customArBtn.style.display = 'none';
+    }
+}
+
+// Ejecutar la inicialización
+initARButton();
+// Función para verificar soporte AR/VR con mensajes claros
+async function checkXRSupport() {
+    if (!navigator.xr) {
+        console.log("❌ WebXR no soportado en este navegador");
+        if (customArBtn) customArBtn.style.display = 'none';
+        if (customVrBtn) customVrBtn.style.display = 'none';
+        
+        // Mostrar mensaje en el botón AR
+        if (customArBtn) {
+            customArBtn.title = 'AR no soportado - Usa Chrome en Android o Safari en iOS';
+            customArBtn.style.opacity = '0.5';
+        }
+        return;
+    }
+    
+    try {
+        // Verificar soporte AR
+        const arSupported = await navigator.xr.isSessionSupported('immersive-ar');
+        console.log("🔍 AR soportado:", arSupported);
+        
+        if (customArBtn) {
+            if (arSupported) {
+                customArBtn.style.display = 'flex';
+                customArBtn.title = 'Activar Realidad Aumentada';
+                customArBtn.style.opacity = '1';
+            } else {
+                customArBtn.style.display = 'none';
+                // Mostrar mensaje alternativo
+                const arMsg = document.createElement('div');
+                arMsg.id = 'ar-not-supported';
+                arMsg.innerText = '📱 AR: Usa Chrome en Android o Safari en iOS';
+                arMsg.style.cssText = 'position: fixed; bottom: 10px; left: 10px; color: #ff8800; font-size: 0.7rem; z-index: 100000; background: rgba(0,0,0,0.7); padding: 5px 10px; font-family: monospace;';
+                document.body.appendChild(arMsg);
+            }
+        }
+        
+        // Verificar soporte VR
         const vrSupported = await navigator.xr.isSessionSupported('immersive-vr');
-        if (customVrBtn) customVrBtn.style.display = vrSupported ? 'block' : 'none';
+        console.log("🔍 VR soportado:", vrSupported);
+        
+        if (customVrBtn) {
+            customVrBtn.style.display = vrSupported ? 'flex' : 'none';
+        }
+        
     } catch (error) {
         console.error("Error comprobando soporte XR:", error);
         if (customArBtn) customArBtn.style.display = 'none';
@@ -162,7 +260,7 @@ if (customVrBtn) {
     });
 }
 
-// Evento Botón AR - CORREGIDO PARA CÁMARA
+/// Evento Botón AR - Con manejo de errores mejorado
 if (customArBtn) {
     customArBtn.addEventListener('click', async () => {
         try {
@@ -171,14 +269,20 @@ if (customArBtn) {
                 return;
             }
             
-            console.log("🔥 Solicitando sesión AR con cámara...");
+            // Verificar soporte antes de intentar
+            const arSupported = await navigator.xr.isSessionSupported('immersive-ar');
+            if (!arSupported) {
+                showSystemToast('📱 AR no soportado. Usa Chrome en Android o Safari en iOS', '#ff8800');
+                return;
+            }
+            
+            console.log("🔥 Solicitando sesión AR...");
             window.isARSession = true;
             
-            // 🔥 IMPORTANTE: Configuración correcta para AR con cámara
+            // 🔥 Configuración más compatible
             const session = await navigator.xr.requestSession('immersive-ar', {
                 requiredFeatures: ['hit-test'],
-                optionalFeatures: ['dom-overlay'],
-                domOverlay: { root: document.body }
+                optionalFeatures: ['dom-overlay', 'light-estimation']
             });
             
             await renderer.xr.setSession(session);
@@ -188,14 +292,29 @@ if (customArBtn) {
             scene.background = null;
             
             if (typeof playSound === 'function') playSound('levelup');
-            if (typeof showSystemToast === 'function') showSystemToast('📷 AR Activado - Apunta a una superficie plana', '#00ff00');
+            showSystemToast('📷 AR Activado - Busca una superficie plana', '#00ff00');
             
         } catch (error) {
             console.error("Error iniciando AR:", error);
             window.isARSession = false;
-            let errorMsg = 'Error: No se pudo iniciar AR';
-            if (error.message) errorMsg += ` - ${error.message}`;
-            if (typeof showSystemToast === 'function') showSystemToast(errorMsg, '#ff0000');
+            
+            // Mensajes específicos según el error
+            let errorMsg = '';
+            if (error.message.includes('session configuration')) {
+                errorMsg = '⚠️ Tu dispositivo no soporta las funciones AR necesarias. Prueba en Chrome Android o Safari iOS.';
+            } else if (error.message.includes('not allowed')) {
+                errorMsg = '📷 Permiso de cámara denegado. Actívalo en la configuración del navegador.';
+            } else {
+                errorMsg = `❌ Error AR: ${error.message}`;
+            }
+            
+            showSystemToast(errorMsg, '#ff0000');
+            
+            // Mostrar mensaje adicional en consola
+            console.log("💡 Para AR necesitas:");
+            console.log("  - Android: Chrome/Edge con ARCore");
+            console.log("  - iOS: Safari con ARKit (iOS 13+)");
+            console.log("  - Conexión HTTPS o localhost");
         }
     });
 }
