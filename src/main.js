@@ -337,6 +337,53 @@ renderer.xr.addEventListener('sessionend', () => {
 
 // Comprobar soporte al cargar la página
 checkXRSupport();
+
+// 🔥 RESTAURACIÓN DEL MOTOR GRÁFICO Y VARIABLES GLOBALES 🔥
+const renderScene = new RenderPass(scene, camera);
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.6, 0.6);
+const composer = new EffectComposer(renderer); composer.addPass(renderScene); composer.addPass(bloomPass);
+
+let isSoundEnabled = true; let audioCtx = null; 
+function playSound(type, targetPosition = null) {
+  if (type === 'laser') vibrateDevice(20);         
+  if (type === 'explosion') vibrateDevice(80);     
+  if (type === 'damage') vibrateDevice(300);       
+  if (type === 'boss_hit') vibrateDevice(50);      
+  
+  if (!isSoundEnabled) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    let volumeBase = 1.0; if (targetPosition) volumeBase = Math.max(0, 1 - (ship.position.distanceTo(targetPosition) / 40)); 
+    if(type === 'laser') { osc.type = 'square'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.1 * volumeBase, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.1); }
+    else if(type === 'damage') { osc.type = 'triangle'; osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.4 * volumeBase, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3); }
+    else if(type === 'explosion') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.3 * volumeBase, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3); }
+    else if(type === 'levelup') { osc.type = 'sine'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.setValueAtTime(554, audioCtx.currentTime + 0.1); osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2); osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.2, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.3); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6); osc.start(); osc.stop(audioCtx.currentTime + 0.6); }
+    else if(type === 'boss_hit') { osc.type = 'square'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.2); gain.gain.setValueAtTime(0.4, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime + 0.2); }
+    else if(type === 'ui') { osc.type = 'square'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.1); }
+  } catch(e) {}
+}
+
+function showSystemToast(msg, color) {
+  const toast = document.getElementById('system-toast');
+  if(!toast) return;
+  toast.innerText = msg;
+  toast.style.color = '#cc0000'; // Forzamos el rojo siempre
+  toast.style.textShadow = 'none'; // Bloqueamos el neón
+  toast.classList.remove('hidden');
+  toast.style.opacity = '1';
+  if(window.toastTimer) clearTimeout(window.toastTimer);
+  window.toastTimer = setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.classList.add('hidden'), 500);
+  }, 2500);
+}
+
+let isGameStarted = false; let isPaused = false; let isUIOpen = false; let shakeIntensity = 0;
+document.addEventListener('visibilitychange', () => { isPaused = document.hidden; });
+// 🔥 FIN DE LA RESTAURACIÓN 🔥
 // ==========================================
 // 🔥 MODO CONCENTRACIÓN (ATENUAR PLANETAS)
 // ==========================================
