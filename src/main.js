@@ -107,17 +107,17 @@ let currentXRSession = null;
 
 // Configuración de botones AR/VR personalizados
 const customVrBtn = document.createElement('button');
-customVrBtn.id = 'custom-vr-btn';
+customVrBtn.id = 'VRButton';  // ✅ CORRECTO - Coincide con CSS
 customVrBtn.innerText = 'VR';
-customVrBtn.className = 'control-btn'; // Usamos tu clase de botones existente
-customVrBtn.style.cssText = "position: absolute; top: 15px; right: 100px; z-index: 1000;";
+customVrBtn.className = 'control-btn';
+// 🔥 QUITA el style.cssText inline - el CSS lo manejará automáticamente
 document.body.appendChild(customVrBtn);
 
 const customArBtn = document.createElement('button');
-customArBtn.id = 'custom-ar-btn';
+customArBtn.id = 'ARButton';  // ✅ CORRECTO - Coincide con CSS
 customArBtn.innerText = 'AR';
 customArBtn.className = 'control-btn';
-customArBtn.style.cssText = "position: absolute; top: 15px; right: 160px; z-index: 1000;";
+// 🔥 QUITA el style.cssText inline - el CSS lo manejará automáticamente
 document.body.appendChild(customArBtn);
 
 // Función para verificar soporte AR/VR
@@ -337,7 +337,6 @@ renderer.xr.addEventListener('sessionend', () => {
 
 // Comprobar soporte al cargar la página
 checkXRSupport();
-
 // 🔥 RESTAURACIÓN DEL MOTOR GRÁFICO Y VARIABLES GLOBALES 🔥
 const renderScene = new RenderPass(scene, camera);
 const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.6, 0.6);
@@ -384,6 +383,7 @@ function showSystemToast(msg, color) {
 let isGameStarted = false; let isPaused = false; let isUIOpen = false; let shakeIntensity = 0;
 document.addEventListener('visibilitychange', () => { isPaused = document.hidden; });
 // 🔥 FIN DE LA RESTAURACIÓN 🔥
+
 // ==========================================
 // 🔥 MODO CONCENTRACIÓN (ATENUAR PLANETAS)
 // ==========================================
