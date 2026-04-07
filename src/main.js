@@ -162,7 +162,7 @@ if (customVrBtn) {
     });
 }
 
-// Evento Botón AR
+// Evento Botón AR - CORREGIDO PARA CÁMARA
 if (customArBtn) {
     customArBtn.addEventListener('click', async () => {
         try {
@@ -170,36 +170,69 @@ if (customArBtn) {
                 await renderer.xr.getSession()?.end();
                 return;
             }
+            
+            console.log("🔥 Solicitando sesión AR con cámara...");
             window.isARSession = true;
+            
+            // 🔥 IMPORTANTE: Configuración correcta para AR con cámara
             const session = await navigator.xr.requestSession('immersive-ar', {
-                requiredFeatures: ['hit-test']
+                requiredFeatures: ['hit-test'],
+                optionalFeatures: ['dom-overlay'],
+                domOverlay: { root: document.body }
             });
+            
             await renderer.xr.setSession(session);
+            
+            // Forzar fondo transparente
+            renderer.setClearColor(0x000000, 0);
+            scene.background = null;
+            
             if (typeof playSound === 'function') playSound('levelup');
-            if (typeof showSystemToast === 'function') showSystemToast('AR Activado - Busca una superficie plana', '#00ff00');
+            if (typeof showSystemToast === 'function') showSystemToast('📷 AR Activado - Apunta a una superficie plana', '#00ff00');
+            
         } catch (error) {
             console.error("Error iniciando AR:", error);
             window.isARSession = false;
-            if (typeof showSystemToast === 'function') showSystemToast('Error: Dispositivo sin soporte AR', '#ff0000');
+            let errorMsg = 'Error: No se pudo iniciar AR';
+            if (error.message) errorMsg += ` - ${error.message}`;
+            if (typeof showSystemToast === 'function') showSystemToast(errorMsg, '#ff0000');
         }
     });
 }
 
-// Reticle para apuntar en AR
+// Reticle para apuntar en AR (más visible)
 const reticle = new THREE.Mesh(
-    new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.8 })
+    new THREE.RingGeometry(0.12, 0.2, 32).rotateX(-Math.PI / 2),
+    new THREE.MeshStandardMaterial({ 
+        color: 0x00ff00, 
+        emissive: 0x00ff00,
+        emissiveIntensity: 0.5,
+        transparent: true, 
+        opacity: 0.9,
+        side: THREE.DoubleSide
+    })
 );
+// Añadir un círculo interior
+const reticleInner = new THREE.Mesh(
+    new THREE.CircleGeometry(0.08, 16).rotateX(-Math.PI / 2),
+    new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x00ff00, emissiveIntensity: 0.3 })
+);
+reticle.add(reticleInner);
 reticle.matrixAutoUpdate = false;
 reticle.visible = false;
 scene.add(reticle);
 
-// Función vital para escanear el entorno en AR
+// Función para escanear el entorno en AR (CORREGIDA)
 async function setupARHitTest(session) {
     try {
+        // 🔥 Obtener el espacio de referencia
         const referenceSpace = await session.requestReferenceSpace('viewer');
+        
+        // 🔥 Solicitar hit-test
         hitTestSource = await session.requestHitTestSource({ space: referenceSpace });
         hitTestSourceRequested = true;
+        
+        console.log("✅ Hit-test configurado correctamente");
         
         session.addEventListener('end', () => {
             hitTestSourceRequested = false;
@@ -208,9 +241,14 @@ async function setupARHitTest(session) {
                 hitTestSource = null;
             }
             reticle.visible = false;
+            console.log("Sesión AR finalizada");
         });
+        
     } catch (error) {
         console.error("Error configurando Hit Test:", error);
+        if (typeof showSystemToast === 'function') {
+            showSystemToast('⚠️ No se pudo iniciar el escaneo AR', '#ff0000');
+        }
     }
 }
 
@@ -990,6 +1028,9 @@ if (livesEl) livesEl.innerText = '■ '.repeat(Math.max(0, playerLives));}
 // ==========================================
 // 🔥 REPARACIÓN: GAME OVER BLINDADO (SIN CONGELAMIENTO)
 // ==========================================
+// ==========================================
+// 🔥 GAME OVER CORREGIDO - GUARDA PUNTAJE
+// ==========================================
 function triggerGameOver() {
   try {
     playSound('explosion');
@@ -1003,8 +1044,12 @@ function triggerGameOver() {
     isBossBattle = false;
     hasFoughtBoss = false; 
     
-    // 🔥 IMPORTANTE: Salir del modo combate ANTES de mostrar UI
+    // Salir del modo combate
     isCombatActive = false;
+    
+    // 🔥 GUARDAR PUNTAJE ANTES DE RESETEAR (CRÍTICO)
+    const finalScoreValue = score;
+    console.log("🎮 GAME OVER - Puntaje final:", finalScoreValue);
     
     // Limpiar todos los elementos de combate
     if(typeof asteroids !== 'undefined') { 
@@ -1034,10 +1079,7 @@ function triggerGameOver() {
     
     if(typeof toggleCombatDimming === 'function') toggleCombatDimming(false);
     
-    // Guardar puntaje para el leaderboard
-    const finalScore = score;
-    
-    // 🔥 REINICIO TOTAL DE LA DIFICULTAD 🔥
+    // 🔥 REINICIO DE VARIABLES (DESPUÉS de guardar el score)
     score = 0; 
     currentLevel = 1;
     weaponLevel = 1; 
@@ -1051,16 +1093,20 @@ function triggerGameOver() {
     
     if (typeof shieldMesh !== 'undefined' && shieldMesh) shieldMesh.visible = false;
     
+    // Actualizar UI
     document.getElementById('score-value').innerText = score;
     document.getElementById('level-value').innerText = currentLevel;
     if(typeof updateLivesUI === 'function') updateLivesUI();
     
-    // 🔥 CRÍTICO: Esperar un momento antes de abrir el leaderboard
+    // 🔥 MOSTRAR LEADERBOARD CON EL PUNTAJE GUARDADO
     setTimeout(() => {
       try {
-        // Actualizar el score final en el leaderboard ANTES de abrirlo
+        // Actualizar el display del score final
         const finalScoreDisplay = document.getElementById('final-score-display');
-        if (finalScoreDisplay) finalScoreDisplay.innerText = finalScore;
+        if (finalScoreDisplay) {
+          finalScoreDisplay.innerText = finalScoreValue;
+          console.log("📊 Leaderboard muestra:", finalScoreValue);
+        }
         
         // Abrir leaderboard
         openUIWindow('leaderboard-ui');
@@ -1068,14 +1114,15 @@ function triggerGameOver() {
         // Actualizar la lista
         updateLeaderboardUI();
         
-        showSystemToast('¡GAME OVER! Puntaje registrado', '#ff0000');
+        showSystemToast('💀 GAME OVER! Puntaje: ' + finalScoreValue, '#ff0000');
       } catch(e) {
         console.error("Error mostrando leaderboard:", e);
+        showSystemToast('GAME OVER! Puntaje: ' + finalScoreValue, '#ff0000');
       }
     }, 100);
     
   } catch (error) {
-    console.error("Bloqueo evitado en GameOver:", error);
+    console.error("Error en GameOver:", error);
   }
 }
 function updateScore(points) {
@@ -2164,18 +2211,28 @@ renderer.setAnimationLoop((timestamp, frame) => {
 
   if (isShooting && isGameStarted && !isUIOpen && !isAR) { if (now - lastShotTime > FIRE_COOLDOWN) { fireLaser(); lastShotTime = now; } }
 
- // LÓGICA DE ACTUALIZACIÓN AR (Dentro de tu AnimationLoop)
-  if (isAR && frame && hitTestSource) {
+ // LÓGICA DE ACTUALIZACIÓN AR (CORREGIDA)
+if (isAR && frame && hitTestSource) {
     const referenceSpace = renderer.xr.getReferenceSpace();
-    const hitTestResults = frame.getHitTestResults(hitTestSource);
-    if (hitTestResults.length > 0) {
-      const hit = hitTestResults[0];
-      reticle.visible = true;
-      reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
-    } else {
-      reticle.visible = false;
+    if (referenceSpace) {
+        const hitTestResults = frame.getHitTestResults(hitTestSource);
+        if (hitTestResults && hitTestResults.length > 0) {
+            const hit = hitTestResults[0];
+            const pose = hit.getPose(referenceSpace);
+            if (pose) {
+                reticle.visible = true;
+                reticle.matrix.fromArray(pose.transform.matrix);
+                // Animación sutil del reticle
+                const scale = 1 + Math.sin(Date.now() * 0.015) * 0.1;
+                reticle.scale.set(scale, scale, scale);
+            } else {
+                reticle.visible = false;
+            }
+        } else {
+            reticle.visible = false;
+        }
     }
-  }
+}
 
   if (!isAR) {
     if(isGameStarted && !isUIOpen && !isXR) { 
@@ -2329,8 +2386,9 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
   
   let bossBonus = 500 + (typeof combatCombo !== 'undefined' ? combatCombo * 10 : 0);
   
-  // 🔥 Guardar puntaje ANTES de resetear
+  // 🔥 GUARDAR PUNTAJE ANTES DE RESETEAR
   const finalScoreValue = score + bossBonus;
+  console.log("🏆 VICTORIA - Puntaje final:", finalScoreValue);
   
   updateScore(bossBonus); 
   
@@ -2340,10 +2398,9 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
   bossEntity = null;       
   document.getElementById('boss-ui').classList.add('hidden'); 
   
-  // 🔥 Salir del modo combate
   isCombatActive = false;
   
-  // Limpiar TODOS los elementos enemigos (con try/catch por seguridad)
+  // Limpiar enemigos
   try {
     asteroids.forEach(a => { try { scene.remove(a); } catch(e) {} });
     asteroids.length = 0;
@@ -2375,8 +2432,7 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
   
   if (typeof toggleCombatDimming === 'function') toggleCombatDimming(false);
   
-  // 🔥 REINICIO DE DIFICULTAD (pero NO resetear score visual aún)
-  const tempScore = score; // Guardamos el score real para el leaderboard
+  // REINICIO (después de guardar)
   score = 0;
   currentLevel = 1;
   combatCombo = 0;
@@ -2384,32 +2440,22 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
   bossHealth = bossMaxHealth;
   if (typeof comboTimer !== 'undefined') clearTimeout(comboTimer);
   
-  // Actualizar UI
   document.getElementById('score-value').innerText = score;
   document.getElementById('level-value').innerText = currentLevel;
   
-  showSystemToast('¡AMENAZA NEUTRALIZADA! Victoria registrada', '#00ff00');
+  showSystemToast('🎉 ¡VICTORIA! Puntaje: ' + finalScoreValue, '#00ff00');
   
-  // 🔥 CRÍTICO: Esperar un momento para mostrar el leaderboard (evita congelamiento)
+  // Mostrar leaderboard
   setTimeout(() => {
     try {
-      // Actualizar el score en el leaderboard
       const finalScoreDisplay = document.getElementById('final-score-display');
-      if (finalScoreDisplay) finalScoreDisplay.innerText = tempScore;
-      
-      // Abrir leaderboard
+      if (finalScoreDisplay) finalScoreDisplay.innerText = finalScoreValue;
       openUIWindow('leaderboard-ui');
-      
-      // Actualizar la lista de puntajes
       updateLeaderboardUI();
-      
-      // Asegurar que el modo combate siga desactivado
       isCombatActive = false;
-      
     } catch(e) {
-      console.error("Error mostrando leaderboard:", e);
-      // Fallback: mostrar toast en lugar de leaderboard
-      showSystemToast('¡VICTORIA! Puntaje: ' + tempScore, '#00ff00');
+      console.error("Error mostrando victoria:", e);
+      showSystemToast('¡VICTORIA! Puntaje: ' + finalScoreValue, '#00ff00');
     }
   }, 150);
 }

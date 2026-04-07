@@ -337,3 +337,38 @@ html.ar-active {
   background-color: transparent !important;
   background-image: none !important;
 }
+/* ==========================================
+   MODO AR - ACTIVAR CÁMARA DEL DISPOSITIVO
+   ========================================== */
+body.ar-active {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+body.ar-active #bg-canvas {
+  background: transparent !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+/* Ocultar elementos que interfieren con AR */
+body.ar-active .crt-overlay,
+body.ar-active #unified-hud,
+body.ar-active #portfolio-header,
+body.ar-active #universe-legend,
+body.ar-active #menu-toggle,
+body.ar-active #lang-toggle-btn,
+body.ar-active #combat-toggle-btn,
+body.ar-active .control-btn:not(#ARButton):not(#VRButton) {
+  display: none !important;
+}
+
+/* Botones AR/VR visibles en modo AR */
+body.ar-active #ARButton,
+body.ar-active #VRButton {
+  display: flex !important;
+  z-index: 100000 !important;
+}
