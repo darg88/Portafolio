@@ -125,7 +125,7 @@ document.body.appendChild(customArBtn);
 
 // 1. Función centralizada y limpia para verificar soporte
 async function checkXRSupport() {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
     
     if (!navigator.xr) {
         if (customArBtn) customArBtn.style.display = 'none';
@@ -194,9 +194,11 @@ if (customArBtn) {
             window.isARSession = true;
             console.log("🔥 Solicitando sesión AR segura...");
             
-            // 🔥 CONFIGURACIÓN MÍNIMA: Quitamos 'dom-overlay' y 'light-estimation' para evitar crashes en móviles
+            // 🔥 CONFIGURACIÓN ROBUSTA: 'local' es obligatorio, 'hit-test' es opcional
+            // Si el dispositivo no soporta hit-test, AR igual arranca (sin reticle)
             const session = await navigator.xr.requestSession('immersive-ar', {
-                requiredFeatures: ['hit-test']
+                requiredFeatures: ['local'],
+                optionalFeatures: ['hit-test', 'dom-overlay']
             });
             
             await renderer.xr.setSession(session);
@@ -215,9 +217,6 @@ if (customArBtn) {
         }
     });
 }
-
-// Inicializar soporte
-checkXRSupport();
 
 // Reticle para apuntar en AR (más visible)
 const reticle = new THREE.Mesh(
@@ -244,14 +243,21 @@ scene.add(reticle);
 // Función para escanear el entorno en AR (CORREGIDA)
 async function setupARHitTest(session) {
     try {
-        // 🔥 Obtener el espacio de referencia
-        const referenceSpace = await session.requestReferenceSpace('viewer');
+        // 🔥 Usamos 'local' que ahora es el requiredFeature
+        const referenceSpace = await session.requestReferenceSpace('local');
         
-        // 🔥 Solicitar hit-test
-        hitTestSource = await session.requestHitTestSource({ space: referenceSpace });
-        hitTestSourceRequested = true;
-        
-        console.log("✅ Hit-test configurado correctamente");
+        // 🔥 Hit-test ahora es opcional - si falla, AR sigue funcionando sin reticle
+        if (session.requestHitTestSource) {
+            try {
+                const viewerSpace = await session.requestReferenceSpace('viewer');
+                hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+                hitTestSourceRequested = true;
+                console.log("✅ Hit-test configurado correctamente");
+            } catch (hitErr) {
+                console.warn("⚠️ Hit-test no disponible en este dispositivo. AR funciona sin reticle.", hitErr);
+                hitTestSource = null;
+            }
+        }
         
         session.addEventListener('end', () => {
             hitTestSourceRequested = false;
