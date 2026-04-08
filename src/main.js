@@ -1460,6 +1460,8 @@ function startPointerDown(clientX, clientY) {
           dragOffset.set(0, 0, 0);
         }
         
+        // 🔥 FIX: Guardamos la escala original para restaurarla exactamente al soltar
+        draggedPlanet.userData._dragOriginalScale = draggedPlanet.scale.clone();
         draggedPlanet.scale.multiplyScalar(1.2);
         if (navigator.vibrate) navigator.vibrate(50);
       }
@@ -1506,7 +1508,13 @@ function handlePointerMove(clientX, clientY) {
 
 function handlePointerUp() {
   if (draggedPlanet) {
-    draggedPlanet.scale.multiplyScalar(1/1.2); 
+    // 🔥 FIX: Restauramos la escala exacta guardada, no con punto flotante acumulado
+    if (draggedPlanet.userData._dragOriginalScale) {
+      draggedPlanet.scale.copy(draggedPlanet.userData._dragOriginalScale);
+      delete draggedPlanet.userData._dragOriginalScale;
+    } else {
+      draggedPlanet.scale.multiplyScalar(1/1.2);
+    }
     
     if (isDraggingPlanet) {
       playSound('ui');
@@ -1556,17 +1564,32 @@ document.addEventListener('touchstart', (e) => {
     }
     lastTapTime = currentTime;
   } 
-}, {passive: true});
+}, {passive: false}); // 🔥 FIX: passive:false permite preventDefault para el drag
 
 document.addEventListener('touchmove', (e) => { 
   if(e.touches.length > 0) { 
+    // 🔥 FIX: Bloqueamos el scroll nativo del browser solo cuando hay un planeta agarrado
+    if (draggedPlanet) e.preventDefault();
     handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
     let touchY = e.touches[0].clientY;
     if (!draggedPlanet && (touchStartY - touchY > 40 || touchStartY - touchY < -40)) { 
       triggerScrollExploration(); touchStartY = touchY; 
     } 
   } 
-}, {passive: true});
+}, {passive: false}); // 🔥 FIX: passive:false es necesario para poder llamar preventDefault
+
+// 🔥 FIX Bug 3: touchcancel restaura la escala si el sistema operativo interrumpe el drag
+document.addEventListener('touchcancel', () => {
+  if (draggedPlanet) {
+    if (draggedPlanet.userData._dragOriginalScale) {
+      draggedPlanet.scale.copy(draggedPlanet.userData._dragOriginalScale);
+      delete draggedPlanet.userData._dragOriginalScale;
+    }
+    draggedPlanet = null;
+    isDraggingPlanet = false;
+  }
+  window.isDraggingCanvas = false;
+});
 
 document.addEventListener('touchend', (e) => {
   handlePointerUp();
