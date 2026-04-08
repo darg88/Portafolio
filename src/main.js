@@ -1481,10 +1481,10 @@ function handlePointerMove(clientX, clientY) {
       mouseNDC.y = -(clientY / window.innerHeight) * 2 + 1;
       dragRaycaster.setFromCamera(mouseNDC, camera);
       
-      if (dragRaycaster.intersectPlane(dragPlane, dragIntersection)) {
-        // Movimiento directo y brutal en el plano 3D, sin matemáticas de Z fallidas
-        draggedPlanet.position.copy(dragIntersection).sub(dragOffset);
-      }
+      // 🔥 SIMPLE: delta de píxeles Y → posición Y del planeta directamente
+      const pixelDeltaY = clientY - lastTouchY;
+      draggedPlanet.position.y -= pixelDeltaY * 0.05;
+      draggedPlanet.userData.baseY = draggedPlanet.position.y;
     }
   } 
   else {
