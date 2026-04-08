@@ -1481,10 +1481,13 @@ function handlePointerMove(clientX, clientY) {
       mouseNDC.y = -(clientY / window.innerHeight) * 2 + 1;
       dragRaycaster.setFromCamera(mouseNDC, camera);
       
-      // 🔥 SIMPLE: delta de píxeles Y → posición Y del planeta directamente
+      // 🔥 SIMPLE: delta de píxeles → posición X/Y del planeta directamente
       const pixelDeltaY = clientY - lastTouchY;
+      const pixelDeltaX = clientX - lastTouchX;
       draggedPlanet.position.y -= pixelDeltaY * 0.05;
+      draggedPlanet.position.x += pixelDeltaX * 0.05;
       draggedPlanet.userData.baseY = draggedPlanet.position.y;
+      if (draggedPlanet.userData.randomPos) draggedPlanet.userData.randomPos.x = draggedPlanet.position.x;
     }
   } 
   else {
