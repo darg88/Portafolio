@@ -407,6 +407,7 @@ const composer = new EffectComposer(renderer); composer.addPass(renderScene); co
 
 let isSoundEnabled = true; let audioCtx = null; 
 function playSound(type, targetPosition = null) {
+  // Mantenemos tu sistema de vibración táctil
   if (type === 'laser') vibrateDevice(20);         
   if (type === 'explosion') vibrateDevice(80);     
   if (type === 'damage') vibrateDevice(300);       
@@ -416,15 +417,87 @@ function playSound(type, targetPosition = null) {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    let volumeBase = 1.0; if (targetPosition) volumeBase = Math.max(0, 1 - (ship.position.distanceTo(targetPosition) / 40)); 
-    if(type === 'laser') { osc.type = 'square'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.1 * volumeBase, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.1); }
-    else if(type === 'damage') { osc.type = 'triangle'; osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.4 * volumeBase, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3); }
-    else if(type === 'explosion') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.3 * volumeBase, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3); }
-    else if(type === 'levelup') { osc.type = 'sine'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.setValueAtTime(554, audioCtx.currentTime + 0.1); osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2); osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.2, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.3); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6); osc.start(); osc.stop(audioCtx.currentTime + 0.6); }
-    else if(type === 'boss_hit') { osc.type = 'square'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.2); gain.gain.setValueAtTime(0.4, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime + 0.2); }
-    else if(type === 'ui') { osc.type = 'square'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.1); }
+    
+    const osc = audioCtx.createOscillator(); 
+    const gain = audioCtx.createGain();
+    
+    // Filtro para darle un tono "tecnológico" y menos estridente
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 3000;
+
+    osc.connect(filter); 
+    filter.connect(gain); 
+    gain.connect(audioCtx.destination);
+    
+    let volumeBase = 0.6; 
+    if (targetPosition) volumeBase = Math.max(0, 1 - (ship.position.distanceTo(targetPosition) / 40)); 
+    
+    const now = audioCtx.currentTime;
+
+    if(type === 'laser') { 
+      // Zumbido láser cortante y rápido
+      osc.type = 'sawtooth'; 
+      osc.frequency.setValueAtTime(1200, now); 
+      osc.frequency.exponentialRampToValueAtTime(100, now + 0.15); 
+      gain.gain.setValueAtTime(0.05 * volumeBase, now); 
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15); 
+      osc.start(now); osc.stop(now + 0.15); 
+    }
+    else if(type === 'damage') { 
+      // Impacto eléctrico sordo
+      osc.type = 'square'; 
+      osc.frequency.setValueAtTime(150, now); 
+      osc.frequency.exponentialRampToValueAtTime(40, now + 0.2); 
+      gain.gain.setValueAtTime(0.2 * volumeBase, now); 
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2); 
+      osc.start(now); osc.stop(now + 0.2); 
+    }
+    else if(type === 'explosion') { 
+      // Distorsión grave (ruido de estática)
+      osc.type = 'sawtooth'; 
+      osc.frequency.setValueAtTime(100, now); 
+      osc.frequency.linearRampToValueAtTime(10, now + 0.4); 
+      filter.frequency.setValueAtTime(800, now);
+      filter.frequency.linearRampToValueAtTime(100, now + 0.4);
+      gain.gain.setValueAtTime(0.3 * volumeBase, now); 
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4); 
+      osc.start(now); osc.stop(now + 0.4); 
+    }
+    else if(type === 'levelup') { 
+      // NUEVO SONIDO: Extracción de Datos / UI Unlock
+      osc.type = 'square'; 
+      osc.frequency.setValueAtTime(1046.5, now);      
+      osc.frequency.setValueAtTime(1318.5, now + 0.05); 
+      osc.frequency.setValueAtTime(1568.0, now + 0.1);  
+      osc.frequency.setValueAtTime(2093.0, now + 0.15); 
+      
+      filter.frequency.setValueAtTime(500, now);
+      filter.frequency.exponentialRampToValueAtTime(4000, now + 0.1);
+
+      gain.gain.setValueAtTime(0.08, now); 
+      gain.gain.linearRampToValueAtTime(0.08, now + 0.15); 
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3); 
+      osc.start(now); osc.stop(now + 0.3); 
+    }
+    else if(type === 'boss_hit') { 
+      // Ruido metálico seco
+      osc.type = 'square'; 
+      osc.frequency.setValueAtTime(800, now); 
+      osc.frequency.exponentialRampToValueAtTime(50, now + 0.1); 
+      gain.gain.setValueAtTime(0.2, now); 
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1); 
+      osc.start(now); osc.stop(now + 0.1); 
+    }
+    else if(type === 'ui') { 
+      // Clic elegante y corto para botones
+      osc.type = 'sine'; 
+      osc.frequency.setValueAtTime(1200, now); 
+      osc.frequency.exponentialRampToValueAtTime(600, now + 0.05); 
+      gain.gain.setValueAtTime(0.1, now); 
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05); 
+      osc.start(now); osc.stop(now + 0.05); 
+    }
   } catch(e) {}
 }
 
