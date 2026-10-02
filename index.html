@@ -144,7 +144,40 @@
     
     <div id="system-toast" class="hidden" aria-live="assertive" aria-atomic="true" style="position: fixed; top: 25%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: bold; text-shadow: 0 0 20px; z-index: 10000; pointer-events: none; transition: opacity 0.5s;"></div>    
     <div id="modal-overlay" class="hidden" onclick="window.closeAllUIs()"></div>
-    
+<!-- Ventana Micrositio DAC: JUEGO OTRO -->
+    <div id="dac-microsite" class="modal-ui hidden" style="border-color: #00ffcc; max-width: 900px; cursor: crosshair; overflow: hidden; position: relative;">
+      
+      <!-- Cursor Friccional (Punto rojo pesado) -->
+      <div id="dac-heavy-cursor" style="position: absolute; width: 15px; height: 15px; background: #ff0000; border-radius: 50%; pointer-events: none; z-index: 10000; display: none; mix-blend-mode: difference;"></div>
+
+      <button class="close-btn" onclick="window.closeAllUIs()">X</button>
+      
+      <div style="text-align: center; border-bottom: 2px dashed #00ffcc; padding-bottom: 20px; margin-bottom: 20px; margin-top: 30px; position: relative; z-index: 10;">
+        <h1 class="dac-glitch-text" style="color: #00ffcc; margin: 0; font-size: 2rem; font-family: 'Share Tech Mono', monospace;">RETÓRICA MATERIAL DE LA DIGITALIDAD</h1>
+        <p class="dac-glitch-text" style="color: #aaa; font-size: 1.1rem; margin-top: 10px;">> DOCTORADO EN DISEÑO, ARTE Y CIENCIA</p>
+      </div>
+      
+      <div style="display: flex; gap: 15px; justify-content: center; margin-bottom: 25px; flex-wrap: wrap; position: relative; z-index: 10;">
+        <button id="btn-maquina-poetica" style="flex: 1; min-width: 200px; border-color: #ff00ff; color: #ff00ff; font-weight: bold; transition: none;">[1] MÁQUINA POÉTICA</button>
+        <button id="btn-maquina-erratica" style="flex: 1; min-width: 200px; border-color: #ff3300; color: #ff3300; font-weight: bold; transition: none;">[2] MÁQUINA ERRÁTICA</button>
+        <button id="btn-maquina-friccion" style="flex: 1; min-width: 200px; border-color: #ffff00; color: #ffff00; font-weight: bold; transition: none;">[3] MÁQUINA FRICCIÓN</button>
+      </div>
+      
+      <div id="dac-display" style="width: 100%; height: 350px; background: #050505; border: 1px solid #333; position: relative; overflow: hidden;">
+        <!-- Lienzo de datos crudos -->
+        <canvas id="dac-raw-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;"></canvas>
+        
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; display: flex; align-items: center; justify-content: center; pointer-events: none;">
+          <p id="dac-status-text" class="dac-glitch-text" style="color: #555; text-align: center; font-family: 'Share Tech Mono', monospace; background: rgba(0,0,0,0.7); padding: 10px;">
+            > SISTEMA EN ESPERA...<br>ACOPLAMIENTO PASIVO DETECTADO.
+          </p>
+        </div>
+      </div>
+      
+      <p class="dac-glitch-text" style="color: #ccc; font-size: 1rem; line-height: 1.6; margin-top: 25px; border-left: 3px solid #00ffcc; padding-left: 15px; position: relative; z-index: 10;">
+        El hardware deja de ser un residuo inerte. Se transforma en un lienzo material para una poética digital que desafía la usabilidad hegemónica.
+      </p>
+    </div>
     <!-- Ventana de Proyecto -->
     <div id="portfolio-ui" class="modal-ui hidden" style="border-color: #00ff00;">
       <button class="close-btn" onclick="window.closeAllUIs()">X</button>

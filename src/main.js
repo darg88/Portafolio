@@ -800,6 +800,7 @@ window.closeAllUIs = function() {
   
   // 🔥 AQUÍ AGREGAMOS EL TUTORIAL A LA LISTA DE APAGADO
   document.getElementById('tutorial-ui')?.classList.add('hidden'); 
+  document.getElementById('dac-microsite')?.classList.add('hidden');
   
   document.getElementById('portfolio-ui').classList.add('hidden'); 
   document.getElementById('about-ui').classList.add('hidden'); 
@@ -1105,6 +1106,56 @@ planet.userData = {
     undefined, (error) => console.error(error));
   }
 });
+
+// ==========================================
+// 🔥 SISTEMA DAC (Diseño, Arte y Ciencia) 🔥
+// ==========================================
+
+// 1. EL NÚCLEO: Planeta DAC 
+// Usamos baja resolución y wireframe para representar la estructura expuesta
+const dacGeometry = new THREE.SphereGeometry(6, 12, 12);
+const dacMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true });
+const planetaDAC = new THREE.Mesh(dacGeometry, dacMaterial);
+planetaDAC.position.set(40, 0, -50); // Ajusta estas coordenadas para ubicarlo en tu universo
+planetaDAC.name = "planeta_dac";
+
+// 2. LA TRÍADA DE MÁQUINAS (Lunas)
+
+// Máquina Poética (Forma compleja, toros entrelazados)
+const poeticaGeo = new THREE.TorusKnotGeometry(1.2, 0.3, 64, 8);
+const poeticaMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true });
+const lunaPoetica = new THREE.Mesh(poeticaGeo, poeticaMat);
+lunaPoetica.position.set(12, 0, 0); 
+lunaPoetica.name = "maquina_poetica";
+
+// Máquina Errática (Geometría inestable, poligonal)
+const erraticaGeo = new THREE.IcosahedronGeometry(1.5, 0);
+const erraticaMat = new THREE.MeshBasicMaterial({ color: 0xff3300 }); // Sólida para contrastar
+const lunaErratica = new THREE.Mesh(erraticaGeo, erraticaMat);
+lunaErratica.position.set(-8, 6, -8);
+lunaErratica.name = "maquina_erratica";
+
+// Máquina de Fricción (Asimétrica y pesada)
+const friccionGeo = new THREE.BoxGeometry(1.8, 1.8, 1.8);
+const friccionMat = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true });
+const lunaFriccion = new THREE.Mesh(friccionGeo, friccionMat);
+lunaFriccion.position.set(0, -10, 8);
+lunaFriccion.name = "maquina_friccion";
+
+// 3. ENSAMBLAJE
+// Al emparentarlas, orbitarán automáticamente cuando el planeta rote
+planetaDAC.add(lunaPoetica);
+planetaDAC.add(lunaErratica);
+planetaDAC.add(lunaFriccion);
+
+scene.add(planetaDAC);
+// ==========================================
+// FIN SISTEMA DAC
+// ==========================================
+// Estados de la Tríada DAC
+let isPoeticaActive = false;
+let isErraticaActive = false;
+let isFriccionActive = false;
 const satelliteGroup = new THREE.Group(); 
 const ring = new THREE.Mesh(new THREE.RingGeometry(1.5, 2.0, 16), new THREE.ShaderMaterial({ uniforms: { color: { value: new THREE.Color(0xffaa00) }, lightDir: { value: new THREE.Vector3(1, 1, 1).normalize() } }, vertexShader: ditherShader.vertexShader, fragmentShader: ditherShader.fragmentShader, transparent: true, side: THREE.DoubleSide }));satelliteGroup.add(ring); 
 const innerShape = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2, 2, 2), new THREE.MeshBasicMaterial({ color: 0xffaa00, wireframe: true })); 
@@ -1505,7 +1556,8 @@ function startPointerDown(clientX, clientY) {
   mouseNDC.y = -(clientY / window.innerHeight) * 2 + 1;
   dragRaycaster.setFromCamera(mouseNDC, camera);
   
-  const grabTargets = [...categoryPlanets, ...ambientWhales, ...guardianCats];
+  // 🔥 AÑADIMOS EL SISTEMA DAC A LOS OBJETOS ARRASTRABLES
+  const grabTargets = [...categoryPlanets, ...ambientWhales, ...guardianCats, planetaDAC, lunaPoetica, lunaErratica, lunaFriccion];
   const intersects = dragRaycaster.intersectObjects(grabTargets, true);
   
   if (intersects.length > 0) {
@@ -1569,11 +1621,14 @@ function handlePointerMove(clientX, clientY) {
     if (deltaX > 5 || deltaY > 5) window.isDraggingCanvas = true;
 
     if (window.isDraggingCanvas) {
+      // Si la fricción está activa, moverse cuesta 10 veces más esfuerzo físico
+      const dragResistance = isFriccionActive ? 0.0005 : 0.005; 
+      
       if (isAligned) {
-        targetCarouselAngle += (clientX - lastTouchX) * 0.005;
+        targetCarouselAngle += (clientX - lastTouchX) * dragResistance;
       } else {
-        userGroup.rotation.y -= (clientX - lastTouchX) * 0.005;
-        userGroup.rotation.x -= (clientY - lastTouchY) * 0.005;
+        userGroup.rotation.y -= (clientX - lastTouchX) * dragResistance;
+        userGroup.rotation.x -= (clientY - lastTouchY) * dragResistance;
         if(userGroup.rotation.x > 0.6) userGroup.rotation.x = 0.6;
         if(userGroup.rotation.x < -0.6) userGroup.rotation.x = -0.6;
       }
@@ -2058,6 +2113,58 @@ window.addEventListener('click', (e) => {
     }, 350); 
   };
 
+  // 🔥 INTERACCIÓN CON EL SISTEMA DAC (antes de todo lo demás)
+  // 🔥 INTERACCIÓN ESPACIAL CON EL SISTEMA DAC
+  const intersectsDAC = raycaster.intersectObjects([planetaDAC, lunaPoetica, lunaErratica, lunaFriccion], true);
+  if (intersectsDAC.length > 0) {
+    let dacObj = intersectsDAC[0].object;
+    while (dacObj.parent && dacObj.parent.type !== 'Scene' && dacObj.name === '') dacObj = dacObj.parent;
+
+    if (window.isZooming) return;
+
+    switch (dacObj.name) {
+      case "planeta_dac":
+        window.isZooming = true;
+        // Alternar el Zoom (Entrar y Salir del sistema)
+        if (targetFov === 25) {
+          targetFov = 75; 
+          showSystemToast('> SALIENDO DEL NÚCLEO DAC', '#00ffcc');
+        } else {
+          targetFov = 25; 
+          showSystemToast('> NÚCLEO DAC: SELECCIONE UNA LUNA', '#00ffcc');
+        }
+        playSound('ui');
+        setTimeout(() => { window.isZooming = false; }, 350);
+        break;
+        
+      case "maquina_poetica":
+        isPoeticaActive = !isPoeticaActive;
+        showSystemToast(isPoeticaActive ? '> MÁQUINA POÉTICA: DESNUDANDO LA CAJA NEGRA' : '> MÁQUINA POÉTICA: APAGADA', '#ff00ff');
+        playSound('levelup');
+        // Efecto: Convierte todos los planetas del portafolio en Wireframe (exponiendo la ruina)
+        categoryPlanets.forEach(p => {
+          if (p.material && p.name !== "planeta_dac") p.material.wireframe = isPoeticaActive;
+        });
+        break;
+        
+      case "maquina_erratica":
+        isErraticaActive = !isErraticaActive;
+        showSystemToast(isErraticaActive ? '> ERRÁTICA: INESTABILIDAD INYECTADA' : '> ERRÁTICA: ESTABILIZADA', '#ff3300');
+        playSound('damage');
+        if (isErraticaActive) triggerSubtleGlitch();
+        break;
+        
+      case "maquina_friccion":
+        isFriccionActive = !isFriccionActive;
+        showSystemToast(isFriccionActive ? '> FRICCIÓN: RESISTENCIA MATERIAL EXTREMA' : '> FRICCIÓN: LIBERADA', '#ffff00');
+        playSound('boss_hit');
+        if (isFriccionActive) document.body.style.cursor = 'wait';
+        else document.body.style.cursor = 'crosshair';
+        break;
+    }
+    return; // Detenemos el raycaster para que no interactúe con nada más
+  }
+
   const intersectsSat = raycaster.intersectObject(satHitbox); if (intersectsSat.length > 0) { playSound('levelup', satelliteGroup.position); ring.material.color.setHex(0xffffff); innerShape.material.color.setHex(0xffffff); setTimeout(() => { ring.material.color.setHex(0xffaa00); innerShape.material.color.setHex(0xffaa00); }, 200); updateScore(100); return; }
   
   const intersectsPlanets = raycaster.intersectObjects(categoryPlanets, true); 
@@ -2359,9 +2466,37 @@ if (isAR && frame && hitTestSource) {
 }
 
   if (!isAR) {
+    // 🔥 ANIMACIÓN DEL SISTEMA DAC (Diseño, Arte y Ciencia)
+   // 🔥 ANIMACIÓN DEL SISTEMA DAC (Retórica Procedimental)
+    if (typeof planetaDAC !== 'undefined' && planetaDAC) {
+      planetaDAC.rotation.y += 0.002;
+      planetaDAC.rotation.z += 0.001; 
+
+      // 1. Efecto Poética: Lenta y contemplativa
+      lunaPoetica.rotation.x += isPoeticaActive ? 0.02 : 0.005;
+      lunaPoetica.rotation.y += isPoeticaActive ? 0.05 : 0.01;
+
+      // 2. Efecto Errática: Tartamudeo espacial y glitch visual
+      if (isErraticaActive) {
+        lunaErratica.position.x = -8 + (Math.random() - 0.5) * 1.5;
+        lunaErratica.position.y = 6 + (Math.random() - 0.5) * 1.5;
+        if (Math.random() > 0.95) triggerSubtleGlitch(); // Inyecta fallas en la pantalla
+      } else {
+        lunaErratica.position.set(-8, 6, -8); // Vuelve a su órbita natural
+        lunaErratica.rotation.x += 0.01;
+        lunaErratica.rotation.y += 0.05;
+      }
+
+      // 3. Efecto Fricción: Temblor constante en la cámara
+      lunaFriccion.rotation.z -= 0.003;
+      if (isFriccionActive) {
+        shakeIntensity = 0.08; // Micro-temblor constante que incomoda la visión
+      }
+    }
+
     if(isGameStarted && !isUIOpen && !isXR) { 
       raycaster.setFromCamera(mouseNDC, camera); 
-      const intersects = raycaster.intersectObjects([...categoryPlanets, ...discoveredVoyagers, ...ambientWhales, ...guardianCats, satHitbox, ...asteroids], true); 
+      const intersects = raycaster.intersectObjects([...categoryPlanets, ...discoveredVoyagers, ...ambientWhales, ...guardianCats, satHitbox, ...asteroids, planetaDAC], true); 
       const canvasEl = document.getElementById('bg-canvas');
       if(canvasEl) canvasEl.style.cursor = intersects.length > 0 ? 'pointer' : 'crosshair';
 
@@ -2822,6 +2957,8 @@ if (isXR) {
     catch(e) { renderer.render(scene, camera); } 
   }
 });
+
+
 // ==========================================
 // LÓGICA DEL FORMULARIO DE CONTACTO (AJAX)
 // ==========================================
@@ -3275,4 +3412,133 @@ window.addEventListener('click', (e) => {
     }
   }
 });
+// ==========================================
+// 🔥 MOTOR DE JUEGOS OTROS: RETÓRICA PROCEDIMENTAL
+// ==========================================
+const btnPoetica = document.getElementById('btn-maquina-poetica');
+const btnErratica = document.getElementById('btn-maquina-erratica');
+const btnFriccion = document.getElementById('btn-maquina-friccion');
+const dacDisplay = document.getElementById('dac-display');
+const dacStatus = document.getElementById('dac-status-text');
+const rawCanvas = document.getElementById('dac-raw-canvas');
+const heavyCursor = document.getElementById('dac-heavy-cursor');
+const glitchTexts = document.querySelectorAll('.dac-glitch-text');
+
+// Variables de estado del Contra-dispositivo
+let isPoeticaActive = false;
+let isErraticaActive = false;
+let isFriccionActive = false;
+let erraticaTimer = null;
+
+// Contexto de la matriz de datos crudos (Poética)
+let rawCtx = null;
+if (rawCanvas) {
+  rawCanvas.width = rawCanvas.offsetWidth;
+  rawCanvas.height = rawCanvas.offsetHeight;
+  rawCtx = rawCanvas.getContext('2d');
+}
+
+// Lógica del Cursor Pesado (Fricción Somática)
+let targetMouseX = 0, targetMouseY = 0;
+let currentMouseX = 0, currentMouseY = 0;
+
+document.getElementById('dac-microsite')?.addEventListener('mousemove', (e) => {
+  const rect = document.getElementById('dac-microsite').getBoundingClientRect();
+  targetMouseX = e.clientX - rect.left;
+  targetMouseY = e.clientY - rect.top;
+
+  // Si la máquina poética está activa, pintamos pixeles crudos
+  if (isPoeticaActive && rawCtx) {
+    rawCtx.fillStyle = `rgba(${Math.random()*255}, 0, ${Math.random()*255}, 0.8)`;
+    rawCtx.fillRect(targetMouseX, targetMouseY - 150, Math.random()*20, Math.random()*20);
+  }
+});
+
+function animateFriction() {
+  if (isFriccionActive && heavyCursor) {
+    // Lerp (retraso elástico) para simular inercia y peso material
+    currentMouseX += (targetMouseX - currentMouseX) * 0.05;
+    currentMouseY += (targetMouseY - currentMouseY) * 0.05;
+    heavyCursor.style.transform = `translate(${currentMouseX}px, ${currentMouseY}px)`;
+  }
+  requestAnimationFrame(animateFriction);
+}
+animateFriction();
+
+if (btnPoetica && btnErratica && btnFriccion) {
+  
+  // [1] MÁQUINA POÉTICA: Nube de puntos y afecto visual
+  btnPoetica.addEventListener('click', () => {
+    if (typeof playSound === 'function') playSound('ui');
+    isPoeticaActive = !isPoeticaActive;
+    
+    if (isPoeticaActive) {
+      dacStatus.innerHTML = "> MATRIZ DE DATOS CRUDOS EXPUESTA.<br>Dibuja sobre el vacío.";
+      dacStatus.style.color = '#ff00ff';
+      btnPoetica.style.background = 'rgba(255, 0, 255, 0.2)';
+    } else {
+      btnPoetica.style.background = 'transparent';
+      if(rawCtx) rawCtx.clearRect(0, 0, rawCanvas.width, rawCanvas.height);
+    }
+  });
+
+  // [2] MÁQUINA ERRÁTICA: Glitch estructural y tartamudeo HTML
+  btnErratica.addEventListener('mouseover', () => {
+    // El botón huye del usuario (negativa a obedecer)
+    if (isErraticaActive) {
+      btnErratica.style.transform = `translate(${(Math.random()-0.5)*100}px, ${(Math.random()-0.5)*50}px)`;
+    }
+  });
+
+  btnErratica.addEventListener('click', () => {
+    if (typeof playSound === 'function') playSound('damage');
+    isErraticaActive = !isErraticaActive;
+    
+    if (isErraticaActive) {
+      btnErratica.style.background = 'rgba(255, 51, 0, 0.2)';
+      dacStatus.innerHTML = "> ESTÉTICA DEL ERROR.<br>Interrupción de la invisibilidad de la mediación.";
+      dacStatus.style.color = '#ff3300';
+      
+      // Inicia la corrupción de textos
+      erraticaTimer = setInterval(() => {
+        glitchTexts.forEach(el => {
+          if(Math.random() > 0.7) {
+            const original = el.innerText;
+            const glitchChar = String.fromCharCode(33 + Math.random() * 94);
+            const pos = Math.floor(Math.random() * original.length);
+            el.innerText = original.substring(0, pos) + glitchChar + original.substring(pos + 1);
+          }
+        });
+        if (typeof triggerSubtleGlitch === 'function') triggerSubtleGlitch();
+      }, 150);
+    } else {
+      btnErratica.style.background = 'transparent';
+      btnErratica.style.transform = 'none';
+      clearInterval(erraticaTimer);
+      // Forzar recarga de los textos originales cerrando y abriendo
+      showSystemToast('> REINICIANDO CAJA NEGRA', '#00ffcc');
+    }
+  });
+
+  // [3] MÁQUINA DE FRICCIÓN: Resistencia táctil y peso
+  btnFriccion.addEventListener('click', () => {
+    if (typeof playSound === 'function') playSound('boss_hit');
+    isFriccionActive = !isFriccionActive;
+    
+    if (isFriccionActive) {
+      btnFriccion.style.background = 'rgba(255, 255, 0, 0.2)';
+      dacStatus.innerHTML = "> FRICCIÓN MATERIAL DETECTADA.<br>El sistema exige negociación somática.";
+      dacStatus.style.color = '#ffff00';
+      
+      // Ocultar cursor del sistema, mostrar cursor pesado
+      document.getElementById('dac-microsite').style.cursor = 'none';
+      heavyCursor.style.display = 'block';
+      if (typeof shakeIntensity !== 'undefined') shakeIntensity = 0.5;
+    } else {
+      btnFriccion.style.background = 'transparent';
+      document.getElementById('dac-microsite').style.cursor = 'crosshair';
+      heavyCursor.style.display = 'none';
+    }
+  });
+}
 }
