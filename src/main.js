@@ -402,7 +402,7 @@ renderer.xr.addEventListener('sessionend', () => {
 checkXRSupport();
 // 🔥 RESTAURACIÓN DEL MOTOR GRÁFICO Y VARIABLES GLOBALES 🔥
 const renderScene = new RenderPass(scene, camera);
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.6, 0.6);
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.8, 1.6, 1.6);
 const composer = new EffectComposer(renderer); composer.addPass(renderScene); composer.addPass(bloomPass);
 
 let isSoundEnabled = true; let audioCtx = null; 
@@ -1113,8 +1113,8 @@ planet.userData = {
 // 🔥 SISTEMA DAC (Diseño, Arte y Ciencia) 🔥
 // ==========================================
 
-// 🔥 1. LUZ SUAVIZADA: Bajamos la intensidad de 2.5 a 1.0 para matar el brillo extremo
-const dacLight = new THREE.DirectionalLight( 0xffffff, 1.0 );
+// 🔥 1. LUZ INTENSA: Subimos la intensidad para que el núcleo resalte sobre el resto del universo
+const dacLight = new THREE.DirectionalLight( 0xffffff, 3.5 ); // Subimos de 1.0 a 3.5
 dacLight.position.set( 1, 1, 1 ).normalize();
 scene.add( dacLight );
 
@@ -1174,7 +1174,7 @@ dacCoreGeo.setAttribute( 'color', new THREE.BufferAttribute( dacCol, 3 ) );
 const dacMaterial = new THREE.MeshPhongMaterial({
   color: 0x888888, 
   specular: 0x888888, 
-  shininess: 50,
+  shininess: 1000,
   side: THREE.DoubleSide, 
   vertexColors: true, 
   flatShading: false,
@@ -1686,6 +1686,21 @@ document.body.appendChild(paintTools);
 const paintGroup = new THREE.Group();
 scene.add(paintGroup);
 const paintStrokes = [];
+
+// 🔥 NUEVO: Matriz de líneas dinámicas para el efecto "Linked Particles"
+const poeticaLinesGeo = new THREE.BufferGeometry();
+const maxPoeticaLines = 6000; // Hasta 6000 conexiones vivas
+const poeticaLinePositions = new Float32Array(maxPoeticaLines * 6);
+poeticaLinesGeo.setAttribute('position', new THREE.BufferAttribute(poeticaLinePositions, 3));
+const poeticaLinesMat = new THREE.LineBasicMaterial({ 
+  color: 0x00ffff, // Líneas Cyan eléctrico
+  transparent: true, 
+  opacity: 0.4, 
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+const poeticaLinesMesh = new THREE.LineSegments(poeticaLinesGeo, poeticaLinesMat);
+scene.add(poeticaLinesMesh);
 
 document.getElementById('btn-clear-paint').onclick = (e) => {
   e.stopPropagation();
@@ -2617,13 +2632,34 @@ let secretDiscovered = false;
 
 let isAligned = false;
 let carouselAngleOffset = 0; 
-const constellationMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.2 });
-const constellationPositions = new Float32Array(categoryPlanets.length * 3);
-const constellationGeo = new THREE.BufferGeometry();
-constellationGeo.setAttribute('position', new THREE.BufferAttribute(constellationPositions, 3));
-// 🔥 CAMBIO: Usamos 'LineLoop' para que el último planeta (DAC) cierre el circuito con el primero
-const constellationLine = new THREE.LineLoop(constellationGeo, constellationMat);
-scene.add(constellationLine);
+
+// ==========================================
+// 🔥 RED DE ENERGÍA NEURAL (REEMPLAZA LA CONSTELACIÓN)
+// ==========================================
+const energyWebGroup = new THREE.Group();
+scene.add(energyWebGroup);
+
+const numWebLines = 5; // Hilos de energía
+const webLines = [];
+
+for (let i = 0; i < numWebLines; i++) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(300 * 3), 3)); 
+  
+  // Colores Cyberpunk que brillan al superponerse
+ const colorHex = i % 3 === 0 ? 0x6688ff : (i % 3 === 1 ? 0x88aaff : 0xaa66ff); 
+  const mat = new THREE.LineBasicMaterial({ 
+    color: colorHex, 
+    transparent: true, 
+    opacity: 0.2,
+    blending: THREE.AdditiveBlending, // 🔥 Magia: Crea luz de neón
+    depthWrite: false
+  });
+  
+  const line = new THREE.LineSegments(geo, mat); 
+  webLines.push(line);
+  energyWebGroup.add(line);
+}
 
 // ==========================================
 // 🔥 POTENCIA CREADORA: SISTEMA GLOBAL DE TRAZOS
@@ -2881,15 +2917,24 @@ if (isAR && frame && hitTestSource) {
         if (Math.random() < paintChance) {
           let pGeo, pMat, stroke;
 
-          if (isPoeticaActive) {
-            // POÉTICA: Esferas de energía fluida brillante
-            pGeo = new THREE.SphereGeometry(0.35, 16, 16);
+       if (isPoeticaActive) {
+            // 🔥 POÉTICA: Nodos minúsculos que construirán la Red
+            pGeo = new THREE.SphereGeometry(0.08, 6, 6);
             pMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
             stroke = new THREE.Mesh(pGeo, pMat);
             stroke.position.copy(globalPos);
-            stroke.position.x += (Math.random() - 0.5) * 0.3;
-            stroke.position.y += (Math.random() - 0.5) * 0.3;
-            stroke.userData = { type: 'poetica', seed: Math.random() * 100, baseScaleX: 1 };
+            // Mayor dispersión al nacer para abrir la red
+            stroke.position.x += (Math.random() - 0.5) * 2.0;
+            stroke.position.y += (Math.random() - 0.5) * 2.0;
+            stroke.position.z += (Math.random() - 0.5) * 1.0;
+            
+            // Vida y movimiento en las 3 direcciones para que la red fluya sola
+            stroke.userData = { 
+              type: 'poetica', 
+              vx: (Math.random() - 0.5) * 0.02, 
+              vy: (Math.random() - 0.5) * 0.02,
+              vz: (Math.random() - 0.5) * 0.02
+            };
           }
           else if (isErraticaActive) {
             // ERRÁTICA: Puntas afiladas
@@ -2926,14 +2971,20 @@ if (isAR && frame && hitTestSource) {
         }
       }
 
+  // ===============================================
+      // 🔥 ANIMAR LA OBRA CREADA (Y TEJER LA RED NEURONAL)
       // ===============================================
-      // 🔥 ANIMAR LA OBRA CREADA (TRAZOS FIJOS VIVOS)
-      // ===============================================
+      const poeticaNodes = []; // Lista para aislar los nodos de red
+
       for (let i = paintStrokes.length - 1; i >= 0; i--) {
         let p = paintStrokes[i];
+        
         if (p.userData.type === 'poetica') {
-          p.rotation.y += 0.01;
-          p.scale.setScalar(1 + Math.sin(Date.now() * 0.003 + p.userData.seed) * 0.2);
+          // Movimiento orgánico constante
+          p.position.x += p.userData.vx;
+          p.position.y += p.userData.vy;
+          p.position.z += p.userData.vz;
+          poeticaNodes.push(p); // Lo guardamos para conectar
         }
         else if (p.userData.type === 'erratica') {
           if (Math.random() > 0.8) {
@@ -2952,6 +3003,30 @@ if (isAR && frame && hitTestSource) {
           else p.material.color.setHex(0xffff00);
         }
       }
+
+      // 🔥 ALGORITMO "LINKED PARTICLES" EN TIEMPO REAL
+      let pLineIdx = 0;
+      const pLinePositions = poeticaLinesGeo.attributes.position.array;
+      const maxConnectDistSquared = 12.25; // 3.5 al cuadrado (optimización extrema para no usar Math.sqrt)
+
+      for (let i = 0; i < poeticaNodes.length; i++) {
+        const n1 = poeticaNodes[i].position;
+        // Comparamos el nodo con los demás para tender puentes
+        for (let j = i + 1; j < poeticaNodes.length; j++) {
+          const n2 = poeticaNodes[j].position;
+          
+          if (n1.distanceToSquared(n2) < maxConnectDistSquared) {
+            // Protección contra desbordamiento de memoria
+            if (pLineIdx < maxPoeticaLines * 6) { 
+              pLinePositions[pLineIdx++] = n1.x; pLinePositions[pLineIdx++] = n1.y; pLinePositions[pLineIdx++] = n1.z;
+              pLinePositions[pLineIdx++] = n2.x; pLinePositions[pLineIdx++] = n2.y; pLinePositions[pLineIdx++] = n2.z;
+            }
+          }
+        }
+      }
+      // Dibujamos solo las líneas creadas este frame
+      poeticaLinesGeo.setDrawRange(0, pLineIdx / 3);
+      poeticaLinesGeo.attributes.position.needsUpdate = true;
     }
 
     // ===============================================
@@ -3321,7 +3396,7 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
     if (raycaster.ray.intersectPlane(planeZ, intersectPoint)) {
       mouseWorldPos.copy(intersectPoint);
     }
-    const posAttribute = constellationGeo.attributes.position;
+
 
     categoryPlanets.forEach((planet, index) => { 
       if (!planet.userData.targetPos) {
@@ -3403,20 +3478,112 @@ showSystemToast('ANOMALÍA DETECTADA A TUS ESPALDAS', '#cc0000');           }
         }
       }
 
-      if (typeof posAttribute !== 'undefined' && index < posAttribute.count) {
-        posAttribute.setXYZ(index, planet.position.x, planet.position.y, planet.position.z);
-      }
+     
     });
 
-if(typeof posAttribute !== 'undefined') posAttribute.needsUpdate = true;
+if (!isAR) {
+  energyWebGroup.visible = !isAligned; 
+  
+  if (!isAligned) {
+    const time = Date.now() * 0.001;
+    const activeCount = (typeof secretDiscovered !== 'undefined' && secretDiscovered) 
+      ? categoryPlanets.length 
+      : (categoryPlanets.length - 1);
     
-    if (!isAR) {
-      constellationLine.visible = !isAligned; 
-      // 🔥 CORRECCIÓN: Le decimos a la línea que dibuje hasta el Planeta DAC (El noveno punto)
-      let activeCount = (typeof secretDiscovered !== 'undefined' && secretDiscovered) ? categoryPlanets.length : (categoryPlanets.length - 1);
-      constellationGeo.setDrawRange(0, activeCount);
+    const pCore = planetaDAC;
+    const SUBDIVISIONS = 10;         // pedacitos por línea
+    const MAX_DIST = 60;             // 🔥 distancia máxima para conectar dos planetas
+    const MAX_DIST_CORE = 90;        // 🔥 distancia máxima planeta→DAC
+    
+    // Lista de planetas válidos
+    const validPlanets = [];
+    for (let i = 0; i < activeCount; i++) {
+      const p = categoryPlanets[i];
+      if (p.userData.id === 999 && !secretDiscovered) continue;
+      validPlanets.push(p);
     }
-  } 
+    
+    webLines.forEach((line, lineIdx) => {
+      const positions = line.geometry.attributes.position.array;
+      const maxFloats = positions.length;
+      let posIdx = 0;
+      
+      const linePhase = lineIdx * 1.7;
+      const lineFreq = 0.8 + lineIdx * 0.15;
+      // Cada hilo se especializa: unos conectan cerca, otros lejos
+      const distMultiplier = 0.6 + (lineIdx / 5) * 0.8;
+      const localMaxDist = MAX_DIST * distMultiplier;
+      
+      const drawWavyLine = (from, to, strength = 1.0) => {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const dz = to.z - from.z;
+        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        
+        const amp = Math.min(dist * 0.06, 1.2) * strength;
+        
+        const perpX = -dy / (dist || 1);
+        const perpY = dx / (dist || 1);
+        
+        let prevX = from.x, prevY = from.y, prevZ = from.z;
+        
+        for (let s = 1; s <= SUBDIVISIONS; s++) {
+          const t = s / SUBDIVISIONS;
+          
+          let bx = from.x + dx * t;
+          let by = from.y + dy * t;
+          let bz = from.z + dz * t;
+          
+          const wave = Math.sin(t * Math.PI * 3 + time * lineFreq + linePhase) * Math.sin(t * Math.PI) * amp;
+          
+          bx += perpX * wave;
+          by += perpY * wave;
+          bz += Math.cos(t * Math.PI * 2 + time * lineFreq * 0.7 + linePhase) * amp * 0.5;
+          
+          if (posIdx + 6 <= maxFloats) {
+            positions[posIdx++] = prevX;
+            positions[posIdx++] = prevY;
+            positions[posIdx++] = prevZ;
+            positions[posIdx++] = bx;
+            positions[posIdx++] = by;
+            positions[posIdx++] = bz;
+          }
+          
+          prevX = bx; prevY = by; prevZ = bz;
+        }
+      };
+      
+      // 🔥 CONEXIÓN POR DISTANCIA REAL
+      for (let i = 0; i < validPlanets.length; i++) {
+        const p1 = validPlanets[i];
+        
+        // Conectar con TODOS los planetas cercanos (no solo vecinos de lista)
+        for (let j = i + 1; j < validPlanets.length; j++) {
+          const p2 = validPlanets[j];
+          const dist = p1.position.distanceTo(p2.position);
+          
+          if (dist < localMaxDist) {
+            // Fuerza según cercanía: cerca = fuerte, lejos = débil
+            const strength = 1.0 - (dist / localMaxDist) * 0.6;
+            drawWavyLine(p1.position, p2.position, strength);
+          }
+        }
+        
+        // Conectar al núcleo DAC
+        if (pCore) {
+          const distToCore = p1.position.distanceTo(pCore.position);
+          if (distToCore < MAX_DIST_CORE) {
+            drawWavyLine(p1.position, pCore.position, 0.8);
+          }
+        }
+      }
+      
+      line.geometry.setDrawRange(0, posIdx / 3);
+      line.geometry.attributes.position.needsUpdate = true;
+    });
+  }
+}
+}
 
   // 🔥 4. ESCUDO PROTECTOR DE RENDERIZADO
 
