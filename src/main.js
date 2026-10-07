@@ -61,11 +61,12 @@ const ditherShader = {
       else if(index==8) threshold=3.0/16.0; else if(index==9) threshold=11.0/16.0; else if(index==10) threshold=1.0/16.0; else if(index==11) threshold=9.0/16.0;
       else if(index==12) threshold=15.0/16.0; else if(index==13) threshold=7.0/16.0; else if(index==14) threshold=13.0/16.0; else if(index==15) threshold=5.0/16.0;
 
-      // 3. LA MAGIA: Si la luz en este píxel es menor al umbral del patrón, lo destruimos
+   // 3. LA MAGIA: Si la luz en este píxel es menor al umbral del patrón, lo destruimos
       if (intensity < threshold) {
-        discard; // Hace un agujero en la malla (deja ver las estrellas)
+        discard; 
       } else {
-        gl_FragColor = vec4(color, 1.0); // Pinta el píxel de neón brillante
+        // 🔥 LÍMITE DE LUZ: Los planetas brillan máximo al 80% para que el Bloom los ignore
+        gl_FragColor = vec4(color * 0.8, 1.0); 
       }
     }
   `
@@ -402,7 +403,7 @@ renderer.xr.addEventListener('sessionend', () => {
 checkXRSupport();
 // 🔥 RESTAURACIÓN DEL MOTOR GRÁFICO Y VARIABLES GLOBALES 🔥
 const renderScene = new RenderPass(scene, camera);
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.8, 1.6, 1.6);
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.5, 0.8, 0.85);
 const composer = new EffectComposer(renderer); composer.addPass(renderScene); composer.addPass(bloomPass);
 
 let isSoundEnabled = true; let audioCtx = null; 
@@ -1189,26 +1190,27 @@ const dacHitboxPlanet = new THREE.Mesh(new THREE.SphereGeometry(7, 16, 16), new 
 dacHitboxPlanet.name = "planeta_dac"; 
 planetaDAC.add(dacHitboxPlanet);
 
+// 2. LA TRÍADA DE MÁQUINAS (Nuevas Formas)
 
-
-// 2. LA TRÍADA DE MÁQUINAS (Lunas)
-
-// Máquina Poética (Forma compleja, toros entrelazados)
-const poeticaGeo = new THREE.TorusKnotGeometry(1.2, 0.3, 64, 8);
-const poeticaMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true });
+// 🔥 Máquina Poética: Elegante, prístina y geométrica (Doble esfera de alambre)
+const poeticaGeo = new THREE.SphereGeometry(1.4, 24, 24);
+const poeticaMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.6 });
 const lunaPoetica = new THREE.Mesh(poeticaGeo, poeticaMat);
+const poeticaInner = new THREE.Mesh(new THREE.OctahedronGeometry(0.8, 0), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true }));
+lunaPoetica.add(poeticaInner);
 lunaPoetica.position.set(12, 0, 0); 
 lunaPoetica.name = "maquina_poetica";
 
-// Máquina Errática (Geometría inestable, poligonal)
-const erraticaGeo = new THREE.IcosahedronGeometry(1.5, 0);
-const erraticaMat = new THREE.MeshBasicMaterial({ color: 0xff3300 }); // Sólida para contrastar
+// 🔥 Máquina Errática: Afilada, distorsionada y peligrosa (Tetraedro estirado)
+const erraticaGeo = new THREE.TetrahedronGeometry(1.5, 0);
+const erraticaMat = new THREE.MeshBasicMaterial({ color: 0xff3300, wireframe: true });
 const lunaErratica = new THREE.Mesh(erraticaGeo, erraticaMat);
+lunaErratica.scale.set(1.0, 2.0, 0.5); // Escalado asimétrico
 lunaErratica.position.set(-8, 6, -8);
 lunaErratica.name = "maquina_erratica";
 
-// Máquina de Fricción (Asimétrica y pesada)
-const friccionGeo = new THREE.BoxGeometry(1.8, 1.8, 1.8);
+// 🔥 Máquina de Fricción: Monolítica, brutalista y pesada (Pilar Hexagonal)
+const friccionGeo = new THREE.CylinderGeometry(1.5, 1.5, 2.5, 6);
 const friccionMat = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true });
 const lunaFriccion = new THREE.Mesh(friccionGeo, friccionMat);
 lunaFriccion.position.set(0, -10, 8);
@@ -1230,16 +1232,17 @@ let isFriccionActive = false;
 const dacNetworkGroup = new THREE.Group();
 planetaDAC.add(dacNetworkGroup); // Se ancla al planeta central
 
-// 1. Los Nodos (100 Partículas)
-const dacParticleCount = 100;
+// 1. Los Nodos (🔥 Subimos a 200 partículas para llenar la nueva atmósfera gigante)
+const dacParticleCount = 500;
 const dacParticlesGeo = new THREE.BufferGeometry();
 const dacParticlePositions = new Float32Array(dacParticleCount * 3);
 const dacParticleData = [];
 
 for (let i = 0; i < dacParticleCount; i++) {
-  const x = (Math.random() - 0.5) * 15;
-  const y = (Math.random() - 0.5) * 15;
-  const z = (Math.random() - 0.5) * 15;
+  // 🔥 Volumen expandido de 15 a 55 para que fluyan libres en el espacio
+  const x = (Math.random() - 0.5) * 30;
+  const y = (Math.random() - 0.5) * 30;
+  const z = (Math.random() - 0.5) * 30;
   dacParticlePositions[i*3] = x; dacParticlePositions[i*3+1] = y; dacParticlePositions[i*3+2] = z;
   dacParticleData.push({
     velocity: new THREE.Vector3((Math.random()-0.5)*0.04, (Math.random()-0.5)*0.04, (Math.random()-0.5)*0.04),
@@ -1249,9 +1252,15 @@ for (let i = 0; i < dacParticleCount; i++) {
 dacParticlesGeo.setAttribute('position', new THREE.BufferAttribute(dacParticlePositions, 3));
 const dacParticles = new THREE.Points(dacParticlesGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.5 }));
 dacNetworkGroup.add(dacParticles);
-
 // 2. El Pincel de Interacción
+// 🔥 Devolvemos la esfera visual a un tamaño elegante y pequeño (0.2).
+// El radio de luz seguirá siendo enorme gracias a las matemáticas del fondo.
 const dacBrush = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true }));
+
+// 🔥 ESCUDO FANTASMA: Desactivamos sus colisiones. Ahora los clics lo atraviesan
+// y van directo a las lunas, sin importar dónde esté el ratón.
+dacBrush.raycast = function() {}; 
+
 dacNetworkGroup.add(dacBrush);
 
 // 3. Las Conexiones Dinámicas (Líneas - ESTILO WEBGL_INTERACTIVE)
@@ -1272,10 +1281,11 @@ const dacConceptos = ["Autopoiesis", "Ana-arqueología", "Saber-del-cuerpo", "Fr
 const dacWords = [];
 dacConceptos.forEach(txt => {
   const sp = createTextSprite(txt, '#00ffff');
-  // Fijamos la profundidad (Z) en 2 para que el pincel siempre las alcance
-  sp.position.set((Math.random()-0.5)*18, (Math.random()-0.5)*18, 2);
-  sp.scale.set(40, 4, 1);
-  sp.material.depthTest = false; // Escudo para que siempre se lean por encima de las líneas
+  // 🔥 ESPACIO: Aumentamos el área de aparición (50 de ancho, 35 de alto) para que rieguen por toda la pantalla
+  sp.position.set((Math.random()-0.5)*50, (Math.random()-0.5)*35, 2);
+  // 🔥 ESCALA CORREGIDA: Proporción 4:1 (32x8) exacta al canvas, para que dejen de verse aplastadas
+  sp.scale.set(32, 8, 1);
+  sp.material.depthTest = false; 
   sp.visible = false;
   sp.userData = { basePos: sp.position.clone() };
   dacNetworkGroup.add(sp);
@@ -1701,7 +1711,20 @@ const poeticaLinesMat = new THREE.LineBasicMaterial({
 });
 const poeticaLinesMesh = new THREE.LineSegments(poeticaLinesGeo, poeticaLinesMat);
 scene.add(poeticaLinesMesh);
-
+// 🔥 NUEVO: Matriz de líneas para el efecto "Cristales Rotos / Relámpago" (ERRÁTICA)
+const erraticaLinesGeo = new THREE.BufferGeometry();
+const maxErraticaLines = 3000; // Relámpagos rojos
+const erraticaLinePositions = new Float32Array(maxErraticaLines * 6);
+erraticaLinesGeo.setAttribute('position', new THREE.BufferAttribute(erraticaLinePositions, 3));
+const erraticaLinesMat = new THREE.LineBasicMaterial({ 
+  color: 0xff0000, // Rojo Sangre / Error
+  transparent: true, 
+  opacity: 0.9, 
+  blending: THREE.AdditiveBlending, // Brillo de relámpago
+  depthWrite: false
+});
+const erraticaLinesMesh = new THREE.LineSegments(erraticaLinesGeo, erraticaLinesMat);
+scene.add(erraticaLinesMesh);
 document.getElementById('btn-clear-paint').onclick = (e) => {
   e.stopPropagation();
   paintStrokes.forEach(p => { paintGroup.remove(p); p.geometry.dispose(); p.material.dispose(); });
@@ -2239,6 +2262,20 @@ document.addEventListener('keydown', (e) => {
   }
 
   if(!isGameStarted) return; 
+
+  // 🔥 NUEVO: Atajo 'S' para tomar una foto/captura del universo en cualquier momento
+  if (e.key === 's' || e.key === 'S') {
+    renderer.render(scene, camera); // Forzamos un render fresco para evitar que salga negro
+    try {
+      const link = document.createElement('a');
+      link.download = 'dac_captura_' + Math.floor(Math.random() * 10000) + '.png';
+      link.href = document.querySelector('#bg-canvas').toDataURL('image/png');
+      link.click(); 
+      playSound('levelup');
+      if (typeof showSystemToast === 'function') showSystemToast('> CAPTURA GUARDADA EN TU DISCO', '#00ffaa');
+    } catch(err) { console.log("Error al guardar la imagen", err); }
+  }
+
   if(e.key === 'ArrowLeft' || e.key === 'a') { keys.left = true; hasMoved = true; checkOnboarding(); } 
   if(e.key === 'ArrowRight' || e.key === 'd') { keys.right = true; hasMoved = true; checkOnboarding(); } 
   if(e.code === 'Space') { e.preventDefault(); isShooting = true; } 
@@ -2286,24 +2323,71 @@ window.addEventListener('click', (e) => {
     if (window.isZooming) return;
 
     switch (dacObj.name) {
- case "planeta_dac":
+case "planeta_dac":
         window.isZooming = true;
-        if (targetFov === 25) {
-          targetFov = 75; 
+        
+        // 1. Restauramos el zoom visual por si estaba bugeado
+        targetFov = 75; 
+        camera.fov = 75;
+        camera.updateProjectionMatrix();
+
+        if (planetaDAC.userData.isIsolated) {
+          // ==========================================
+          // ⬅️ SALIR DE LA ZONA AISLADA
+          // ==========================================
+          planetaDAC.userData.isIsolated = false;
+          
+          // Restaurar la cámara a la distancia normal de navegación
+          const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+          userGroup.position.set(0, 0, isAligned ? 30 : (isTouch || window.innerWidth < 600 ? 30 : 45));
+          
+          // Encender todo el universo de nuevo
+          categoryPlanets.forEach(p => { 
+            // Evitamos encender la anomalía (999) si no ha sido descubierta
+            if (p.userData.id === 999 && (typeof secretDiscovered === 'undefined' || !secretDiscovered)) return;
+            p.visible = true; 
+          });
+          if (typeof satelliteGroup !== 'undefined') satelliteGroup.visible = true;
+          if (typeof energyWebGroup !== 'undefined') energyWebGroup.visible = !isAligned;
+          if (typeof constellationLine !== 'undefined') constellationLine.visible = !isAligned;
+          
+          // Devolver el DAC a donde estaba flotando originalmente
+          if (planetaDAC.userData.savedPos) {
+            planetaDAC.position.copy(planetaDAC.userData.savedPos);
+          }
+          
           if (typeof dacNetworkGroup !== 'undefined') dacNetworkGroup.visible = false;
           const pt = document.getElementById('paint-tools'); if (pt) pt.style.display = 'none';
-          showSystemToast('> SALIENDO DEL NÚCLEO DAC', '#00ffcc');
-          // 🔥 SE ELIMINÓ EL SALTO DE CÁMARA: Ahora se queda donde tú la dejaste
+          showSystemToast('> SALIENDO DEL NÚCLEO DAC: UNIVERSO RESTAURADO', '#00ffcc');
+          
         } else {
-          targetFov = 25; 
+          // ==========================================
+          // 🌌 ENTRAR A LA ZONA ESPECIAL (AISLAMIENTO)
+          // ==========================================
+          planetaDAC.userData.isIsolated = true;
+          
+          // Guardar la posición actual del DAC para cuando salgamos
+          planetaDAC.userData.savedPos = planetaDAC.position.clone();
+          
+          // Apagar TODO el universo (los planetas ya no estorbarán)
+          categoryPlanets.forEach(p => p.visible = false);
+          if (typeof satelliteGroup !== 'undefined') satelliteGroup.visible = false;
+          if (typeof energyWebGroup !== 'undefined') energyWebGroup.visible = false;
+          if (typeof constellationLine !== 'undefined') constellationLine.visible = false;
+          
+          // Mover el DAC al centro absoluto (0,0,0)
+          planetaDAC.position.set(0, 0, 0);
+          
+          // Acercar la cámara físicamente frente al DAC (sin distorsionar el lente)
+          userGroup.position.set(0, 0, 22); 
+          userGroup.rotation.set(0, 0, 0);  // Enderezamos la vista por si estaba rotada
+          
           if (typeof dacNetworkGroup !== 'undefined') dacNetworkGroup.visible = true;
-          if (isAligned) {
-            const pIndex = categoryPlanets.indexOf(planetaDAC);
-            if (pIndex !== -1) targetCarouselAngle = (Math.PI / 2) - ((pIndex / categoryPlanets.length) * Math.PI * 2);
-          }
-          showSystemToast('> NÚCLEO DAC: SELECCIONE UNA LUNA', '#00ffcc');
+          showSystemToast('> ESPACIO AISLADO: NÚCLEO DAC. SELECCIONE UNA LUNA', '#ff00ff');
         }
-        playSound('ui'); setTimeout(() => { window.isZooming = false; }, 350); 
+        
+        playSound('ui'); 
+        setTimeout(() => { window.isZooming = false; }, 350); 
         break;
 
   // 🔥 MÁQUINA POÉTICA: Efecto visual fuerte
@@ -2648,11 +2732,12 @@ for (let i = 0; i < numWebLines; i++) {
   
   // Colores Cyberpunk que brillan al superponerse
  const colorHex = i % 3 === 0 ? 0x6688ff : (i % 3 === 1 ? 0x88aaff : 0xaa66ff); 
+  // 🔥 HIPER-LUZ: Multiplicamos el color x2 para que rompa el umbral del Bloom y estalle en Neón puro
   const mat = new THREE.LineBasicMaterial({ 
-    color: colorHex, 
+    color: new THREE.Color(colorHex).multiplyScalar(2.0), 
     transparent: true, 
-    opacity: 0.2,
-    blending: THREE.AdditiveBlending, // 🔥 Magia: Crea luz de neón
+    opacity: 0.8, // Subimos opacidad para que el rayo sea denso
+    blending: THREE.AdditiveBlending, 
     depthWrite: false
   });
   
@@ -2873,13 +2958,14 @@ if (isAR && frame && hitTestSource) {
           dacLinesGeo.setDrawRange(0, lineIndex / 3);
           dacLinesGeo.attributes.position.needsUpdate = true;
 
-          // 🔥 Revelar Palabras (Conceptos)
+         // 🔥 Revelar Palabras (Conceptos)
           dacWords.forEach((word) => {
             let dx = dacBrush.position.x - word.userData.basePos.x;
             let dy = dacBrush.position.y - word.userData.basePos.y;
             let dist2D = Math.sqrt(dx * dx + dy * dy);
 
-            if (dist2D < 12) {
+            // 🔥 Aumentamos el radio visual a 25 para iluminarlas desde más lejos
+            if (dist2D < 25) {
               word.visible = true;
               word.position.y = word.userData.basePos.y + Math.sin(Date.now() * 0.002 + word.id) * 0.4;
 
@@ -2889,7 +2975,7 @@ if (isAR && frame && hitTestSource) {
                 word.material.color.setHex(0xff3300);
               } else {
                 word.material.rotation = 0;
-                word.material.opacity = Math.max(0.4, 1 - (dist2D / 12));
+                word.material.opacity = Math.max(0.4, 1 - (dist2D / 25)); // Adaptamos el fade de opacidad a 25
                 word.material.color.setHex(isPoeticaActive ? 0xff00ff : 0x00ffff);
               }
             } else {
@@ -2936,16 +3022,27 @@ if (isAR && frame && hitTestSource) {
               vz: (Math.random() - 0.5) * 0.02
             };
           }
-          else if (isErraticaActive) {
-            // ERRÁTICA: Puntas afiladas
-            pGeo = new THREE.TetrahedronGeometry(0.5);
-            pMat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.7 ? 0xffffff : 0xff3300, wireframe: true });
+       else if (isErraticaActive) {
+            // 🔥 ERRÁTICA: Agujas rojas afiladas (Esquirlas de cristal corrupto)
+            pGeo = new THREE.ConeGeometry(0.08, 2.0, 3); // Base mínima, muy largas y de 3 caras (Picos perfectos)
+            pMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
             stroke = new THREE.Mesh(pGeo, pMat);
             stroke.position.copy(globalPos);
-            stroke.position.x += (Math.random() - 0.5) * 2.5;
-            stroke.position.y += (Math.random() - 0.5) * 2.5;
+            // Dispersión explosiva al nacer
+            stroke.position.x += (Math.random() - 0.5) * 3.0;
+            stroke.position.y += (Math.random() - 0.5) * 3.0;
+            stroke.position.z += (Math.random() - 0.5) * 2.0;
+            
             stroke.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-            stroke.userData = { type: 'erratica', baseRot: stroke.rotation.clone() };
+            
+            // Velocidad caótica
+            stroke.userData = { 
+              type: 'erratica', 
+              vx: (Math.random() - 0.5) * 0.15, 
+              vy: (Math.random() - 0.5) * 0.15,
+              vz: (Math.random() - 0.5) * 0.15,
+              baseRot: stroke.rotation.clone()
+            };
           }
           else if (isFriccionActive) {
             // FRICCIÓN: Materia prima brutalista
@@ -2972,25 +3069,35 @@ if (isAR && frame && hitTestSource) {
       }
 
   // ===============================================
-      // 🔥 ANIMAR LA OBRA CREADA (Y TEJER LA RED NEURONAL)
+      // 🔥 ANIMAR LA OBRA CREADA (Y TEJER LAS REDES)
       // ===============================================
-      const poeticaNodes = []; // Lista para aislar los nodos de red
+      const poeticaNodes = []; // Lista para la red fluida
+      const erraticaNodes = []; // Lista para la red de relámpagos
 
       for (let i = paintStrokes.length - 1; i >= 0; i--) {
         let p = paintStrokes[i];
         
         if (p.userData.type === 'poetica') {
-          // Movimiento orgánico constante
-          p.position.x += p.userData.vx;
-          p.position.y += p.userData.vy;
-          p.position.z += p.userData.vz;
-          poeticaNodes.push(p); // Lo guardamos para conectar
+          p.position.x += p.userData.vx; p.position.y += p.userData.vy; p.position.z += p.userData.vz;
+          poeticaNodes.push(p); 
         }
         else if (p.userData.type === 'erratica') {
-          if (Math.random() > 0.8) {
-            p.rotation.set(p.userData.baseRot.x + (Math.random() - 0.5) * 0.5, p.userData.baseRot.y + (Math.random() - 0.5) * 0.5, p.userData.baseRot.z + (Math.random() - 0.5) * 0.5);
+          // Movimiento violento y nervioso (se mueve a tirones)
+          if (Math.random() > 0.5) {
+            p.position.x += p.userData.vx; 
+            p.position.y += p.userData.vy; 
+            p.position.z += p.userData.vz;
           }
-          p.visible = Math.random() > 0.05;
+          // Rotación espasmódica
+          if (Math.random() > 0.8) {
+            p.rotation.set(
+              p.userData.baseRot.x + (Math.random() - 0.5) * 1.5, 
+              p.userData.baseRot.y + (Math.random() - 0.5) * 1.5, 
+              p.userData.baseRot.z + (Math.random() - 0.5) * 1.5
+            );
+          }
+          p.visible = Math.random() > 0.1; // Parpadea
+          erraticaNodes.push(p);
         }
         else if (p.userData.type === 'friccion') {
           if (p.position.y > planetaDAC.position.y - 15) {
@@ -3004,19 +3111,16 @@ if (isAR && frame && hitTestSource) {
         }
       }
 
-      // 🔥 ALGORITMO "LINKED PARTICLES" EN TIEMPO REAL
+      // 🔥 ALGORITMO 1: "RED NEURONAL" (POÉTICA)
       let pLineIdx = 0;
       const pLinePositions = poeticaLinesGeo.attributes.position.array;
-      const maxConnectDistSquared = 12.25; // 3.5 al cuadrado (optimización extrema para no usar Math.sqrt)
+      const maxConnectDistSqP = 12.25; 
 
       for (let i = 0; i < poeticaNodes.length; i++) {
         const n1 = poeticaNodes[i].position;
-        // Comparamos el nodo con los demás para tender puentes
         for (let j = i + 1; j < poeticaNodes.length; j++) {
           const n2 = poeticaNodes[j].position;
-          
-          if (n1.distanceToSquared(n2) < maxConnectDistSquared) {
-            // Protección contra desbordamiento de memoria
+          if (n1.distanceToSquared(n2) < maxConnectDistSqP) {
             if (pLineIdx < maxPoeticaLines * 6) { 
               pLinePositions[pLineIdx++] = n1.x; pLinePositions[pLineIdx++] = n1.y; pLinePositions[pLineIdx++] = n1.z;
               pLinePositions[pLineIdx++] = n2.x; pLinePositions[pLineIdx++] = n2.y; pLinePositions[pLineIdx++] = n2.z;
@@ -3024,10 +3128,37 @@ if (isAR && frame && hitTestSource) {
           }
         }
       }
-      // Dibujamos solo las líneas creadas este frame
       poeticaLinesGeo.setDrawRange(0, pLineIdx / 3);
       poeticaLinesGeo.attributes.position.needsUpdate = true;
-    }
+
+      // 🔥 ALGORITMO 2: "ARCOS ELÉCTRICOS ROTOS" (ERRÁTICA)
+      let eLineIdx = 0;
+      const eLinePositions = erraticaLinesGeo.attributes.position.array;
+      const maxConnectDistSqE = 25.0; // Conecta a mayor distancia que la Poética
+
+      for (let i = 0; i < erraticaNodes.length; i++) {
+        const n1 = erraticaNodes[i].position;
+        
+        // Solo intentamos conectar a veces para dar ese efecto de "glitch" o chispa rota
+        if (Math.random() > 0.4) {
+            for (let j = i + 1; j < erraticaNodes.length; j++) {
+              // La conexión es muy inestable (85% de probabilidad de romperse el rayo este frame)
+              if (Math.random() > 0.85) { 
+                  const n2 = erraticaNodes[j].position;
+                  if (n1.distanceToSquared(n2) < maxConnectDistSqE) {
+                    if (eLineIdx < maxErraticaLines * 6) { 
+                      eLinePositions[eLineIdx++] = n1.x; eLinePositions[eLineIdx++] = n1.y; eLinePositions[eLineIdx++] = n1.z;
+                      eLinePositions[eLineIdx++] = n2.x; eLinePositions[eLineIdx++] = n2.y; eLinePositions[eLineIdx++] = n2.z;
+                    }
+                  }
+              }
+            }
+        }
+      }
+      erraticaLinesGeo.setDrawRange(0, eLineIdx / 3);
+      erraticaLinesGeo.attributes.position.needsUpdate = true;
+
+    } // Cierra el "if (isPainting...)" principal
 
     // ===============================================
     // 🔥 HOVER DE OBJETOS EN EL CANVAS
