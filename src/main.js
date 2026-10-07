@@ -1713,6 +1713,7 @@ function startPointerDown(clientX, clientY) {
     document.getElementById('paint-tools').style.display = 'flex';
     return; 
   }
+
   window.isDraggingCanvas = false; 
   isDraggingPlanet = false; 
   const onboard = document.getElementById('onboarding-ui');
@@ -1727,81 +1728,63 @@ function startPointerDown(clientX, clientY) {
   mouseNDC.y = -(clientY / window.innerHeight) * 2 + 1;
   dragRaycaster.setFromCamera(mouseNDC, camera);
   
-  // 🔥 AÑADIMOS EL SISTEMA DAC A LOS OBJETOS ARRASTRABLES
   const grabTargets = [...categoryPlanets, ...ambientWhales, ...guardianCats, planetaDAC, lunaPoetica, lunaErratica, lunaFriccion];
   const intersects = dragRaycaster.intersectObjects(grabTargets, true);
   
   if (intersects.length > 0) {
     let hit = intersects[0].object;
-    
-    // 🔥 EL BLINDAJE CONTRA EL TEXTO: Subimos en la jerarquía hasta encontrar el planeta
-    while (hit && hit.parent && hit.parent.type !== 'Scene' && !grabTargets.includes(hit)) {
-      hit = hit.parent;
-    }
-    
+    while (hit && hit.parent && hit.parent.type !== 'Scene' && !grabTargets.includes(hit)) { hit = hit.parent; }
     if (hit && grabTargets.includes(hit)) {
-      // Ignorar la Anomalía 999 si no se ha descubierto
       if (!(hit.userData.id === 999 && typeof secretDiscovered !== 'undefined' && !secretDiscovered)) {
         draggedPlanet = hit;
-        
-        // 🔥 MAGIA DE TRES.JS: Creamos un plano invisible mirando a la cámara para arrastrar
-        const cameraDir = new THREE.Vector3();
-        camera.getWorldDirection(cameraDir);
-        cameraDir.negate(); 
-        dragPlane.setFromNormalAndCoplanarPoint(cameraDir, draggedPlanet.position);
-        
-        if (dragRaycaster.intersectPlane(dragPlane, dragIntersection)) {
-          dragOffset.copy(dragIntersection).sub(draggedPlanet.position);
-        } else {
-          dragOffset.set(0, 0, 0);
-        }
-        
-        // 🔥 FIX: Guardamos la escala original para restaurarla exactamente al soltar
-        draggedPlanet.userData._dragOriginalScale = draggedPlanet.scale.clone();
-        draggedPlanet.scale.multiplyScalar(1.2);
-        if (navigator.vibrate) navigator.vibrate(50);
+        if (navigator.vibrate) vibrateDevice(50);
       }
     }
   }
 }
 
 function handlePointerMove(clientX, clientY) {
+  // 🔥 Si estamos pintando, solo actualizamos el cursor, NO giramos la cámara
+  if (window.isPainting) {
+    mouseNDC.x = (clientX / window.innerWidth) * 2 - 1;
+    mouseNDC.y = -(clientY / window.innerHeight) * 2 + 1;
+    lastTouchX = clientX; lastTouchY = clientY;
+    return;
+  }
+
   if (draggedPlanet) {
-    const deltaX = Math.abs(clientX - touchStartX);
-    const deltaY = Math.abs(clientY - touchStartY);
-    
+    const deltaX = Math.abs(clientX - touchStartX); const deltaY = Math.abs(clientY - touchStartY);
     if (deltaX > 3 || deltaY > 3) isDraggingPlanet = true;
 
     if (isDraggingPlanet) {
-      mouseNDC.x = (clientX / window.innerWidth) * 2 - 1;
-      mouseNDC.y = -(clientY / window.innerHeight) * 2 + 1;
-      dragRaycaster.setFromCamera(mouseNDC, camera);
-      
-      // 🔥 SIMPLE: delta de píxeles → posición X/Y del planeta directamente
       const pixelDeltaY = clientY - lastTouchY;
       const pixelDeltaX = clientX - lastTouchX;
-      draggedPlanet.position.y -= pixelDeltaY * 0.05;
-      draggedPlanet.position.x += pixelDeltaX * 0.05;
+      
+      // 🔥 LA CURA DEL ALEJAMIENTO: Traducimos el movimiento 2D de tu pantalla a la orientación 3D actual de la cámara
+      const moveVector = new THREE.Vector3(pixelDeltaX * 0.05, -pixelDeltaY * 0.05, 0);
+      moveVector.applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
+      
+      draggedPlanet.position.add(moveVector);
       draggedPlanet.userData.baseY = draggedPlanet.position.y;
-      if (draggedPlanet.userData.randomPos) draggedPlanet.userData.randomPos.x = draggedPlanet.position.x;
+      
+      if (draggedPlanet.userData.randomPos) {
+        draggedPlanet.userData.randomPos.copy(draggedPlanet.position);
+      }
     }
   } 
   else {
-    const deltaX = Math.abs(clientX - touchStartX);
-    const deltaY = Math.abs(clientY - touchStartY);
+    const deltaX = Math.abs(clientX - touchStartX); const deltaY = Math.abs(clientY - touchStartY);
     if (deltaX > 5 || deltaY > 5) window.isDraggingCanvas = true;
 
     if (window.isDraggingCanvas) {
-      // Si la fricción está activa, moverse cuesta 10 veces más esfuerzo físico
       const dragResistance = isFriccionActive ? 0.0005 : 0.005; 
-      
-      if (isAligned) {
-        targetCarouselAngle += (clientX - lastTouchX) * dragResistance;
-      } else {
-        userGroup.rotation.y -= (clientX - lastTouchX) * dragResistance;
-        userGroup.rotation.x -= (clientY - lastTouchY) * dragResistance;
-        if(userGroup.rotation.x > 0.6) userGroup.rotation.x = 0.6;
-        if(userGroup.rotation.x < -0.6) userGroup.rotation.x = -0.6;
+      if (isAligned) { 
+        targetCarouselAngle += (clientX - lastTouchX) * dragResistance; 
+      } else { 
+        userGroup.rotation.y -= (clientX - lastTouchX) * dragResistance; 
+        userGroup.rotation.x -= (clientY - lastTouchY) * dragResistance; 
+        if(userGroup.rotation.x > 0.6) userGroup.rotation.x = 0.6; 
+        if(userGroup.rotation.x < -0.6) userGroup.rotation.x = -0.6; 
       }
     }
   }
@@ -1811,19 +1794,9 @@ function handlePointerMove(clientX, clientY) {
 function handlePointerUp() {
   window.isPainting = false;
   if (draggedPlanet) {
-    // 🔥 FIX: Restauramos la escala exacta guardada, no con punto flotante acumulado
-    if (draggedPlanet.userData._dragOriginalScale) {
-      draggedPlanet.scale.copy(draggedPlanet.userData._dragOriginalScale);
-      delete draggedPlanet.userData._dragOriginalScale;
-    } else {
-      draggedPlanet.scale.multiplyScalar(1/1.2);
-    }
-    
     if (isDraggingPlanet) {
-      playSound('ui');
-      window.justDropped = true; 
+      playSound('ui'); window.justDropped = true; 
       
-      // 🔥 LA CLAVADA PERFECTA
       if (!isAligned && draggedPlanet.userData.id !== undefined && draggedPlanet.userData.id !== 999) {
         if (!draggedPlanet.userData.randomPos) draggedPlanet.userData.randomPos = new THREE.Vector3();
         if (!draggedPlanet.userData.targetPos) draggedPlanet.userData.targetPos = new THREE.Vector3();
@@ -1836,15 +1809,12 @@ function handlePointerUp() {
         draggedPlanet.userData.randomPos.y = draggedPlanet.userData.baseY;
         draggedPlanet.userData.targetPos.copy(draggedPlanet.userData.randomPos);
         
-        // 🔥 GUARDAR CONSTELACIÓN AL SOLTAR EL PLANETA
         saveConstellationData();
       }
       
       setTimeout(() => window.justDropped = false, 150);
     }
-    
-    draggedPlanet = null;
-    isDraggingPlanet = false;
+    draggedPlanet = null; isDraggingPlanet = false;
   }
   window.isDraggingCanvas = false;
 }
@@ -1900,7 +1870,10 @@ document.addEventListener('touchend', (e) => {
     const touchEndX = e.changedTouches[0].clientX;
     const deltaX = touchEndX - touchStartX;
     const deltaTime = Date.now() - touchStartTime;
-    const angleStep = (Math.PI * 2) / categoryPlanetData.length;
+    
+    // 🔥 CORRECCIÓN: Contamos 9 planetas reales para que el giro en móvil sea perfecto
+    let activeCount = (typeof secretDiscovered !== 'undefined' && secretDiscovered) ? categoryPlanets.length : (categoryPlanets.length - 1);
+    const angleStep = (Math.PI * 2) / activeCount;
 
     if (deltaTime < 300 && Math.abs(deltaX) > 40) {
       if (deltaX > 0) targetCarouselAngle += angleStep; 
@@ -1949,10 +1922,13 @@ function openProjectPopup(data) {
     }
   }
 
-  if (isAligned && data.id >= 1 && data.id <= 8) {
-    const pIndex = categoryPlanetData.findIndex(p => p.id === data.id);
-    if (pIndex !== -1) {
-      targetCarouselAngle = (Math.PI / 2) - ((pIndex / categoryPlanetData.length) * Math.PI * 2);
+ // 🔥 CORRECCIÓN: Cálculo exacto del ángulo del carrusel para encuadrar la cámara
+  if (isAligned) {
+    const planetMesh = categoryPlanets.find(p => p.userData.id === data.id);
+    if (planetMesh) {
+      const pIndex = categoryPlanets.indexOf(planetMesh);
+      let activeCount = (typeof secretDiscovered !== 'undefined' && secretDiscovered) ? categoryPlanets.length : (categoryPlanets.length - 1);
+      if (pIndex !== -1) targetCarouselAngle = (Math.PI / 2) - ((pIndex / activeCount) * Math.PI * 2);
     }
   }
   
@@ -2645,8 +2621,10 @@ const constellationMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transpar
 const constellationPositions = new Float32Array(categoryPlanets.length * 3);
 const constellationGeo = new THREE.BufferGeometry();
 constellationGeo.setAttribute('position', new THREE.BufferAttribute(constellationPositions, 3));
-const constellationLine = new THREE.Line(constellationGeo, constellationMat);
+// 🔥 CAMBIO: Usamos 'LineLoop' para que el último planeta (DAC) cierre el circuito con el primero
+const constellationLine = new THREE.LineLoop(constellationGeo, constellationMat);
 scene.add(constellationLine);
+
 // ==========================================
 // 🔥 POTENCIA CREADORA: SISTEMA GLOBAL DE TRAZOS
 // ==========================================
@@ -2889,81 +2867,60 @@ if (isAR && frame && hitTestSource) {
 
       // ===============================================
       // 🔥 POTENCIA CREADORA: PINTAR EL UNIVERSO
-      // 🔥 FUERA del if (isFriccionActive) → ahora las 3 máquinas pintan
       // ===============================================
       if (window.isPainting && !isUIOpen && (isPoeticaActive || isErraticaActive || isFriccionActive)) {
         raycaster.setFromCamera(mouseNDC, camera);
-
-        let cameraDir = new THREE.Vector3();
-        camera.getWorldDirection(cameraDir);
-        let paintPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(cameraDir, new THREE.Vector3(0, 0, -15));
         let globalPos = new THREE.Vector3();
+        
+        // 🔥 MAGIA: Extraemos la pintura exactamente a 35 unidades de distancia frente a la cámara. 
+        // Ya no usan un plano, así NUNCA nacerán adentro del planeta.
+        raycaster.ray.at(35, globalPos);
 
-        if (raycaster.ray.intersectPlane(paintPlane, globalPos)) {
-          let paintChance = isPoeticaActive ? 1.0 : 0.4;
+        let paintChance = isPoeticaActive ? 1.0 : 0.3;
 
-          if (Math.random() < paintChance) {
-            let pGeo, pMat, stroke;
+        if (Math.random() < paintChance) {
+          let pGeo, pMat, stroke;
 
-            if (isPoeticaActive) {
-              // POÉTICA: Pinceladas de luz etérea
-              pGeo = new THREE.IcosahedronGeometry(0.4, 1);
-              pMat = new THREE.MeshBasicMaterial({
-                color: 0xff00ff,
-                transparent: true,
-                opacity: 0.5,
-                blending: THREE.AdditiveBlending
-              });
-              stroke = new THREE.Mesh(pGeo, pMat);
-              stroke.position.copy(globalPos);
-              stroke.position.x += (Math.random() - 0.5) * 0.2;
-              stroke.position.y += (Math.random() - 0.5) * 0.2;
-              stroke.scale.set(Math.random() * 2.0 + 0.5, 0.05, Math.random() * 2.0 + 0.5);
-              stroke.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
-              stroke.userData = { type: 'poetica', seed: Math.random() * 100, baseScaleX: stroke.scale.x };
-            }
-            else if (isErraticaActive) {
-              // ERRÁTICA: Esquirlas afiladas
-              pGeo = new THREE.ConeGeometry(0.15, 1.5, 3);
-              pMat = new THREE.MeshBasicMaterial({
-                color: Math.random() > 0.7 ? 0xffffff : 0xff3300,
-                wireframe: Math.random() > 0.5
-              });
-              stroke = new THREE.Mesh(pGeo, pMat);
-              stroke.position.copy(globalPos);
-              stroke.position.x += (Math.random() - 0.5) * 2.5;
-              stroke.position.y += (Math.random() - 0.5) * 2.5;
-              stroke.scale.set(Math.random() * 2, Math.random() * 3, Math.random() * 2);
-              stroke.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-              stroke.userData = { type: 'erratica', baseRot: stroke.rotation.clone() };
-            }
-            else if (isFriccionActive) {
-              // FRICCIÓN: Materia prima brutalista
-              pGeo = new THREE.DodecahedronGeometry(0.7, 0);
-              pMat = new THREE.MeshPhongMaterial({
-                color: 0xffff00,
-                flatShading: true,
-                shininess: 0
-              });
-              stroke = new THREE.Mesh(pGeo, pMat);
-              stroke.position.copy(globalPos);
-              stroke.position.x += (Math.random() - 0.5) * 1.5;
-              stroke.position.y += (Math.random() - 0.5) * 1.5;
-              stroke.scale.set(1 + Math.random() * 0.6, 1 + Math.random() * 0.6, 1 + Math.random() * 0.6);
-              stroke.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-              stroke.userData = { type: 'friccion' };
-            }
+          if (isPoeticaActive) {
+            // POÉTICA: Esferas de energía fluida brillante
+            pGeo = new THREE.SphereGeometry(0.35, 16, 16);
+            pMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+            stroke = new THREE.Mesh(pGeo, pMat);
+            stroke.position.copy(globalPos);
+            stroke.position.x += (Math.random() - 0.5) * 0.3;
+            stroke.position.y += (Math.random() - 0.5) * 0.3;
+            stroke.userData = { type: 'poetica', seed: Math.random() * 100, baseScaleX: 1 };
+          }
+          else if (isErraticaActive) {
+            // ERRÁTICA: Puntas afiladas
+            pGeo = new THREE.TetrahedronGeometry(0.5);
+            pMat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.7 ? 0xffffff : 0xff3300, wireframe: true });
+            stroke = new THREE.Mesh(pGeo, pMat);
+            stroke.position.copy(globalPos);
+            stroke.position.x += (Math.random() - 0.5) * 2.5;
+            stroke.position.y += (Math.random() - 0.5) * 2.5;
+            stroke.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            stroke.userData = { type: 'erratica', baseRot: stroke.rotation.clone() };
+          }
+          else if (isFriccionActive) {
+            // FRICCIÓN: Materia prima brutalista
+            pGeo = new THREE.DodecahedronGeometry(0.6, 0);
+            pMat = new THREE.MeshPhongMaterial({ color: 0xffff00, flatShading: true, shininess: 0 });
+            stroke = new THREE.Mesh(pGeo, pMat);
+            stroke.position.copy(globalPos);
+            stroke.position.x += (Math.random() - 0.5) * 1.5;
+            stroke.position.y += (Math.random() - 0.5) * 1.5;
+            stroke.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            stroke.userData = { type: 'friccion', vy: -0.05, rot: (Math.random()-0.5)*0.2 };
+          }
 
-            if (stroke) {
-              paintGroup.add(stroke);
-              paintStrokes.push(stroke);
-
-              if (paintStrokes.length > 3000) {
-                let old = paintStrokes.shift();
-                paintGroup.remove(old);
-                old.geometry.dispose();
-                old.material.dispose();
-              }
+          if (stroke) {
+            paintGroup.add(stroke);
+            paintStrokes.push(stroke);
+            if (paintStrokes.length > 3000) {
+              let old = paintStrokes.shift();
+              paintGroup.remove(old);
+              old.geometry.dispose(); old.material.dispose();
             }
           }
         }
@@ -2974,22 +2931,22 @@ if (isAR && frame && hitTestSource) {
       // ===============================================
       for (let i = paintStrokes.length - 1; i >= 0; i--) {
         let p = paintStrokes[i];
-
         if (p.userData.type === 'poetica') {
           p.rotation.y += 0.01;
-          p.scale.x = p.userData.baseScaleX + Math.sin(Date.now() * 0.003 + p.userData.seed) * 0.2;
+          p.scale.setScalar(1 + Math.sin(Date.now() * 0.003 + p.userData.seed) * 0.2);
         }
         else if (p.userData.type === 'erratica') {
           if (Math.random() > 0.8) {
-            p.rotation.set(
-              p.userData.baseRot.x + (Math.random() - 0.5) * 0.5,
-              p.userData.baseRot.y + (Math.random() - 0.5) * 0.5,
-              p.userData.baseRot.z + (Math.random() - 0.5) * 0.5
-            );
+            p.rotation.set(p.userData.baseRot.x + (Math.random() - 0.5) * 0.5, p.userData.baseRot.y + (Math.random() - 0.5) * 0.5, p.userData.baseRot.z + (Math.random() - 0.5) * 0.5);
           }
           p.visible = Math.random() > 0.05;
         }
         else if (p.userData.type === 'friccion') {
+          if (p.position.y > planetaDAC.position.y - 15) {
+             p.position.y += p.userData.vy;
+             p.userData.vy -= 0.008; 
+             p.rotation.z += p.userData.rot;
+          }
           if (Math.random() > 0.99) p.material.color.setHex(0xff0000);
           else if (Math.random() > 0.95) p.material.color.setHex(0xffaa00);
           else p.material.color.setHex(0xffff00);
@@ -3451,9 +3408,17 @@ showSystemToast('ANOMALÍA DETECTADA A TUS ESPALDAS', '#cc0000');           }
       }
     });
 
-    if(typeof posAttribute !== 'undefined') posAttribute.needsUpdate = true;
-    if (!isAR) constellationLine.visible = !isAligned; 
+if(typeof posAttribute !== 'undefined') posAttribute.needsUpdate = true;
+    
+    if (!isAR) {
+      constellationLine.visible = !isAligned; 
+      // 🔥 CORRECCIÓN: Le decimos a la línea que dibuje hasta el Planeta DAC (El noveno punto)
+      let activeCount = (typeof secretDiscovered !== 'undefined' && secretDiscovered) ? categoryPlanets.length : (categoryPlanets.length - 1);
+      constellationGeo.setDrawRange(0, activeCount);
+    }
   } 
+
+  // 🔥 4. ESCUDO PROTECTOR DE RENDERIZADO
 
   // 🔥 4. ESCUDO PROTECTOR DE RENDERIZADO
 if (isXR) { 
