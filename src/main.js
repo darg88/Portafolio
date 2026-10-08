@@ -1,3 +1,4 @@
+import '../style.css';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -1233,16 +1234,16 @@ const dacNetworkGroup = new THREE.Group();
 planetaDAC.add(dacNetworkGroup); // Se ancla al planeta central
 
 // 1. Los Nodos (🔥 Subimos a 200 partículas para llenar la nueva atmósfera gigante)
-const dacParticleCount = 500;
+const dacParticleCount = 100;
 const dacParticlesGeo = new THREE.BufferGeometry();
 const dacParticlePositions = new Float32Array(dacParticleCount * 3);
 const dacParticleData = [];
 
 for (let i = 0; i < dacParticleCount; i++) {
   // 🔥 Volumen expandido de 15 a 55 para que fluyan libres en el espacio
-  const x = (Math.random() - 0.5) * 30;
-  const y = (Math.random() - 0.5) * 30;
-  const z = (Math.random() - 0.5) * 30;
+  const x = (Math.random() - 0.5) * 10;
+  const y = (Math.random() - 0.5) * 10;
+  const z = (Math.random() - 0.5) * 10;
   dacParticlePositions[i*3] = x; dacParticlePositions[i*3+1] = y; dacParticlePositions[i*3+2] = z;
   dacParticleData.push({
     velocity: new THREE.Vector3((Math.random()-0.5)*0.04, (Math.random()-0.5)*0.04, (Math.random()-0.5)*0.04),
@@ -1703,7 +1704,7 @@ const maxPoeticaLines = 6000; // Hasta 6000 conexiones vivas
 const poeticaLinePositions = new Float32Array(maxPoeticaLines * 6);
 poeticaLinesGeo.setAttribute('position', new THREE.BufferAttribute(poeticaLinePositions, 3));
 const poeticaLinesMat = new THREE.LineBasicMaterial({ 
-  color: 0x00ffff, // Líneas Cyan eléctrico
+  color: 0xffffff, // Líneas Cyan eléctrico
   transparent: true, 
   opacity: 0.4, 
   blending: THREE.AdditiveBlending,
@@ -2390,26 +2391,23 @@ case "planeta_dac":
         setTimeout(() => { window.isZooming = false; }, 350); 
         break;
 
-  // 🔥 MÁQUINA POÉTICA: Efecto visual fuerte
+  // 🔥 MÁQUINA POÉTICA: Elegancia Blanca
   case "maquina_poetica":
     isPoeticaActive = !isPoeticaActive;
     isErraticaActive = false;
     isFriccionActive = false;
     if (isPoeticaActive) {
-      showSystemToast('> POÉTICA: FLUIDEZ DE SENTIDO ACTIVADA', '#ff00ff');
+      showSystemToast('> POÉTICA: SÍNTESIS Y CLARIDAD ACTIVADA', '#ffffff');
       playSound('levelup');
-      // Efecto 1: Todos los planetas se vuelven magenta brillante
       categoryPlanets.forEach(p => {
         if (p.userData.id !== 999 && p.material && p.material.uniforms && p.material.uniforms.color) {
           if (!p.userData.prePoeticaColor) p.userData.prePoeticaColor = p.material.uniforms.color.value.getHex();
-          p.material.uniforms.color.value.setHex(0xff00ff);
+          p.material.uniforms.color.value.setHex(0xffffff); // Blanco puro
         }
       });
-      // Efecto 2: La luna poética se agranda
-      lunaPoetica.scale.set(2.5, 2.5, 2.5);
-      lunaPoetica.material.color.setHex(0xff00ff);
+      lunaPoetica.scale.set(1.3, 1.3, 1.3);
     } else {
-      showSystemToast('> POÉTICA: APAGADA', '#ff00ff');
+      showSystemToast('> POÉTICA: APAGADA', '#ffffff');
       playSound('ui');
       categoryPlanets.forEach(p => {
         if (p.material && p.material.uniforms && p.userData.prePoeticaColor) {
@@ -2418,7 +2416,6 @@ case "planeta_dac":
         }
       });
       lunaPoetica.scale.set(1, 1, 1);
-      lunaPoetica.material.color.setHex(0xff00ff);
     }
     break;
 
@@ -2430,19 +2427,15 @@ case "planeta_dac":
     if (isErraticaActive) {
       showSystemToast('> ERRÁTICA: CORRUPCIÓN INYECTADA', '#ff3300');
       playSound('damage');
-      // Efecto 1: Sacudida inmediata FUERTE
       shakeIntensity = 1.5;
-      // Efecto 2: 10 glitches de golpe
-      for (let i = 0; i < 10; i++) {
-        setTimeout(() => triggerSubtleGlitch(), i * 80);
-      }
-      // Efecto 3: Todos los planetas parpadean en rojo
+      for (let i = 0; i < 10; i++) { setTimeout(() => triggerSubtleGlitch(), i * 80); }
       categoryPlanets.forEach(p => {
         if (p.userData.id !== 999 && p.material && p.material.uniforms && p.material.uniforms.color) {
           if (!p.userData.preErraticaColor) p.userData.preErraticaColor = p.material.uniforms.color.value.getHex();
           p.material.uniforms.color.value.setHex(0xff3300);
         }
       });
+      lunaErratica.scale.set(1.5, 3.0, 0.8); // Se distorsiona aún más
     } else {
       showSystemToast('> ERRÁTICA: ESTABILIZADA', '#ff3300');
       playSound('ui');
@@ -2452,32 +2445,29 @@ case "planeta_dac":
           p.userData.preErraticaColor = undefined;
         }
       });
+      lunaErratica.scale.set(1.0, 2.0, 0.5);
     }
     break;
 
-  // 🔥 MÁQUINA FRICCIÓN: Cursor pesado + temblor + drag resistente
+  // 🔥 MÁQUINA FRICCIÓN: Dilatación Temporal
   case "maquina_friccion":
     isFriccionActive = !isFriccionActive;
     isPoeticaActive = false;
     isErraticaActive = false;
     if (isFriccionActive) {
-      showSystemToast('> FRICCIÓN: RESISTENCIA MATERIAL EXTREMA', '#ffff00');
+      showSystemToast('> FRICCIÓN: DILATACIÓN TEMPORAL (SISTEMA LENTO)', '#ffff00');
       playSound('boss_hit');
-      // Efecto 1: Cursor del navegador cambia
       document.body.style.cursor = 'wait';
-      // Efecto 2: Vibración móvil
       if (navigator.vibrate) navigator.vibrate([200, 50, 200, 50, 200]);
-      // Efecto 3: La luna fricción se agranda
-      lunaFriccion.scale.set(3, 3, 3);
-      // Efecto 4: Todos los planetas se vuelven amarillos pálidos
+      lunaFriccion.scale.set(1.3, 1.3, 1.3);
       categoryPlanets.forEach(p => {
         if (p.userData.id !== 999 && p.material && p.material.uniforms && p.material.uniforms.color) {
           if (!p.userData.preFriccionColor) p.userData.preFriccionColor = p.material.uniforms.color.value.getHex();
-          p.material.uniforms.color.value.setHex(0x666600);
+          p.material.uniforms.color.value.setHex(0x555500); // Amarillo pesado/denso
         }
       });
     } else {
-      showSystemToast('> FRICCIÓN: LIBERADA', '#ffff00');
+      showSystemToast('> FRICCIÓN: TIEMPO RESTAURADO', '#ffff00');
       playSound('ui');
       document.body.style.cursor = 'default';
       lunaFriccion.scale.set(1, 1, 1);
@@ -2822,11 +2812,31 @@ if (isAR && frame && hitTestSource) {
 
   if (!isAR) {
     // ===============================================
-    // 🔥 ANIMACIÓN DEL SISTEMA DAC (Retórica Procedimental)
-    // ===============================================
-    if (typeof planetaDAC !== 'undefined' && planetaDAC) {
-      planetaDAC.rotation.y += 0.002;
-      planetaDAC.rotation.z += 0.001;
+      // 🔥 ANIMACIÓN DEL SISTEMA DAC (Retórica Procedimental)
+      // ===============================================
+      if (typeof planetaDAC !== 'undefined' && planetaDAC) {
+        planetaDAC.rotation.y += 0.002;
+        planetaDAC.rotation.z += 0.001;
+
+        // 🔥 NUEVO: INTEGRACIÓN CON EL CARRUSEL (COMO NÚCLEO CENTRAL)
+        if (!planetaDAC.userData.isIsolated) {
+          if (isAligned) {
+            // MODO CARRUSEL: Se posiciona en el centro de la rueda (0, 0, -10)
+            planetaDAC.position.lerp(new THREE.Vector3(0, 0, -10), 0.05);
+            planetaDAC.scale.lerp(new THREE.Vector3(0.55, 0.55, 0.55), 0.05);
+          } else {
+            // MODO CONSTELACIÓN: Vuelve a su lugar flotante en el espacio
+            let target = planetaDAC.userData.savedPos ? planetaDAC.userData.savedPos : new THREE.Vector3(40, 0, -50);
+            planetaDAC.position.lerp(target, 0.05);
+            planetaDAC.scale.lerp(new THREE.Vector3(1, 1, 1), 0.05);
+          }
+        } else {
+          // MODO AISLADO (AL HACER CLIC): Se clava al frente de la cámara
+          planetaDAC.position.lerp(new THREE.Vector3(0, 0, 0), 0.1);
+          planetaDAC.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+        }
+
+        // 1. Efecto Poética: Lenta y contemplativa
 
       // 1. Efecto Poética: Lenta y contemplativa
       lunaPoetica.rotation.x += isPoeticaActive ? 0.02 : 0.005;
@@ -2922,8 +2932,8 @@ if (isAR && frame && hitTestSource) {
           }
 
           // 2. CONECTAR PARTÍCULAS ENTRE SÍ
-          const connectDist = 4.5;
-          const revealRadius = 10.0;
+          const connectDist = 5;
+          const revealRadius = 15.0;
 
           for (let i = 0; i < dacParticleCount; i++) {
             let px1 = positions[i * 3];
@@ -3004,9 +3014,9 @@ if (isAR && frame && hitTestSource) {
           let pGeo, pMat, stroke;
 
        if (isPoeticaActive) {
-            // 🔥 POÉTICA: Nodos minúsculos que construirán la Red
+            // 🔥 POÉTICA: Nodos minúsculos que construirán la Red (Ahora en Blanco Elegante)
             pGeo = new THREE.SphereGeometry(0.08, 6, 6);
-            pMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+            pMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
             stroke = new THREE.Mesh(pGeo, pMat);
             stroke.position.copy(globalPos);
             // Mayor dispersión al nacer para abrir la red
@@ -3200,7 +3210,8 @@ if (isAR && frame && hitTestSource) {
 
     let pX = typeof mouseX !== 'undefined' ? mouseX : 0;
     let pY = typeof mouseY !== 'undefined' ? mouseY : 0;
-    const parallaxSpeed = isUIOpen ? 0.002 : 0.02; 
+    let parallaxSpeed = isUIOpen ? 0.002 : 0.02; 
+    if (isFriccionActive) parallaxSpeed *= 0.05; // 🔥 ESTRELLAS EN CÁMARA LENTA
     particlesMesh.rotation.y += parallaxSpeed * ((pX * 0.001) - particlesMesh.rotation.y); 
     particlesMesh.rotation.x += parallaxSpeed * ((pY * 0.001) - particlesMesh.rotation.x); 
     particlesMesh.rotation.z += (isUIOpen ? 0.00002 : 0.0002);    
@@ -3507,8 +3518,9 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
       else { ship.rotation.z = 0; }
     }
 
-    // 🔥 MODO ZEN Y CARRUSEL 3D
-    const planetSpeed = (isUIOpen || isAligned) ? 0.00002 : 0.0003; 
+   // 🔥 MODO ZEN Y CARRUSEL 3D
+    let planetSpeed = (isUIOpen || isAligned) ? 0.00002 : 0.0003; 
+    if (isFriccionActive) planetSpeed *= 0.05; // 🔥 CÁMARA LENTA (FRICCIÓN)
     
     if (isAligned && !isUIOpen && typeof pX !== 'undefined') {
       targetCarouselAngle += (pX * 0.000005); 
@@ -4240,7 +4252,7 @@ if (btnPoetica && btnErratica && btnFriccion) {
     
     if (isPoeticaActive) {
       dacStatus.innerHTML = "> MATRIZ DE DATOS CRUDOS EXPUESTA.<br>Dibuja sobre el vacío.";
-      dacStatus.style.color = '#ff00ff';
+      dacStatus.style.color = '#f0e2f0';
       btnPoetica.style.background = 'rgba(255, 0, 255, 0.2)';
     } else {
       btnPoetica.style.background = 'transparent';
