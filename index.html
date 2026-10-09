@@ -178,23 +178,23 @@
         El hardware deja de ser un residuo inerte. Se transforma en un lienzo material para una poética digital que desafía la usabilidad hegemónica.
       </p>
     </div>
-    <!-- Ventana de Proyecto -->
-    <div id="portfolio-ui" class="modal-ui hidden" style="border-color: #00ff00;">
+   <!-- Ventana de Proyecto -->
+    <div id="portfolio-ui" class="modal-ui hidden">
       <button class="close-btn" onclick="window.closeAllUIs()">X</button>
-      <div id="project-nav-bar" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #00ff00; padding-bottom: 10px; margin-bottom: 15px; margin-top: 45px;">
-        <button id="btn-prev-project" style="background: transparent; border: 1px solid #00ff00; color: #00ff00; padding: 5px 15px; cursor: pointer; font-family: 'Share Tech Mono', monospace; transition: 0.3s;">&lt;</button>
-        <h1 id="project-title" style="color: #00ff00; margin: 0; font-size: 1.4rem; text-align: center; flex-grow: 1; text-transform: uppercase;">Título</h1>
-        <button id="btn-next-project" style="background: transparent; border: 1px solid #00ff00; color: #00ff00; padding: 5px 15px; cursor: pointer; font-family: 'Share Tech Mono', monospace; transition: 0.3s;">&gt;</button>
+      <div id="project-nav-bar" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px; margin-top: 20px;">
+        <button id="btn-prev-project" style="background: transparent; border: none; color: #888; padding: 5px; cursor: pointer; font-size: 1.5rem; transition: 0.3s;">&lt;</button>
+        <h1 id="project-title" style="margin: 0; font-size: 1.4rem; text-align: center; flex-grow: 1; text-transform: uppercase; color: #fff;">Título</h1>
+        <button id="btn-next-project" style="background: transparent; border: none; color: #888; padding: 5px; cursor: pointer; font-size: 1.5rem; transition: 0.3s;">&gt;</button>
       </div>
-      <div id="project-role" style="font-size: 0.95rem; color: #aaa; margin-bottom: 10px; font-weight: bold;"></div>
-      <div id="project-tech-stack" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px;"></div>
-      <div id="project-media" style="width: 100%; height: 400px; background: #111; display: flex; justify-content: center; align-items: center; overflow: hidden; margin-bottom: 15px; border: 1px solid #333;"></div>      
-      <p id="project-desc" style="font-size: 1.1rem; color: #ccc;">Descripción...</p>
-      <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
-        <a id="project-link" href="#" target="_blank" style="display: none; background: #00ff00; color: #050505; padding: 10px; text-decoration: none; font-weight: bold; text-align: center;">VER ENLACE EXTERNO ↗</a>
-        <button id="project-expand-btn" style="background: transparent; border: 1px dashed #00ff00; color: #00ff00; padding: 8px; cursor: pointer;">+ LEER MÁS DETALLES ↓</button>
+      <div id="project-role" style="font-size: 0.85rem; color: #888899; margin-bottom: 15px; font-weight: 300; letter-spacing: 1px;"></div>
+      <div id="project-tech-stack" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;"></div>
+      <div id="project-media" style="width: 100%; height: 400px; background: rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; overflow: hidden; margin-bottom: 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);"></div>      
+      <p id="project-desc" style="font-size: 1.1rem; color: #ccc; font-weight: 300; line-height: 1.6;"></p>
+      <div style="margin-top: 30px; display: flex; flex-direction: column; gap: 15px;">
+        <a id="project-link" href="#" target="_blank" style="display: none; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px; border-radius: 25px; text-decoration: none; text-align: center; transition: 0.3s;">VER ENLACE EXTERNO ↗</a>
+        <button id="project-expand-btn" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #aaa; padding: 10px; border-radius: 25px; cursor: pointer;">LEER MÁS DETALLES ↓</button>
       </div>
-      <div id="project-long-desc" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #333; color: #aaa; font-size: 0.9rem; line-height: 1.6; padding-bottom: 20px;"></div>    
+      <div id="project-long-desc" class="hidden" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); color: #bbb; font-size: 0.95rem; font-weight: 300; line-height: 1.7; padding-bottom: 20px;"></div>    
     </div>
 
     <!-- Ventana de Leaderboard -->

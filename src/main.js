@@ -66,8 +66,9 @@ const ditherShader = {
       if (intensity < threshold) {
         discard; 
       } else {
-        // 🔥 LÍMITE DE LUZ: Los planetas brillan máximo al 80% para que el Bloom los ignore
-        gl_FragColor = vec4(color * 0.8, 1.0); 
+        // 🔥 LUZ LIBERADA: Multiplicamos el color x1.8 para que supere el umbral del Bloom (0.85).
+        // Esto crea el efecto "Selective Bloom" hermoso del ejemplo de Three.js
+        gl_FragColor = vec4(color * 1.8, 1.0); 
       }
     }
   `
@@ -408,7 +409,117 @@ const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, windo
 const composer = new EffectComposer(renderer); composer.addPass(renderScene); composer.addPass(bloomPass);
 
 let isSoundEnabled = true; let audioCtx = null; 
+let masterGain = null; let delayNode = null; let feedbackGain = null;
+
 function playSound(type, targetPosition = null) {
+  if (type === 'laser') vibrateDevice(20);         
+  if (type === 'explosion') vibrateDevice(80);     
+  if (type === 'damage') vibrateDevice(300);       
+  if (type === 'boss_hit') vibrateDevice(50);      
+  
+  if (!isSoundEnabled) return;
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      delayNode = audioCtx.createDelay();
+      feedbackGain = audioCtx.createGain();
+
+      // Eco muy limpio y sutil (nada invasivo, solo da "espacio")
+      delayNode.delayTime.value = 0.3; 
+      feedbackGain.gain.value = 0.15;   
+
+      masterGain.connect(delayNode);
+      delayNode.connect(feedbackGain);
+      feedbackGain.connect(delayNode);
+      masterGain.connect(audioCtx.destination);
+      delayNode.connect(audioCtx.destination);
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
+    const now = audioCtx.currentTime;
+    let volumeBase = 0.5; 
+    // Si existe la nave, calculamos la distancia (previene errores si targetPosition es nulo)
+    if (targetPosition && typeof ship !== 'undefined') {
+      volumeBase = Math.max(0, 1 - (ship.position.distanceTo(targetPosition) / 40)); 
+    }
+
+    // 🔥 LA FÁBRICA DE CRISTAL: Genera tonos puros que se desvanecen suavemente
+    const playBell = (freq, timeOffset, duration, vol) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine'; // Onda pura y redonda
+      osc.frequency.setValueAtTime(freq, now + timeOffset);
+      
+      gain.gain.setValueAtTime(0, now + timeOffset);
+      // Ataque sutil (no golpea el oído)
+      gain.gain.linearRampToValueAtTime(vol * volumeBase, now + timeOffset + 0.02); 
+      // Caída natural tipo campana/piano
+      gain.gain.exponentialRampToValueAtTime(0.001, now + timeOffset + duration); 
+      
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(now + timeOffset);
+      osc.stop(now + timeOffset + duration);
+    };
+
+    // ==========================================
+    // 🎵 DISEÑO SONORO MINIMALISTA
+    // ==========================================
+    
+    if(type === 'ui') { 
+      // UI: Un "Tap" cristalino prístino (Tonos altos superpuestos)
+      playBell(1200, 0, 0.3, 0.15);
+      playBell(2400, 0, 0.2, 0.05); // Brillo armónico
+    }
+    else if(type === 'levelup') { 
+      // Logro / Expansión: Acorde celestial
+      playBell(523.25, 0.0, 2.0, 0.1);  // Do
+      playBell(659.25, 0.1, 2.0, 0.1);  // Mi
+      playBell(783.99, 0.2, 2.0, 0.1);  // Sol
+      playBell(1046.50, 0.3, 2.5, 0.12); // Do agudo brillando al final
+    }
+    else if(type === 'laser') { 
+      // Acción: Una gota de agua afinada (En lugar de "Pew", hace un "Pling")
+      playBell(880, 0, 0.4, 0.1);
+      playBell(1760, 0, 0.2, 0.05);
+    }
+    else if(type === 'damage') { 
+      // Error/Daño: Dos notas graves que chocan y vibran tristes
+      playBell(150, 0, 1.0, 0.3);
+      playBell(158, 0, 1.0, 0.3); // Esta leve diferencia crea un batimento ondulante
+    }
+    else if(type === 'explosion') { 
+      // Impacto sutil: Viento grave mezclado con una campanita rota
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(100, now);
+      osc.frequency.exponentialRampToValueAtTime(20, now + 0.6); // Baja como un suspiro
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.4 * volumeBase, now + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(now);
+      osc.stop(now + 0.6);
+      
+      playBell(2000, 0, 0.4, 0.05); // La "chispa" del impacto
+    }
+  else if(type === 'boss_hit' || type === 'ui') { 
+      // Botones y Fricción: Campana de meditación / Cuenco tibetano
+      playBell(220, 0, 1.2, 0.2);
+      playBell(440, 0, 0.8, 0.1);
+    }
+    else if(type === 'pulse') { 
+      // Planetas, DAC y Poética: Gota de agua prístina
+      playBell(1200, 0, 0.3, 0.06); // Volumen bajado un poco para pintar suave
+      playBell(2400, 0, 0.2, 0.02); 
+    }
+
+  } catch(e) { console.log(e); }
+
+
   // Mantenemos tu sistema de vibración táctil
   if (type === 'laser') vibrateDevice(20);         
   if (type === 'explosion') vibrateDevice(80);     
@@ -1980,103 +2091,103 @@ function openProjectPopup(data) {
   const textToType = currentDesc;
   let charIndex = 0;
   
-  const finishTyping = () => {
-    if (window.typewriterTimer) {
-      clearInterval(window.typewriterTimer);
-      window.typewriterTimer = null;
-      descEl.innerHTML = textToType + '<span style="color: #00ffff;">_</span>';
-      document.removeEventListener('keydown', skipHandler);
-      document.getElementById('portfolio-ui').removeEventListener('click', skipHandler);
-    }
-  };
+ const finishTyping = () => {
+        if (window.typewriterTimer) {
+          clearInterval(window.typewriterTimer);
+          window.typewriterTimer = null;
+          descEl.innerHTML = textToType; // Quitamos el guion bajo titilante
+          document.removeEventListener('keydown', skipHandler);
+          document.getElementById('portfolio-ui').removeEventListener('click', skipHandler);
+        }
+      };
 
-  const skipHandler = (e) => { if (e.type === 'keydown' && e.code !== 'Space') return; finishTyping(); };
-  document.addEventListener('keydown', skipHandler);
-  document.getElementById('portfolio-ui').addEventListener('click', skipHandler);
+      const skipHandler = (e) => { if (e.type === 'keydown' && e.code !== 'Space') return; finishTyping(); };
+      document.addEventListener('keydown', skipHandler);
+      document.getElementById('portfolio-ui').addEventListener('click', skipHandler);
 
-  window.typewriterTimer = setInterval(() => {
-    descEl.innerHTML = textToType.substring(0, charIndex) + '<span style="animation: pulse 1s infinite; opacity: 0.8;">_</span>';
-    charIndex++;
-    if (charIndex > textToType.length) finishTyping();
-  }, 25);
-  
-  const longDescEl = document.getElementById('project-long-desc'); 
-  const expandBtn = document.getElementById('project-expand-btn'); 
-  const linkBtn = document.getElementById('project-link'); 
-  const mediaContainer = document.getElementById('project-media'); 
-  
-  let uiColor = data.isVoyager ? '#ff00ff' : (data.id === 99 ? '#00ffff' : '#ff00ff');
-  if (data.id === 888) uiColor = '#ffaa00'; 
-  if (data.color) uiColor = '#' + data.color.toString(16).padStart(6, '0');
-  
-  const roleEl = document.getElementById('project-role');
-  if (currentRole) {
-    roleEl.style.display = 'block';
-    roleEl.innerHTML = `<span style="color: ${uiColor};">> ${isEn ? 'ROLE' : 'ROL'}:</span> ${currentRole.toUpperCase()}`;
-  } else {
-    roleEl.style.display = 'none';
-  }
+      // Fade-in tipográfico mucho más suave
+      window.typewriterTimer = setInterval(() => {
+        descEl.innerHTML = textToType.substring(0, charIndex) + '<span style="opacity: 0.3; font-weight: 100;">|</span>';
+        charIndex++;
+        if (charIndex > textToType.length) finishTyping();
+      }, 12); // Más rápido y fluido
+      
+      const longDescEl = document.getElementById('project-long-desc'); 
+      const expandBtn = document.getElementById('project-expand-btn'); 
+      const linkBtn = document.getElementById('project-link'); 
+      const mediaContainer = document.getElementById('project-media'); 
+      
+      const roleEl = document.getElementById('project-role');
+      if (currentRole) {
+        roleEl.style.display = 'block';
+        roleEl.innerText = currentRole.toUpperCase(); // Elegante, sin el "> ROL:"
+      } else {
+        roleEl.style.display = 'none';
+      }
 
-  const techEl = document.getElementById('project-tech-stack');
-  techEl.innerHTML = '';
-  if (currentTech && currentTech.length > 0) {
-    techEl.style.display = 'flex';
-    currentTech.forEach(tech => {
-      const badge = document.createElement('span');
-      badge.innerText = `[ ${tech} ]`;
-      badge.style.padding = '4px 8px';
-      badge.style.background = 'rgba(255,255,255,0.05)';
-      badge.style.border = `1px solid ${uiColor}`;
-      badge.style.color = uiColor;
-      badge.style.fontSize = '0.8rem';
-      badge.style.fontFamily = "'Share Tech Mono', monospace";
-      techEl.appendChild(badge);
-    });
-  } else {
-    techEl.style.display = 'none';
-  }
-  document.getElementById('portfolio-ui').style.borderColor = uiColor; 
-  document.getElementById('project-title').style.color = uiColor;
+      const techEl = document.getElementById('project-tech-stack');
+      techEl.innerHTML = '';
+      if (currentTech && currentTech.length > 0) {
+        techEl.style.display = 'flex';
+        currentTech.forEach(tech => {
+          const badge = document.createElement('span');
+          badge.innerText = tech; // Limpio, sin los corchetes [ ]
+          badge.style.padding = '6px 14px';
+          badge.style.background = 'rgba(255,255,255,0.03)';
+          badge.style.border = `1px solid rgba(255,255,255,0.1)`;
+          badge.style.color = '#cccccc';
+          badge.style.fontSize = '0.75rem';
+          badge.style.fontFamily = "-apple-system, sans-serif";
+          badge.style.borderRadius = '20px'; // Diseño de píldora
+          badge.style.letterSpacing = '1px';
+          techEl.appendChild(badge);
+        });
+      } else {
+        techEl.style.display = 'none';
+      }
+      
+      document.getElementById('project-title').style.color = '#ffffff';
 
-  let finalGallery = data.gallery || [];
-  let finalVideos = data.videos || [];
-  if (data.videoSrc && finalVideos.length === 0) finalVideos = [data.videoSrc]; 
-  
-  let contenidoExpandido = "";
-  if (currentLongDesc && currentLongDesc !== "") {
-    contenidoExpandido += `<div style="text-align: left; padding-bottom: 15px;">${currentLongDesc}</div>`;
-  }
+      let finalGallery = data.gallery || [];
+      let finalVideos = data.videos || [];
+      if (data.videoSrc && finalVideos.length === 0) finalVideos = [data.videoSrc]; 
+      
+      let contenidoExpandido = "";
+      if (currentLongDesc && currentLongDesc !== "") {
+        contenidoExpandido += `<div style="text-align: left; padding-bottom: 15px;">${currentLongDesc}</div>`;
+      }
 
-  const renderVideoElement = (src) => {
-    if (src.includes('.mp4') || src.includes('.webm')) {
-      const noVideoStr = isEn ? 'Your browser does not support HTML5 video.' : 'Tu navegador no soporta videos HTML5.';
-      return `<video width="100%" height="100%" controls style="border: none; border-radius: 5px; background: #000; object-fit: contain;">
-          <source src="${src}" type="video/mp4">${noVideoStr}</video>`;
-    } else {
-      return `<iframe width="100%" height="100%" src="${src}" allowfullscreen style="border: none; border-radius: 5px; background: #000;"></iframe>`;
-    }
-  };
-  
-  if (finalVideos.length > 0) {
-    const vidTitle = isEn ? '> VIDEOGRAPHIC RECORD' : '> REGISTRO VIDEOGRÁFICO';
-    contenidoExpandido += `<h3 style="color: ${uiColor}; border-bottom: 1px dashed ${uiColor}; padding-bottom: 5px; margin-top: 10px; text-align: left;">${vidTitle}</h3>`;
-    
-    if (finalVideos.length === 1) {
-      contenidoExpandido += `<div style="width: 100%; aspect-ratio: 16/9; margin-bottom: 10px; border-radius: 5px; border: 1px solid #333;">${renderVideoElement(finalVideos[0])}</div>`;
-    } else {
-      const vidCounter = isEn ? `Video 1 of ${finalVideos.length}` : `Video 1 de ${finalVideos.length}`;
-      contenidoExpandido += `
-        <div style="position: relative; width: 100%; aspect-ratio: 16/9; margin-bottom: 5px; background: #111; border-radius: 5px; border: 1px solid #333; display: flex; align-items: center; justify-content: center;">
-          <button id="btn-prev-vid" style="position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 10; background: ${uiColor}; color: #000; border: none; padding: 15px 5px; cursor: pointer; font-weight: bold; opacity: 0.8;">&lt;</button>
-          <div id="video-content-wrapper" style="width: 100%; height: 100%; z-index: 5;">${renderVideoElement(finalVideos[0])}</div>
-          <button id="btn-next-vid" style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); z-index: 10; background: ${uiColor}; color: #000; border: none; padding: 15px 5px; cursor: pointer; font-weight: bold; opacity: 0.8;">&gt;</button>
-        </div>
-        <div id="video-counter" style="color: #aaa; font-size: 0.8rem; text-align: center; margin-bottom: 15px; font-family: monospace;">${vidCounter}</div>
-      `;
-    }
-  }
-  
-  longDescEl.innerHTML = contenidoExpandido;
+      const renderVideoElement = (src) => {
+        if (src.includes('.mp4') || src.includes('.webm')) {
+          const noVideoStr = isEn ? 'Your browser does not support HTML5 video.' : 'Tu navegador no soporta videos HTML5.';
+          return `<video width="100%" height="100%" controls style="border: none; border-radius: 8px; background: #000; object-fit: contain;">
+              <source src="${src}" type="video/mp4">${noVideoStr}</video>`;
+        } else {
+          return `<iframe width="100%" height="100%" src="${src}" allowfullscreen style="border: none; border-radius: 8px; background: #000;"></iframe>`;
+        }
+      };
+      
+      if (finalVideos.length > 0) {
+        const vidTitle = isEn ? 'VIDEOGRAPHIC RECORD' : 'REGISTRO VIDEOGRÁFICO';
+        // Línea separadora sutil, nada de bordes punteados de neón
+        contenidoExpandido += `<h3 style="color: #ffffff; font-weight: 300; font-family: -apple-system, sans-serif; font-size: 0.9rem; letter-spacing: 2px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-top: 20px; text-align: left;">${vidTitle}</h3>`;
+        
+        if (finalVideos.length === 1) {
+          contenidoExpandido += `<div style="width: 100%; aspect-ratio: 16/9; margin-bottom: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">${renderVideoElement(finalVideos[0])}</div>`;
+        } else {
+          // Botones de video circulares de cristal transparente
+          contenidoExpandido += `
+            <div style="position: relative; width: 100%; aspect-ratio: 16/9; margin-bottom: 5px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+              <button id="btn-prev-vid" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 10; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(5px);">&lt;</button>
+              <div id="video-content-wrapper" style="width: 100%; height: 100%; z-index: 5;">${renderVideoElement(finalVideos[0])}</div>
+              <button id="btn-next-vid" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); z-index: 10; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(5px);">&gt;</button>
+            </div>
+            <div id="video-counter" style="color: #888899; font-size: 0.75rem; text-align: center; margin-bottom: 15px; letter-spacing: 1px;">Video 1</div>
+          `;
+        }
+      }
+      
+      longDescEl.innerHTML = contenidoExpandido;
 
   if (finalVideos.length > 1) {
     window.currentVideoIndex = 0;
@@ -2134,11 +2245,11 @@ mediaContainer.innerHTML = `<img id="gallery-img" src="${finalGallery[0]}" loadi
     } else {
       window.currentGallery = finalGallery; 
       window.currentGalleryIndex = 0; 
-      mediaContainer.innerHTML = `
-        <button class="carousel-btn left" id="btn-prev" style="position:absolute; left:10px; z-index:10; background:${uiColor}; color:#000; border:none; padding:10px; cursor:pointer;">&#10094;</button>
+   mediaContainer.innerHTML = `
+        <button class="carousel-btn left" id="btn-prev" style="position:absolute; left:15px; z-index:10; background:rgba(0,0,0,0.5); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:50%; width:40px; height:40px; display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter:blur(5px); transition:0.3s;">&#10094;</button>
         <img id="gallery-img" src="${window.currentGallery[0]}" style="max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in;" title="${tooltipStr}">
-        <button class="carousel-btn right" id="btn-next" style="position:absolute; right:10px; z-index:10; background:${uiColor}; color:#000; border:none; padding:10px; cursor:pointer;">&#10095;</button>
-      `; 
+        <button class="carousel-btn right" id="btn-next" style="position:absolute; right:15px; z-index:10; background:rgba(0,0,0,0.5); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:50%; width:40px; height:40px; display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter:blur(5px); transition:0.3s;">&#10095;</button>
+      `;
       document.getElementById('btn-prev').onclick = () => { window.currentGalleryIndex--; if(window.currentGalleryIndex<0) window.currentGalleryIndex = window.currentGallery.length-1; document.getElementById('gallery-img').src = window.currentGallery[window.currentGalleryIndex]; }; 
       document.getElementById('btn-next').onclick = () => { window.currentGalleryIndex++; if(window.currentGalleryIndex>=window.currentGallery.length) window.currentGalleryIndex = 0; document.getElementById('gallery-img').src = window.currentGallery[window.currentGalleryIndex]; }; 
       document.getElementById('gallery-img').onclick = toggleFullscreen;
@@ -2170,9 +2281,9 @@ mediaContainer.innerHTML = `<img id="gallery-img" src="${finalGallery[0]}" loadi
 
   if (currentProjectIndex !== -1) {
     navBar.style.display = 'flex'; 
-    prevBtn.onmouseover = () => prevBtn.style.color = uiColor;
+  prevBtn.onmouseover = () => prevBtn.style.color = '#ffffff';
     prevBtn.onmouseout = () => prevBtn.style.color = '#888';
-    nextBtn.onmouseover = () => nextBtn.style.color = uiColor;
+    nextBtn.onmouseover = () => nextBtn.style.color = '#ffffff';
     nextBtn.onmouseout = () => nextBtn.style.color = '#888';
 
     prevBtn.onclick = () => { let prevIndex = currentProjectIndex - 1; if (prevIndex < 0) prevIndex = categoryPlanetData.length - 1; playSound('ui'); openProjectPopup(categoryPlanetData[prevIndex]); };
@@ -2387,7 +2498,7 @@ case "planeta_dac":
           showSystemToast('> ESPACIO AISLADO: NÚCLEO DAC. SELECCIONE UNA LUNA', '#ff00ff');
         }
         
-        playSound('ui'); 
+     playSound('pulse'); 
         setTimeout(() => { window.isZooming = false; }, 350); 
         break;
 
@@ -3073,6 +3184,16 @@ if (isAR && frame && hitTestSource) {
               let old = paintStrokes.shift();
               paintGroup.remove(old);
               old.geometry.dispose(); old.material.dispose();
+            }
+            
+            // 🔥 SONIDO AL PINTAR (Pulso de agua sutil)
+            if (isPoeticaActive) {
+              if (!window.lastPaintTime) window.lastPaintTime = 0;
+              // El limitador (120ms) evita que la avalancha de partículas rompa el audio
+              if (performance.now() - window.lastPaintTime > 120) {
+                playSound('pulse', globalPos); // El sonido se emite desde el pincel 3D
+                window.lastPaintTime = performance.now();
+              }
             }
           }
         }
