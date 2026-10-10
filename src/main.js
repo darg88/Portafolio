@@ -1965,6 +1965,9 @@ function startPointerDown(clientX, clientY) {
     if (hit && grabTargets.includes(hit)) {
       if (!(hit.userData.id === 999 && typeof secretDiscovered !== 'undefined' && !secretDiscovered)) {
         draggedPlanet = hit;
+        if (hit === window.travelerGroup) {
+          window.travelerGroup.userData.anchoredPlanet = null;
+        }
         if (navigator.vibrate) vibrateDevice(50);
       }
     }
@@ -2025,7 +2028,94 @@ function handlePointerUp() {
     if (isDraggingPlanet) {
       playSound('ui'); window.justDropped = true; 
       
-      if (!isAligned && draggedPlanet.userData.id !== undefined && draggedPlanet.userData.id !== 999) {
+      // ===============================================
+      // 🔥 NUEVO: LÓGICA DE ATERRIZAJE DEL VIAJERO
+      // ===============================================
+      if (draggedPlanet === window.travelerGroup) {
+        let snapped = false;
+        let closestPlanet = null;
+        let minDistance = 35.0; // Radio magnético de atracción
+        
+        // Buscar el planeta más cercano
+        categoryPlanets.forEach(p => {
+          if(p.userData.id === 999) return; 
+          const dist = window.travelerGroup.position.distanceTo(p.position);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestPlanet = p;
+          }
+        });
+
+      if (closestPlanet) {
+          // 1. Lo anclamos magnéticamente al planeta
+          window.travelerGroup.userData.anchoredPlanet = closestPlanet;
+          
+          // 🔥 Forzamos que su punto de caída comience un poco más arriba de donde lo soltaste
+          window.travelerGroup.userData.vy = 0; 
+          window.travelerGroup.userData.dropY = Math.max(window.travelerGroup.position.y, closestPlanet.position.y + 12);
+          
+          snapped = true;
+          
+          playSound('project_open');
+          
+          // 2. Diccionario de conocimiento del Oráculo (Tus líneas de investigación)
+          const pId = closestPlanet.userData.id;
+          const pTitle = typeof closestPlanet.userData.title === 'object' ? closestPlanet.userData.title[window.currentLang||'es'] : closestPlanet.userData.title;
+          
+          let phrase = "";
+          // Frases dinámicas basadas en tu perfil (Se adaptan si agregas más IDs)
+          if (pId === 1 || pTitle.includes("GameLab")) {
+            phrase = window.currentLang === 'en' 
+              ? "GameLab Tadeo: Where code becomes culture and social transformation." 
+              : "GameLab Tadeo: Donde el código se vuelve cultura y transformación social.";
+          } else if (pId === 2 || pTitle.includes("Media")) {
+            phrase = window.currentLang === 'en' 
+              ? "Media archaeology. Preserving the memory of what was once cutting-edge." 
+              : "Arqueología de los medios. Preservando la memoria de lo que alguna vez fue vanguardia.";
+          } else if (pId === 3 || pTitle.includes("Semillas") || pTitle.includes("Juegos Otros")) {
+            phrase = window.currentLang === 'en' 
+              ? "Other Games. Seeding disobedience and exploring decolonial mechanics." 
+              : "Juegos Otros. Sembrando desobediencia y explorando mecánicas decoloniales.";
+          } else if (pId === 4 || pTitle.includes("Domo")) {
+            phrase = window.currentLang === 'en' 
+              ? "Expanding the narrative to the celestial vault. Full-dome interaction." 
+              : "Expandiendo la narrativa a la bóveda celeste. Interacción Fulldome.";
+          } else if (pId === 5 || pTitle.includes("Accesi")) {
+            phrase = window.currentLang === 'en' 
+              ? "Universal design. Play is a right, accessible to all." 
+              : "Diseño universal y accesibilidad. El juego es un territorio para todos.";
+          } else {
+            // Frase por defecto adaptada al título del planeta
+            phrase = window.currentLang === 'en' 
+              ? `Exploring the margins of [ ${pTitle} ].` 
+              : `Explorando los márgenes de [ ${pTitle} ].`;
+          }
+
+          showPoeticReflection(phrase, "#00ffcc");
+          
+          // 3. Animación de "Conquista" (Levanta la espada)
+          if (window.travelerSword && window.travelerSwordMat) {
+            window.travelerSword.rotation.z = Math.PI / 4; 
+            window.travelerSwordMat.color.setHex(0x00ffff); 
+            window.travelerSwordMat.multiplyScalar(2.0);
+            setTimeout(() => {
+              window.travelerSword.rotation.z = Math.PI / -6;
+              window.travelerSwordMat.color.setHex(0xffffff);
+            }, 4000);
+          }
+        }
+        
+        // Si lo sueltas en el espacio profundo, se desvincula
+        if (!snapped) {
+          window.travelerGroup.userData.anchoredPlanet = null;
+          window.travelerGroup.userData.baseY = window.travelerGroup.position.y;
+          window.travelerGroup.userData.baseX = window.travelerGroup.position.x;
+        }
+      }
+      // ===============================================
+      // LÓGICA DE GUARDADO PARA LOS DEMÁS PLANETAS
+      // ===============================================
+      else if (!isAligned && draggedPlanet.userData.id !== undefined && draggedPlanet.userData.id !== 999) {
         if (!draggedPlanet.userData.randomPos) draggedPlanet.userData.randomPos = new THREE.Vector3();
         if (!draggedPlanet.userData.targetPos) draggedPlanet.userData.targetPos = new THREE.Vector3();
         
@@ -3114,7 +3204,40 @@ renderer.setAnimationLoop((timestamp, frame) => {
 
       let floatSpeed = 1.5; let floatHeight = 0.3; 
       let activeBaseY = window.travelerGroup.userData.baseY;
-      
+    // 🔥 Si está anclado a un planeta, le aplicamos física de caída
+      if (window.travelerGroup.userData.anchoredPlanet) {
+        const p = window.travelerGroup.userData.anchoredPlanet;
+        const targetX = p.position.x;
+        const targetY = p.position.y + 4.8; // Superficie del planeta
+
+        // 1. Atracción horizontal magnética (Lo jala suavemente hacia el centro del planeta)
+        window.travelerGroup.userData.baseX += (targetX - window.travelerGroup.userData.baseX) * 0.1;
+
+        // 2. Gravedad y rebote vertical
+        if (window.travelerGroup.userData.dropY > targetY + 0.1) {
+          // Cae ganando velocidad
+          window.travelerGroup.userData.vy -= 0.02; 
+          window.travelerGroup.userData.dropY += window.travelerGroup.userData.vy;
+          
+          // Si choca contra el planeta, da un pequeño salto (rebote)
+          if (window.travelerGroup.userData.dropY <= targetY) {
+            window.travelerGroup.userData.dropY = targetY;
+            window.travelerGroup.userData.vy *= -0.35; // Amortigua el golpe
+            // Si el rebote es muy pequeñito, lo frenamos por completo
+            if (Math.abs(window.travelerGroup.userData.vy) < 0.05) {
+              window.travelerGroup.userData.vy = 0;
+            }
+          }
+        } else if (window.travelerGroup.userData.dropY < targetY - 0.1) {
+          // Si por error lo soltaste por debajo del planeta, sube flotando magnéticamente
+          window.travelerGroup.userData.dropY += (targetY - window.travelerGroup.userData.dropY) * 0.1;
+        } else {
+          // Ya aterrizó firmemente
+          window.travelerGroup.userData.dropY = targetY;
+        }
+
+        activeBaseY = window.travelerGroup.userData.dropY;
+      }
       // Reacciones físicas a las máquinas DAC
       if (typeof isFriccionActive !== 'undefined' && isFriccionActive) {
         floatSpeed = 0.2; floatHeight = 0.05; // Lentísimo y pesado
@@ -3243,7 +3366,7 @@ if (isAR && frame && hitTestSource) {
         }
 
         
-     // 1. Efecto Poética: Lenta y contemplativa
+   // 1. Efecto Poética: Lenta y contemplativa
       lunaPoetica.rotation.x += isPoeticaActive ? 0.015 : 0.005;
       lunaPoetica.rotation.y += isPoeticaActive ? 0.02 : 0.008;
 
@@ -3265,7 +3388,6 @@ if (isAR && frame && hitTestSource) {
       if (isFriccionActive) {
         shakeIntensity = 0.08; // Micro-temblor constante
       }
-
       // ===============================================
       // 🔥 MOTOR GEOMÉTRICO (RED INTERACTIVA) - Unificado
       // ===============================================
@@ -4350,7 +4472,7 @@ const dict = {
     menuSys: "SISTEMA",
     menuProfile: "> Perfil_Usuario",
     menuContact: "> Enviar Transmisión",
-    menuLeaderboard: "> Salón_de_Fama", // 🔥 NUEVO
+    menuLeaderboard: "> Salón_de_Fama",
     menuBloomOn: "[*] Efecto Neón: ON",
     menuBloomOff: "[ ] Efecto Neón: OFF",
     menuAlignCar: "[O] Vista: CARRUSEL 3D",
@@ -4362,11 +4484,11 @@ const dict = {
     btnCV: "📄 DESCARGAR CV",
     btnConnect: "✉ INICIAR CONEXIÓN",
     profileContent: `
-      <p><strong style="color:#00ffff;">Nombre:</strong> Daniel [Rodriguez Garcia]</p>
+      <p><strong style="color:#00ffff;">Nombre:</strong> Daniel [Rodríguez García]</p>
       <p><strong style="color:#00ffff;">Ocupación:</strong> Profesor Diseño Interactivo | Dir. GameLab Tadeo</p>
-      <p><strong style="color:#00ffff;">Background:</strong> Candidato a Doctorado en Diseño, Arte y Ciencia. Ex-coordinador MediaLab Cinemateca. Profesor de Planta Universidad Jorge Tadeo Lozano.</p>
-      <p><strong style="color:#00ffff;">About:</strong> Mi preparación y experiencia se enfocan en el diseño, creación y producción de videojuegos y experiencias interactivas en el espectro de lo virtual y otras disciplinas, especialmente en su aspecto artístico y técnico, pero también en su conceptualización. Poseo una amplia experiencia en la cultura del videojuego como usuario apasionado, pero también como creador y docente, trabajando aspectos de diseño y programación en contextos de entretenimiento, y sobre todo en su uso pedagógico como herramienta de transformación social a través de los "games for change".</p>
-      <p><strong style="color:#00ffff;">Skills:</strong> Game Mechanics, TouchDesigner, VR/AR, WebXR, Blender, Unity, Unreal, Godot</p>
+      <p><strong style="color:#00ffff;">Background:</strong> Diseñador Industrial (PUJ) con Máster en Creación de Videojuegos (UPF). Candidato a Doctorado en Diseño, Arte y Ciencia. Ex-coordinador MediaLab Cinemateca y Coordinador/Tallerista de Territorios Digitales con Plataforma Bogotá.</p>
+      <p><strong style="color:#00ffff;">About:</strong> Mi preparación se enfoca en el diseño, creación y producción de videojuegos y experiencias interactivas inmersivas (Fulldome, VR, AR). Exploro las dimensiones críticas y sociales a través de los "Juegos Otros" y la pedagogía lúdica, integrando tecnologías físicas (Arduino, Raspberry Pi) y lógicas de diseño universal para la accesibilidad.</p>
+      <p><strong style="color:#00ffff;">Skills:</strong> Game Mechanics, Creative Coding, TouchDesigner, Processing, Unity, Blender, FMOD, Physical Computing.</p>
       <p><strong style="color:#00ffff;">Redes:</strong> 
         <a href="https://www.linkedin.com/in/dargdesigner/" target="_blank" style="color: #ffaa00; text-decoration: none;">[LinkedIn ↗]</a> | 
         <a href="https://github.com/darg88" target="_blank" style="color: #ffaa00; text-decoration: none;">[GitHub ↗]</a>
@@ -4380,7 +4502,7 @@ const dict = {
     menuSys: "SYSTEM",
     menuProfile: "> User_Profile",
     menuContact: "> Send Transmission",
-    menuLeaderboard: "> Hall_of_Fame", // 🔥 NUEVO
+    menuLeaderboard: "> Hall_of_Fame",
     menuBloomOn: "[*] Neon Effect: ON",
     menuBloomOff: "[ ] Neon Effect: OFF",
     menuAlignCar: "[O] View: 3D CAROUSEL",
@@ -4392,11 +4514,11 @@ const dict = {
     btnCV: "📄 DOWNLOAD CV",
     btnConnect: "✉ START CONNECTION",
     profileContent: `
-      <p><strong style="color:#00ffff;">Name:</strong> Daniel [Rodriguez Garcia]</p>
+      <p><strong style="color:#00ffff;">Name:</strong> Daniel [Rodríguez García]</p>
       <p><strong style="color:#00ffff;">Role:</strong> Interactive Design Professor | Dir. Tadeo GameLab</p>
-      <p><strong style="color:#00ffff;">Background:</strong> PhD Candidate in Design, Art and Science. Ex-coordinator at MediaLab Cinemateca. Full-time Professor at Universidad Jorge Tadeo Lozano.</p>
-      <p><strong style="color:#00ffff;">About:</strong> My background and experience focus on the design, creation, and production of video games and interactive experiences in the virtual spectrum and other disciplines, especially in their artistic and technical aspects, but also in their conceptualization. I have extensive experience in video game culture as a passionate user, but also as a creator and teacher, working on design and programming aspects in entertainment contexts, and especially in its pedagogical use as a tool for social transformation through "games for change".</p>
-      <p><strong style="color:#00ffff;">Skills:</strong> Game Mechanics, TouchDesigner, VR/AR, WebXR, Blender, Unity, Unreal, Godot</p>
+      <p><strong style="color:#00ffff;">Background:</strong> Industrial Designer (PUJ) with a Master's in Video Game Creation (UPF). PhD Candidate in Design, Art and Science. Former MediaLab Cinemateca coordinator and Workshop Facilitator/Coordinator for Digital Territories with Plataforma Bogotá.</p>
+      <p><strong style="color:#00ffff;">About:</strong> My background focuses on the design, creation, and production of video games and immersive interactive experiences (Fulldome, VR, AR). I explore critical and social dimensions through "Other Games" and playful pedagogy, integrating physical computing (Arduino, Raspberry Pi) and universal design principles for accessibility.</p>
+      <p><strong style="color:#00ffff;">Skills:</strong> Game Mechanics, Creative Coding, TouchDesigner, Processing, Unity, Blender, FMOD, Physical Computing.</p>
       <p><strong style="color:#00ffff;">Socials:</strong> 
         <a href="https://www.linkedin.com/in/dargdesigner/" target="_blank" style="color: #ffaa00; text-decoration: none;">[LinkedIn ↗]</a> | 
         <a href="https://github.com/darg88" target="_blank" style="color: #ffaa00; text-decoration: none;">[GitHub ↗]</a>
