@@ -499,3 +499,35 @@ body.ar-active #VRButton {
   animation: wipPulse 4s infinite alternate !important;
 }
 @keyframes wipPulse { 0% { opacity: 0.4; } 100% { opacity: 1; text-shadow: 0 0 10px rgba(255,255,255,0.2); } }
+/* ==========================================
+   🔥 MENÚ PRINCIPAL ORGÁNICO Y FLOTANTE (3D)
+   ========================================== */
+#side-menu {
+  /* Lo despegamos de los bordes y le damos perspectiva 3D */
+  top: 50% !important;
+  height: 85vh !important;
+  left: -400px; /* Escondido por defecto */
+  border-radius: 0 25px 25px 0 !important;
+  background: rgba(8, 8, 12, 0.45) !important; /* Cristal oscuro */
+  backdrop-filter: blur(25px) saturate(120%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.03) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.15) !important; /* Brillo en el borde */
+  box-shadow: 30px 0 50px rgba(0,0,0,0.6), inset -1px 0 20px rgba(255,255,255,0.02) !important;
+  
+  /* Perspectiva: Se inclina hacia atrás como un holograma */
+  transform: perspective(1000px) rotateY(15deg) translateY(-50%) !important;
+  transform-origin: left center !important;
+  transition: left 0.6s cubic-bezier(0.1, 0.8, 0.3, 1), transform 0.6s !important;
+}
+
+#side-menu.open {
+  left: 0 !important;
+  /* Se endereza al abrir, pero mantiene un ligero ángulo 3D */
+  transform: perspective(1000px) rotateY(4deg) translateY(-50%) !important;
+  animation: menuFloat 6s ease-in-out infinite alternate !important; /* Flotación viva */
+}
+
+@keyframes menuFloat {
+  0% { margin-top: 0px; }
+  100% { margin-top: -15px; } /* Respira suavemente hacia arriba */
+}

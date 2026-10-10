@@ -488,10 +488,12 @@ function playSound(type, targetPosition = null) {
       playBell(1200, 0, 0.3, 0.06); 
       playBell(2400, 0, 0.2, 0.02); 
     }
-    else if(type === 'pulse') { 
-      // Planetas, Errática y Pincel Poético: Gota de agua prístina
-      playBell(1200, 0, 0.3, 0.06); 
+   else if(type === 'double_pulse') { 
+      // 🔥 Gota de agua doble (Eco de sonar para el Planeta DAC)
+      playBell(1200, 0, 0.3, 0.08); 
       playBell(2400, 0, 0.2, 0.02); 
+      playBell(1200, 0.15, 0.4, 0.06); // Segunda onda desfasada 150ms
+      playBell(2400, 0.15, 0.3, 0.02); 
     }
     else if(type === 'boss_hit') { 
       // Máquina de Fricción: Cuenco tibetano / Toque físico pesado
@@ -1881,7 +1883,8 @@ function startPointerDown(clientX, clientY) {
   mouseNDC.y = -(clientY / window.innerHeight) * 2 + 1;
   dragRaycaster.setFromCamera(mouseNDC, camera);
   
-  const grabTargets = [...categoryPlanets, ...ambientWhales, ...guardianCats, planetaDAC, lunaPoetica, lunaErratica, lunaFriccion];
+  // Agregamos window.travelerGroup a los objetos agarrables
+  const grabTargets = [...categoryPlanets, ...ambientWhales, ...guardianCats, planetaDAC, lunaPoetica, lunaErratica, lunaFriccion, window.travelerGroup];
   const intersects = dragRaycaster.intersectObjects(grabTargets, true);
   
   if (intersects.length > 0) {
@@ -2431,14 +2434,28 @@ const handleProjectClick = (data) => {
     }, 350); 
   };
 // ==========================================
-  // 🔥 EL ORÁCULO: Clic en el Viajero
+  // 🔥 EL ORÁCULO: Clic en el Viajero (Sabiduría Aleatoria)
   // ==========================================
   const intersectsViajero = raycaster.intersectObjects([window.travelerGroup], true);
   if (intersectsViajero.length > 0) {
     const clickedViajero = intersectsViajero.find(hit => hit.object.userData && hit.object.userData.name === "viajero");
     if (clickedViajero) {
       playSound('project_open'); // Sonido especial celestial
-      showPoeticReflection("Soy el arquitecto de este sistema. Aquí siembro ideas, y el tiempo las hace florecer.", "#aaccff");
+      
+      // 🔥 MATRIZ DE PENSAMIENTOS DEL VIAJERO
+      const oraculoFrases = [
+        "Soy el arquitecto de este sistema. Aquí siembro ideas, y el tiempo las hace florecer.",
+        "No somos meros espectadores. Cada interacción reescribe el código de este territorio digital.",
+        "Existen 'Juegos Otros' ocultos en los márgenes de la memoria. Búscalos donde la luz no alcanza.",
+        "El espacio no es una cuadrícula inerte, es una red palpitante de posibilidades infinitas.",
+        "Somos código interactuando consigo mismo. En cada destello, el universo se reconoce.",
+        "El glitch no es una falla; es el sistema revelando su verdadera y frágil naturaleza humana."
+      ];
+      
+      // Escoge una frase al azar cada vez que haces clic
+      const fraseElegida = oraculoFrases[Math.floor(Math.random() * oraculoFrases.length)];
+      
+      showPoeticReflection(fraseElegida, "#aaccff");
       
       // El viajero levanta la espada como saludo
       if (window.travelerSword && window.travelerSwordMat) {
@@ -2529,42 +2546,46 @@ case "planeta_dac":
         }
         
     // ==========================================
-        // 🔥 EFECTO DE PULSO DOBLE VISUAL Y SONORO 
+        // 🔥 EFECTO DE PULSO DOBLE VISUAL (EN EL VIAJERO)
         // ==========================================
-        let pulseColor = 0x00ffff; // Cian por defecto (Núcleo estándar)
-        if (isPoeticaActive) pulseColor = 0xffffff;       // Blanco brillante
-        else if (isErraticaActive) pulseColor = 0xff3300; // Rojo error
-        else if (isFriccionActive) pulseColor = 0xffff00; // Amarillo denso
+        let pulseColor = 0x00ffff; // Cian por defecto
+        if (isPoeticaActive) pulseColor = 0xffffff;       
+        else if (isErraticaActive) pulseColor = 0xff3300; 
+        else if (isFriccionActive) pulseColor = 0xffff00; 
 
         const createDoublePulse = (targetObj, hexColor) => {
-          // Usamos AdditiveBlending para que se vea como energía de pura luz
+          if (!targetObj) return;
           const pMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false });
-          const pGeo = new THREE.SphereGeometry(6.0, 32, 32); // Apenas más grande que el planeta
+          // Radio más pequeño, ajustado al cuerpo del Viajero
+          const pGeo = new THREE.SphereGeometry(10, 32, 32); 
           const pulse1 = new THREE.Mesh(pGeo, pMat);
           const pulse2 = new THREE.Mesh(pGeo, pMat.clone());
+          
+          // Lo centramos en el cuerpo del Viajero (su capa está en y=0.5)
+          pulse1.position.y = 0.5; pulse2.position.y = 0.5;
+
           targetObj.add(pulse1); targetObj.add(pulse2);
 
           let s1 = 1, o1 = 0.6, s2 = 1, o2 = 0.6;
           pulse2.visible = false;
           
-          // La segunda onda de luz nace 150ms después (sincronizada con el audio)
           setTimeout(() => { if(pulse2) pulse2.visible = true; }, 150);
 
           const anim = setInterval(() => {
             if(pulse1) { s1 += 0.04; o1 -= 0.02; pulse1.scale.set(s1, s1, s1); pulse1.material.opacity = Math.max(0, o1); }
             if(pulse2 && pulse2.visible) { s2 += 0.04; o2 -= 0.02; pulse2.scale.set(s2, s2, s2); pulse2.material.opacity = Math.max(0, o2); }
             
-            // Destruimos las esferas de luz cuando ya no se ven (Optimización)
             if(o1 <= 0 && o2 <= 0) {
               clearInterval(anim);
               targetObj.remove(pulse1); targetObj.remove(pulse2);
               pulse1.geometry.dispose(); pulse1.material.dispose();
               pulse2.geometry.dispose(); pulse2.material.dispose();
             }
-          }, 16); // 60 FPS
+          }, 16); 
         };
 
-        createDoublePulse(planetaDAC, pulseColor);
+        // 🔥 AHORA SE LO APLICAMOS AL VIAJERO
+        createDoublePulse(window.travelerGroup, pulseColor);
         playSound('double_pulse'); 
         
         setTimeout(() => { window.isZooming = false; }, 350); 
@@ -2970,21 +2991,21 @@ const travelerBodyMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transpare
 window.travelerSwordMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
 
 // 1. Cabeza (El Observador)
-const headGeo = new THREE.OctahedronGeometry(0.3, 0); 
+const headGeo = new THREE.OctahedronGeometry(1, 0); 
 window.travelerHead = new THREE.Mesh(headGeo, travelerBodyMat); 
 window.travelerHead.position.y = 1.8; 
 window.travelerHead.userData = { name: "viajero" }; // Etiqueta para el clic
 window.travelerGroup.add(window.travelerHead);
 
 // 2. Capa
-const capeGeo = new THREE.ConeGeometry(0.7, 2.2, 4); 
+const capeGeo = new THREE.ConeGeometry(2, 5, 3); 
 const cape = new THREE.Mesh(capeGeo, travelerBodyMat); 
-cape.position.y = 0.5; cape.rotation.y = Math.PI / 4; 
+cape.position.y = -2; cape.rotation.y = Math.PI / 4; 
 cape.userData = { name: "viajero" };
 window.travelerGroup.add(cape);
 
 // 3. Espada (Reactiva)
-const swordGeo = new THREE.BoxGeometry(0.04, 3.0, 0.04); 
+const swordGeo = new THREE.BoxGeometry(0.2, 7.0, 0.2); 
 window.travelerSword = new THREE.Mesh(swordGeo, window.travelerSwordMat); 
 window.travelerSword.position.set(0.6, 0.2, 0.5); 
 window.travelerSword.rotation.z = Math.PI / -6; 
@@ -3003,34 +3024,59 @@ let frames = 0; let lastTime = performance.now(); let lowFPSCount = 0;
 let totalRotated = 0; let prevAngle = 0;
 
 renderer.setAnimationLoop((timestamp, frame) => {
-  // 🔥 ANIMACIÓN DEL VIAJERO (Observador y Reacciones)
+ // 🔥 ANIMACIÓN DEL VIAJERO (Libre y Arrastrable)
     if (window.travelerGroup && window.travelerHead) {
       const t = performance.now() * 0.001; 
       
-      let floatSpeed = 1.5; let floatHeight = 0.3; let baseY = -3;
+      // Inicializamos su ancla espacial si no existe
+      if (window.travelerGroup.userData.baseY === undefined) {
+        window.travelerGroup.userData.baseY = window.travelerGroup.position.y;
+        window.travelerGroup.userData.baseX = window.travelerGroup.position.x;
+      }
+
+      // Si el usuario lo está arrastrando en este frame, actualizamos su ancla en tiempo real
+      if (typeof draggedPlanet !== 'undefined' && draggedPlanet === window.travelerGroup) {
+        window.travelerGroup.userData.baseY = window.travelerGroup.position.y;
+        window.travelerGroup.userData.baseX = window.travelerGroup.position.x;
+      }
+
+      let floatSpeed = 1.5; let floatHeight = 0.3; 
+      let activeBaseY = window.travelerGroup.userData.baseY;
       
       // Reacciones físicas a las máquinas DAC
       if (typeof isFriccionActive !== 'undefined' && isFriccionActive) {
         floatSpeed = 0.2; floatHeight = 0.05; // Lentísimo y pesado
       } else if (typeof isPoeticaActive !== 'undefined' && isPoeticaActive) {
-        baseY = -2.2; floatSpeed = 2.0; // Flota alto y ligero
+        activeBaseY += 0.8; floatSpeed = 2.0; // Flota más alto respecto a su posición
       }
 
-      window.travelerGroup.position.y = baseY + Math.sin(t * floatSpeed) * floatHeight; 
+      // Solo le aplicamos la animación matemática si NO lo estamos sosteniendo con el mouse
+      if (typeof draggedPlanet === 'undefined' || draggedPlanet !== window.travelerGroup) {
+        window.travelerGroup.position.y = activeBaseY + Math.sin(t * floatSpeed) * floatHeight; 
 
-      // Máquina Errática: El holograma se rompe (Glitch)
-      if (typeof isErraticaActive !== 'undefined' && isErraticaActive) {
-        if (Math.random() > 0.85) {
-          window.travelerGroup.position.x = -8 + (Math.random() - 0.5) * 0.6;
-          window.travelerGroup.visible = Math.random() > 0.2; // Parpadea desapareciendo
+        // Máquina Errática: Glitch basado en su NUEVA posición
+        if (typeof isErraticaActive !== 'undefined' && isErraticaActive) {
+          if (Math.random() > 0.85) {
+            window.travelerGroup.position.x = window.travelerGroup.userData.baseX + (Math.random() - 0.5) * 0.6;
+            window.travelerGroup.visible = Math.random() > 0.2; 
+          } else {
+            window.travelerGroup.position.x = window.travelerGroup.userData.baseX;
+            window.travelerGroup.visible = true;
+          }
         } else {
-          window.travelerGroup.position.x = -8;
-          window.travelerGroup.visible = true;
+           window.travelerGroup.position.x = window.travelerGroup.userData.baseX;
+           window.travelerGroup.visible = true;
         }
       }
 
-      // EL OBSERVADOR: La cabeza siempre gira lentamente para mirar a tu cámara
-      window.travelerHead.lookAt(camera.position);
+    // 🔥 EL OBSERVADOR: La cabeza sigue a tu ratón orgánicamente
+      // mouseNDC es la posición de tu cursor en la pantalla (-1 a 1)
+      let targetRotX = mouseNDC.y * 0.8;
+      let targetRotY = -mouseNDC.x * 1.0;
+      
+      // Movimiento elástico (Lerp) para que no sea robótico, sino que "respire"
+      window.travelerHead.rotation.x += (targetRotX - window.travelerHead.rotation.x) * 0.05;
+      window.travelerHead.rotation.y += (targetRotY - window.travelerHead.rotation.y) * 0.05;
     }
   const isXR = renderer.xr.isPresenting;
   const session = isXR ? renderer.xr.getSession() : null;
@@ -3473,31 +3519,52 @@ if (isAR && frame && hitTestSource) {
     // ===============================================
     if (isGameStarted && !isUIOpen && !isXR) {
       raycaster.setFromCamera(mouseNDC, camera);
-      const intersects = raycaster.intersectObjects([...categoryPlanets, ...discoveredVoyagers, ...ambientWhales, ...guardianCats, satHitbox, ...asteroids, planetaDAC], true);
+      
+      // 1. Agregamos al Viajero a la lista de detección del ratón
+      const hoverTargets = [...categoryPlanets, ...discoveredVoyagers, ...ambientWhales, ...guardianCats, satHitbox, ...asteroids, planetaDAC];
+      if (window.travelerGroup) hoverTargets.push(window.travelerGroup);
+      
+      const intersects = raycaster.intersectObjects(hoverTargets, true);
       const canvasEl = document.getElementById('bg-canvas');
-      if (canvasEl) canvasEl.style.cursor = intersects.length > 0 ? 'pointer' : 'crosshair';
-
+      
       if (intersects.length > 0 && !intersects[0].object.userData.isAsteroid) {
         let obj = intersects[0].object;
         if (obj.type === 'Sprite') obj = obj.parent;
         while (obj.parent && obj.parent.type === 'Group') obj = obj.parent;
 
-        if (window.hoveredObject !== obj) {
-          if (window.hoveredObject) {
-            window.hoveredObject.scale.copy(window.hoveredObject.userData.baseScaleVector || window.hoveredObject.scale);
+        // 2. MAGIA: Cursor especial de doble círculo para el Viajero
+        if (obj === window.travelerGroup || (obj.userData && obj.userData.name === "viajero")) {
+          // Cursor SVG codificado (Anillo exterior blanco 70% transparente, núcleo cian puro)
+          const svgCursor = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='none' stroke='%23ffffff' stroke-width='1.5' opacity='0.7'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%2300ffff' opacity='0.9'/%3E%3C/svg%3E";
+          if (canvasEl) canvasEl.style.cursor = `url("${svgCursor}") 16 16, pointer`;
+        } else {
+          // La clásica "manita" para los planetas normales
+          if (canvasEl) canvasEl.style.cursor = 'pointer';
+        }
+
+        // 3. Efecto de "aumento" visual al señalar (Protegemos al Viajero para que no se deforme al mirarlo)
+        if (obj !== window.travelerGroup) {
+          if (window.hoveredObject !== obj) {
+            if (window.hoveredObject && window.hoveredObject !== window.travelerGroup) {
+              window.hoveredObject.scale.copy(window.hoveredObject.userData.baseScaleVector || window.hoveredObject.scale);
+            }
+            window.hoveredObject = obj;
+            if (!window.hoveredObject.userData.baseScaleVector) {
+              window.hoveredObject.userData.baseScaleVector = window.hoveredObject.scale.clone();
+            }
+            window.hoveredObject.scale.set(
+              window.hoveredObject.userData.baseScaleVector.x * 1.2,
+              window.hoveredObject.userData.baseScaleVector.y * 1.2,
+              window.hoveredObject.userData.baseScaleVector.z * 1.2
+            );
           }
-          window.hoveredObject = obj;
-          if (!window.hoveredObject.userData.baseScaleVector) {
-            window.hoveredObject.userData.baseScaleVector = window.hoveredObject.scale.clone();
-          }
-          window.hoveredObject.scale.set(
-            window.hoveredObject.userData.baseScaleVector.x * 1.2,
-            window.hoveredObject.userData.baseScaleVector.y * 1.2,
-            window.hoveredObject.userData.baseScaleVector.z * 1.2
-          );
         }
       } else {
-        if (window.hoveredObject) {
+        // Volver al cursor de cruz en el vacío espacial
+        if (canvasEl) canvasEl.style.cursor = 'crosshair';
+        
+        // Restaurar el tamaño de los planetas si quitas el ratón
+        if (window.hoveredObject && window.hoveredObject !== window.travelerGroup) {
           if (window.hoveredObject.userData.baseScaleVector) {
             window.hoveredObject.scale.copy(window.hoveredObject.userData.baseScaleVector);
           }
