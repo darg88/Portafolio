@@ -571,15 +571,28 @@ function showSystemToast(msg, color) {
   const toast = document.getElementById('system-toast');
   if(!toast) return;
   toast.innerText = msg;
-  toast.style.color = '#cc0000'; // Forzamos el rojo siempre
-  toast.style.textShadow = 'none'; // Bloqueamos el neón
+  
+  // 🔥 ESTILO ETÉREO Y CRISTALINO
+  toast.style.color = color || '#ffffff';
+  toast.style.textShadow = `0 0 15px ${color || '#ffffff'}80`; 
+  toast.style.background = 'rgba(5, 5, 10, 0.25)';
+  toast.style.backdropFilter = 'blur(12px)';
+  toast.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+  toast.style.borderRadius = '8px';
+  toast.style.padding = '12px 25px';
+  toast.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
+  toast.style.fontFamily = "'-apple-system', sans-serif";
+  toast.style.fontWeight = '300';
+  toast.style.letterSpacing = '3px';
+  toast.style.textTransform = 'uppercase';
+  
   toast.classList.remove('hidden');
   toast.style.opacity = '1';
   if(window.toastTimer) clearTimeout(window.toastTimer);
   window.toastTimer = setTimeout(() => {
     toast.style.opacity = '0';
     setTimeout(() => toast.classList.add('hidden'), 500);
-  }, 2500);
+  }, 3500);
 }
 
 let isGameStarted = false; let isPaused = false; let isUIOpen = false; let shakeIntensity = 0;
@@ -908,11 +921,16 @@ document.getElementById('start-btn')?.addEventListener('click', (e) => {
   initSystem(false); 
 });
 document.getElementById('skip-btn')?.addEventListener('click', (e) => { 
-  e.stopPropagation(); // 🔥 Escudo protector
+  e.stopPropagation(); 
   e.currentTarget.blur(); 
-  initSystem(true); 
+  initSystem(true); // Cierra la pantalla de inicio
+  
+  // 🔥 Espera medio segundo a que termine la animación de inicio y activa las anomalías
+  setTimeout(() => {
+    const combatBtn = document.getElementById('combat-toggle-btn');
+    if (combatBtn) combatBtn.click();
+  }, 500);
 });
-
 window.closeAllUIs = function() { 
   document.body.classList.remove('ui-active'); 
   document.getElementById('modal-overlay')?.classList.add('hidden');
@@ -1307,31 +1325,85 @@ const dacHitboxPlanet = new THREE.Mesh(new THREE.SphereGeometry(7, 16, 16), new 
 dacHitboxPlanet.name = "planeta_dac"; 
 planetaDAC.add(dacHitboxPlanet);
 
-// 2. LA TRÍADA DE MÁQUINAS (Nuevas Formas)
+// 2. LA TRÍADA DE MÁQUINAS (Atractores Matemáticos de Partículas)
 
-// 🔥 Máquina Poética: Elegante, prístina y geométrica (Doble esfera de alambre)
-const poeticaGeo = new THREE.SphereGeometry(1.4, 24, 24);
-const poeticaMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.6 });
-const lunaPoetica = new THREE.Mesh(poeticaGeo, poeticaMat);
-const poeticaInner = new THREE.Mesh(new THREE.OctahedronGeometry(0.8, 0), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true }));
-lunaPoetica.add(poeticaInner);
+function createAttractor(type, colorHex) {
+  const particleCount = 6000;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(particleCount * 3);
+  
+  let x = 0.1, y = 0.1, z = 0.1;
+
+  // Calculamos las posiciones usando ecuaciones del Caos
+  for (let i = 0; i < particleCount; i++) {
+    if (type === 'poetica') {
+      // Atractor de Lorenz (Forma hermosa de alas de mariposa)
+      const dt = 0.006;
+      let dx = 10 * (y - x) * dt;
+      let dy = (x * (28 - z) - y) * dt;
+      let dz = (x * y - (8/3) * z) * dt;
+      x += dx; y += dy; z += dz;
+      
+      pos[i*3] = x * 0.08;
+      pos[i*3+1] = y * 0.08 - 2.0; 
+      pos[i*3+2] = z * 0.08;
+    } 
+    else if (type === 'erratica') {
+      // Atractor de Clifford (Fragmentado, caótico y afilado)
+      let nx = Math.sin(-1.4 * y) + Math.cos(-1.4 * x);
+      let ny = Math.sin(1.6 * x) + 0.7 * Math.cos(1.6 * y);
+      let nz = Math.sin(1.0 * z) + Math.cos(x * y); 
+      x = nx; y = ny; z = nz;
+      
+      pos[i*3] = x * 1.5;
+      pos[i*3+1] = y * 1.5;
+      pos[i*3+2] = z * 1.5;
+    }
+    else if (type === 'friccion') {
+      // Atractor de Thomas (Estructura densa, cúbica y pesada)
+      const b = 0.19; const dt = 0.1;
+      let dx = (-b*x + Math.sin(y)) * dt;
+      let dy = (-b*y + Math.sin(z)) * dt;
+      let dz = (-b*z + Math.sin(x)) * dt;
+      x += dx; y += dy; z += dz;
+      
+      pos[i*3] = x * 0.5;
+      pos[i*3+1] = y * 0.5;
+      pos[i*3+2] = z * 0.5;
+    }
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  
+  // Material luminoso tipo polvo cósmico
+  const mat = new THREE.PointsMaterial({
+    color: new THREE.Color(colorHex).multiplyScalar(2.0),
+    size: 0.06,
+    transparent: true,
+    opacity: 0.7,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  
+  return new THREE.Points(geo, mat);
+}
+
+// 🔥 Máquina Poética: Nube de luz fluida
+const lunaPoetica = createAttractor('poetica', 0xffffff);
 lunaPoetica.position.set(12, 0, 0); 
 lunaPoetica.name = "maquina_poetica";
+const hitP = new THREE.Mesh(new THREE.BoxGeometry(3,3,3), new THREE.MeshBasicMaterial({visible:false})); lunaPoetica.add(hitP);
 
-// 🔥 Máquina Errática: Afilada, distorsionada y peligrosa (Tetraedro estirado)
-const erraticaGeo = new THREE.TetrahedronGeometry(1.5, 0);
-const erraticaMat = new THREE.MeshBasicMaterial({ color: 0xff3300, wireframe: true });
-const lunaErratica = new THREE.Mesh(erraticaGeo, erraticaMat);
-lunaErratica.scale.set(1.0, 2.0, 0.5); // Escalado asimétrico
+// 🔥 Máquina Errática: Tormenta de código rojo
+const lunaErratica = createAttractor('erratica', 0xff3300);
 lunaErratica.position.set(-8, 6, -8);
 lunaErratica.name = "maquina_erratica";
+const hitE = new THREE.Mesh(new THREE.BoxGeometry(3,3,3), new THREE.MeshBasicMaterial({visible:false})); lunaErratica.add(hitE);
 
-// 🔥 Máquina de Fricción: Monolítica, brutalista y pesada (Pilar Hexagonal)
-const friccionGeo = new THREE.CylinderGeometry(1.5, 1.5, 2.5, 6);
-const friccionMat = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true });
-const lunaFriccion = new THREE.Mesh(friccionGeo, friccionMat);
+// 🔥 Máquina de Fricción: Bloque denso amarillo
+const lunaFriccion = createAttractor('friccion', 0xffff00);
 lunaFriccion.position.set(0, -10, 8);
 lunaFriccion.name = "maquina_friccion";
+const hitF = new THREE.Mesh(new THREE.BoxGeometry(3,3,3), new THREE.MeshBasicMaterial({visible:false})); lunaFriccion.add(hitF);
 
 // 3. ENSAMBLAJE
 planetaDAC.add(lunaPoetica);
@@ -1805,7 +1877,7 @@ const paintTools = document.createElement('div');
 paintTools.id = 'paint-tools';
 paintTools.style.cssText = "display:none; position:fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100000; gap: 10px; pointer-events: auto;";
 paintTools.innerHTML = `
-  <button id="btn-clear-paint" style="background: rgba(10,10,10,0.9); color: #ff0055; border: 1px solid #ff0055; padding: 8px 15px; font-family: 'Share Tech Mono', monospace; cursor: pointer; text-transform: uppercase; font-size: 0.9rem; box-shadow: 0 0 10px rgba(255,0,85,0.3); transition: 0.3s;">[ PURGAR ]</button>
+  <button id="btn-clear-paint" style="background: rgba(10,10,10,0.9); color: #ff0055; border: 1px solid #ff0055; padding: 8px 15px; font-family: 'Share Tech Mono', monospace; cursor: pointer; text-transform: uppercase; font-size: 0.9rem; box-shadow: 0 0 10px rgba(255,0,85,0.3); transition: 0.3s;">[ DISOLVER MATERIA]</button>
   <button id="btn-save-paint" style="background: rgba(10,10,10,0.9); color: #00ffaa; border: 1px solid #00ffaa; padding: 8px 15px; font-family: 'Share Tech Mono', monospace; cursor: pointer; text-transform: uppercase; font-size: 0.9rem; box-shadow: 0 0 10px rgba(0,255,170,0.3); transition: 0.3s;">[ EXPORTAR ]</button>
 `;
 document.body.appendChild(paintTools);
@@ -1846,7 +1918,7 @@ document.getElementById('btn-clear-paint').onclick = (e) => {
   e.stopPropagation();
   paintStrokes.forEach(p => { paintGroup.remove(p); p.geometry.dispose(); p.material.dispose(); });
   paintStrokes.length = 0; 
-  playSound('explosion');
+ playSound('disolver');
 };
 
 document.getElementById('btn-save-paint').onclick = (e) => {
@@ -2609,7 +2681,7 @@ case "planeta_dac":
         p.material.opacity = 0.95;
       }
     });
-    lunaPoetica.scale.set(1, 1, 1); lunaErratica.scale.set(1.0, 2.0, 0.5); lunaFriccion.scale.set(1, 1, 1);
+ lunaPoetica.scale.set(1, 1, 1); lunaErratica.scale.set(1, 1, 1); lunaFriccion.scale.set(1, 1, 1);
     document.body.style.cursor = 'default';
     if(window.travelerSwordMat && window.travelerSword) {
       window.travelerSwordMat.color.setHex(0xffffff);
@@ -2631,7 +2703,7 @@ case "planeta_dac":
           p.material.color.multiplyScalar(2.5); // Brillo extra
         }
       });
-      lunaPoetica.scale.set(1.3, 1.3, 1.3);
+      lunaPoetica.scale.set(1.15, 1.15, 1.15);
     }
     break;
 
@@ -2655,7 +2727,7 @@ case "planeta_dac":
         p.material.opacity = 0.95;
       }
     });
-    lunaPoetica.scale.set(1, 1, 1); lunaErratica.scale.set(1.0, 2.0, 0.5); lunaFriccion.scale.set(1, 1, 1);
+    lunaPoetica.scale.set(1, 1, 1); lunaErratica.scale.set(1, 1, 1); lunaFriccion.scale.set(1, 1, 1);
     document.body.style.cursor = 'default';
     if(window.travelerSwordMat && window.travelerSword) {
       window.travelerSwordMat.color.setHex(0xffffff);
@@ -2677,7 +2749,7 @@ case "planeta_dac":
           p.material.color.multiplyScalar(1.5);
         }
       });
-      lunaErratica.scale.set(1.5, 3.0, 0.8);
+     lunaErratica.scale.set(1.2, 1.2, 1.2);
     }
     break;
 
@@ -2699,7 +2771,7 @@ case "planeta_dac":
         p.material.opacity = 0.95;
       }
     });
-    lunaPoetica.scale.set(1, 1, 1); lunaErratica.scale.set(1.0, 2.0, 0.5); lunaFriccion.scale.set(1, 1, 1);
+  lunaPoetica.scale.set(1, 1, 1); lunaErratica.scale.set(1, 1, 1); lunaFriccion.scale.set(1, 1, 1);
     document.body.style.cursor = 'default';
     if(window.travelerSwordMat && window.travelerSword) {
       window.travelerSwordMat.color.setHex(0xffffff);
@@ -2721,7 +2793,7 @@ case "planeta_dac":
           p.material.opacity = 0.25; 
         }
       });
-      lunaFriccion.scale.set(1.3, 1.3, 1.3);
+     lunaFriccion.scale.set(1.15, 1.15, 1.15);
     }
     break;
 }
@@ -2991,21 +3063,21 @@ const travelerBodyMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transpare
 window.travelerSwordMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
 
 // 1. Cabeza (El Observador)
-const headGeo = new THREE.OctahedronGeometry(1, 0); 
+const headGeo = new THREE.OctahedronGeometry(0.3, 0); 
 window.travelerHead = new THREE.Mesh(headGeo, travelerBodyMat); 
 window.travelerHead.position.y = 1.8; 
 window.travelerHead.userData = { name: "viajero" }; // Etiqueta para el clic
 window.travelerGroup.add(window.travelerHead);
 
 // 2. Capa
-const capeGeo = new THREE.ConeGeometry(2, 5, 3); 
+const capeGeo = new THREE.ConeGeometry(0.7, 2.2, 4); 
 const cape = new THREE.Mesh(capeGeo, travelerBodyMat); 
-cape.position.y = -2; cape.rotation.y = Math.PI / 4; 
+cape.position.y = 0.5; cape.rotation.y = Math.PI / 4; 
 cape.userData = { name: "viajero" };
 window.travelerGroup.add(cape);
 
 // 3. Espada (Reactiva)
-const swordGeo = new THREE.BoxGeometry(0.2, 7.0, 0.2); 
+const swordGeo = new THREE.BoxGeometry(0.04, 3.0, 0.04);
 window.travelerSword = new THREE.Mesh(swordGeo, window.travelerSwordMat); 
 window.travelerSword.position.set(0.6, 0.2, 0.5); 
 window.travelerSword.rotation.z = Math.PI / -6; 
@@ -3170,25 +3242,26 @@ if (isAR && frame && hitTestSource) {
           planetaDAC.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
         }
 
-        // 1. Efecto Poética: Lenta y contemplativa
+        
+     // 1. Efecto Poética: Lenta y contemplativa
+      lunaPoetica.rotation.x += isPoeticaActive ? 0.015 : 0.005;
+      lunaPoetica.rotation.y += isPoeticaActive ? 0.02 : 0.008;
 
-      // 1. Efecto Poética: Lenta y contemplativa
-      lunaPoetica.rotation.x += isPoeticaActive ? 0.02 : 0.005;
-      lunaPoetica.rotation.y += isPoeticaActive ? 0.05 : 0.01;
-
-      // 2. Efecto Errática: Tartamudeo espacial y glitch visual
+      // 2. Efecto Errática: Tartamudeo espacial y rotación caótica
       if (isErraticaActive) {
-        lunaErratica.position.x = -8 + (Math.random() - 0.5) * 1.5;
-        lunaErratica.position.y = 6 + (Math.random() - 0.5) * 1.5;
+        lunaErratica.position.x = -8 + (Math.random() - 0.5) * 0.4;
+        lunaErratica.position.y = 6 + (Math.random() - 0.5) * 0.4;
+        lunaErratica.rotation.y += 0.05; // Gira locamente
         if (Math.random() > 0.95) triggerSubtleGlitch();
       } else {
         lunaErratica.position.set(-8, 6, -8);
-        lunaErratica.rotation.x += 0.01;
-        lunaErratica.rotation.y += 0.05;
+        lunaErratica.rotation.x -= 0.008;
+        lunaErratica.rotation.z += 0.01;
       }
 
-      // 3. Efecto Fricción: Temblor constante en la cámara
-      lunaFriccion.rotation.z -= 0.003;
+      // 3. Efecto Fricción: Temblor constante en la cámara y rotación densa
+      lunaFriccion.rotation.x += 0.004;
+      lunaFriccion.rotation.y += 0.002;
       if (isFriccionActive) {
         shakeIntensity = 0.08; // Micro-temblor constante
       }
@@ -4447,12 +4520,15 @@ function showFloatingText(msg, colorHex, x, y, z) {
   el.innerText = msg;
   el.style.position = 'fixed';
   el.style.color = colorHex;
-  el.style.textShadow = `0 0 10px ${colorHex}`;
-  el.style.fontFamily = "'Share Tech Mono', monospace";
-  el.style.fontWeight = 'bold';
+  
+  // 🔥 Estilo artístico, tipografía delgada y resplandor sutil
+  el.style.textShadow = `0 0 15px ${colorHex}80`;
+  el.style.fontFamily = "'-apple-system', sans-serif";
+  el.style.fontWeight = '300';
+  el.style.letterSpacing = '2px';
   el.style.pointerEvents = 'none';
   el.style.zIndex = '9999';
-  el.style.transition = 'all 1s ease-out';
+  el.style.transition = 'all 1.5s cubic-bezier(0.1, 0.8, 0.3, 1)';
   
   // Proyectar coordenadas 3D a la pantalla 2D
   const vector = new THREE.Vector3(x, y, z);
@@ -4464,9 +4540,13 @@ function showFloatingText(msg, colorHex, x, y, z) {
   el.style.top = `${yPos}px`;
   document.body.appendChild(el);
   
-  // Animar hacia arriba y desvanecer
-  setTimeout(() => { el.style.top = `${yPos - 50}px`; el.style.opacity = '0'; }, 50);
-  setTimeout(() => { if(el.parentNode) el.parentNode.removeChild(el); }, 1050);
+  // Animar hacia arriba lentamente difuminándose
+  setTimeout(() => { 
+    el.style.top = `${yPos - 60}px`; 
+    el.style.opacity = '0'; 
+    el.style.transform = 'scale(1.1)';
+  }, 50);
+  setTimeout(() => { if(el.parentNode) el.parentNode.removeChild(el); }, 1550);
 }
 
 

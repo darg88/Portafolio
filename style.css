@@ -44,11 +44,66 @@ body, html {
 }
 
 /* 🔥 El efecto etéreo: Flotación continua de todo el bloque */
+/* ==========================================
+   🔥 PALABRAS SUELTAS Y A LA DERIVA (Pantalla de Inicio)
+   ========================================== */
+/* Destruimos cualquier panel o caja contenedora */
 .ethereal-float {
-  animation: floatSlow 6s ease-in-out infinite;
-  display: flex; flex-direction: column; align-items: center;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center;
+  background: transparent !important; 
+  backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  transform-style: preserve-3d;
+  perspective: 1000px;
 }
 
+/* Asignamos animaciones de flotación independientes a cada elemento */
+.ethereal-float h1 {
+  display: inline-block;
+  animation: driftText1 9s ease-in-out infinite alternate;
+}
+
+.ethereal-float p, 
+.ethereal-float span {
+  display: inline-block;
+  animation: driftText2 12s ease-in-out infinite alternate;
+}
+
+#start-btn {
+  animation: driftText3 7s ease-in-out infinite alternate;
+}
+
+#skip-btn {
+  animation: driftText4 10s ease-in-out infinite alternate;
+}
+
+/* Trayectorias caóticas y lentas: Cada pieza viaja en una dirección distinta */
+@keyframes driftText1 {
+  0% { transform: translate3d(0, 0, 0) rotateZ(0deg) rotateY(0deg); }
+  100% { transform: translate3d(15px, -25px, 30px) rotateZ(1deg) rotateY(4deg); }
+}
+
+@keyframes driftText2 {
+  0% { transform: translate3d(0, 0, 0) rotateZ(0deg) rotateX(0deg); }
+  100% { transform: translate3d(-20px, 15px, -40px) rotateZ(-1.5deg) rotateX(5deg); }
+}
+#start-btn, #skip-btn {
+  position: relative;
+  z-index: 999999 !important; 
+  pointer-events: auto !important; 
+}
+@keyframes driftText3 {
+  0% { transform: translate3d(0, 0, 0) rotateZ(0deg); }
+  100% { transform: translate3d(25px, 20px, 15px) rotateZ(2deg); }
+}
+
+@keyframes driftText4 {
+  0% { transform: translate3d(0, 0, 0) rotateZ(0deg); }
+  100% { transform: translate3d(-15px, -20px, 20px) rotateZ(-1deg); } /* Cambiamos el -10px negativo por 20px positivo */
+}
 @keyframes floatSlow {
   0% { transform: translateY(0px); }
   50% { transform: translateY(-12px); }
