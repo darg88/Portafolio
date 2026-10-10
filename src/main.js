@@ -419,15 +419,15 @@ function playSound(type, targetPosition = null) {
   
   if (!isSoundEnabled) return;
   try {
+    // 1. INICIALIZAR EL SISTEMA DE ECO ESPACIAL HÍBRIDO
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       masterGain = audioCtx.createGain();
       delayNode = audioCtx.createDelay();
       feedbackGain = audioCtx.createGain();
 
-      // Eco muy limpio y sutil (nada invasivo, solo da "espacio")
-      delayNode.delayTime.value = 0.3; 
-      feedbackGain.gain.value = 0.15;   
+      delayNode.delayTime.value = 0.35; // Tiempo del eco
+      feedbackGain.gain.value = 0.25;   // Cola del eco
 
       masterGain.connect(delayNode);
       delayNode.connect(feedbackGain);
@@ -439,179 +439,125 @@ function playSound(type, targetPosition = null) {
     
     const now = audioCtx.currentTime;
     let volumeBase = 0.5; 
-    // Si existe la nave, calculamos la distancia (previene errores si targetPosition es nulo)
     if (targetPosition && typeof ship !== 'undefined') {
       volumeBase = Math.max(0, 1 - (ship.position.distanceTo(targetPosition) / 40)); 
     }
 
-    // 🔥 LA FÁBRICA DE CRISTAL: Genera tonos puros que se desvanecen suavemente
+    // 🔥 LA FÁBRICA DE CRISTAL (Para Interfaz y Exploración sutil)
     const playBell = (freq, timeOffset, duration, vol) => {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.type = 'sine'; // Onda pura y redonda
+      osc.type = 'sine'; 
       osc.frequency.setValueAtTime(freq, now + timeOffset);
       
       gain.gain.setValueAtTime(0, now + timeOffset);
-      // Ataque sutil (no golpea el oído)
       gain.gain.linearRampToValueAtTime(vol * volumeBase, now + timeOffset + 0.02); 
-      // Caída natural tipo campana/piano
       gain.gain.exponentialRampToValueAtTime(0.001, now + timeOffset + duration); 
       
-      osc.connect(gain);
-      gain.connect(masterGain);
-      osc.start(now + timeOffset);
-      osc.stop(now + timeOffset + duration);
+      osc.connect(gain); gain.connect(masterGain);
+      osc.start(now + timeOffset); osc.stop(now + timeOffset + duration);
     };
 
     // ==========================================
-    // 🎵 DISEÑO SONORO MINIMALISTA
+    // 🎵 DISEÑO SONORO HÍBRIDO DEFINITIVO
     // ==========================================
     
+    // --- 1. MODO EXPLORACIÓN (Estética 'Gris') ---
     if(type === 'ui') { 
-      // UI: Un "Tap" cristalino prístino (Tonos altos superpuestos)
-      playBell(1200, 0, 0.3, 0.15);
-      playBell(2400, 0, 0.2, 0.05); // Brillo armónico
+
+      // 🔥 INTERFAZ ULTRA-SUTIL: Un "tick" de cristal mate cortísimo
+      playBell(3500, 0, 0.05, 0.02); 
+      playBell(4800, 0, 0.03, 0.01); 
     }
-    else if(type === 'levelup') { 
-      // Logro / Expansión: Acorde celestial
-      playBell(523.25, 0.0, 2.0, 0.1);  // Do
-      playBell(659.25, 0.1, 2.0, 0.1);  // Mi
-      playBell(783.99, 0.2, 2.0, 0.1);  // Sol
-      playBell(1046.50, 0.3, 2.5, 0.12); // Do agudo brillando al final
+    else if(type === 'project_open') { 
+      // Un respiro corto y elegante, similar al despertar del universo pero más breve
+      const playPad = (freq, delay, attack, release, vol) => {
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.type = 'sine'; osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, now + delay);
+        gain.gain.linearRampToValueAtTime(vol * volumeBase, now + delay + attack);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + attack + release);
+        osc.connect(gain); gain.connect(masterGain); 
+        osc.start(now + delay); osc.stop(now + delay + attack + release);
+      };
+      playPad(523.25, 0.0, 0.3, 1.5, 0.08); // Do
+      playPad(783.99, 0.1, 0.5, 1.5, 0.05); // Sol (Crea un aura abierta y positiva)
     }
-    else if(type === 'laser') { 
-      // Acción: Una gota de agua afinada (En lugar de "Pew", hace un "Pling")
-      playBell(880, 0, 0.4, 0.1);
-      playBell(1760, 0, 0.2, 0.05);
+    else if(type === 'pulse') { 
+      // Planetas, Errática y Pincel Poético: Gota de agua prístina
+      playBell(1200, 0, 0.3, 0.06); 
+      playBell(2400, 0, 0.2, 0.02); 
     }
-    else if(type === 'damage') { 
-      // Error/Daño: Dos notas graves que chocan y vibran tristes
-      playBell(150, 0, 1.0, 0.3);
-      playBell(158, 0, 1.0, 0.3); // Esta leve diferencia crea un batimento ondulante
-    }
-    else if(type === 'explosion') { 
-      // Impacto sutil: Viento grave mezclado con una campanita rota
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(100, now);
-      osc.frequency.exponentialRampToValueAtTime(20, now + 0.6); // Baja como un suspiro
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.4 * volumeBase, now + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-      osc.connect(gain);
-      gain.connect(masterGain);
-      osc.start(now);
-      osc.stop(now + 0.6);
-      
-      playBell(2000, 0, 0.4, 0.05); // La "chispa" del impacto
-    }
-  else if(type === 'boss_hit' || type === 'ui') { 
-      // Botones y Fricción: Campana de meditación / Cuenco tibetano
+    else if(type === 'boss_hit') { 
+      // Máquina de Fricción: Cuenco tibetano / Toque físico pesado
       playBell(220, 0, 1.2, 0.2);
       playBell(440, 0, 0.8, 0.1);
     }
-    else if(type === 'pulse') { 
-      // Planetas, DAC y Poética: Gota de agua prístina
-      playBell(1200, 0, 0.3, 0.06); // Volumen bajado un poco para pintar suave
-      playBell(2400, 0, 0.2, 0.02); 
+   else if(type === 'levelup') { 
+      // 🔥 RESPIRO ETÉREO (Acorde suspendido Cmaj9 estilo Ambient/Gris)
+      const playPad = (freq, delay, attack, release, vol) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine'; // Onda pura
+        osc.frequency.value = freq;
+        
+        gain.gain.setValueAtTime(0, now + delay);
+        // Ataque lentísimo: el sonido "nace" de la nada como un viento
+        gain.gain.linearRampToValueAtTime(vol * volumeBase, now + delay + attack);
+        // Caída eterna que se mezcla con el eco
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + attack + release);
+        
+        osc.connect(gain);
+        gain.connect(masterGain); 
+        osc.start(now + delay);
+        osc.stop(now + delay + attack + release);
+      };
+
+      // Las notas entran desfasadas creando una atmósfera expansiva y melancólica
+      playPad(261.63, 0.0, 1.5, 3.0, 0.06); // Fundamental profunda (Do), entra lento
+      playPad(392.00, 0.6, 2.0, 3.0, 0.04); // Quinta (Sol), entra después
+      playPad(587.33, 1.2, 2.5, 3.5, 0.03); // Novena (Re), aporta el toque mágico/nostálgico
+      playPad(659.25, 1.8, 3.0, 4.0, 0.02); // Tercera aguda (Mi), se queda flotando al final
     }
 
-  } catch(e) { console.log(e); }
-
-
-  // Mantenemos tu sistema de vibración táctil
-  if (type === 'laser') vibrateDevice(20);         
-  if (type === 'explosion') vibrateDevice(80);     
-  if (type === 'damage') vibrateDevice(300);       
-  if (type === 'boss_hit') vibrateDevice(50);      
-  
-  if (!isSoundEnabled) return;
-  try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    
-    const osc = audioCtx.createOscillator(); 
-    const gain = audioCtx.createGain();
-    
-    // Filtro para darle un tono "tecnológico" y menos estridente
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 3000;
-
-    osc.connect(filter); 
-    filter.connect(gain); 
-    gain.connect(audioCtx.destination);
-    
-    let volumeBase = 0.6; 
-    if (targetPosition) volumeBase = Math.max(0, 1 - (ship.position.distanceTo(targetPosition) / 40)); 
-    
-    const now = audioCtx.currentTime;
-
-    if(type === 'laser') { 
-      // Zumbido láser cortante y rápido
-      osc.type = 'sawtooth'; 
+    // --- 2. MODO COMBATE (Arcade Retro + Eco Espacial) ---
+    else if(type === 'laser') { 
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass'; filter.frequency.value = 3000;
+      osc.type = 'sawtooth'; // Láser cortante
       osc.frequency.setValueAtTime(1200, now); 
       osc.frequency.exponentialRampToValueAtTime(100, now + 0.15); 
       gain.gain.setValueAtTime(0.05 * volumeBase, now); 
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15); 
+      osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
       osc.start(now); osc.stop(now + 0.15); 
     }
     else if(type === 'damage') { 
-      // Impacto eléctrico sordo
-      osc.type = 'square'; 
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass'; filter.frequency.value = 3000;
+      osc.type = 'square'; // Impacto eléctrico crudo
       osc.frequency.setValueAtTime(150, now); 
       osc.frequency.exponentialRampToValueAtTime(40, now + 0.2); 
       gain.gain.setValueAtTime(0.2 * volumeBase, now); 
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2); 
+      osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
       osc.start(now); osc.stop(now + 0.2); 
     }
     else if(type === 'explosion') { 
-      // Distorsión grave (ruido de estática)
-      osc.type = 'sawtooth'; 
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      osc.type = 'sawtooth'; // Distorsión grave
       osc.frequency.setValueAtTime(100, now); 
       osc.frequency.linearRampToValueAtTime(10, now + 0.4); 
       filter.frequency.setValueAtTime(800, now);
       filter.frequency.linearRampToValueAtTime(100, now + 0.4);
       gain.gain.setValueAtTime(0.3 * volumeBase, now); 
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4); 
+      osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
       osc.start(now); osc.stop(now + 0.4); 
     }
-    else if(type === 'levelup') { 
-      // NUEVO SONIDO: Extracción de Datos / UI Unlock
-      osc.type = 'square'; 
-      osc.frequency.setValueAtTime(1046.5, now);      
-      osc.frequency.setValueAtTime(1318.5, now + 0.05); 
-      osc.frequency.setValueAtTime(1568.0, now + 0.1);  
-      osc.frequency.setValueAtTime(2093.0, now + 0.15); 
-      
-      filter.frequency.setValueAtTime(500, now);
-      filter.frequency.exponentialRampToValueAtTime(4000, now + 0.1);
 
-      gain.gain.setValueAtTime(0.08, now); 
-      gain.gain.linearRampToValueAtTime(0.08, now + 0.15); 
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3); 
-      osc.start(now); osc.stop(now + 0.3); 
-    }
-    else if(type === 'boss_hit') { 
-      // Ruido metálico seco
-      osc.type = 'square'; 
-      osc.frequency.setValueAtTime(800, now); 
-      osc.frequency.exponentialRampToValueAtTime(50, now + 0.1); 
-      gain.gain.setValueAtTime(0.2, now); 
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1); 
-      osc.start(now); osc.stop(now + 0.1); 
-    }
-    else if(type === 'ui') { 
-      // Clic elegante y corto para botones
-      osc.type = 'sine'; 
-      osc.frequency.setValueAtTime(1200, now); 
-      osc.frequency.exponentialRampToValueAtTime(600, now + 0.05); 
-      gain.gain.setValueAtTime(0.1, now); 
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05); 
-      osc.start(now); osc.stop(now + 0.05); 
-    }
-  } catch(e) {}
+  } catch(e) { console.log(e); }
 }
 
 function showSystemToast(msg, color) {
@@ -631,6 +577,56 @@ function showSystemToast(msg, color) {
 
 let isGameStarted = false; let isPaused = false; let isUIOpen = false; let shakeIntensity = 0;
 document.addEventListener('visibilitychange', () => { isPaused = document.hidden; });
+// ==========================================
+// 🔥 REFLEXIÓN POÉTICA CENTRAL (Panel de Cristal Translúcido)
+// ==========================================
+function showPoeticReflection(text, colorHex) {
+  let el = document.getElementById('poetic-reflection');
+  
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'poetic-reflection';
+    el.style.position = 'fixed';
+    el.style.top = '50%';
+    el.style.left = '50%';
+    el.style.transform = 'translate(-50%, -50%)';
+    el.style.fontFamily = "'-apple-system', sans-serif";
+    el.style.fontWeight = '300'; 
+    el.style.fontSize = '1.15rem'; // Texto ligeramente más sutil
+    el.style.lineHeight = '2';     // Más respiro entre líneas
+    el.style.letterSpacing = '3px';
+    el.style.textAlign = 'center';
+    el.style.pointerEvents = 'none'; 
+    el.style.zIndex = '999999';
+    el.style.opacity = '0';
+    el.style.transition = 'opacity 2.5s ease-in-out'; 
+    el.style.maxWidth = '750px';
+    el.style.width = '80%';
+    
+    // 🔥 EL NUEVO FONDO: Panel de cristal cuadrado, minimalista y etéreo
+    el.style.background = 'rgba(5, 5, 10, 0.15)'; // Mucho más transparente
+    el.style.backdropFilter = 'blur(15px)';       // El desenfoque hace el trabajo de lectura
+    el.style.padding = '40px 60px';
+    el.style.borderRadius = '0';                  // Cuadrado, corte arquitectónico
+    el.style.border = '1px solid rgba(255, 255, 255, 0.03)'; // Borde base casi invisible
+    el.style.borderTop = '1px solid rgba(255, 255, 255, 0.15)'; // Bisel de luz superior
+    el.style.borderLeft = '1px solid rgba(255, 255, 255, 0.1)'; // Bisel de luz lateral
+    el.style.boxShadow = '0 30px 60px rgba(0, 0, 0, 0.3)'; // Sombra difusa debajo del cristal
+    
+    document.body.appendChild(el);
+  }
+  
+  el.innerHTML = `<span style="font-style: italic; opacity: 0.85;">"${text}"</span>`;
+  el.style.color = colorHex;
+  el.style.textShadow = `0 0 10px rgba(255,255,255,0.2)`; // Resplandor reducido
+
+  setTimeout(() => { el.style.opacity = '1'; }, 100);
+  if (el.hideTimeout) clearTimeout(el.hideTimeout);
+
+  el.hideTimeout = setTimeout(() => {
+    el.style.opacity = '0';
+  }, 7000);
+}
 // 🔥 FIN DE LA RESTAURACIÓN 🔥
 
 // ==========================================
@@ -638,26 +634,28 @@ document.addEventListener('visibilitychange', () => { isPaused = document.hidden
 // ==========================================
 function toggleCombatDimming(isCombat) {
   categoryPlanets.forEach(p => {
-    if (p.material && p.material.uniforms && p.material.uniforms.color) {
+    // Verificamos el nuevo material liso
+    if (p.material && p.material.color) {
       if (isCombat) {
-        // Guardamos su color actual por si estaba 'visitado' o no
-        if (!p.userData.preCombatColor) p.userData.preCombatColor = p.material.uniforms.color.value.getHex();
-        p.material.uniforms.color.value.setHex(0x111111); // Apagar luces (Casi negro)
+        if (!p.userData.preCombatColor) p.userData.preCombatColor = p.material.color.getHex();
+        p.material.color.setHex(0x111111); // Apagar luces
       } else {
         // Restaurar luces
         if (p.userData.preCombatColor) {
-          p.material.uniforms.color.value.setHex(p.userData.preCombatColor);
+          p.material.color.setHex(p.userData.preCombatColor);
           p.userData.preCombatColor = null; 
         } else {
-          p.material.uniforms.color.value.setHex(p.userData.visited ? 0x555555 : p.userData.originalColor);
+          // Re-aplicar el multiplicador de luz si no ha sido visitado
+          const restColor = new THREE.Color(p.userData.visited ? 0x555555 : p.userData.originalColor);
+          if (!p.userData.visited) restColor.multiplyScalar(1.8);
+          p.material.color.copy(restColor);
         }
       }
     }
-    // Ocultar los textos de los planetas para que no distraigan
+    // Ocultar textos
     if (p.children.length > 0) p.children[0].visible = !isCombat;
   });
   
-  // Ocultar también el satélite durante el combate
   if (typeof satelliteGroup !== 'undefined') satelliteGroup.visible = !isCombat;
 }
 // ========================================================
@@ -899,6 +897,7 @@ function initSystem(skip = false) {
 document.getElementById('start-btn')?.addEventListener('click', (e) => { 
   e.stopPropagation(); // 🔥 Escudo protector: el clic no traspasa el fondo
   e.currentTarget.blur(); 
+  playSound('levelup')
   initSystem(false); 
 });
 document.getElementById('skip-btn')?.addEventListener('click', (e) => { 
@@ -990,7 +989,7 @@ const sysPrefs = JSON.parse(localStorage.getItem('gamelab_prefs')) || { sound: t
 // 1. Cargar preferencias al iniciar
 isSoundEnabled = sysPrefs.sound;
 let isBloomEnabled = sysPrefs.bloom;
-bloomPass.strength = isBloomEnabled ? 0.8 : 0; 
+bloomPass.strength = isBloomEnabled ? 0.1 : 0; 
 
 // 2. Aplicar aspecto visual a los botones según la memoria
 const muteBtnInit = document.getElementById('global-mute-btn');
@@ -1090,7 +1089,7 @@ document.getElementById('combat-toggle-btn')?.addEventListener('click', (e) => {
     btn.style.color = '#ff0000';
     btn.title = 'Pausar / Volver a Modo Paz'; // Tooltip
     playSound('ui');
-    showSystemToast('> MODO COMBATE ACTIVADO : PROTEGE LA NAVE <', '#ff0000');
+    showSystemToast('✧ ANOMALÍAS REVELADAS : SISTEMA INESTABLE ✧', '#ffffff');
     toggleCombatDimming(true); // Apagar luces
     if (isTouchDevice && touchControls) touchControls.style.display = 'flex';
   } else {
@@ -1103,7 +1102,7 @@ document.getElementById('combat-toggle-btn')?.addEventListener('click', (e) => {
     enemyProjectiles.forEach(p => scene.remove(p)); enemyProjectiles.length = 0;
     if(bossEntity) { scene.remove(bossEntity); bossEntity = null; document.getElementById('boss-ui').classList.add('hidden'); }
     playSound('ui');
-    showSystemToast('> MODO EXPLORACIÓN RESTAURADO <', '#00ff00');
+  showSystemToast('✧ ARMONÍA RESTAURADA ✧', '#00ffaa');
     if (touchControls) touchControls.style.display = 'none';
   }
 });
@@ -1154,15 +1153,14 @@ categoryPlanetData.forEach((proj, index) => {
     ? new THREE.BoxGeometry(4, 2, 0.5) 
     : new THREE.SphereGeometry(3, 32, 32); 
 
-  // 2. Inyectamos nuestro Shader directamente a la tarjeta gráfica
-  const planetMat = new THREE.ShaderMaterial({
-    uniforms: {
-      color: { value: new THREE.Color(proj.color) },
-      lightDir: { value: new THREE.Vector3(1, 1, 1).normalize() } 
-    },
-    vertexShader: ditherShader.vertexShader,
-    fragmentShader: ditherShader.fragmentShader,
+// 2. MODO 'GRIS': Esferas lisas y etéreas de luz pura (MeshBasicMaterial)
+  const baseColor = new THREE.Color(proj.color);
+  const planetMat = new THREE.MeshBasicMaterial({
+    // 🔥 MAGIA: Multiplicamos el color pastel x1.8 para forzar que sobrepase
+    // el umbral del Bloom y genere ese brillo externo difuminado de tu imagen.
+    color: baseColor.multiplyScalar(1.8), 
     transparent: true, 
+    opacity: 0.95 // Ligeramente translúcidos
   });
 
   const planet = new THREE.Mesh(geo, planetMat); 
@@ -2413,11 +2411,14 @@ window.addEventListener('click', (e) => {
   if(!isGameStarted || isUIOpen || renderer.xr.isPresenting || e.target.closest('.control-btn') || e.target.closest('.modal-ui') || e.target.closest('#side-menu') || e.target.closest('.xr-wrapper') || e.target.closest('#touch-controls')) return;
   raycaster.setFromCamera(mouseNDC, camera);
   
-  const handleProjectClick = (data) => {
+const handleProjectClick = (data) => {
     if (window.isZooming) return; 
     window.isZooming = true;
     targetFov = 25; 
-    playSound('levelup');
+    
+    // 🔥 EL NUEVO SONIDO CORTO Y ETÉREO
+    playSound('project_open'); 
+    
     setTimeout(() => {
       openProjectPopup(data);
       targetFov = 75; 
@@ -2502,92 +2503,107 @@ case "planeta_dac":
         setTimeout(() => { window.isZooming = false; }, 350); 
         break;
 
-  // 🔥 MÁQUINA POÉTICA: Elegancia Blanca
+  // 🔥 MÁQUINA POÉTICA: Tonos grises y blancos con extra neón
   case "maquina_poetica":
-    isPoeticaActive = !isPoeticaActive;
-    isErraticaActive = false;
-    isFriccionActive = false;
     if (isPoeticaActive) {
-      showSystemToast('> POÉTICA: SÍNTESIS Y CLARIDAD ACTIVADA', '#ffffff');
-      playSound('levelup');
-      categoryPlanets.forEach(p => {
-        if (p.userData.id !== 999 && p.material && p.material.uniforms && p.material.uniforms.color) {
-          if (!p.userData.prePoeticaColor) p.userData.prePoeticaColor = p.material.uniforms.color.value.getHex();
-          p.material.uniforms.color.value.setHex(0xffffff); // Blanco puro
+      isPoeticaActive = false; playSound('ui');
+    } else {
+      isPoeticaActive = true; isErraticaActive = false; isFriccionActive = false;
+      showPoeticReflection("Somos el cosmos organizándose a sí mismo; polvo de estrellas tejiendo una red de luz pura.", "#ffffff");
+      playSound('project_open');
+    }
+    
+    // 1. Restaurar todo a la normalidad primero (Seguro antibug)
+    categoryPlanets.forEach(p => {
+      if (p.userData.id !== 999 && p.material && p.material.color && p.userData.originalColor) {
+        p.material.color.setHex(p.userData.visited ? 0x555555 : p.userData.originalColor);
+        if (!p.userData.visited) p.material.color.multiplyScalar(1.8);
+        p.material.opacity = 0.95;
+      }
+    });
+    lunaPoetica.scale.set(1, 1, 1); lunaErratica.scale.set(1.0, 2.0, 0.5); lunaFriccion.scale.set(1, 1, 1);
+    document.body.style.cursor = 'default';
+
+    // 2. Aplicar efecto si se encendió
+    if (isPoeticaActive) {
+      const poetiColors = [0xffffff, 0xdddddd, 0xaaaaaa]; 
+      categoryPlanets.forEach((p, idx) => {
+        if (p.userData.id !== 999 && p.material && p.material.color) {
+          p.material.color.setHex(poetiColors[idx % 3]);
+          p.material.color.multiplyScalar(2.5); // Brillo extra
         }
       });
       lunaPoetica.scale.set(1.3, 1.3, 1.3);
-    } else {
-      showSystemToast('> POÉTICA: APAGADA', '#ffffff');
-      playSound('ui');
-      categoryPlanets.forEach(p => {
-        if (p.material && p.material.uniforms && p.userData.prePoeticaColor) {
-          p.material.uniforms.color.value.setHex(p.userData.prePoeticaColor);
-          p.userData.prePoeticaColor = undefined;
-        }
-      });
-      lunaPoetica.scale.set(1, 1, 1);
     }
     break;
 
-  // 🔥 MÁQUINA ERRÁTICA: Glitch + caos
+  // 🔥 MÁQUINA ERRÁTICA: Tonos rojos y parpadeo
   case "maquina_erratica":
-    isErraticaActive = !isErraticaActive;
-    isPoeticaActive = false;
-    isFriccionActive = false;
     if (isErraticaActive) {
-      showSystemToast('> ERRÁTICA: CORRUPCIÓN INYECTADA', '#ff3300');
-      playSound('damage');
-      shakeIntensity = 1.5;
-      for (let i = 0; i < 10; i++) { setTimeout(() => triggerSubtleGlitch(), i * 80); }
-      categoryPlanets.forEach(p => {
-        if (p.userData.id !== 999 && p.material && p.material.uniforms && p.material.uniforms.color) {
-          if (!p.userData.preErraticaColor) p.userData.preErraticaColor = p.material.uniforms.color.value.getHex();
-          p.material.uniforms.color.value.setHex(0xff3300);
-        }
-      });
-      lunaErratica.scale.set(1.5, 3.0, 0.8); // Se distorsiona aún más
+      isErraticaActive = false; playSound('ui');
     } else {
-      showSystemToast('> ERRÁTICA: ESTABILIZADA', '#ff3300');
-      playSound('ui');
-      categoryPlanets.forEach(p => {
-        if (p.material && p.material.uniforms && p.userData.preErraticaColor) {
-          p.material.uniforms.color.value.setHex(p.userData.preErraticaColor);
-          p.userData.preErraticaColor = undefined;
+      isErraticaActive = true; isPoeticaActive = false; isFriccionActive = false;
+      showPoeticReflection("La entropía es nuestro destino ineludible. En el quiebre de la estructura, redescubrimos nuestra propia fragilidad.", "#ff6655");
+      playSound('pulse');
+      shakeIntensity = 1.5;
+      for (let i = 0; i < 10; i++) { setTimeout(() => {if(typeof triggerSubtleGlitch==='function') triggerSubtleGlitch()}, i * 80); }
+    }
+    
+    // 1. Restaurar todo
+    categoryPlanets.forEach(p => {
+      if (p.userData.id !== 999 && p.material && p.material.color && p.userData.originalColor) {
+        p.material.color.setHex(p.userData.visited ? 0x555555 : p.userData.originalColor);
+        if (!p.userData.visited) p.material.color.multiplyScalar(1.8);
+        p.material.opacity = 0.95;
+      }
+    });
+    lunaPoetica.scale.set(1, 1, 1); lunaErratica.scale.set(1.0, 2.0, 0.5); lunaFriccion.scale.set(1, 1, 1);
+    document.body.style.cursor = 'default';
+
+    // 2. Aplicar efecto
+    if (isErraticaActive) {
+      const erratiColors = [0xff2200, 0xcc0000, 0x991100]; 
+      categoryPlanets.forEach((p, idx) => {
+        if (p.userData.id !== 999 && p.material && p.material.color) {
+          p.material.color.setHex(erratiColors[idx % 3]);
+          p.material.color.multiplyScalar(1.5);
         }
       });
-      lunaErratica.scale.set(1.0, 2.0, 0.5);
+      lunaErratica.scale.set(1.5, 3.0, 0.8);
     }
     break;
 
-  // 🔥 MÁQUINA FRICCIÓN: Dilatación Temporal
+  // 🔥 MÁQUINA FRICCIÓN: Tonos pesados y lentitud
   case "maquina_friccion":
-    isFriccionActive = !isFriccionActive;
-    isPoeticaActive = false;
-    isErraticaActive = false;
     if (isFriccionActive) {
-      showSystemToast('> FRICCIÓN: DILATACIÓN TEMPORAL (SISTEMA LENTO)', '#ffff00');
-      playSound('boss_hit');
-      document.body.style.cursor = 'wait';
-      if (navigator.vibrate) navigator.vibrate([200, 50, 200, 50, 200]);
-      lunaFriccion.scale.set(1.3, 1.3, 1.3);
-      categoryPlanets.forEach(p => {
-        if (p.userData.id !== 999 && p.material && p.material.uniforms && p.material.uniforms.color) {
-          if (!p.userData.preFriccionColor) p.userData.preFriccionColor = p.material.uniforms.color.value.getHex();
-          p.material.uniforms.color.value.setHex(0x555500); // Amarillo pesado/denso
-        }
-      });
+      isFriccionActive = false; playSound('ui');
     } else {
-      showSystemToast('> FRICCIÓN: TIEMPO RESTAURADO', '#ffff00');
-      playSound('ui');
-      document.body.style.cursor = 'default';
-      lunaFriccion.scale.set(1, 1, 1);
+      isFriccionActive = true; isPoeticaActive = false; isErraticaActive = false;
+      showPoeticReflection("La inmensidad del tiempo se pliega ante el peso de la materia. Todo comienza a detenerse.", "#ddbb66");
+      playSound('boss_hit');
+    }
+    
+    // 1. Restaurar todo
+    categoryPlanets.forEach(p => {
+      if (p.userData.id !== 999 && p.material && p.material.color && p.userData.originalColor) {
+        p.material.color.setHex(p.userData.visited ? 0x555555 : p.userData.originalColor);
+        if (!p.userData.visited) p.material.color.multiplyScalar(1.8);
+        p.material.opacity = 0.95;
+      }
+    });
+    lunaPoetica.scale.set(1, 1, 1); lunaErratica.scale.set(1.0, 2.0, 0.5); lunaFriccion.scale.set(1, 1, 1);
+    document.body.style.cursor = 'default';
+
+    // 2. Aplicar efecto
+    if (isFriccionActive) {
+      document.body.style.cursor = 'wait';
       categoryPlanets.forEach(p => {
-        if (p.material && p.material.uniforms && p.userData.preFriccionColor) {
-          p.material.uniforms.color.value.setHex(p.userData.preFriccionColor);
-          p.userData.preFriccionColor = undefined;
+        if (p.userData.id !== 999 && p.material && p.material.color) {
+          p.material.color.setHex(0x332211); 
+          p.material.opacity = 0.25; 
         }
       });
+      lunaFriccion.scale.set(1.3, 1.3, 1.3);
     }
     break;
 }
@@ -2846,7 +2862,16 @@ for (let i = 0; i < numWebLines; i++) {
   webLines.push(line);
   energyWebGroup.add(line);
 }
-
+// ==========================================
+// 🔥 EL VIAJERO (Personaje Minimalista)
+// ==========================================
+window.travelerGroup = new THREE.Group(); // Ahora es global
+const travelerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+const headGeo = new THREE.OctahedronGeometry(0.3, 0); const head = new THREE.Mesh(headGeo, travelerMat); head.position.y = 1.8; window.travelerGroup.add(head);
+const capeGeo = new THREE.ConeGeometry(0.7, 2.2, 4); const cape = new THREE.Mesh(capeGeo, travelerMat); cape.position.y = 0.5; cape.rotation.y = Math.PI / 4; window.travelerGroup.add(cape);
+const swordGeo = new THREE.BoxGeometry(0.04, 3.0, 0.04); const sword = new THREE.Mesh(swordGeo, travelerMat); sword.position.set(0.6, 0.2, 0.5); sword.rotation.z = Math.PI / -6; sword.rotation.x = Math.PI / 8; window.travelerGroup.add(sword);
+window.travelerGroup.position.set(-8, -3, -15); window.travelerGroup.rotation.y = Math.PI / 3; 
+scene.add(window.travelerGroup);
 // ==========================================
 // 🔥 POTENCIA CREADORA: SISTEMA GLOBAL DE TRAZOS
 // ==========================================
@@ -2855,6 +2880,13 @@ let frames = 0; let lastTime = performance.now(); let lowFPSCount = 0;
 let totalRotated = 0; let prevAngle = 0;
 
 renderer.setAnimationLoop((timestamp, frame) => {
+  // 🔥 ANIMACIÓN DEL VIAJERO (A prueba de balas)
+    if (window.travelerGroup) {
+      const t = performance.now() * 0.001; // Usamos el reloj interno del navegador
+      window.travelerGroup.position.y = -3 + Math.sin(t * 1.5) * 0.3; 
+      window.travelerGroup.children[0].rotation.y = t * 0.5;
+      window.travelerGroup.children[0].rotation.x = Math.sin(t * 0.8) * 0.1;
+    }
   const isXR = renderer.xr.isPresenting;
   const session = isXR ? renderer.xr.getSession() : null;
   const isAR = isXR && window.isARSession; 
@@ -3741,7 +3773,19 @@ showSystemToast('ANOMALÍA DETECTADA A TUS ESPALDAS', '#cc0000');           }
           planet.position.lerp(new THREE.Vector3(finalX, finalY, finalZ), 0.08);
         }
       }
-
+// 🔥 EFECTO PARPADEO: Máquina Errática
+      if (isErraticaActive && planet.userData.id !== 999 && planet.material) {
+        if (Math.random() > 0.92) {
+           planet.material.opacity = Math.random() * 0.5 + 0.1; // Caídas bruscas de luz
+           planet.material.color.setHex(Math.random() > 0.5 ? 0xff0000 : 0x770000);
+           planet.material.color.multiplyScalar(1.8);
+        } else {
+           planet.material.opacity = 0.9;
+        }
+      } else if (!isFriccionActive && planet.material && planet.userData.id !== 999) {
+        // Mantiene la opacidad estable si no hay máquinas distorsionando
+        planet.material.opacity = 0.95; 
+      }
      
     });
 
@@ -4441,3 +4485,21 @@ if (btnPoetica && btnErratica && btnFriccion) {
   });
 }
 }
+// 🔥 EFECTO DE ONDA Y SONIDO GLOBAL AL HACER CLIC
+window.addEventListener('click', (e) => {
+  // 1. Crear el anillo visual (Onda de agua)
+  const ripple = document.createElement('div');
+  ripple.className = 'water-ripple';
+  ripple.style.left = `${e.clientX}px`;
+  ripple.style.top = `${e.clientY}px`;
+  document.body.appendChild(ripple);
+  
+  // Limpiar el elemento después de la animación
+  setTimeout(() => { if(ripple.parentNode) ripple.parentNode.removeChild(ripple); }, 800);
+  
+  // 2. Reproducir el sonido melódico
+  // Solo suena si NO hiciste clic en un botón, para evitar que los sonidos se encimen
+  if (!e.target.closest('button') && !e.target.closest('a') && !e.target.closest('.modal-ui')) {
+    if (typeof playSound === 'function') playSound('ui'); 
+  }
+});

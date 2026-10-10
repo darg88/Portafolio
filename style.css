@@ -27,25 +27,70 @@ body, html {
    3. PANTALLAS DE CARGA Y START
    ========================================== */
 #loading-screen {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #050505;
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #030305;
   z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center;
-  color: #ffffff; text-align: center; transition: opacity 0.5s ease;
+  color: #ffffff; text-align: center; transition: opacity 0.8s ease;
 }
-.loading-bar-container { width: 80%; max-width: 400px; height: 10px; border: 1px solid #555555; margin-top: 20px; box-shadow: none; background: rgba(255,255,255,0.05); }
-#loading-bar { width: 0%; height: 100%; background-color: #cc0000; box-shadow: none; transition: width 0.2s ease; }
-#loading-text { font-size: 1.2rem; letter-spacing: 2px; text-shadow: none; margin: 0; font-family: 'Share Tech Mono', monospace; color: #ffffff;}
+/* Barra de carga súper fina y brillante */
+.loading-bar-container { width: 60%; max-width: 300px; height: 2px; background: rgba(255,255,255,0.05); margin-top: 20px; border-radius: 2px; overflow: hidden; border: none; }
+#loading-bar { width: 0%; height: 100%; background: rgba(255,255,255,0.8); transition: width 0.3s ease; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+#loading-text { font-size: 0.85rem; letter-spacing: 4px; font-weight: 300; font-family: -apple-system, sans-serif; color: #888899; text-transform: uppercase;}
 
 #start-screen {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #050505 !important;
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+  background: radial-gradient(circle at center, #0a0a0f 0%, #000000 100%) !important;
   z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center;
-  color: #ffffff; text-align: center; transition: opacity 1.5s ease-in-out;
+  color: #ffffff; text-align: center; transition: opacity 2.5s ease-in-out; /* Desvanecimiento lentísimo */
 }
-#start-screen h1 { font-size: 4rem; text-shadow: none; margin: 0 0 10px 0; letter-spacing: 5px; text-transform: uppercase; font-family: 'Share Tech Mono', monospace; color: #ffffff;}
-#start-screen span { color: #888888 !important; }
-#start-btn { margin-top: 50px; background: transparent; border: 1px solid rgba(255,255,255,0.3); color: #fff; font-size: 1.2rem; padding: 20px 40px; cursor: pointer; font-family: 'Share Tech Mono', monospace; transition: all 0.3s ease; }
-#start-btn:hover { background: #ffffff; color: #000000; border-color: #ffffff; }
-#skip-btn { margin-top: 20px; background: transparent; border: none; color: #888888; font-family: 'Share Tech Mono', monospace; font-size: 1.1rem; cursor: pointer; text-decoration: underline; transition: 0.3s; padding: 10px; }
-#skip-btn:hover { color: #ffffff; }
+
+/* 🔥 El efecto etéreo: Flotación continua de todo el bloque */
+.ethereal-float {
+  animation: floatSlow 6s ease-in-out infinite;
+  display: flex; flex-direction: column; align-items: center;
+}
+
+@keyframes floatSlow {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+  100% { transform: translateY(0px); }
+}
+
+/* Tipografía limpia y separada */
+#start-screen h1 { 
+  font-size: 2.8rem; text-shadow: 0 0 30px rgba(255,255,255,0.1); margin: 0 0 10px 0; 
+  letter-spacing: 8px; font-weight: 300; font-family: -apple-system, sans-serif; color: #ffffff; 
+}
+
+/* El texto secundario respirando con un pulso de luz */
+#start-screen span { 
+  display: block; font-size: 1rem; color: #888899 !important; font-weight: 300; 
+  letter-spacing: 4px; margin-top: 15px; font-family: -apple-system, sans-serif;
+  animation: pulseGlow 4s infinite alternate;
+}
+
+@keyframes pulseGlow {
+  from { opacity: 0.3; text-shadow: 0 0 0px rgba(255,255,255,0); }
+  to { opacity: 1; text-shadow: 0 0 15px rgba(255,255,255,0.5); }
+}
+
+/* Botones de Cristal tipo Píldora */
+#start-btn { 
+  margin-top: 50px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.15); 
+  color: #dddddd; font-size: 0.95rem; padding: 15px 40px; cursor: pointer; 
+  font-family: -apple-system, sans-serif; font-weight: 300; letter-spacing: 3px;
+  border-radius: 30px; backdrop-filter: blur(5px); transition: all 0.5s ease; text-transform: uppercase;
+}
+#start-btn:hover { 
+  background: rgba(255,255,255,0.1); color: #ffffff; border-color: rgba(255,255,255,0.5); 
+  box-shadow: 0 0 30px rgba(255,255,255,0.1); transform: scale(1.05);
+}
+
+#skip-btn { 
+  margin-top: 25px; background: transparent; border: none; color: #555566; 
+  font-family: -apple-system, sans-serif; font-weight: 300; font-size: 0.75rem; 
+  letter-spacing: 2px; cursor: pointer; transition: 0.4s; text-transform: uppercase; text-decoration: none;
+}
+#skip-btn:hover { color: #aaaaaa; text-shadow: 0 0 10px rgba(255,255,255,0.2); }
 
 /* ==========================================
    4. HUD SUPERIOR Y MARCADORES
@@ -416,3 +461,41 @@ body.ar-active #VRButton {
   display: flex !important;
   z-index: 100000 !important;
 }
+/* ==========================================
+   EFECTOS ETÉREOS Y ONDAS (RIPPLE)
+   ========================================== */
+.water-ripple {
+  position: fixed;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 9999999;
+  animation: rippleAnim 0.8s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+}
+
+@keyframes rippleAnim {
+  0% { width: 0; height: 0; opacity: 0.8; }
+  100% { width: 90px; height: 90px; opacity: 0; border-width: 2px; }
+}
+
+/* Red que conecta los botones de inicio */
+#start-btn { position: relative; }
+#start-btn::after {
+  content: ''; position: absolute; bottom: -45px; left: 50%; transform: translateX(-50%);
+  width: 1px; height: 45px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.4), transparent);
+  pointer-events: none;
+}
+
+/* ==========================================
+   BANNER EN DESARROLLO (PACÍFICO)
+   ========================================== */
+#wip-banner {
+  background: rgba(255, 255, 255, 0.03) !important; 
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important; 
+  color: #aaaaaa !important; font-family: -apple-system, sans-serif !important;
+  font-weight: 300 !important; letter-spacing: 4px !important;
+  animation: wipPulse 4s infinite alternate !important;
+}
+@keyframes wipPulse { 0% { opacity: 0.4; } 100% { opacity: 1; text-shadow: 0 0 10px rgba(255,255,255,0.2); } }
