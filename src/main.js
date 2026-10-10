@@ -488,6 +488,11 @@ function playSound(type, targetPosition = null) {
       playBell(1200, 0, 0.3, 0.06); 
       playBell(2400, 0, 0.2, 0.02); 
     }
+    else if(type === 'pulse') { 
+      // Planetas, Errática y Pincel Poético: Gota de agua prístina
+      playBell(1200, 0, 0.3, 0.06); 
+      playBell(2400, 0, 0.2, 0.02); 
+    }
     else if(type === 'boss_hit') { 
       // Máquina de Fricción: Cuenco tibetano / Toque físico pesado
       playBell(220, 0, 1.2, 0.2);
@@ -2425,7 +2430,31 @@ const handleProjectClick = (data) => {
       window.isZooming = false;
     }, 350); 
   };
-
+// ==========================================
+  // 🔥 EL ORÁCULO: Clic en el Viajero
+  // ==========================================
+  const intersectsViajero = raycaster.intersectObjects([window.travelerGroup], true);
+  if (intersectsViajero.length > 0) {
+    const clickedViajero = intersectsViajero.find(hit => hit.object.userData && hit.object.userData.name === "viajero");
+    if (clickedViajero) {
+      playSound('project_open'); // Sonido especial celestial
+      showPoeticReflection("Soy el arquitecto de este sistema. Aquí siembro ideas, y el tiempo las hace florecer.", "#aaccff");
+      
+      // El viajero levanta la espada como saludo
+      if (window.travelerSword && window.travelerSwordMat) {
+        window.travelerSword.rotation.z = Math.PI / 4; 
+        window.travelerSwordMat.color.setHex(0x00ffff); // Brillo azul
+        window.travelerSwordMat.multiplyScalar(2.0);
+        
+        // Baja la espada después de 4 segundos
+        setTimeout(() => {
+          window.travelerSword.rotation.z = Math.PI / -6;
+          window.travelerSwordMat.color.setHex(0xffffff);
+        }, 4000);
+      }
+      return; // Detiene el código para que no seleccione un planeta por error
+    }
+  }
   // 🔥 INTERACCIÓN CON EL SISTEMA DAC (antes de todo lo demás)
   // 🔥 INTERACCIÓN ESPACIAL CON EL SISTEMA DAC
   const intersectsDAC = raycaster.intersectObjects([planetaDAC, lunaPoetica, lunaErratica, lunaFriccion], true);
@@ -2499,7 +2528,45 @@ case "planeta_dac":
           showSystemToast('> ESPACIO AISLADO: NÚCLEO DAC. SELECCIONE UNA LUNA', '#ff00ff');
         }
         
-     playSound('pulse'); 
+    // ==========================================
+        // 🔥 EFECTO DE PULSO DOBLE VISUAL Y SONORO 
+        // ==========================================
+        let pulseColor = 0x00ffff; // Cian por defecto (Núcleo estándar)
+        if (isPoeticaActive) pulseColor = 0xffffff;       // Blanco brillante
+        else if (isErraticaActive) pulseColor = 0xff3300; // Rojo error
+        else if (isFriccionActive) pulseColor = 0xffff00; // Amarillo denso
+
+        const createDoublePulse = (targetObj, hexColor) => {
+          // Usamos AdditiveBlending para que se vea como energía de pura luz
+          const pMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false });
+          const pGeo = new THREE.SphereGeometry(6.0, 32, 32); // Apenas más grande que el planeta
+          const pulse1 = new THREE.Mesh(pGeo, pMat);
+          const pulse2 = new THREE.Mesh(pGeo, pMat.clone());
+          targetObj.add(pulse1); targetObj.add(pulse2);
+
+          let s1 = 1, o1 = 0.6, s2 = 1, o2 = 0.6;
+          pulse2.visible = false;
+          
+          // La segunda onda de luz nace 150ms después (sincronizada con el audio)
+          setTimeout(() => { if(pulse2) pulse2.visible = true; }, 150);
+
+          const anim = setInterval(() => {
+            if(pulse1) { s1 += 0.04; o1 -= 0.02; pulse1.scale.set(s1, s1, s1); pulse1.material.opacity = Math.max(0, o1); }
+            if(pulse2 && pulse2.visible) { s2 += 0.04; o2 -= 0.02; pulse2.scale.set(s2, s2, s2); pulse2.material.opacity = Math.max(0, o2); }
+            
+            // Destruimos las esferas de luz cuando ya no se ven (Optimización)
+            if(o1 <= 0 && o2 <= 0) {
+              clearInterval(anim);
+              targetObj.remove(pulse1); targetObj.remove(pulse2);
+              pulse1.geometry.dispose(); pulse1.material.dispose();
+              pulse2.geometry.dispose(); pulse2.material.dispose();
+            }
+          }, 16); // 60 FPS
+        };
+
+        createDoublePulse(planetaDAC, pulseColor);
+        playSound('double_pulse'); 
+        
         setTimeout(() => { window.isZooming = false; }, 350); 
         break;
 
@@ -2523,9 +2590,19 @@ case "planeta_dac":
     });
     lunaPoetica.scale.set(1, 1, 1); lunaErratica.scale.set(1.0, 2.0, 0.5); lunaFriccion.scale.set(1, 1, 1);
     document.body.style.cursor = 'default';
+    if(window.travelerSwordMat && window.travelerSword) {
+      window.travelerSwordMat.color.setHex(0xffffff);
+      window.travelerSword.rotation.z = Math.PI / -6;
+    }
 
     // 2. Aplicar efecto si se encendió
     if (isPoeticaActive) {
+      // Viajero Poético (Espada de Luz Blanca)
+      if(window.travelerSwordMat) {
+        window.travelerSwordMat.color.setHex(0xffffff);
+        window.travelerSwordMat.multiplyScalar(3.0);
+      }
+      
       const poetiColors = [0xffffff, 0xdddddd, 0xaaaaaa]; 
       categoryPlanets.forEach((p, idx) => {
         if (p.userData.id !== 999 && p.material && p.material.color) {
@@ -2559,9 +2636,19 @@ case "planeta_dac":
     });
     lunaPoetica.scale.set(1, 1, 1); lunaErratica.scale.set(1.0, 2.0, 0.5); lunaFriccion.scale.set(1, 1, 1);
     document.body.style.cursor = 'default';
+    if(window.travelerSwordMat && window.travelerSword) {
+      window.travelerSwordMat.color.setHex(0xffffff);
+      window.travelerSword.rotation.z = Math.PI / -6;
+    }
 
     // 2. Aplicar efecto
     if (isErraticaActive) {
+      // Viajero Errático (Espada Láser Roja)
+      if(window.travelerSwordMat) {
+        window.travelerSwordMat.color.setHex(0xff0000);
+        window.travelerSwordMat.multiplyScalar(2.0);
+      }
+      
       const erratiColors = [0xff2200, 0xcc0000, 0x991100]; 
       categoryPlanets.forEach((p, idx) => {
         if (p.userData.id !== 999 && p.material && p.material.color) {
@@ -2593,9 +2680,19 @@ case "planeta_dac":
     });
     lunaPoetica.scale.set(1, 1, 1); lunaErratica.scale.set(1.0, 2.0, 0.5); lunaFriccion.scale.set(1, 1, 1);
     document.body.style.cursor = 'default';
+    if(window.travelerSwordMat && window.travelerSword) {
+      window.travelerSwordMat.color.setHex(0xffffff);
+      window.travelerSword.rotation.z = Math.PI / -6;
+    }
 
     // 2. Aplicar efecto
     if (isFriccionActive) {
+      // Viajero con Fricción (Espada Apagada, apuntando abajo)
+      if(window.travelerSwordMat && window.travelerSword) {
+        window.travelerSwordMat.color.setHex(0x222222);
+        window.travelerSword.rotation.z = Math.PI; // Apunta abajo
+      }
+      
       document.body.style.cursor = 'wait';
       categoryPlanets.forEach(p => {
         if (p.userData.id !== 999 && p.material && p.material.color) {
@@ -2863,14 +2960,40 @@ for (let i = 0; i < numWebLines; i++) {
   energyWebGroup.add(line);
 }
 // ==========================================
-// 🔥 EL VIAJERO (Personaje Minimalista)
+// 🔥 EL VIAJERO (Guardián del Sistema)
 // ==========================================
-window.travelerGroup = new THREE.Group(); // Ahora es global
-const travelerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
-const headGeo = new THREE.OctahedronGeometry(0.3, 0); const head = new THREE.Mesh(headGeo, travelerMat); head.position.y = 1.8; window.travelerGroup.add(head);
-const capeGeo = new THREE.ConeGeometry(0.7, 2.2, 4); const cape = new THREE.Mesh(capeGeo, travelerMat); cape.position.y = 0.5; cape.rotation.y = Math.PI / 4; window.travelerGroup.add(cape);
-const swordGeo = new THREE.BoxGeometry(0.04, 3.0, 0.04); const sword = new THREE.Mesh(swordGeo, travelerMat); sword.position.set(0.6, 0.2, 0.5); sword.rotation.z = Math.PI / -6; sword.rotation.x = Math.PI / 8; window.travelerGroup.add(sword);
-window.travelerGroup.position.set(-8, -3, -15); window.travelerGroup.rotation.y = Math.PI / 3; 
+window.travelerGroup = new THREE.Group();
+window.travelerGroup.userData = { name: "viajero" }; 
+
+// Materiales separados para poder hacer brillar la espada independiente
+const travelerBodyMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+window.travelerSwordMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+
+// 1. Cabeza (El Observador)
+const headGeo = new THREE.OctahedronGeometry(0.3, 0); 
+window.travelerHead = new THREE.Mesh(headGeo, travelerBodyMat); 
+window.travelerHead.position.y = 1.8; 
+window.travelerHead.userData = { name: "viajero" }; // Etiqueta para el clic
+window.travelerGroup.add(window.travelerHead);
+
+// 2. Capa
+const capeGeo = new THREE.ConeGeometry(0.7, 2.2, 4); 
+const cape = new THREE.Mesh(capeGeo, travelerBodyMat); 
+cape.position.y = 0.5; cape.rotation.y = Math.PI / 4; 
+cape.userData = { name: "viajero" };
+window.travelerGroup.add(cape);
+
+// 3. Espada (Reactiva)
+const swordGeo = new THREE.BoxGeometry(0.04, 3.0, 0.04); 
+window.travelerSword = new THREE.Mesh(swordGeo, window.travelerSwordMat); 
+window.travelerSword.position.set(0.6, 0.2, 0.5); 
+window.travelerSword.rotation.z = Math.PI / -6; 
+window.travelerSword.rotation.x = Math.PI / 8; 
+window.travelerSword.userData = { name: "viajero" };
+window.travelerGroup.add(window.travelerSword);
+
+window.travelerGroup.position.set(-8, -3, -15); 
+window.travelerGroup.rotation.y = Math.PI / 3; 
 scene.add(window.travelerGroup);
 // ==========================================
 // 🔥 POTENCIA CREADORA: SISTEMA GLOBAL DE TRAZOS
@@ -2880,12 +3003,34 @@ let frames = 0; let lastTime = performance.now(); let lowFPSCount = 0;
 let totalRotated = 0; let prevAngle = 0;
 
 renderer.setAnimationLoop((timestamp, frame) => {
-  // 🔥 ANIMACIÓN DEL VIAJERO (A prueba de balas)
-    if (window.travelerGroup) {
-      const t = performance.now() * 0.001; // Usamos el reloj interno del navegador
-      window.travelerGroup.position.y = -3 + Math.sin(t * 1.5) * 0.3; 
-      window.travelerGroup.children[0].rotation.y = t * 0.5;
-      window.travelerGroup.children[0].rotation.x = Math.sin(t * 0.8) * 0.1;
+  // 🔥 ANIMACIÓN DEL VIAJERO (Observador y Reacciones)
+    if (window.travelerGroup && window.travelerHead) {
+      const t = performance.now() * 0.001; 
+      
+      let floatSpeed = 1.5; let floatHeight = 0.3; let baseY = -3;
+      
+      // Reacciones físicas a las máquinas DAC
+      if (typeof isFriccionActive !== 'undefined' && isFriccionActive) {
+        floatSpeed = 0.2; floatHeight = 0.05; // Lentísimo y pesado
+      } else if (typeof isPoeticaActive !== 'undefined' && isPoeticaActive) {
+        baseY = -2.2; floatSpeed = 2.0; // Flota alto y ligero
+      }
+
+      window.travelerGroup.position.y = baseY + Math.sin(t * floatSpeed) * floatHeight; 
+
+      // Máquina Errática: El holograma se rompe (Glitch)
+      if (typeof isErraticaActive !== 'undefined' && isErraticaActive) {
+        if (Math.random() > 0.85) {
+          window.travelerGroup.position.x = -8 + (Math.random() - 0.5) * 0.6;
+          window.travelerGroup.visible = Math.random() > 0.2; // Parpadea desapareciendo
+        } else {
+          window.travelerGroup.position.x = -8;
+          window.travelerGroup.visible = true;
+        }
+      }
+
+      // EL OBSERVADOR: La cabeza siempre gira lentamente para mirar a tu cámara
+      window.travelerHead.lookAt(camera.position);
     }
   const isXR = renderer.xr.isPresenting;
   const session = isXR ? renderer.xr.getSession() : null;
