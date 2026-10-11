@@ -183,44 +183,49 @@ if (customVrBtn) {
 }
 
 // 3. Evento Botón AR - CORREGIDO PARA MÁXIMA COMPATIBILIDAD
+// 3. Evento Botón AR - BLINDADO PARA ANDROID Y QUEST 3
 if (customArBtn) {
     customArBtn.addEventListener('click', async () => {
         try {
-            // 🔥 ESCUDO DE SEGURIDAD: Evita que intentes abrirlo en una red local insegura (http://192...)
             if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-                if (typeof showSystemToast === 'function') showSystemToast('⚠️ AR requiere HTTPS (Pruébalo en GitHub Pages)', '#ffaa00');
+                if (typeof showSystemToast === 'function') showSystemToast('⚠️ AR requiere HTTPS', '#ffaa00');
                 return;
             }
 
             if (renderer.xr.isPresenting) { await renderer.xr.getSession()?.end(); return; }
             
             window.isARSession = true;
-            console.log("🔥 Solicitando sesión AR segura...");
+            console.log("🔥 Solicitando sesión AR nativa...");
             
-            // 🔥 CONFIGURACIÓN ROBUSTA: 'local' es obligatorio, 'hit-test' es opcional
-            // Si el dispositivo no soporta hit-test, AR igual arranca (sin reticle)
+            // 🔥 SOLUCIÓN 1: Mover TODO a optionalFeatures.
+            // Esto evita que Quest 3 y Android rechacen la sesión por tecnicismos de tracking.
             const session = await navigator.xr.requestSession('immersive-ar', {
-                requiredFeatures: ['local'],
-                optionalFeatures: ['hit-test', 'dom-overlay']
+                optionalFeatures: ['local-floor', 'local', 'hit-test']
             });
+            
+            // 🔥 SOLUCIÓN 2: Forzar el espacio de referencia correcto para Quest 3
+            renderer.xr.setReferenceSpaceType('local-floor');
             
             await renderer.xr.setSession(session);
             
-            // Forzar fondo transparente
+            // 🔥 SOLUCIÓN 3: Limpiar fondos CSS que bloquean la cámara (Passthrough)
+            document.documentElement.style.background = 'transparent';
+            document.body.style.background = 'transparent';
+            const cvs = document.getElementById('bg-canvas');
+            if (cvs) cvs.style.background = 'transparent';
+            
             renderer.setClearColor(0x000000, 0);
             scene.background = null;
             
             if (typeof playSound === 'function') playSound('levelup');
-            if (typeof showSystemToast === 'function') showSystemToast('📷 AR Activado - Mueve el teléfono lentamente', '#00ff00');
             
         } catch (error) {
             console.error("Error AR detallado:", error);
             window.isARSession = false;
-            if (typeof showSystemToast === 'function') showSystemToast('❌ Error AR: Navegador no compatible', '#ff0000');
+            if (typeof showSystemToast === 'function') showSystemToast('❌ Error AR: Dispositivo no compatible o permisos denegados', '#ff0000');
         }
     });
 }
-
 // Reticle para apuntar en AR (más visible)
 const reticle = new THREE.Mesh(
     new THREE.RingGeometry(0.12, 0.2, 32).rotateX(-Math.PI / 2),
@@ -243,23 +248,18 @@ reticle.matrixAutoUpdate = false;
 reticle.visible = false;
 scene.add(reticle);
 
-// Función para escanear el entorno en AR (CORREGIDA)
+// Función para escanear el entorno en AR (CORREGIDA PARA QUEST 3)
 async function setupARHitTest(session) {
     try {
-        // 🔥 Usamos 'local' que ahora es el requiredFeature
-        const referenceSpace = await session.requestReferenceSpace('local');
-        
-        // 🔥 Hit-test ahora es opcional - si falla, AR sigue funcionando sin reticle
+        // 🔥 SOLUCIÓN 4: Solo pedir hit-test si el dispositivo lo soporta 
+        // (Quest 3 usa otros sistemas y crasheaba al exigirlo)
         if (session.requestHitTestSource) {
-            try {
-                const viewerSpace = await session.requestReferenceSpace('viewer');
-                hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-                hitTestSourceRequested = true;
-                console.log("✅ Hit-test configurado correctamente");
-            } catch (hitErr) {
-                console.warn("⚠️ Hit-test no disponible en este dispositivo. AR funciona sin reticle.", hitErr);
-                hitTestSource = null;
-            }
+            const viewerSpace = await session.requestReferenceSpace('viewer');
+            hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+            hitTestSourceRequested = true;
+            console.log("✅ Escáner espacial (Hit-test) configurado.");
+        } else {
+            console.warn("⚠️ Hit-test no disponible. AR funcionará en modo flotante libre.");
         }
         
         session.addEventListener('end', () => {
@@ -269,14 +269,10 @@ async function setupARHitTest(session) {
                 hitTestSource = null;
             }
             reticle.visible = false;
-            console.log("Sesión AR finalizada");
         });
         
     } catch (error) {
-        console.error("Error configurando Hit Test:", error);
-        if (typeof showSystemToast === 'function') {
-            showSystemToast('⚠️ No se pudo iniciar el escaneo AR', '#ff0000');
-        }
+        console.error("Error configurando Hit Test (Ignorado para mantener AR):", error);
     }
 }
 
@@ -336,7 +332,11 @@ renderer.xr.addEventListener('sessionstart', () => {
 renderer.xr.addEventListener('sessionend', () => {
     window.isARSession = false;
     document.body.classList.remove('ar-active');
-    
+    // 🔥 Restaurar los fondos CSS para que la web vuelva a la normalidad
+    document.documentElement.style.background = '';
+    document.body.style.background = '';
+    const cvs = document.getElementById('bg-canvas');
+    if (cvs) cvs.style.background = '';
     if (currentXRSession) currentXRSession = null;
     
     if (customVrBtn) customVrBtn.innerText = 'VR';
