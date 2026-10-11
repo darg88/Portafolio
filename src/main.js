@@ -495,6 +495,19 @@ function playSound(type, targetPosition = null) {
       playBell(1200, 0.15, 0.4, 0.06); // Segunda onda desfasada 150ms
       playBell(2400, 0.15, 0.3, 0.02); 
     }
+    else if(type === 'thud' || type === 'thud_soft' || type === 'step') {
+      // Viajero: golpe grave con caída de tono. [f0, f1, tiempo de caída, volumen, duración]
+      const P = { thud: [120, 38, 0.30, 0.7, 0.45], thud_soft: [140, 60, 0.15, 0.25, 0.2], step: [95, 48, 0.10, 0.14, 0.14] }[type];
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(P[0], now);
+      osc.frequency.exponentialRampToValueAtTime(P[1], now + P[2]);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(P[3] * volumeBase, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + P[4]);
+      osc.connect(gain); gain.connect(masterGain);
+      osc.start(now); osc.stop(now + P[4] + 0.05);
+    }
     else if(type === 'boss_hit') { 
       // Máquina de Fricción: Cuenco tibetano / Toque físico pesado
       playBell(220, 0, 1.2, 0.2);
@@ -1359,17 +1372,29 @@ function createAttractor(type, colorHex) {
       pos[i*3+1] = y * 1.5;
       pos[i*3+2] = z * 1.5;
     }
-    else if (type === 'friccion') {
-      // Atractor de Thomas (Estructura densa, cúbica y pesada)
-      const b = 0.19; const dt = 0.1;
-      let dx = (-b*x + Math.sin(y)) * dt;
-      let dy = (-b*y + Math.sin(z)) * dt;
-      let dz = (-b*z + Math.sin(x)) * dt;
-      x += dx; y += dy; z += dz;
+ else if (type === 'friccion') {
+      // 🔥 Máquina de Fricción: Luna densa y pesada con anillos de escombros (Estructura Esférica)
+      if (i < particleCount * 0.75) {
+        // El 75% de las partículas forman un núcleo esférico masivo (Distribución de Fibonacci)
+        const phi = Math.acos(-1 + (2 * i) / (particleCount * 0.75));
+        const theta = Math.sqrt((particleCount * 0.75) * Math.PI) * phi;
+        const r = 1.4 + (Math.random() * 0.15); // Superficie ligeramente rocosa/rugosa
+        
+        x = r * Math.cos(theta) * Math.sin(phi);
+        y = r * Math.sin(theta) * Math.sin(phi);
+        z = r * Math.cos(phi);
+      } else {
+        // El 25% restante forma un disco de acreción (anillos planetarios frotándose)
+        const angle = Math.random() * Math.PI * 2;
+        const r = 1.9 + Math.random() * 1.2; // Extensión del anillo
+        x = Math.cos(angle) * r;
+        y = (Math.random() - 0.5) * 0.25; // Anillo plano con un poco de grosor
+        z = Math.sin(angle) * r;
+      }
       
-      pos[i*3] = x * 0.5;
-      pos[i*3+1] = y * 0.5;
-      pos[i*3+2] = z * 0.5;
+      pos[i*3] = x;
+      pos[i*3+1] = y;
+      pos[i*3+2] = z;
     }
   }
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -3227,6 +3252,33 @@ const _tvFreeQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.
 let _tvLastT  = performance.now();
 let _tvSquash = 0; // aplastamiento por impacto
 
+// ---- Estados conceptuales del viajero ----
+const TRAVELER_STEP_SOUND = true; // false = camina en silencio (Fricción)
+const _tvX = new THREE.Vector3(1, 0, 0);
+const _tvZ = new THREE.Vector3(0, 0, 1);
+const _tvSway = new THREE.Quaternion();
+let _tvStretch = 0;  // estiramiento al caer
+let _tvLandT   = 0;  // segundos que dura el estado "aterrizaje"
+let _tvStep    = 0;  // fase del paso (Fricción)
+const _tvLastMouse = { x: 0, y: 0, t: 0 };
+const _tvGaze      = { x: 0, y: 0, tx: 0, ty: 0, next: 0 };
+
+const _tvRingGeo  = new THREE.RingGeometry(0.8, 1.0, 32);
+const _tvChipGeo  = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+const _tvPrintGeo = new THREE.CircleGeometry(0.2, 10);
+const _tvDust   = [];   // anillos y partículas del aterrizaje
+const _tvPrints = [];   // huellas sobre el planeta
+const POET_N = 48;      // partículas de la Máquina Poética
+const _tvPoetGeo = new THREE.BufferGeometry();
+_tvPoetGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(POET_N * 3), 3));
+_tvPoetGeo.setAttribute('color',    new THREE.BufferAttribute(new Float32Array(POET_N * 3), 3));
+const _tvPoetData = Array.from({ length: POET_N }, () => ({ life: 0, max: 1, vx: 0, vy: 0, vz: 0 }));
+const _tvPoet = new THREE.Points(_tvPoetGeo, new THREE.PointsMaterial({ size: 0.22, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+_tvPoet.frustumCulled = false;
+_tvPoet.raycast = function () {};
+scene.add(_tvPoet);
+let _tvPoetAcc = 0;
+
 // Radio de la "superficie" según la geometría real y la escala ACTUAL
 // (el hover escala el planeta x1.2, así que no se puede usar un número fijo).
 function getPlanetSurfaceRadius(p) {
@@ -3265,6 +3317,107 @@ window.startTravelerFall = function (planet) {
     st.alt = Math.max(tg.position.y - topY, 8); // cae al menos 8 unidades: así se nota el peso
   }
 };
+
+// Anillo de polvo + 10 partículas, del color del planeta. Se llama al impactar.
+function spawnTravelerDust(planet, up, point, strength) {
+  const col = new THREE.Color(planet.userData.originalColor || 0x00ffff).multiplyScalar(1.8);
+
+  const ringMat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
+  const ring = new THREE.Mesh(_tvRingGeo, ringMat);
+  ring.position.copy(point);
+  ring.quaternion.setFromUnitVectors(_tvZ, up);
+  ring.scale.setScalar(0.5);
+  ring.raycast = function () {};
+  scene.add(ring);
+  _tvDust.push({ kind: 'ring', mesh: ring, age: 0, life: 0.6, size: 2.2 + strength * 3 });
+
+  const burst = { mat: new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 1, depthWrite: false }), n: 10 };
+  const a = new THREE.Vector3().crossVectors(up, Math.abs(up.z) < 0.9 ? _tvZ : _tvX).normalize();
+  const b = new THREE.Vector3().crossVectors(up, a);
+  for (let i = 0; i < 10; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const speed = (2 + Math.random() * 3) * (0.5 + strength);
+    const vel = new THREE.Vector3().addScaledVector(a, Math.cos(ang) * speed).addScaledVector(b, Math.sin(ang) * speed).addScaledVector(up, 1.5 + Math.random() * 2);
+    const chip = new THREE.Mesh(_tvChipGeo, burst.mat);
+    chip.position.copy(point);
+    chip.raycast = function () {};
+    scene.add(chip);
+    _tvDust.push({ kind: 'chip', mesh: chip, age: 0, life: 0.7, vel, up: up.clone(), burst });
+  }
+}
+
+function _tvRemovePrint(p) { p.planet.remove(p.mesh); p.mesh.material.dispose(); }
+
+// Huella oscura pegada a la superficie (hija del planeta: gira con él). side: -1 izquierdo / +1 derecho
+function spawnTravelerPrint(planet, dir, side) {
+  if (planet.userData.isFolder) return;
+  const R = getPlanetSurfaceRadius(planet);
+  const w = new THREE.Vector3().copy(dir).multiplyScalar(R).addScaledVector(_tvZ, side * 0.2).normalize();
+  const world = new THREE.Vector3().copy(planet.position).addScaledVector(w, R);
+  planet.updateWorldMatrix(true, false);
+  const n = planet.worldToLocal(world).normalize();
+  const mat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
+  const m = new THREE.Mesh(_tvPrintGeo, mat);
+  m.position.copy(n).multiplyScalar(3.03);   // radio local de la esfera = 3
+  m.quaternion.setFromUnitVectors(_tvZ, n);
+  m.scale.set(1, 1.6, 1);
+  m.raycast = function () {};                // que no estorbe a los clics sobre el planeta
+  planet.add(m);
+  _tvPrints.push({ mesh: m, planet, age: 0, life: 14 });
+  if (_tvPrints.length > 30) _tvRemovePrint(_tvPrints.shift());
+}
+
+// Polvo, huellas y partículas poéticas. emitting = Máquina Poética activa.
+function updateTravelerFx(dt, emitting, tg) {
+  for (let i = _tvDust.length - 1; i >= 0; i--) {
+    const d = _tvDust[i]; d.age += dt;
+    const k = Math.min(d.age / d.life, 1);
+    if (d.kind === 'ring') {
+      const ease = 1 - (1 - k) * (1 - k);
+      d.mesh.scale.setScalar(0.5 + (d.size - 0.5) * ease);
+      d.mesh.material.opacity = 0.9 * (1 - k);
+    } else {
+      d.vel.addScaledVector(d.up, -9 * dt);
+      d.mesh.position.addScaledVector(d.vel, dt);
+      d.mesh.scale.setScalar(Math.max(0.01, 1 - k));
+      d.burst.mat.opacity = 1 - k;
+    }
+    if (k >= 1) {
+      scene.remove(d.mesh);
+      if (d.kind === 'ring') d.mesh.material.dispose(); else if (--d.burst.n === 0) d.burst.mat.dispose();
+      _tvDust.splice(i, 1);
+    }
+  }
+
+  for (let i = _tvPrints.length - 1; i >= 0; i--) {
+    const p = _tvPrints[i]; p.age += dt;
+    const f = p.age / p.life;
+    p.mesh.material.opacity = 0.55 * (f < 0.6 ? 1 : Math.max(0, (1 - f) / 0.4));
+    if (f >= 1) { _tvRemovePrint(p); _tvPrints.splice(i, 1); }
+  }
+
+  const pos = _tvPoetGeo.attributes.position.array, col = _tvPoetGeo.attributes.color.array;
+  _tvPoetAcc = emitting ? _tvPoetAcc + dt * 28 : 0;
+  for (let i = 0; i < POET_N; i++) {
+    const p = _tvPoetData[i], k = i * 3;
+    if (p.life <= 0 && _tvPoetAcc >= 1) {
+      _tvPoetAcc -= 1;
+      p.life = p.max = 1.2 + Math.random() * 0.8;
+      pos[k]     = tg.position.x + (Math.random() - 0.5) * 1.2;
+      pos[k + 1] = tg.position.y + (Math.random() - 0.5) * 1.6;
+      pos[k + 2] = tg.position.z + (Math.random() - 0.5) * 1.2;
+      p.vx = (Math.random() - 0.5) * 0.3; p.vy = 0.5 + Math.random() * 0.8; p.vz = (Math.random() - 0.5) * 0.3;
+    }
+    if (p.life > 0) {
+      p.life -= dt;
+      pos[k] += p.vx * dt; pos[k + 1] += p.vy * dt; pos[k + 2] += p.vz * dt;
+      const f = Math.max(0, p.life / p.max) * 1.6; // en mezcla aditiva, color->0 = se desvanece
+      col[k] = f; col[k + 1] = 0.55 * f; col[k + 2] = f;
+    } else { col[k] = col[k + 1] = col[k + 2] = 0; }
+  }
+  _tvPoetGeo.attributes.position.needsUpdate = true;
+  _tvPoetGeo.attributes.color.needsUpdate = true;
+}
 
 // Capa: 12 triángulos que cuelgan del cuello y flotan. flare 0..1 = se abre hacia arriba al caer; glitch = Máquina Errática
 function updateTravelerCape(t, flare, glitch) {
@@ -3306,7 +3459,7 @@ function updateTraveler() {
   // Solo cuenta como "arrastrando" cuando de verdad se movió el puntero (un clic simple no lo despega)
   const dragging = typeof draggedPlanet !== 'undefined' && draggedPlanet === tg &&
                    typeof isDraggingPlanet !== 'undefined' && isDraggingPlanet;
-  let flareTarget = 0, falling = false;
+  let flareTarget = 0, falling = false, walking = false, lean = 0;
 
   if (dragging) {
     // ---- EN LA MANO DEL USUARIO ----
@@ -3315,7 +3468,7 @@ function updateTraveler() {
     st.baseY = tg.position.y;
     tg.quaternion.slerp(_tvFreeQuat, 0.15);
     flareTarget = 0.35; // la capa se agita cuando lo sostienes
-    tg.scale.set(1, 1, 1); _tvSquash = 0;
+    tg.scale.set(1, 1, 1); _tvSquash = 0; _tvStretch = 0;
 
   } else if (st.anchoredPlanet) {
     // ---- PARADO SOBRE UN PLANETA ----
@@ -3335,6 +3488,13 @@ function updateTraveler() {
         st.vAlt   = impact * TRAVELER_BOUNCE;
         _tvSquash = Math.min(impact / 70, 0.35);
         if (impact > 25 && typeof vibrateDevice === 'function') vibrateDevice(25);
+        if (impact > 12) { // aterrizaje con peso: anillo de polvo + golpe grave
+          const upV = planet.userData.isFolder ? _tvUp : st.dir;
+          _tvTmp.copy(planet.position).addScaledVector(upV, st.R);
+          spawnTravelerDust(planet, upV, _tvTmp, Math.min(impact / 70, 1));
+          _tvLandT = 0.5;
+          if (typeof playSound === 'function') playSound(impact > 40 ? 'thud' : 'thud_soft');
+        }
       } else {
         st.vAlt = 0; // ya está quieto: pegado al suelo
       }
@@ -3343,13 +3503,38 @@ function updateTraveler() {
     flareTarget = Math.min(1, Math.max(0, -st.vAlt / 50)); // al caer, la capa se abre hacia arriba
     falling = st.vAlt < -8;
 
+    // CAÍDA: el cuerpo se estira
+    _tvStretch += ((falling ? Math.min(0.25, -st.vAlt / 250) : 0) - _tvStretch) * Math.min(1, dt * 12);
+
+    // FRICCIÓN: camina lento y pesado alrededor del planeta y deja huellas
+    const grounded = (st.alt === 0 && st.vAlt === 0);
+    walking = slow && grounded && !planet.userData.isFolder;
+    if (walking) {
+      if (st.walkDir === undefined) { st.walkDir = 1; st.walkNext = t + 5; }
+      const phi = Math.atan2(-st.dir.x, st.dir.y);              // ángulo desde la cima (giro sobre el eje Z)
+      if (Math.abs(phi) > 0.9) st.walkDir = phi > 0 ? -1 : 1;   // no se aleja demasiado de la cima
+      else if (t > st.walkNext) { st.walkDir *= -1; st.walkNext = t + 6 + Math.random() * 4; }
+      st.dir.applyAxisAngle(_tvZ, st.walkDir * 0.1 * dt).normalize();
+      const prev = _tvStep;
+      _tvStep += dt * Math.PI * 0.9;                            // un paso cada ~1.1 s
+      lean = Math.sin(_tvStep) * 0.1;                           // se balancea al andar
+      if (Math.floor(_tvStep / Math.PI) !== Math.floor(prev / Math.PI)) { // pisada
+        spawnTravelerPrint(planet, st.dir, (Math.floor(_tvStep / Math.PI) % 2 === 0) ? -1 : 1);
+        _tvSquash = Math.max(_tvSquash, 0.07);                  // el pisotón se siente
+        if (TRAVELER_STEP_SOUND && typeof playSound === 'function') playSound('step');
+      }
+    }
+
     // 3. Máquina Poética: levita un poco SOBRE su superficie
     st.lift += ((poetic ? 0.8 : 0) - st.lift) * Math.min(1, dt * 3);
 
     // 4. Aplastamiento al caer (se recupera solo)
     _tvSquash *= Math.exp(-dt * 10);
     if (_tvSquash < 0.002) _tvSquash = 0;
-    const sy = 1 - _tvSquash, sxz = 1 + _tvSquash * 0.5;
+    // IDLE: respira (solo cuando está quieto)
+    const breath = (grounded && !walking) ? Math.sin(t * 2) * 0.012 : 0;
+    const sy  = (1 - _tvSquash + _tvStretch) * (1 + breath);
+    const sxz = 1 + _tvSquash * 0.5 - _tvStretch * 0.4 - breath * 0.5;
     tg.scale.set(sxz, sy, sxz);
 
     // 5. Posición: centro del planeta (YA actualizado este frame) + "arriba" * altura
@@ -3359,7 +3544,8 @@ function updateTraveler() {
     tg.position.copy(planet.position).add(st.off).addScaledVector(up, h);
 
     // 6. Orientación: su "arriba" apunta lejos del centro (pies hacia el planeta)
-    _tvQuat.setFromUnitVectors(_tvUp, up).multiply(_tvFreeQuat);
+    _tvSway.setFromAxisAngle(_tvZ, lean);
+    _tvQuat.setFromUnitVectors(_tvUp, up).multiply(_tvSway).multiply(_tvFreeQuat);
     tg.quaternion.slerp(_tvQuat, 1 - Math.exp(-dt * 8));
 
     // 7. Glitch de la Máquina Errática + se oculta si el planeta se oculta
@@ -3386,8 +3572,16 @@ function updateTraveler() {
       tg.visible = true;
     }
     tg.quaternion.slerp(_tvFreeQuat, 0.1); // vuelve a ponerse derecho
-    tg.scale.set(1, 1, 1); _tvSquash = 0;
+    tg.scale.set(1, 1, 1); _tvSquash = 0; _tvStretch = 0;
   }
+
+  // ---- EFECTOS Y ESTADO ----
+  _tvLandT = Math.max(0, _tvLandT - dt);
+  if (poetic && !dragging) flareTarget = Math.max(flareTarget, 0.25); // POÉTICA: la capa flota ingrávida
+  updateTravelerFx(dt, poetic, tg);
+  window.travelerState = dragging ? 'held'
+    : !st.anchoredPlanet ? (poetic ? 'levitate' : 'free')
+    : falling ? 'fall' : _tvLandT > 0 ? 'land' : walking ? 'walk' : poetic ? 'levitate' : 'idle';
 
   // ---- CAPA: se abre al caer y se asienta al aterrizar ----
   travelerCape.flare += (flareTarget - travelerCape.flare) * Math.min(1, dt * 10);
@@ -3395,13 +3589,25 @@ function updateTraveler() {
 
   // ---- EL OBSERVADOR: la cabeza gira un poco hacia el ratón y la pupila se mueve más ----
   // (-PI/3 compensa el giro del cuerpo para que al reposo el visor mire a la cámara)
-  head.rotation.x += (-mouseNDC.y * 0.25 - head.rotation.x) * 0.08;
-  head.rotation.y += ((-Math.PI / 3) + mouseNDC.x * 0.5 - head.rotation.y) * 0.08;
+  // IDLE: sigue al ratón; si no lo mueves en 3 s, mira alrededor por su cuenta
+  if (Math.abs(mouseNDC.x - _tvLastMouse.x) + Math.abs(mouseNDC.y - _tvLastMouse.y) > 0.002) {
+    _tvLastMouse.x = mouseNDC.x; _tvLastMouse.y = mouseNDC.y; _tvLastMouse.t = t;
+  }
+  let gx = mouseNDC.x, gy = mouseNDC.y;
+  if (t - _tvLastMouse.t > 3) {
+    if (t > _tvGaze.next) { _tvGaze.tx = (Math.random() * 2 - 1) * 0.9; _tvGaze.ty = (Math.random() * 2 - 1) * 0.5; _tvGaze.next = t + 1.2 + Math.random() * 2; }
+    _tvGaze.x += (_tvGaze.tx - _tvGaze.x) * Math.min(1, dt * 3);
+    _tvGaze.y += (_tvGaze.ty - _tvGaze.y) * Math.min(1, dt * 3);
+    gx = _tvGaze.x; gy = _tvGaze.y;
+  } else { _tvGaze.x = mouseNDC.x; _tvGaze.y = mouseNDC.y; }
+
+  head.rotation.x += (-gy * 0.25 - head.rotation.x) * 0.08;
+  head.rotation.y += ((-Math.PI / 3) + gx * 0.5 - head.rotation.y) * 0.08;
 
   const eye = window.travelerEye;
   if (eye) {
-    eye.pupil.position.x += (Math.max(-1, Math.min(1, mouseNDC.x)) * 0.12 - eye.pupil.position.x) * 0.2;
-    eye.pupil.position.y += (0.02 + Math.max(-1, Math.min(1, mouseNDC.y)) * 0.015 - eye.pupil.position.y) * 0.2;
+    eye.pupil.position.x += (Math.max(-1, Math.min(1, gx)) * 0.12 - eye.pupil.position.x) * 0.2;
+    eye.pupil.position.y += (0.02 + Math.max(-1, Math.min(1, gy)) * 0.015 - eye.pupil.position.y) * 0.2;
 
     // ojo abierto/cerrado: parpadea cada ~4 s, se entrecierra al agarrarlo o al impactar, se abre grande al caer
     let target = 1;
