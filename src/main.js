@@ -68,7 +68,7 @@ const ditherShader = {
       } else {
         // 🔥 LUZ LIBERADA: Multiplicamos el color x1.8 para que supere el umbral del Bloom (0.85).
         // Esto crea el efecto "Selective Bloom" hermoso del ejemplo de Three.js
-        gl_FragColor = vec4(color * 1.8, 1.0); 
+      gl_FragColor = vec4(color * 3.5, 1.0);
       }
     }
   `
@@ -667,7 +667,7 @@ function toggleCombatDimming(isCombat) {
         } else {
           // Re-aplicar el multiplicador de luz si no ha sido visitado
           const restColor = new THREE.Color(p.userData.visited ? 0x555555 : p.userData.originalColor);
-          if (!p.userData.visited) restColor.multiplyScalar(1.8);
+          if (!p.userData.visited) restColor.multiplyScalar(3.5);
           p.material.color.copy(restColor);
         }
       }
@@ -1045,7 +1045,7 @@ document.getElementById('global-mute-btn')?.addEventListener('click', (e) => {
 document.getElementById('menu-bloom')?.addEventListener('click', (e) => { 
   e.preventDefault(); e.stopPropagation(); 
   isBloomEnabled = !isBloomEnabled; 
-  bloomPass.strength = isBloomEnabled ? 0.8 : 0; 
+  bloomPass.strength = isBloomEnabled ? 0.1 : 0; 
   e.currentTarget.innerText = isBloomEnabled ? '[*]Efecto Neón: ON' : '[ ]Efecto Neón: OFF'; 
   e.currentTarget.style.color = isBloomEnabled ? '#00ffaa' : '#888'; 
   
@@ -1095,7 +1095,7 @@ document.getElementById('menu-retro')?.addEventListener('click', (e) => {
   if (isRetroMode) {
     bloomPass.strength = 0; 
   } else {
-    bloomPass.strength = isBloomEnabled ? 0.8 : 0; 
+    bloomPass.strength = isBloomEnabled ? 0.1 : 0; 
   }
   
   playSound('ui'); 
@@ -1183,7 +1183,7 @@ categoryPlanetData.forEach((proj, index) => {
   const planetMat = new THREE.MeshBasicMaterial({
     // 🔥 MAGIA: Multiplicamos el color pastel x1.8 para forzar que sobrepase
     // el umbral del Bloom y genere ese brillo externo difuminado de tu imagen.
-    color: baseColor.multiplyScalar(1.8), 
+  color: baseColor.multiplyScalar(3.5),
     transparent: true, 
     opacity: 0.95 // Ligeramente translúcidos
   });
@@ -1965,9 +1965,7 @@ function startPointerDown(clientX, clientY) {
     if (hit && grabTargets.includes(hit)) {
       if (!(hit.userData.id === 999 && typeof secretDiscovered !== 'undefined' && !secretDiscovered)) {
         draggedPlanet = hit;
-        if (hit === window.travelerGroup) {
-          window.travelerGroup.userData.anchoredPlanet = null;
-        }
+        
         if (navigator.vibrate) vibrateDevice(50);
       }
     }
@@ -2048,12 +2046,7 @@ function handlePointerUp() {
 
       if (closestPlanet) {
           // 1. Lo anclamos magnéticamente al planeta
-          window.travelerGroup.userData.anchoredPlanet = closestPlanet;
-          
-          // 🔥 Forzamos que su punto de caída comience un poco más arriba de donde lo soltaste
-          window.travelerGroup.userData.vy = 0; 
-          window.travelerGroup.userData.dropY = Math.max(window.travelerGroup.position.y, closestPlanet.position.y + 12);
-          
+      window.startTravelerFall(closestPlanet);
           snapped = true;
           
           playSound('project_open');
@@ -2097,7 +2090,7 @@ function handlePointerUp() {
           if (window.travelerSword && window.travelerSwordMat) {
             window.travelerSword.rotation.z = Math.PI / 4; 
             window.travelerSwordMat.color.setHex(0x00ffff); 
-            window.travelerSwordMat.multiplyScalar(2.0);
+            window.travelerSwordMat.color.multiplyScalar(2.0);
             setTimeout(() => {
               window.travelerSword.rotation.z = Math.PI / -6;
               window.travelerSwordMat.color.setHex(0xffffff);
@@ -2623,7 +2616,7 @@ const handleProjectClick = (data) => {
       if (window.travelerSword && window.travelerSwordMat) {
         window.travelerSword.rotation.z = Math.PI / 4; 
         window.travelerSwordMat.color.setHex(0x00ffff); // Brillo azul
-        window.travelerSwordMat.multiplyScalar(2.0);
+        window.travelerSwordMat.color.multiplyScalar(2.0);
         
         // Baja la espada después de 4 segundos
         setTimeout(() => {
@@ -2783,7 +2776,7 @@ case "planeta_dac":
       // Viajero Poético (Espada de Luz Blanca)
       if(window.travelerSwordMat) {
         window.travelerSwordMat.color.setHex(0xffffff);
-        window.travelerSwordMat.multiplyScalar(3.0);
+        window.travelerSwordMat.color.multiplyScalar(3.0);
       }
       
       const poetiColors = [0xffffff, 0xdddddd, 0xaaaaaa]; 
@@ -2829,7 +2822,7 @@ case "planeta_dac":
       // Viajero Errático (Espada Láser Roja)
       if(window.travelerSwordMat) {
         window.travelerSwordMat.color.setHex(0xff0000);
-        window.travelerSwordMat.multiplyScalar(2.0);
+        window.travelerSwordMat.color.multiplyScalar(2.0);
       }
       
       const erratiColors = [0xff2200, 0xcc0000, 0x991100]; 
@@ -3148,23 +3141,56 @@ for (let i = 0; i < numWebLines; i++) {
 window.travelerGroup = new THREE.Group();
 window.travelerGroup.userData = { name: "viajero" }; 
 
-// Materiales separados para poder hacer brillar la espada independiente
-const travelerBodyMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+// Cuerpo y capa usan el MISMO shader de tramado (dither 1-bit) que el resto del universo.
+const makeTravelerDither = (hex) => new THREE.ShaderMaterial({
+  uniforms: { color: { value: new THREE.Color(hex) }, lightDir: { value: new THREE.Vector3(1, 1, 1).normalize() } },
+  vertexShader: ditherShader.vertexShader,
+  fragmentShader: ditherShader.fragmentShader,
+  side: THREE.DoubleSide
+});
+const travelerHeadMat = makeTravelerDither(0xffffff);
+const travelerCapeMat = makeTravelerDither(0xffffff);
+// La espada sigue siendo MeshBasicMaterial: el resto del código le cambia el color
 window.travelerSwordMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
 
-// 1. Cabeza (El Observador)
-const headGeo = new THREE.OctahedronGeometry(0.3, 0); 
-window.travelerHead = new THREE.Mesh(headGeo, travelerBodyMat); 
-window.travelerHead.position.y = 1.8; 
+// 1. Cabeza (El Observador): octaedro girado 45° para que una ARISTA quede al frente, ahí va el visor
+const headGeo = new THREE.OctahedronGeometry(0.4, 0);
+headGeo.rotateY(Math.PI / 4);
+window.travelerHead = new THREE.Mesh(headGeo, travelerHeadMat);
+window.travelerHead.position.y = 1.75;
 window.travelerHead.userData = { name: "viajero" }; // Etiqueta para el clic
 window.travelerGroup.add(window.travelerHead);
 
-// 2. Capa
-const capeGeo = new THREE.ConeGeometry(0.7, 2.2, 4); 
-const cape = new THREE.Mesh(capeGeo, travelerBodyMat); 
-cape.position.y = 0.5; cape.rotation.y = Math.PI / 4; 
-cape.userData = { name: "viajero" };
-window.travelerGroup.add(cape);
+// 1b. Visor negro + pupila brillante que sigue al ratón
+const travelerVisor = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.1, 0.1), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+travelerVisor.position.set(0, 0.02, 0.26);
+travelerVisor.userData = { name: "viajero" };
+window.travelerHead.add(travelerVisor);
+
+const travelerPupilMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+travelerPupilMat.color.multiplyScalar(2.2); // pasa el umbral del Bloom
+const travelerPupil = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.02), travelerPupilMat);
+travelerPupil.position.set(0, 0.02, 0.32);
+travelerPupil.userData = { name: "viajero" };
+window.travelerHead.add(travelerPupil);
+window.travelerEye = { pupil: travelerPupil, mat: travelerPupilMat, open: 1, mode: 'n' };
+
+// 2. Capa de triángulos flotantes (una sola malla; se reescribe cada frame en updateTravelerCape)
+const CAPE_N = 12;
+const capeGeo = new THREE.BufferGeometry();
+capeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(CAPE_N * 9), 3));
+capeGeo.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(CAPE_N * 9), 3));
+const travelerCapeMesh = new THREE.Mesh(capeGeo, travelerCapeMat);
+travelerCapeMesh.frustumCulled = false;
+travelerCapeMesh.userData = { name: "viajero" };
+window.travelerGroup.add(travelerCapeMesh);
+const travelerCape = { geo: capeGeo, pos: capeGeo.attributes.position.array, flare: 0 };
+
+// 2b. Hitbox invisible: los triángulos dejan huecos y así es más fácil agarrarlo / hacerle clic
+const travelerHitbox = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 3.2, 8), new THREE.MeshBasicMaterial({ visible: false }));
+travelerHitbox.position.y = 0.8;
+travelerHitbox.userData = { name: "viajero" };
+window.travelerGroup.add(travelerHitbox);
 
 // 3. Espada (Reactiva)
 const swordGeo = new THREE.BoxGeometry(0.04, 3.0, 0.04);
@@ -3178,6 +3204,227 @@ window.travelerGroup.add(window.travelerSword);
 window.travelerGroup.position.set(-8, -3, -15); 
 window.travelerGroup.rotation.y = Math.PI / 3; 
 scene.add(window.travelerGroup);
+// ============================================================
+// 🔥 VIAJERO CON PESO: gravedad radial (parado sobre los planetas)
+// ------------------------------------------------------------
+// DÓNDE PEGARLO en main.js:
+//   Justo DESPUÉS de crear el viajero (tras `scene.add(window.travelerGroup);`,
+//   línea ~3180) y ANTES de `renderer.setAnimationLoop(...)`.
+//
+// Y luego los 3 cambios de abajo (PASO 2, 3 y 4).
+// ============================================================
+
+const TRAVELER_FEET    = 0.6;  // del origen del grupo a la base de la capa (cono: y=0.5, alto 2.2 -> base en -0.6)
+const TRAVELER_GRAVITY = 80;   // unidades/s². Súbelo para sentirlo más pesado
+const TRAVELER_BOUNCE  = 0.3;  // 0 = se clava, 1 = rebote perfecto
+const TRAVELER_RADIAL  = false; // false = cae en vertical y se para ENCIMA del planeta | true = gravedad hacia el centro (puede quedar de lado)
+
+const _tvUp       = new THREE.Vector3(0, 1, 0);
+const _tvTmp      = new THREE.Vector3();
+const _tvCamPos   = new THREE.Vector3();
+const _tvQuat     = new THREE.Quaternion();
+const _tvFreeQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI / 3, 0)); // giro original (rotation.y = PI/3)
+let _tvLastT  = performance.now();
+let _tvSquash = 0; // aplastamiento por impacto
+
+// Radio de la "superficie" según la geometría real y la escala ACTUAL
+// (el hover escala el planeta x1.2, así que no se puede usar un número fijo).
+function getPlanetSurfaceRadius(p) {
+  if (p.userData.isFolder) return 1 * p.scale.y; // caja 4x2x0.5 -> tapa superior a 1 * escala
+  return 3 * p.scale.x;                          // SphereGeometry(3)
+}
+
+// Se llama al soltar al viajero cerca de un planeta.
+window.startTravelerFall = function (planet) {
+  const tg = window.travelerGroup;
+  const st = tg.userData;
+  const R  = getPlanetSurfaceRadius(planet);
+
+  st.anchoredPlanet = planet;
+  st.R    = R;
+  st.lift = 0;
+  st.vAlt = -2; // pequeño empujón inicial hacia el planeta
+
+  if (TRAVELER_RADIAL) {
+    // Gravedad hacia el centro: aterriza en el punto del planeta que mira hacia donde lo soltaste
+    _tvTmp.copy(tg.position).sub(planet.position);
+    const dist = _tvTmp.length();
+    const dir  = dist > 0.001 ? _tvTmp.clone().divideScalar(dist) : new THREE.Vector3(0, 1, 0);
+    camera.getWorldPosition(_tvCamPos);
+    const toCam  = _tvCamPos.sub(planet.position).normalize();
+    const facing = dir.dot(toCam);
+    if (facing < 0.25) dir.addScaledVector(toCam, 0.25 - facing).normalize();
+    st.dir = dir;
+    st.off = new THREE.Vector3(0, 0, 0);
+    st.alt = Math.max(dist - R - TRAVELER_FEET, 2);
+  } else {
+    // Gravedad "hacia abajo": cae en vertical y se para ENCIMA del planeta
+    st.dir = new THREE.Vector3(0, 1, 0);
+    st.off = new THREE.Vector3(tg.position.x - planet.position.x, 0, tg.position.z - planet.position.z);
+    const topY = planet.position.y + R + TRAVELER_FEET;
+    st.alt = Math.max(tg.position.y - topY, 8); // cae al menos 8 unidades: así se nota el peso
+  }
+};
+
+// Capa: 12 triángulos que cuelgan del cuello y flotan. flare 0..1 = se abre hacia arriba al caer; glitch = Máquina Errática
+function updateTravelerCape(t, flare, glitch) {
+  const pos = travelerCape.pos;
+  let k = 0;
+  for (let i = 0; i < CAPE_N; i++) {
+    const a0 = (i / CAPE_N) * Math.PI * 2, a1 = ((i + 1) / CAPE_N) * Math.PI * 2, am = (a0 + a1) / 2;
+    const long = (i % 2 === 0); // puntas largas y cortas alternadas = borde irregular (como pies/jirones)
+    const sway = Math.sin(t * 1.7 + i * 1.3);
+    const rTip = (long ? 0.85 : 0.7) * (1 + flare * 0.3) + sway * 0.05;
+    const yTip = (long ? -0.6 : -0.1) + flare * (long ? 1.4 : 1.0) + Math.sin(t * 1.1 + i) * 0.04;
+    let tx = Math.cos(am) * rTip, tz = Math.sin(am) * rTip;
+    if (glitch && Math.random() > 0.9) { tx += (Math.random() - 0.5) * 0.5; tz += (Math.random() - 0.5) * 0.5; }
+    // dos vértices arriba (anillo del cuello, con un pequeño hueco entre triángulos) + 1 punta abajo
+    pos[k++] = Math.cos(a0 + 0.05) * 0.3; pos[k++] = 1.3; pos[k++] = Math.sin(a0 + 0.05) * 0.3;
+    pos[k++] = Math.cos(a1 - 0.05) * 0.3; pos[k++] = 1.3; pos[k++] = Math.sin(a1 - 0.05) * 0.3;
+    pos[k++] = tx; pos[k++] = yTip; pos[k++] = tz;
+  }
+  travelerCape.geo.attributes.position.needsUpdate = true;
+  travelerCape.geo.computeVertexNormals();
+  travelerCape.geo.computeBoundingSphere();
+}
+
+// Se llama UNA vez por frame, DESPUÉS de mover los planetas (para que no vaya un frame atrasado).
+function updateTraveler() {
+  const tg   = window.travelerGroup;
+  const head = window.travelerHead;
+  if (!tg || !head) return;
+
+  const st   = tg.userData;
+  const nowT = performance.now();
+  const dt   = Math.min((nowT - _tvLastT) / 1000, 0.05); // tope para que un lag no lo "teletransporte"
+  _tvLastT   = nowT;
+  const t    = nowT * 0.001;
+
+  const slow    = typeof isFriccionActive !== 'undefined' && isFriccionActive;
+  const poetic  = typeof isPoeticaActive  !== 'undefined' && isPoeticaActive;
+  const erratic = typeof isErraticaActive !== 'undefined' && isErraticaActive;
+  // Solo cuenta como "arrastrando" cuando de verdad se movió el puntero (un clic simple no lo despega)
+  const dragging = typeof draggedPlanet !== 'undefined' && draggedPlanet === tg &&
+                   typeof isDraggingPlanet !== 'undefined' && isDraggingPlanet;
+  let flareTarget = 0, falling = false;
+
+  if (dragging) {
+    // ---- EN LA MANO DEL USUARIO ----
+    st.anchoredPlanet = null;
+    st.baseX = tg.position.x;
+    st.baseY = tg.position.y;
+    tg.quaternion.slerp(_tvFreeQuat, 0.15);
+    flareTarget = 0.35; // la capa se agita cuando lo sostienes
+    tg.scale.set(1, 1, 1); _tvSquash = 0;
+
+  } else if (st.anchoredPlanet) {
+    // ---- PARADO SOBRE UN PLANETA ----
+    const planet = st.anchoredPlanet;
+
+    // 1. Superficie actual, suavizada (el hover cambia la escala de golpe)
+    st.R += (getPlanetSurfaceRadius(planet) - st.R) * Math.min(1, dt * 12);
+
+    // 2. Caída con peso: gravedad hacia el centro + rebote que pierde energía
+    const g = TRAVELER_GRAVITY * (slow ? 0.25 : 1); // Fricción = cámara lenta
+    st.vAlt -= g * dt;
+    st.alt  += st.vAlt * dt;
+    if (st.alt <= 0) {
+      st.alt = 0;
+      const impact = -st.vAlt;
+      if (impact > 6) {
+        st.vAlt   = impact * TRAVELER_BOUNCE;
+        _tvSquash = Math.min(impact / 70, 0.35);
+        if (impact > 25 && typeof vibrateDevice === 'function') vibrateDevice(25);
+      } else {
+        st.vAlt = 0; // ya está quieto: pegado al suelo
+      }
+    }
+
+    flareTarget = Math.min(1, Math.max(0, -st.vAlt / 50)); // al caer, la capa se abre hacia arriba
+    falling = st.vAlt < -8;
+
+    // 3. Máquina Poética: levita un poco SOBRE su superficie
+    st.lift += ((poetic ? 0.8 : 0) - st.lift) * Math.min(1, dt * 3);
+
+    // 4. Aplastamiento al caer (se recupera solo)
+    _tvSquash *= Math.exp(-dt * 10);
+    if (_tvSquash < 0.002) _tvSquash = 0;
+    const sy = 1 - _tvSquash, sxz = 1 + _tvSquash * 0.5;
+    tg.scale.set(sxz, sy, sxz);
+
+    // 5. Posición: centro del planeta (YA actualizado este frame) + "arriba" * altura
+    const up = planet.userData.isFolder ? _tvUp : st.dir; // la carpeta es plana: siempre arriba
+    const h  = st.R + TRAVELER_FEET * sy + st.alt + st.lift + Math.sin(t * 2) * 0.2 * st.lift;
+    st.off.multiplyScalar(Math.exp(-dt * 5)); // se va centrando sobre el planeta mientras cae
+    tg.position.copy(planet.position).add(st.off).addScaledVector(up, h);
+
+    // 6. Orientación: su "arriba" apunta lejos del centro (pies hacia el planeta)
+    _tvQuat.setFromUnitVectors(_tvUp, up).multiply(_tvFreeQuat);
+    tg.quaternion.slerp(_tvQuat, 1 - Math.exp(-dt * 8));
+
+    // 7. Glitch de la Máquina Errática + se oculta si el planeta se oculta
+    let vis = planet.visible;
+    if (erratic && Math.random() > 0.85) {
+      tg.position.x += (Math.random() - 0.5) * 0.6;
+      vis = vis && Math.random() > 0.2;
+    }
+    tg.visible = vis;
+
+  } else {
+    // ---- LIBRE EN EL ESPACIO (levitación original) ----
+    if (st.baseY === undefined) { st.baseY = tg.position.y; st.baseX = tg.position.x; }
+    let floatSpeed = 1.5, floatHeight = 0.3, baseY = st.baseY;
+    if (slow)        { floatSpeed = 0.2; floatHeight = 0.05; }
+    else if (poetic) { baseY += 0.8; floatSpeed = 2.0; }
+
+    tg.position.y = baseY + Math.sin(t * floatSpeed) * floatHeight;
+    if (erratic && Math.random() > 0.85) {
+      tg.position.x = st.baseX + (Math.random() - 0.5) * 0.6;
+      tg.visible = Math.random() > 0.2;
+    } else {
+      tg.position.x = st.baseX;
+      tg.visible = true;
+    }
+    tg.quaternion.slerp(_tvFreeQuat, 0.1); // vuelve a ponerse derecho
+    tg.scale.set(1, 1, 1); _tvSquash = 0;
+  }
+
+  // ---- CAPA: se abre al caer y se asienta al aterrizar ----
+  travelerCape.flare += (flareTarget - travelerCape.flare) * Math.min(1, dt * 10);
+  updateTravelerCape(t, travelerCape.flare, erratic);
+
+  // ---- EL OBSERVADOR: la cabeza gira un poco hacia el ratón y la pupila se mueve más ----
+  // (-PI/3 compensa el giro del cuerpo para que al reposo el visor mire a la cámara)
+  head.rotation.x += (-mouseNDC.y * 0.25 - head.rotation.x) * 0.08;
+  head.rotation.y += ((-Math.PI / 3) + mouseNDC.x * 0.5 - head.rotation.y) * 0.08;
+
+  const eye = window.travelerEye;
+  if (eye) {
+    eye.pupil.position.x += (Math.max(-1, Math.min(1, mouseNDC.x)) * 0.12 - eye.pupil.position.x) * 0.2;
+    eye.pupil.position.y += (0.02 + Math.max(-1, Math.min(1, mouseNDC.y)) * 0.015 - eye.pupil.position.y) * 0.2;
+
+    // ojo abierto/cerrado: parpadea cada ~4 s, se entrecierra al agarrarlo o al impactar, se abre grande al caer
+    let target = 1;
+    if ((t % 4.3) < 0.12) target = 0.1;
+    else if (dragging) target = 0.6;
+    else if (_tvSquash > 0.08) target = 0.15;
+    else if (falling) target = 1.5;
+    eye.open += (target - eye.open) * Math.min(1, dt * 20);
+    eye.pupil.scale.set(1, eye.open, 1);
+
+    // color de la pupila según la máquina activa
+    const mode = erratic ? 'e' : poetic ? 'p' : slow ? 'f' : 'n';
+    if (mode !== eye.mode) {
+      eye.mode = mode;
+      eye.mat.color.setHex(mode === 'e' ? 0xff0000 : mode === 'p' ? 0xffffff : mode === 'f' ? 0x444444 : 0x00ffff);
+      eye.mat.color.multiplyScalar(2.2);
+    }
+  }
+}
+
+
+
+// ============================================================
 // ==========================================
 // 🔥 POTENCIA CREADORA: SISTEMA GLOBAL DE TRAZOS
 // ==========================================
@@ -3187,92 +3434,7 @@ let totalRotated = 0; let prevAngle = 0;
 
 renderer.setAnimationLoop((timestamp, frame) => {
  // 🔥 ANIMACIÓN DEL VIAJERO (Libre y Arrastrable)
-    if (window.travelerGroup && window.travelerHead) {
-      const t = performance.now() * 0.001; 
-      
-      // Inicializamos su ancla espacial si no existe
-      if (window.travelerGroup.userData.baseY === undefined) {
-        window.travelerGroup.userData.baseY = window.travelerGroup.position.y;
-        window.travelerGroup.userData.baseX = window.travelerGroup.position.x;
-      }
-
-      // Si el usuario lo está arrastrando en este frame, actualizamos su ancla en tiempo real
-      if (typeof draggedPlanet !== 'undefined' && draggedPlanet === window.travelerGroup) {
-        window.travelerGroup.userData.baseY = window.travelerGroup.position.y;
-        window.travelerGroup.userData.baseX = window.travelerGroup.position.x;
-      }
-
-      let floatSpeed = 1.5; let floatHeight = 0.3; 
-      let activeBaseY = window.travelerGroup.userData.baseY;
-    // 🔥 Si está anclado a un planeta, le aplicamos física de caída
-      if (window.travelerGroup.userData.anchoredPlanet) {
-        const p = window.travelerGroup.userData.anchoredPlanet;
-        const targetX = p.position.x;
-        const targetY = p.position.y + 4.8; // Superficie del planeta
-
-        // 1. Atracción horizontal magnética (Lo jala suavemente hacia el centro del planeta)
-        window.travelerGroup.userData.baseX += (targetX - window.travelerGroup.userData.baseX) * 0.1;
-
-        // 2. Gravedad y rebote vertical
-        if (window.travelerGroup.userData.dropY > targetY + 0.1) {
-          // Cae ganando velocidad
-          window.travelerGroup.userData.vy -= 0.02; 
-          window.travelerGroup.userData.dropY += window.travelerGroup.userData.vy;
-          
-          // Si choca contra el planeta, da un pequeño salto (rebote)
-          if (window.travelerGroup.userData.dropY <= targetY) {
-            window.travelerGroup.userData.dropY = targetY;
-            window.travelerGroup.userData.vy *= -0.35; // Amortigua el golpe
-            // Si el rebote es muy pequeñito, lo frenamos por completo
-            if (Math.abs(window.travelerGroup.userData.vy) < 0.05) {
-              window.travelerGroup.userData.vy = 0;
-            }
-          }
-        } else if (window.travelerGroup.userData.dropY < targetY - 0.1) {
-          // Si por error lo soltaste por debajo del planeta, sube flotando magnéticamente
-          window.travelerGroup.userData.dropY += (targetY - window.travelerGroup.userData.dropY) * 0.1;
-        } else {
-          // Ya aterrizó firmemente
-          window.travelerGroup.userData.dropY = targetY;
-        }
-
-        activeBaseY = window.travelerGroup.userData.dropY;
-      }
-      // Reacciones físicas a las máquinas DAC
-      if (typeof isFriccionActive !== 'undefined' && isFriccionActive) {
-        floatSpeed = 0.2; floatHeight = 0.05; // Lentísimo y pesado
-      } else if (typeof isPoeticaActive !== 'undefined' && isPoeticaActive) {
-        activeBaseY += 0.8; floatSpeed = 2.0; // Flota más alto respecto a su posición
-      }
-
-      // Solo le aplicamos la animación matemática si NO lo estamos sosteniendo con el mouse
-      if (typeof draggedPlanet === 'undefined' || draggedPlanet !== window.travelerGroup) {
-        window.travelerGroup.position.y = activeBaseY + Math.sin(t * floatSpeed) * floatHeight; 
-
-        // Máquina Errática: Glitch basado en su NUEVA posición
-        if (typeof isErraticaActive !== 'undefined' && isErraticaActive) {
-          if (Math.random() > 0.85) {
-            window.travelerGroup.position.x = window.travelerGroup.userData.baseX + (Math.random() - 0.5) * 0.6;
-            window.travelerGroup.visible = Math.random() > 0.2; 
-          } else {
-            window.travelerGroup.position.x = window.travelerGroup.userData.baseX;
-            window.travelerGroup.visible = true;
-          }
-        } else {
-           window.travelerGroup.position.x = window.travelerGroup.userData.baseX;
-           window.travelerGroup.visible = true;
-        }
-      }
-
-    // 🔥 EL OBSERVADOR: La cabeza sigue a tu ratón orgánicamente
-      // mouseNDC es la posición de tu cursor en la pantalla (-1 a 1)
-      let targetRotX = mouseNDC.y * 0.8;
-      let targetRotY = -mouseNDC.x * 1.0;
-      
-      // Movimiento elástico (Lerp) para que no sea robótico, sino que "respire"
-      window.travelerHead.rotation.x += (targetRotX - window.travelerHead.rotation.x) * 0.05;
-      window.travelerHead.rotation.y += (targetRotY - window.travelerHead.rotation.y) * 0.05;
-    }
+   
   const isXR = renderer.xr.isPresenting;
   const session = isXR ? renderer.xr.getSession() : null;
   const isAR = isXR && window.isARSession; 
@@ -4195,7 +4357,7 @@ showSystemToast('ANOMALÍA DETECTADA A TUS ESPALDAS', '#cc0000');           }
       }
      
     });
-
+ updateTraveler();  
 if (!isAR) {
   energyWebGroup.visible = !isAligned; 
   
