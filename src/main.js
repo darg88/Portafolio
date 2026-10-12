@@ -1981,7 +1981,7 @@ function startPointerDown(clientX, clientY) {
   dragRaycaster.setFromCamera(mouseNDC, camera);
   
   // Agregamos window.travelerGroup a los objetos agarrables
-  const grabTargets = [...categoryPlanets, ...ambientWhales, ...guardianCats, planetaDAC, lunaPoetica, lunaErratica, lunaFriccion, window.travelerGroup];
+const grabTargets = [...categoryPlanets, ...ambientWhales, ...guardianCats, ...discoveredVoyagers, window.travelerGroup];
   const intersects = dragRaycaster.intersectObjects(grabTargets, true);
   
   if (intersects.length > 0) {
@@ -3013,18 +3013,32 @@ xrController1.addEventListener('select', (event) => {
     }
 
     if (reticle.visible) {
-      const models = [voyagerModelTemplate, whaleModelTemplate, gamberModelTemplate, chaplinModelTemplate];
+      // 🔥 AÑADIMOS AL VIAJERO AL MENÚ DE INVOCACIÓN DE AR
+      const models = [window.travelerGroup, voyagerModelTemplate, whaleModelTemplate, gamberModelTemplate, chaplinModelTemplate];
       const activeModel = models[arModelIndex % models.length]; 
       
       if (activeModel) {
-        const clone = activeModel.clone();
-        clone.position.setFromMatrixPosition(reticle.matrix);
-        if(arModelIndex % models.length === 1) clone.scale.set(0.05, 0.05, 0.05);
-        else clone.scale.set(0.15, 0.15, 0.15);
+        let clone;
+        if (activeModel === window.travelerGroup) {
+          // El Viajero no se clona normal porque tiene físicas vivas, invocamos al original
+          clone = window.travelerGroup;
+          clone.scale.set(0.2, 0.2, 0.2); // Escala para la vida real
+          // Simulamos una caída desde el techo físico
+          clone.userData.dropY = reticle.position.y + 2.0; 
+          clone.userData.vy = 0;
+          clone.userData.anchoredPlanet = { position: reticle.position, userData: { isFolder: true }, visible: true }; 
+        } else {
+          clone = activeModel.clone();
+          if(arModelIndex % models.length === 1) clone.scale.set(0.05, 0.05, 0.05);
+          else clone.scale.set(0.15, 0.15, 0.15);
+        }
         
+        clone.position.setFromMatrixPosition(reticle.matrix);
         scene.add(clone);
-        window.spawnedObjects.push(clone); 
-        playSound('levelup', clone.position);
+        
+        if (clone !== window.travelerGroup) window.spawnedObjects.push(clone); 
+        
+        if (typeof playSound === 'function') playSound('levelup', clone.position);
         arModelIndex++; 
       }
     }
@@ -3084,6 +3098,39 @@ function handleGrabStart(event) {
 function handleGrabEnd(event) {
   if (vrGrabbedObject) {
     scene.attach(vrGrabbedObject); 
+    
+    // 🔥 MAGIA VR: Si soltamos al Viajero, evaluamos si cayó cerca de un planeta
+    if (vrGrabbedObject === window.travelerGroup) {
+      let closestPlanet = null;
+      let minDistance = 25.0; // Radio magnético para VR
+      
+      categoryPlanets.forEach(p => {
+        if(p.userData.id === 999) return; 
+        const dist = window.travelerGroup.position.distanceTo(p.position);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestPlanet = p;
+        }
+      });
+
+      if (closestPlanet) {
+        // Ejecutamos la misma física y sonido que programamos para el ratón
+        window.startTravelerFall(closestPlanet);
+        if (typeof playSound === 'function') playSound('project_open');
+        
+        // Efecto visual de conquista
+        if (window.travelerSwordMat) {
+          window.travelerSwordMat.color.setHex(0x00ffff);
+          setTimeout(() => { window.travelerSwordMat.color.setHex(0xffffff); }, 4000);
+        }
+      } else {
+        // Si lo lanzas al vacío espacial
+        window.travelerGroup.userData.anchoredPlanet = null;
+        window.travelerGroup.userData.baseY = window.travelerGroup.position.y;
+        window.travelerGroup.userData.baseX = window.travelerGroup.position.x;
+      }
+    }
+    
     vrGrabbedObject = null;
   }
 }
@@ -4405,33 +4452,46 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
     let isVRMoving = false;
     let isVRShooting = false;
 
-    if (isXR && session && session.mode === 'immersive-vr') {
+   if (isXR && session && session.mode === 'immersive-vr') {
       session.inputSources.forEach((source) => {
-        if (source.gamepad) {
-          if (source.gamepad.axes.length >= 3) {
-            const xAxis = source.gamepad.axes[2] || source.gamepad.axes[0]; 
-            if (xAxis < -0.2 && ship.position.x > -25) { 
-              ship.position.x -= (shipSpeed * 1.5); 
-              ship.rotation.z = 0.3; 
-              isVRMoving = true; 
-            } 
-            else if (xAxis > 0.2 && ship.position.x < 25) { 
-              ship.position.x += (shipSpeed * 1.5); 
-              ship.rotation.z = -0.3; 
-              isVRMoving = true; 
+        if (source.gamepad && source.gamepad.axes.length >= 4) {
+          // Joystick Izquierdo/Derecho: Eje X (Giro/Strafe) y Eje Y (Avanzar/Retroceder)
+          const xAxis = source.gamepad.axes[2] || source.gamepad.axes[0]; 
+          const yAxis = source.gamepad.axes[3] || source.gamepad.axes[1]; 
+          
+          // 🔥 VUELO LIBRE: Usamos la dirección hacia donde mira el casco
+          if (Math.abs(xAxis) > 0.1 || Math.abs(yAxis) > 0.1) {
+            const lookDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            lookDirection.y = 0; // Mantenemos el vuelo nivelado (no vuela hacia arriba/abajo cruzado)
+            lookDirection.normalize();
+            
+            const strafeDirection = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            strafeDirection.y = 0;
+            strafeDirection.normalize();
+
+            // Velocidad de vuelo VR
+            const flightSpeed = 0.4;
+            
+            // Avanzar / Retroceder
+            if (Math.abs(yAxis) > 0.1) {
+              userGroup.position.addScaledVector(lookDirection, -yAxis * flightSpeed);
+            }
+            // Desplazamiento lateral (Strafe)
+            if (Math.abs(xAxis) > 0.1) {
+              userGroup.position.addScaledVector(strafeDirection, xAxis * flightSpeed);
             }
           }
+          
+          // Detectar gatillo para disparar
           if (source.gamepad.buttons.length > 0) {
             if ((source.gamepad.buttons[0] && source.gamepad.buttons[0].pressed) || 
-                (source.gamepad.buttons[4] && source.gamepad.buttons[4].pressed) || 
-                (source.gamepad.buttons[5] && source.gamepad.buttons[5].pressed)) { 
+                (source.gamepad.buttons[4] && source.gamepad.buttons[4].pressed)) { 
               isVRShooting = true;
             }
           }
         }
       });
     }
-
     if (isVRShooting && isGameStarted && !isUIOpen && !isAR) {
       const nowTime = performance.now();
       if (nowTime - lastShotTime > FIRE_COOLDOWN) { 
