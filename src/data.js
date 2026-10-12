@@ -1,3 +1,8 @@
+// Imagen de relleno local (SVG embebido): no depende de servicios externos
+const ph = (color, text) => 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#${color}"/><text x="400" y="310" font-family="monospace" font-size="36" fill="#000" fill-opacity=".6" text-anchor="middle">${text}</text></svg>`
+);
+
 // Exportamos la matriz principal de proyectos
 export const categoryPlanetData = [
   { 
@@ -37,7 +42,7 @@ export const categoryPlanetData = [
     tech: { es: ['Gestión Cultural', 'Nuevos Medios', 'Co-creación'], en: ['Cultural Management', 'New Media', 'Co-creation'] },
     desc: { es: 'Coordinador del MediaLab y curaduría MediaExp.', en: 'MediaLab Coordinator and MediaExp curation.' }, 
     color: 0x00ffaa, 
-    gallery: ['https://via.placeholder.com/800x600/00ffaa/000000?text=MediaLab+1'], 
+    gallery: [ph('00ffaa', 'MediaLab 1')], 
     videoSrc: '',
     link: 'https://cinematecadebogota.gov.co/',
     longDesc: { 
@@ -52,7 +57,7 @@ export const categoryPlanetData = [
     tech: { es: ['Pedagogía', 'Arte Interactivo', 'Diseño Crítico'], en: ['Pedagogy', 'Interactive Art', 'Critical Design'] },
     desc: { es: 'Convergencia entre tecnología, arte y diseño.', en: 'Convergence between technology, art, and design.' }, 
     color: 0xffff00, 
-    gallery: ['https://via.placeholder.com/800x600/ffff00/000000?text=Clase+1'], 
+    gallery: [ph('ffff00', 'Clase 1')], 
     videoSrc: '',
     link: '',
     longDesc: { 
@@ -67,7 +72,7 @@ export const categoryPlanetData = [
     tech: { es: ['Impacto Social', 'Mecánicas Lúdicas', 'Resolución de Conflictos'], en: ['Social Impact', 'Game Mechanics', 'Conflict Resolution'] },
     desc: { es: 'Videojuegos como herramientas de transformación.', en: 'Video games as tools for transformation.' }, 
     color: 0xff8800, 
-    gallery: ['https://via.placeholder.com/800x600/ff8800/000000?text=Juego+1'], 
+    gallery: [ph('ff8800', 'Juego 1')], 
     videoSrc: '',
     link: '',
     longDesc: { 
@@ -82,7 +87,7 @@ export const categoryPlanetData = [
     tech: { es: ['TouchDesigner', 'Realidad Virtual', 'Nodos / Paramétrico'], en: ['TouchDesigner', 'Virtual Reality', 'Nodes / Parametric'] },
     desc: { es: 'Exploración en nuevos medios e interactividad.', en: 'Exploration in new media and interactivity.' }, 
     color: 0xaa00ff, 
-    gallery: ['https://via.placeholder.com/800x600/aa00ff/ffffff?text=TouchDesigner+1'], 
+    gallery: [ph('aa00ff', 'TouchDesigner 1')], 
     videoSrc: '',
     link: '',
     longDesc: { 
@@ -96,7 +101,7 @@ export const categoryPlanetData = [
     title: { es: 'DIR: /Galería_Archivos', en: 'DIR: /File_Gallery' }, 
     desc: { es: 'Base de datos fotográfica y videográfica.', en: 'Photographic and videographic database.' }, 
     color: 0xffaa00, 
-    gallery: ['https://via.placeholder.com/800x600/ffaa00/000000?text=Archivo+Foto+1', 'https://via.placeholder.com/800x600/cc8800/000000?text=Archivo+Foto+2', 'https://via.placeholder.com/800x600/aa6600/000000?text=Archivo+Foto+3'], 
+    gallery: [ph('ffaa00', 'Archivo Foto 1'), ph('cc8800', 'Archivo Foto 2'), ph('aa6600', 'Archivo Foto 3')], 
     videoSrc: '',
     link: '',
     longDesc: { 
@@ -109,7 +114,7 @@ export const categoryPlanetData = [
     title: { es: 'Módulo WebAR', en: 'WebAR Module' }, 
     desc: { es: 'Integración de Realidad Aumentada Funcional.', en: 'Integration of Functional Augmented Reality.' }, 
     color: 0xff00ff, 
-    gallery: ['https://via.placeholder.com/800x600/ff00ff/ffffff?text=WebAR+1', 'https://via.placeholder.com/800x600/cc00cc/ffffff?text=WebAR+2'], 
+    gallery: [ph('ff00ff', 'WebAR 1'), ph('cc00cc', 'WebAR 2')], 
     videoSrc: '',
     link: '',
     longDesc: { 

@@ -1646,7 +1646,9 @@ function showLeaderboard() { openUIWindow('leaderboard-ui'); document.getElement
 // Agrega el ".json" al final de tu URL de Firebase (es obligatorio para que funcione sin instalar nada extra)
 // 🔥 CONFIGURACIÓN DE FIREBASE (Asegúrate de pegar AQUÍ la URL que te dio Firebase)
 // No olvides que DEBE terminar en /scores.json
-const FIREBASE_URL = 'https://gamelab-portafolio-default-rtdb.firebaseio.com//scores.json'; 
+const FIREBASE_URL = 'https://gamelab-portafolio-default-rtdb.firebaseio.com/scores.json'; 
+
+const escapeHTML = (str) => String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 async function updateLeaderboardUI() {
   const list = document.getElementById('score-list');
@@ -1654,6 +1656,7 @@ async function updateLeaderboardUI() {
 
   try {
     const response = await fetch(FIREBASE_URL);
+    if (!response.ok) throw new Error('HTTP ' + response.status);
     const data = await response.json();
     
     let scores = [];
@@ -1663,16 +1666,16 @@ async function updateLeaderboardUI() {
       }
     }
 
-    scores.sort((a, b) => b.score - a.score);
+    scores.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
 
     if (list) {
-      list.innerHTML = '';
       if (scores.length === 0) {
         list.innerHTML = '<li>Aún no hay registros. ¡Sé el primero!</li>';
       } else {
-        scores.slice(0, 5).forEach((s, i) => { 
-          list.innerHTML += `<li style="padding: 5px 0; border-bottom: 1px dashed #333;">#${i+1} - <span style="color:#00ffff">${s.name}</span>: ${s.score} pts</li>`; 
-        });
+        // Los nombres vienen de una base de datos pública: se escapan para evitar inyección de HTML
+        list.innerHTML = scores.slice(0, 5).map((s, i) => 
+          `<li style="padding: 5px 0; border-bottom: 1px dashed #333;">#${i+1} - <span style="color:#00ffff">${escapeHTML(s.name)}</span>: ${Number(s.score) || 0} pts</li>`
+        ).join('');
       }
     }
   } catch (error) {
@@ -2410,7 +2413,7 @@ function openProjectPopup(data) {
     else { linkBtn.innerText = isEn ? 'VIEW EXTERNAL LINK ↗' : 'VER ENLACE EXTERNO ↗'; }
   } else { linkBtn.style.display = 'none'; }
 
-mediaContainer.innerHTML = `<img id="gallery-img" src="${finalGallery[0]}" loading="lazy" style="max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in;">`;  if (finalGallery.length > 0) {
+mediaContainer.innerHTML = finalGallery.length === 0 ? '' : `<img id="gallery-img" src="${finalGallery[0]}" loading="lazy" style="max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in;">`;  if (finalGallery.length > 0) {
     mediaContainer.style.display = 'flex';
     
     const toggleFullscreen = (e) => {
@@ -2426,7 +2429,7 @@ mediaContainer.innerHTML = `<img id="gallery-img" src="${finalGallery[0]}" loadi
 
     const tooltipStr = isEn ? 'Click for fullscreen' : 'Clic para pantalla completa';
     if (finalGallery.length === 1) {
-      mediaContainer.innerHTML = `<img id="gallery-img" src="${finalGallery[0]}" style="max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in;" title="${tooltipStr}">`;
+      mediaContainer.innerHTML = finalGallery.length === 0 ? '' : `<img id="gallery-img" src="${finalGallery[0]}" style="max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in;" title="${tooltipStr}">`;
       document.getElementById('gallery-img').onclick = toggleFullscreen;
     } else {
       window.currentGallery = finalGallery; 
