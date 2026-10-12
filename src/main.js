@@ -5576,16 +5576,29 @@ function initTerminalMode() {
     if (typeof categoryPlanetData === 'undefined') return;
     const pData = categoryPlanetData.find(p => p.id === id);
     if (pData && typeof openProjectPopup === 'function') {
-      openProjectPopup(pData);
       
-      // 🔥 LA CURA: Forzamos que la ventana de proyectos y su fondo oscuro 
-      // salten por encima del Modo Terminal
-      const overlay = document.getElementById('modal-overlay');
-      const portfolioUi = document.getElementById('portfolio-ui');
-      if (overlay) overlay.style.zIndex = '999995';
-      if (portfolioUi) portfolioUi.style.zIndex = '999999';
+      // 🔥 LA CURA: Ocultamos el terminal temporalmente para que no tape la ventana
+      const termContainer = document.getElementById('terminal-container');
+      if (termContainer) termContainer.style.display = 'none';
+      
+      openProjectPopup(pData);
     }
   };
+
+  // 🔥 PARCHE DE CERRADO: Cuando el usuario cierre el proyecto (botón X o Escape), restauramos el Terminal
+  if (typeof window.closeAllUIs === 'function' && !window.isClosePatched) {
+    const originalClose = window.closeAllUIs;
+    window.closeAllUIs = function() {
+      originalClose(); // Ejecuta el cierre normal de tu código original
+      
+      // Si estábamos leyendo el Modo Terminal, lo volvemos a mostrar al cerrar la ventana
+      if (isTerminalMode) {
+        const termContainer = document.getElementById('terminal-container');
+        if (termContainer) termContainer.style.display = 'block';
+      }
+    };
+    window.isClosePatched = true;
+  }
 
   // 5. Lógica de renderizado del Grid 2D
   window.renderTerminalGrid = function() {
