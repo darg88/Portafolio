@@ -586,3 +586,15 @@ body.ar-active #VRButton {
   0% { margin-top: 0px; }
   100% { margin-top: -15px; } /* Respira suavemente hacia arriba */
 }
+
+/* ==========================================
+   ACCESIBILIDAD: MOVIMIENTO REDUCIDO
+   ========================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

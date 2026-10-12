@@ -951,6 +951,7 @@ window.closeAllUIs = function() {
   // 🔥 AQUÍ AGREGAMOS EL TUTORIAL A LA LISTA DE APAGADO
   document.getElementById('tutorial-ui')?.classList.add('hidden'); 
   document.getElementById('dac-microsite')?.classList.add('hidden');
+  if (typeof window.stopDacMachines === 'function') window.stopDacMachines();
   
   document.getElementById('portfolio-ui').classList.add('hidden'); 
   document.getElementById('about-ui').classList.add('hidden'); 
@@ -1362,15 +1363,28 @@ function createAttractor(type, colorHex) {
       pos[i*3+2] = z * 0.08;
     } 
     else if (type === 'erratica') {
-      // Atractor de Clifford (Fragmentado, caótico y afilado)
-      let nx = Math.sin(-1.4 * y) + Math.cos(-1.4 * x);
-      let ny = Math.sin(1.6 * x) + 0.7 * Math.cos(1.6 * y);
-      let nz = Math.sin(1.0 * z) + Math.cos(x * y); 
-      x = nx; y = ny; z = nz;
+      // 🔥 Máquina Errática: Monolito Cúbico de Datos
+      // Distribuimos las partículas en las 6 caras de un cubo hueco
+      const face = Math.floor(Math.random() * 3); 
+      const val = (Math.random() > 0.5 ? 1.5 : -1.5);
       
-      pos[i*3] = x * 1.5;
-      pos[i*3+1] = y * 1.5;
-      pos[i*3+2] = z * 1.5;
+      if (face === 0) {
+        x = val;
+        y = (Math.random() - 0.5) * 3.0;
+        z = (Math.random() - 0.5) * 3.0;
+      } else if (face === 1) {
+        x = (Math.random() - 0.5) * 3.0;
+        y = val;
+        z = (Math.random() - 0.5) * 3.0;
+      } else {
+        x = (Math.random() - 0.5) * 3.0;
+        y = (Math.random() - 0.5) * 3.0;
+        z = val;
+      }
+      
+      pos[i*3] = x;
+      pos[i*3+1] = y;
+      pos[i*3+2] = z;
     }
  else if (type === 'friccion') {
       // 🔥 Máquina de Fricción: Luna densa y pesada con anillos de escombros (Estructura Esférica)
@@ -1398,6 +1412,8 @@ function createAttractor(type, colorHex) {
     }
   }
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  // Guardamos la forma perfecta para poder "curarla" o romperla después
+  geo.setAttribute('basePosition', new THREE.BufferAttribute(new Float32Array(pos), 3));
   
   // Material luminoso tipo polvo cósmico
   const mat = new THREE.PointsMaterial({
@@ -3794,10 +3810,48 @@ if (isAR && frame && hitTestSource) {
         lunaErratica.position.y = 6 + (Math.random() - 0.5) * 0.4;
         lunaErratica.rotation.y += 0.05; // Gira locamente
         if (Math.random() > 0.95) triggerSubtleGlitch();
+        
+        // 🔥 SHATTER EFFECT: Las partículas explotan y se intentan reensamblar
+        if (lunaErratica.geometry.attributes.basePosition) {
+          const positions = lunaErratica.geometry.attributes.position.array;
+          const basePositions = lunaErratica.geometry.attributes.basePosition.array;
+          
+          for (let i = 0; i < positions.length; i += 3) {
+            if (Math.random() > 0.85) {
+              // El 15% de las partículas salen disparadas hacia afuera (Glitch)
+              positions[i] = basePositions[i] * (1 + Math.random() * 0.8);
+              positions[i+1] = basePositions[i+1] * (1 + Math.random() * 0.8);
+              positions[i+2] = basePositions[i+2] * (1 + Math.random() * 0.8);
+            } else {
+              // El resto intenta volver desesperadamente a su lugar original magnéticamente
+              positions[i] += (basePositions[i] - positions[i]) * 0.3;
+              positions[i+1] += (basePositions[i+1] - positions[i+1]) * 0.3;
+              positions[i+2] += (basePositions[i+2] - positions[i+2]) * 0.3;
+            }
+          }
+          lunaErratica.geometry.attributes.position.needsUpdate = true;
+        }
+
       } else {
         lunaErratica.position.set(-8, 6, -8);
         lunaErratica.rotation.x -= 0.008;
         lunaErratica.rotation.z += 0.01;
+        
+        // 🔥 REENSAMBLAJE: Si estaba rota, se "cura" sola al apagarse
+        if (lunaErratica.geometry.attributes.basePosition) {
+           const positions = lunaErratica.geometry.attributes.position.array;
+           const basePositions = lunaErratica.geometry.attributes.basePosition.array;
+           let needsUpdate = false;
+           for (let i = 0; i < positions.length; i += 3) {
+             if (Math.abs(positions[i] - basePositions[i]) > 0.01) {
+                positions[i] += (basePositions[i] - positions[i]) * 0.1;
+                positions[i+1] += (basePositions[i+1] - positions[i+1]) * 0.1;
+                positions[i+2] += (basePositions[i+2] - positions[i+2]) * 0.1;
+                needsUpdate = true;
+             }
+           }
+           if (needsUpdate) lunaErratica.geometry.attributes.position.needsUpdate = true;
+        }
       }
 
       // 3. Efecto Fricción: Temblor constante en la cámara y rotación densa
@@ -3979,26 +4033,27 @@ if (isAR && frame && hitTestSource) {
               vz: (Math.random() - 0.5) * 0.02
             };
           }
-       else if (isErraticaActive) {
-            // 🔥 ERRÁTICA: Agujas rojas afiladas (Esquirlas de cristal corrupto)
-            pGeo = new THREE.ConeGeometry(0.08, 2.0, 3); // Base mínima, muy largas y de 3 caras (Picos perfectos)
-            pMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
+      else if (isErraticaActive) {
+            // 🔥 ERRÁTICA (DIBUJO): Artefactos de código (Wireframes corruptos)
+            pGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4); 
+            pMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
             stroke = new THREE.Mesh(pGeo, pMat);
-            stroke.position.copy(globalPos);
-            // Dispersión explosiva al nacer
-            stroke.position.x += (Math.random() - 0.5) * 3.0;
-            stroke.position.y += (Math.random() - 0.5) * 3.0;
-            stroke.position.z += (Math.random() - 0.5) * 2.0;
             
-            stroke.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            // Efecto "Snap to Grid": Forzamos a que el dibujo se encaje matemáticamente en una cuadrícula
+            const gridSize = 0.6;
+            stroke.position.x = Math.round(globalPos.x / gridSize) * gridSize;
+            stroke.position.y = Math.round(globalPos.y / gridSize) * gridSize;
+            stroke.position.z = Math.round(globalPos.z / gridSize) * gridSize;
             
-            // Velocidad caótica
+            // Rotaciones secas de 90 grados para mantener el aspecto de bloque de sistema
+            stroke.rotation.set(Math.floor(Math.random()*4)*(Math.PI/2), Math.floor(Math.random()*4)*(Math.PI/2), 0);
+            
             stroke.userData = { 
               type: 'erratica', 
-              vx: (Math.random() - 0.5) * 0.15, 
-              vy: (Math.random() - 0.5) * 0.15,
-              vz: (Math.random() - 0.5) * 0.15,
-              baseRot: stroke.rotation.clone()
+              baseX: stroke.position.x, 
+              baseY: stroke.position.y, 
+              baseZ: stroke.position.z,
+              timer: Math.floor(Math.random() * 100)
             };
           }
           else if (isFriccionActive) {
@@ -4049,21 +4104,28 @@ if (isAR && frame && hitTestSource) {
           poeticaNodes.push(p); 
         }
         else if (p.userData.type === 'erratica') {
-          // Movimiento violento y nervioso (se mueve a tirones)
-          if (Math.random() > 0.5) {
-            p.position.x += p.userData.vx; 
-            p.position.y += p.userData.vy; 
-            p.position.z += p.userData.vz;
+          p.userData.timer++;
+          
+          // Glitch de forma y posición (Espasmos violentos pero secos)
+          if (p.userData.timer % 10 === 0) {
+            if (Math.random() > 0.6) {
+              // Se estira exageradamente como un error de RAM (Squash/Stretch roto)
+              p.scale.set(Math.random() > 0.5 ? Math.random() * 5 : 1, Math.random() > 0.5 ? Math.random() * 5 : 1, Math.random() > 0.5 ? Math.random() * 5 : 1);
+              
+              // Se teletransporta levemente fuera de la cuadrícula
+              p.position.set(
+                p.userData.baseX + (Math.random() > 0.8 ? (Math.random()-0.5)*2 : 0),
+                p.userData.baseY + (Math.random() > 0.8 ? (Math.random()-0.5)*2 : 0),
+                p.userData.baseZ + (Math.random() > 0.8 ? (Math.random()-0.5)*2 : 0)
+              );
+            } else {
+              // Vuelve a la normalidad (Se cura)
+              p.scale.set(1, 1, 1);
+              p.position.set(p.userData.baseX, p.userData.baseY, p.userData.baseZ);
+            }
           }
-          // Rotación espasmódica
-          if (Math.random() > 0.8) {
-            p.rotation.set(
-              p.userData.baseRot.x + (Math.random() - 0.5) * 1.5, 
-              p.userData.baseRot.y + (Math.random() - 0.5) * 1.5, 
-              p.userData.baseRot.z + (Math.random() - 0.5) * 1.5
-            );
-          }
-          p.visible = Math.random() > 0.1; // Parpadea
+          
+          p.visible = Math.random() > 0.1; // 10% de probabilidad de hacerse invisible (parpadeo duro)
           erraticaNodes.push(p);
         }
         else if (p.userData.type === 'friccion') {
@@ -5213,45 +5275,125 @@ const dacDisplay = document.getElementById('dac-display');
 const dacStatus = document.getElementById('dac-status-text');
 const rawCanvas = document.getElementById('dac-raw-canvas');
 const heavyCursor = document.getElementById('dac-heavy-cursor');
-const glitchTexts = document.querySelectorAll('.dac-glitch-text');
+// (los textos a corromper se consultan al activar la Errática; el texto de estado se excluye)
 let erraticaTimer = null;
 
 
 
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const dacMicrosite = document.getElementById('dac-microsite');
+
+// Qué máquinas se encendieron desde el modal (las lunas 3D comparten las mismas banderas)
+const modalOwned = { poetica: false, erratica: false, friccion: false };
+
 // Contexto de la matriz de datos crudos (Poética)
-let rawCtx = null;
-if (rawCanvas) {
-  rawCanvas.width = rawCanvas.offsetWidth;
-  rawCanvas.height = rawCanvas.offsetHeight;
-  rawCtx = rawCanvas.getContext('2d');
+// El modal está oculto al cargar, así que el tamaño se ajusta cuando el canvas es visible
+const rawCtx = rawCanvas ? rawCanvas.getContext('2d') : null;
+function resizeRawCanvas() {
+  if (!rawCanvas) return;
+  const w = rawCanvas.offsetWidth, h = rawCanvas.offsetHeight;
+  if (w > 0 && h > 0 && (rawCanvas.width !== w || rawCanvas.height !== h)) {
+    rawCanvas.width = w; rawCanvas.height = h;
+  }
 }
+if (rawCanvas && 'ResizeObserver' in window) new ResizeObserver(resizeRawCanvas).observe(rawCanvas);
+window.addEventListener('resize', resizeRawCanvas);
 
 // Lógica del Cursor Pesado (Fricción Somática)
 let targetMouseX = 0, targetMouseY = 0;
 let currentMouseX = 0, currentMouseY = 0;
 
-document.getElementById('dac-microsite')?.addEventListener('mousemove', (e) => {
-  const rect = document.getElementById('dac-microsite').getBoundingClientRect();
+// pointermove cubre ratón, lápiz y dedo (antes solo funcionaba con ratón)
+dacMicrosite?.addEventListener('pointermove', (e) => {
+  const rect = dacMicrosite.getBoundingClientRect();
   targetMouseX = e.clientX - rect.left;
   targetMouseY = e.clientY - rect.top;
 
-  // Si la máquina poética está activa, pintamos pixeles crudos
-  if (isPoeticaActive && rawCtx) {
+  // Si la máquina poética está activa, pintamos pixeles crudos justo bajo el puntero
+  if (isPoeticaActive && rawCtx && rawCanvas) {
+    resizeRawCanvas();
+    const c = rawCanvas.getBoundingClientRect();
+    const px = e.clientX - c.left, py = e.clientY - c.top;
+    if (px < 0 || py < 0 || px > c.width || py > c.height) return;
     rawCtx.fillStyle = `rgba(${Math.random()*255}, 0, ${Math.random()*255}, 0.8)`;
-    rawCtx.fillRect(targetMouseX, targetMouseY - 150, Math.random()*20, Math.random()*20);
+    rawCtx.fillRect(px, py, Math.random()*20, Math.random()*20);
   }
 });
 
-function animateFriction() {
+// Inercia independiente de los cuadros por segundo (antes dependía de la pantalla)
+let lastFrictionTime = performance.now();
+function animateFriction(now) {
+  const dt = Math.min(((now || performance.now()) - lastFrictionTime) / 1000, 0.1);
+  lastFrictionTime = now || performance.now();
   if (isFriccionActive && heavyCursor) {
-    // Lerp (retraso elástico) para simular inercia y peso material
-    currentMouseX += (targetMouseX - currentMouseX) * 0.05;
-    currentMouseY += (targetMouseY - currentMouseY) * 0.05;
+    const k = 1 - Math.pow(1 - 0.05, dt * 60); // equivale a 0.05 por frame a 60 fps
+    currentMouseX += (targetMouseX - currentMouseX) * k;
+    currentMouseY += (targetMouseY - currentMouseY) * k;
     heavyCursor.style.transform = `translate(${currentMouseX}px, ${currentMouseY}px)`;
   }
   requestAnimationFrame(animateFriction);
 }
-animateFriction();
+requestAnimationFrame(animateFriction);
+
+// --- Errática: corrupción reversible de textos ---
+const glitchTargets = () => document.querySelectorAll('.dac-glitch-text:not(#dac-status-text)');
+let erraticaFleeCount = 0;
+const MAX_FLEES = 4; // después de 4 huidas el botón se deja atrapar: siempre se puede apagar
+
+function corruptText(original, howMany) {
+  let out = original;
+  for (let i = 0; i < howMany; i++) {
+    const pos = Math.floor(Math.random() * out.length);
+    out = out.substring(0, pos) + String.fromCharCode(33 + Math.random() * 94) + out.substring(pos + 1);
+  }
+  return out;
+}
+
+function stopErratica() {
+  if (erraticaTimer) { clearInterval(erraticaTimer); erraticaTimer = null; }
+  glitchTargets().forEach(el => {
+    if (el.dataset.original !== undefined) { el.innerText = el.dataset.original; delete el.dataset.original; }
+  });
+  if (btnErratica) { btnErratica.style.transform = 'none'; btnErratica.style.background = 'transparent'; }
+  erraticaFleeCount = 0;
+}
+
+function startErratica() {
+  // Guardamos el texto original para poder restaurarlo siempre
+  glitchTargets().forEach(el => { el.dataset.original = el.innerText; });
+
+  if (prefersReducedMotion.matches) {
+    // Sin parpadeo: una sola corrupción estática
+    glitchTargets().forEach(el => { el.innerText = corruptText(el.dataset.original, 2); });
+    return;
+  }
+  erraticaTimer = setInterval(() => {
+    glitchTargets().forEach(el => {
+      const original = el.dataset.original ?? el.innerText;
+      // Cada tic parte del original: el texto parpadea pero no se degrada acumulando errores
+      el.innerText = Math.random() > 0.7 ? corruptText(original, 1 + Math.floor(Math.random() * 2)) : original;
+    });
+    if (typeof triggerSubtleGlitch === 'function') triggerSubtleGlitch();
+  }, 150);
+}
+
+function stopFriccion() {
+  if (btnFriccion) btnFriccion.style.background = 'transparent';
+  if (dacMicrosite) dacMicrosite.style.cursor = 'crosshair';
+  if (heavyCursor) heavyCursor.style.display = 'none';
+}
+
+// Apaga las máquinas encendidas desde el modal (se llama al cerrar cualquier ventana)
+window.stopDacMachines = function() {
+  if (modalOwned.erratica) { isErraticaActive = false; modalOwned.erratica = false; }
+  stopErratica(); // siempre: limpia temporizador y restaura textos
+  if (modalOwned.poetica) {
+    isPoeticaActive = false; modalOwned.poetica = false;
+    if (btnPoetica) btnPoetica.style.background = 'transparent';
+    if (rawCtx && rawCanvas) rawCtx.clearRect(0, 0, rawCanvas.width, rawCanvas.height);
+  }
+  if (modalOwned.friccion) { isFriccionActive = false; modalOwned.friccion = false; stopFriccion(); }
+};
 
 if (btnPoetica && btnErratica && btnFriccion) {
   
@@ -5259,8 +5401,10 @@ if (btnPoetica && btnErratica && btnFriccion) {
   btnPoetica.addEventListener('click', () => {
     if (typeof playSound === 'function') playSound('ui');
     isPoeticaActive = !isPoeticaActive;
+    modalOwned.poetica = isPoeticaActive;
     
     if (isPoeticaActive) {
+      resizeRawCanvas();
       dacStatus.innerHTML = "> MATRIZ DE DATOS CRUDOS EXPUESTA.<br>Dibuja sobre el vacío.";
       dacStatus.style.color = '#f0e2f0';
       btnPoetica.style.background = 'rgba(255, 0, 255, 0.2)';
@@ -5271,39 +5415,29 @@ if (btnPoetica && btnErratica && btnFriccion) {
   });
 
   // [2] MÁQUINA ERRÁTICA: Glitch estructural y tartamudeo HTML
-  btnErratica.addEventListener('mouseover', () => {
-    // El botón huye del usuario (negativa a obedecer)
-    if (isErraticaActive) {
-      btnErratica.style.transform = `translate(${(Math.random()-0.5)*100}px, ${(Math.random()-0.5)*50}px)`;
-    }
+  // El botón huye del puntero (negativa a obedecer), solo con ratón y un número limitado de veces
+  btnErratica.addEventListener('pointerenter', (e) => {
+    if (!isErraticaActive || e.pointerType !== 'mouse' || prefersReducedMotion.matches) return;
+    if (erraticaFleeCount >= MAX_FLEES) { btnErratica.style.transform = 'none'; return; }
+    erraticaFleeCount++;
+    btnErratica.style.transform = `translate(${(Math.random()-0.5)*100}px, ${(Math.random()-0.5)*50}px)`;
   });
 
   btnErratica.addEventListener('click', () => {
     if (typeof playSound === 'function') playSound('damage');
     isErraticaActive = !isErraticaActive;
+    modalOwned.erratica = isErraticaActive;
     
     if (isErraticaActive) {
       btnErratica.style.background = 'rgba(255, 51, 0, 0.2)';
-      dacStatus.innerHTML = "> ESTÉTICA DEL ERROR.<br>Interrupción de la invisibilidad de la mediación.";
+      const aviso = prefersReducedMotion.matches
+        ? "Movimiento reducido: corrupción estática."
+        : "ADVERTENCIA: texto parpadeante. Vuelve a pulsar para detener.";
+      dacStatus.innerHTML = `> ESTÉTICA DEL ERROR.<br>Interrupción de la invisibilidad de la mediación.<br><small>${aviso}</small>`;
       dacStatus.style.color = '#ff3300';
-      
-      // Inicia la corrupción de textos
-      erraticaTimer = setInterval(() => {
-        glitchTexts.forEach(el => {
-          if(Math.random() > 0.7) {
-            const original = el.innerText;
-            const glitchChar = String.fromCharCode(33 + Math.random() * 94);
-            const pos = Math.floor(Math.random() * original.length);
-            el.innerText = original.substring(0, pos) + glitchChar + original.substring(pos + 1);
-          }
-        });
-        if (typeof triggerSubtleGlitch === 'function') triggerSubtleGlitch();
-      }, 150);
+      startErratica();
     } else {
-      btnErratica.style.background = 'transparent';
-      btnErratica.style.transform = 'none';
-      clearInterval(erraticaTimer);
-      // Forzar recarga de los textos originales cerrando y abriendo
+      stopErratica();
       showSystemToast('> REINICIANDO CAJA NEGRA', '#00ffcc');
     }
   });
@@ -5312,20 +5446,20 @@ if (btnPoetica && btnErratica && btnFriccion) {
   btnFriccion.addEventListener('click', () => {
     if (typeof playSound === 'function') playSound('boss_hit');
     isFriccionActive = !isFriccionActive;
+    modalOwned.friccion = isFriccionActive;
     
     if (isFriccionActive) {
       btnFriccion.style.background = 'rgba(255, 255, 0, 0.2)';
       dacStatus.innerHTML = "> FRICCIÓN MATERIAL DETECTADA.<br>El sistema exige negociación somática.";
       dacStatus.style.color = '#ffff00';
       
-      // Ocultar cursor del sistema, mostrar cursor pesado
-      document.getElementById('dac-microsite').style.cursor = 'none';
+      // Ocultar cursor del sistema, mostrar cursor pesado (parte desde donde está el puntero)
+      currentMouseX = targetMouseX; currentMouseY = targetMouseY;
+      dacMicrosite.style.cursor = 'none';
       heavyCursor.style.display = 'block';
       if (typeof shakeIntensity !== 'undefined') shakeIntensity = 0.5;
     } else {
-      btnFriccion.style.background = 'transparent';
-      document.getElementById('dac-microsite').style.cursor = 'crosshair';
-      heavyCursor.style.display = 'none';
+      stopFriccion();
     }
   });
 }
@@ -5348,3 +5482,212 @@ window.addEventListener('click', (e) => {
     if (typeof playSound === 'function') playSound('ui'); 
   }
 });
+// ============================================================
+// 🔥 ARQUITECTURA DUAL: MODO TERMINAL 2D (CORREGIDO)
+// ============================================================
+
+let isTerminalMode = false;
+
+function initTerminalMode() {
+  // 1. Modificar la pantalla de inicio (Start Screen)
+  const startBtn = document.getElementById('start-btn');
+  const skipBtn = document.getElementById('skip-btn');
+  const startScreenContainer = startBtn ? startBtn.parentElement : null;
+
+  if (startBtn && startScreenContainer && !document.getElementById('terminal-start-btn')) {
+    // Actualizar textos del botón original
+    if (typeof dict !== 'undefined') {
+      dict.es.startBtn = "[ DESPERTAR UNIVERSO 3D ]";
+      dict.en.startBtn = "[ AWAKEN 3D UNIVERSE ]";
+    }
+    startBtn.innerText = (window.currentLang === 'en') ? dict.en.startBtn : dict.es.startBtn;
+
+    // Crear el nuevo botón de Terminal para la portada
+    const terminalStartBtn = document.createElement('button');
+    terminalStartBtn.id = 'terminal-start-btn';
+    terminalStartBtn.innerText = (window.currentLang === 'en') ? "[ ACCESS EXECUTIVE ARCHIVE ]" : "[ ACCEDER A MODO TERMINAL ]";
+    terminalStartBtn.className = startBtn.className; 
+    
+    // Estilos limpios y separados
+    terminalStartBtn.style.cssText = 'border: 1px solid rgba(170,204,255,0.4); background: rgba(170,204,255,0.05); color: #aaccff; padding: 15px 30px; font-family: "Share Tech Mono", monospace; cursor: pointer; letter-spacing: 2px; transition: 0.3s; margin-top: 15px; display: none;';
+    
+    terminalStartBtn.onmouseover = () => { terminalStartBtn.style.background = 'rgba(170,204,255,0.1)'; };
+    terminalStartBtn.onmouseout = () => { terminalStartBtn.style.background = 'rgba(170,204,255,0.05)'; };
+
+    terminalStartBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      terminalStartBtn.blur();
+      if (typeof playSound === 'function') playSound('ui');
+      
+      const startScreen = document.getElementById('start-screen');
+      if (startScreen) {
+        startScreen.style.opacity = '0';
+        setTimeout(() => { startScreen.style.display = 'none'; }, 1000);
+      }
+      if (typeof isGameStarted !== 'undefined') isGameStarted = true;
+      
+      window.toggleTerminalMode();
+    });
+    
+    startScreenContainer.appendChild(terminalStartBtn);
+
+    // 🔥 LA SOLUCIÓN AL BUG: Sincronizar la aparición con el final de la carga del motor 3D
+    const syncInterval = setInterval(() => {
+      if (startBtn.style.display === 'block') {
+        terminalStartBtn.style.display = 'block';
+        if (skipBtn) skipBtn.style.display = 'none'; // Ocultamos el minijuego para no saturar la portada
+        clearInterval(syncInterval);
+      }
+    }, 100);
+  }
+
+  // 2. Crear el botón interruptor general (Esquina superior derecha bajada a 90px)
+  let toggleBtn = document.getElementById('mode-toggle-btn');
+  if (!toggleBtn) {
+    toggleBtn = document.createElement('button');
+    toggleBtn.id = 'mode-toggle-btn';
+    toggleBtn.innerHTML = '⌗ MODO TERMINAL';
+    toggleBtn.style.cssText = 'position: fixed; top: 90px; right: 20px; z-index: 100000; background: rgba(10,15,25,0.4); border: 1px solid rgba(255,255,255,0.2); color: #ffffff; padding: 10px 20px; font-family: "Share Tech Mono", monospace; font-size: 0.85rem; cursor: pointer; transition: 0.3s; backdrop-filter: blur(10px); text-transform: uppercase; letter-spacing: 2px; border-radius: 4px; display: none;';
+    
+    toggleBtn.onmouseover = () => { toggleBtn.style.background = 'rgba(255,255,255,0.1)'; toggleBtn.style.borderColor = '#00ffff'; };
+    toggleBtn.onmouseout = () => { toggleBtn.style.background = 'rgba(10,15,25,0.4)'; toggleBtn.style.borderColor = 'rgba(255,255,255,0.2)'; };
+    document.body.appendChild(toggleBtn);
+    
+    // Mostrar este botón SÓLO cuando el usuario haya entrado activamente a la web
+    const btnInterval = setInterval(() => {
+      if (typeof isGameStarted !== 'undefined' && isGameStarted) {
+         toggleBtn.style.display = 'block';
+         clearInterval(btnInterval);
+      }
+    }, 500);
+  }
+
+  // 3. Crear el contenedor 2D (Cristal limpio)
+  let terminalContainer = document.getElementById('terminal-container');
+  if (!terminalContainer) {
+    terminalContainer = document.createElement('div');
+    terminalContainer.id = 'terminal-container';
+    terminalContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 10, 0.6); backdrop-filter: blur(35px); z-index: 99990; overflow-y: auto; padding: 80px 8% 50px 8%; display: none; color: #fff; font-family: "-apple-system", BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-weight: 300;';
+    document.body.appendChild(terminalContainer);
+  }
+
+ // 4. Exponer función global para abrir los modales 3D desde el 2D
+  window.openProjectFromTerminal = (id) => {
+    if (typeof categoryPlanetData === 'undefined') return;
+    const pData = categoryPlanetData.find(p => p.id === id);
+    if (pData && typeof openProjectPopup === 'function') {
+      openProjectPopup(pData);
+      
+      // 🔥 LA CURA: Forzamos que la ventana de proyectos y su fondo oscuro 
+      // salten por encima del Modo Terminal
+      const overlay = document.getElementById('modal-overlay');
+      const portfolioUi = document.getElementById('portfolio-ui');
+      if (overlay) overlay.style.zIndex = '999995';
+      if (portfolioUi) portfolioUi.style.zIndex = '999999';
+    }
+  };
+
+  // 5. Lógica de renderizado del Grid 2D
+  window.renderTerminalGrid = function() {
+    const lang = window.currentLang || 'es';
+    const tTitle = lang === 'en' ? 'EXECUTIVE ARCHIVE' : 'ARCHIVO EJECUTIVO';
+    const profileTxt = (typeof dict !== 'undefined' && dict[lang]) ? dict[lang].profileContent : '';
+
+    let html = `
+      <div style="max-width: 1100px; margin: 0 auto;">
+        <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 25px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 15px;">
+          <div>
+            <h1 style="color: #ffffff; margin: 0; font-size: 2.5rem; letter-spacing: 6px; font-family: 'Share Tech Mono', monospace; font-weight: 300;">${tTitle}</h1>
+            <p style="color: #aaccff; font-family: 'Share Tech Mono', monospace; margin-top: 10px; font-size: 0.9rem; letter-spacing: 1px; opacity: 0.8;">> 3D ENGINE: SUSPENDED | DATA: SYNCED</p>
+          </div>
+        </div>
+        
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); padding: 35px; margin-bottom: 50px; border-left: 2px solid #00ffff; border-radius: 4px; line-height: 1.8; font-size: 1.05rem; color: #dddddd;">
+          ${profileTxt}
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 30px;">
+    `;
+
+    if (typeof categoryPlanetData !== 'undefined') {
+      categoryPlanetData.forEach(proj => {
+        if (proj.id === 999) return; 
+        
+        const title = typeof proj.title === 'object' ? proj.title[lang] : proj.title;
+        const desc = typeof proj.desc === 'object' ? proj.desc[lang] : proj.desc;
+        const role = typeof proj.role === 'object' ? proj.role[lang] : proj.role;
+        const techArr = typeof proj.tech === 'object' && !Array.isArray(proj.tech) ? proj.tech[lang] : proj.tech;
+        
+        let techHTML = '';
+        if (techArr && techArr.length > 0) {
+          techHTML = '<div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px;">';
+          techArr.forEach(t => {
+            techHTML += `<span style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 5px 12px; font-size: 0.75rem; border-radius: 20px; color: #aaccff; letter-spacing: 0.5px;">${t}</span>`;
+          });
+          techHTML += '</div>';
+        }
+
+        html += `
+          <div style="border: 1px solid rgba(255,255,255,0.08); background: rgba(15, 15, 20, 0.4); padding: 30px; border-radius: 6px; transition: all 0.4s cubic-bezier(0.1, 0.8, 0.3, 1); display: flex; flex-direction: column; justify-content: space-between;" 
+               onmouseover="this.style.borderColor='rgba(0, 255, 255, 0.5)'; this.style.transform='translateY(-4px)'; this.style.background='rgba(25, 25, 35, 0.6)';" 
+               onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'; this.style.background='rgba(15, 15, 20, 0.4)';">
+            
+            <div>
+              <h2 style="color: #ffffff; margin: 0 0 10px 0; font-size: 1.3rem; letter-spacing: 2px; font-family: 'Share Tech Mono', monospace; font-weight: 300;">> ${title}</h2>
+              ${role ? `<p style="color: #888899; font-size: 0.8rem; margin: 0 0 20px 0; font-family: 'Share Tech Mono', monospace; letter-spacing: 1px;">ROLE: ${role.toUpperCase()}</p>` : ''}
+              <p style="color: #bbbbcc; line-height: 1.6; margin: 0; font-size: 0.95rem;">${desc}</p>
+              ${techHTML}
+            </div>
+            
+            <button onclick="window.openProjectFromTerminal(${proj.id})" style="margin-top: 30px; width: 100%; background: transparent; border: 1px solid rgba(0,255,255,0.3); color: #00ffff; padding: 12px; cursor: pointer; font-family: 'Share Tech Mono', monospace; letter-spacing: 2px; transition: 0.3s; border-radius: 4px;" onmouseover="this.style.background='rgba(0,255,255,0.1)'" onmouseout="this.style.background='transparent'">VIEW DETAILS</button>
+          </div>
+        `;
+      });
+    }
+
+    html += `</div></div>`;
+    terminalContainer.innerHTML = html;
+  }
+
+  // 6. Lógica de Cambio de Contexto (Switch)
+  window.toggleTerminalMode = function() {
+    isTerminalMode = !isTerminalMode;
+    if (typeof playSound === 'function') playSound('ui');
+
+    const uiElements = ['portfolio-header', 'unified-hud', 'universe-legend', 'touch-controls', 'legend-sidebar', 'dac-microsite', 'legend-toggle-btn'];
+    let modeBtn = document.getElementById('mode-toggle-btn');
+    if (modeBtn) modeBtn.style.display = 'block'; 
+    
+    if (isTerminalMode) {
+      window.renderTerminalGrid();
+      document.getElementById('terminal-container').style.display = 'block';
+      if (modeBtn) {
+        modeBtn.innerHTML = '⎈ MODO INMERSIVO';
+        modeBtn.style.color = '#ffaa00';
+        modeBtn.style.borderColor = 'rgba(255, 170, 0, 0.5)';
+      }
+      if (typeof isPaused !== 'undefined') isPaused = true; 
+      uiElements.forEach(id => { const el = document.getElementById(id); if(el) el.style.opacity = '0'; setTimeout(()=> {if(el) el.style.display='none'}, 300); });
+      
+    } else {
+      document.getElementById('terminal-container').style.display = 'none';
+      if (modeBtn) {
+        modeBtn.innerHTML = '⌗ MODO TERMINAL';
+        modeBtn.style.color = '#ffffff';
+        modeBtn.style.borderColor = 'rgba(255,255,255,0.2)';
+      }
+      if (typeof isPaused !== 'undefined') isPaused = false;
+      uiElements.forEach(id => { const el = document.getElementById(id); if(el) { el.style.display = (id==='unified-hud'?'flex':'block'); setTimeout(()=> el.style.opacity = '1', 50); } });
+    }
+  };
+
+  if (toggleBtn) toggleBtn.onclick = window.toggleTerminalMode;
+
+  // Actualizar si cambian de idioma
+  document.getElementById('lang-toggle-btn')?.addEventListener('click', () => {
+    if (isTerminalMode) window.renderTerminalGrid();
+  });
+}
+
+// Iniciar configuración un segundo después de cargar la página
+setTimeout(initTerminalMode, 1000);
