@@ -796,7 +796,7 @@ function createTextSprite(message, colorHex = "#ffffff") {
   
   const texture = new THREE.CanvasTexture(canvas); 
   texture.minFilter = THREE.LinearFilter; 
-  const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0.95 }); 
+const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0.95, depthTest: false });
   const sprite = new THREE.Sprite(spriteMat); 
   sprite.scale.set(16, 4, 1); sprite.userData = { id: Math.random() }; 
   return sprite; 
@@ -926,7 +926,12 @@ function initSystem(skip = false) {
   for(let i=0; i<3; i++) spawnAsteroid(); 
   setInterval(spawnAsteroid, 1000); 
 }
-
+// 🔥 ANCLAR VIAJERO AL PRIMER PLANETA
+  setTimeout(() => {
+    if (categoryPlanets.length > 0 && window.travelerGroup && !window.travelerGroup.userData.anchoredPlanet) {
+      window.startTravelerFall(categoryPlanets[0]);
+    }
+  }, 1000);
 document.getElementById('start-btn')?.addEventListener('click', (e) => { 
   e.stopPropagation(); // 🔥 Escudo protector: el clic no traspasa el fondo
   e.currentTarget.blur(); 
@@ -1224,7 +1229,7 @@ planet.userData = {
   const hexColorStr = '#' + proj.color.toString(16).padStart(6, '0');
   const pTitle = typeof proj.title === 'object' ? proj.title[window.currentLang || 'es'] : proj.title;
   const label = createTextSprite(`> ${proj.id}. ${pTitle}`, hexColorStr);
-  label.position.set(0, 5, 0); 
+  label.position.set(0, 0, 0); 
   planet.add(label); 
 
   scene.add(planet); categoryPlanets.push(planet);
@@ -2049,10 +2054,16 @@ function handlePointerMove(clientX, clientY) {
     const deltaX = Math.abs(clientX - touchStartX); const deltaY = Math.abs(clientY - touchStartY);
     if (deltaX > 5 || deltaY > 5) window.isDraggingCanvas = true;
 
-    if (window.isDraggingCanvas) {
+   if (window.isDraggingCanvas) {
       const dragResistance = isFriccionActive ? 0.0005 : 0.005; 
-      if (isAligned) { 
-        targetCarouselAngle += (clientX - lastTouchX) * dragResistance; 
+      
+      // 🔥 Permitir rotar el Planeta DAC con el ratón/dedo
+      if (typeof planetaDAC !== 'undefined' && planetaDAC.userData.isIsolated) {
+        planetaDAC.rotation.y += (clientX - lastTouchX) * dragResistance * 2;
+        planetaDAC.rotation.x += (clientY - lastTouchY) * dragResistance * 2;
+      }
+      else if (isAligned) { 
+        targetCarouselAngle += (clientX - lastTouchX) * dragResistance;
       } else { 
         userGroup.rotation.y -= (clientX - lastTouchX) * dragResistance; 
         userGroup.rotation.x -= (clientY - lastTouchY) * dragResistance; 
@@ -2271,7 +2282,7 @@ function openProjectPopup(data) {
         planetMesh.remove(planetMesh.children[0]);
         const viewedText = isEn ? ' [ VIEWED ]' : ' [ VISTO ]';
         const newLabel = createTextSprite(`> ${data.id}. ${currentTitle}${viewedText}`, '#555555');
-        newLabel.position.set(0, 5, 0);
+        newLabel.position.set(0, 0, 0);
         planetMesh.add(newLabel);
       }
     }
@@ -2522,7 +2533,7 @@ mediaContainer.innerHTML = finalGallery.length === 0 ? '' : `<img id="gallery-im
           pMesh.remove(pMesh.children[0]);
           const hexStr = '#' + data.color.toString(16).padStart(6, '0');
           const origLabel = createTextSprite(`> ${data.id}. ${currentTitle}`, hexStr);
-          origLabel.position.set(0, 5, 0);
+          origLabel.position.set(0, 0, 0);
           pMesh.add(origLabel);
         }
         
@@ -3782,17 +3793,24 @@ if (isAR && frame && hitTestSource) {
         planetaDAC.rotation.z += 0.001;
 
         // 🔥 NUEVO: INTEGRACIÓN CON EL CARRUSEL (COMO NÚCLEO CENTRAL)
+        // 🔥 INTEGRACIÓN CON EL CARRUSEL (COMO EL ÚLTIMO PLANETA DEL ANILLO)
         if (!planetaDAC.userData.isIsolated) {
           if (isAligned) {
-            // MODO CARRUSEL: Se posiciona en el centro de la rueda (0, 0, -10)
-            planetaDAC.position.lerp(new THREE.Vector3(0, 0, -10), 0.05);
+            let activeCount = (typeof secretDiscovered !== 'undefined' && secretDiscovered) ? categoryPlanets.length : (categoryPlanets.length - 1);
+            let totalItems = activeCount + 2; // +1 por el DAC
+            let dacIndex = activeCount; // Se pone de último
+            let angle = (dacIndex / totalItems) * Math.PI * 2 + carouselAngleOffset;
+            let radius = window.innerWidth < 600 ? 20 : 22; 
+            
+            planetaDAC.position.lerp(new THREE.Vector3(Math.cos(angle)*radius, Math.sin((Date.now()*0.001) + dacIndex)*1.5, Math.sin(angle)*radius - 10), 0.08);
             planetaDAC.scale.lerp(new THREE.Vector3(0.55, 0.55, 0.55), 0.05);
           } else {
-            // MODO CONSTELACIÓN: Vuelve a su lugar flotante en el espacio
+            // MODO CONSTELACIÓN
             let target = planetaDAC.userData.savedPos ? planetaDAC.userData.savedPos : new THREE.Vector3(40, 0, -50);
             planetaDAC.position.lerp(target, 0.05);
             planetaDAC.scale.lerp(new THREE.Vector3(1, 1, 1), 0.05);
           }
+        
         } else {
           // MODO AISLADO (AL HACER CLIC): Se clava al frente de la cámara
           planetaDAC.position.lerp(new THREE.Vector3(0, 0, 0), 0.1);
@@ -5058,7 +5076,7 @@ document.getElementById('lang-toggle-btn')?.addEventListener('click', (e) => {
       const pTitle = typeof p.userData.title === 'object' ? p.userData.title[window.currentLang] : p.userData.title;
       const statusStr = p.userData.visited ? (window.currentLang === 'es' ? ' [ VISTO ]' : ' [ VIEWED ]') : '';
       const newLabel = createTextSprite(`> ${p.userData.id}. ${pTitle}${statusStr}`, p.userData.visited ? '#555555' : hexStr);
-      newLabel.position.set(0, 5, 0);
+      newLabel.position.set(0, 0, 0);
       p.add(newLabel);
     }
   });
@@ -5483,224 +5501,466 @@ window.addEventListener('click', (e) => {
   }
 });
 // ============================================================
-// 🔥 ARQUITECTURA DUAL: MODO TERMINAL 2D (CORREGIDO)
+// 🔥 MODO EJECUTIVO 2D — lectura autónoma, estética sobria
+// ------------------------------------------------------------
+// Reescrito. Cambios clave frente a la versión anterior:
+//  • Ya NO llama a openProjectPopup (ligado a la escena 3D: recolorea
+//    planetas, mueve la cámara, usa typewriter y capas con z-index).
+//    Cada proyecto se abre en una vista de detalle propia, dentro del
+//    mismo contenedor 2D, con Esc / ← → para navegar.
+//  • El botón de idioma del juego queda DETRÁS del contenedor (z-index
+//    10001 < 99990), así que el modo trae su propio selector ES/EN.
+//  • El contenedor aísla los eventos táctiles/ratón/rueda: el 3D no los ve.
+//  • Estética: papel negro, tipografía serif ligera, líneas finas, sin neón.
 // ============================================================
 
+const EX_CSS = `
+  #terminal-container { box-sizing: border-box; background: #0a0a0a !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+    padding: 0 !important; color: #bdb9b1; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 300; line-height: 1.75; user-select: text; -webkit-user-select: text; touch-action: pan-y; overscroll-behavior: contain;
+    scrollbar-width: thin; scrollbar-color: #2a2a2a transparent; -webkit-text-size-adjust: 100%; }
+  #terminal-container *, #terminal-container *::before, #terminal-container *::after { box-sizing: border-box; }
+  #terminal-container ::selection { background: rgba(255,255,255,.18); }
+  #terminal-container a:focus-visible, #terminal-container button:focus-visible { outline: 1px solid rgba(255,255,255,.6); outline-offset: 4px; }
+  #mode-toggle-btn { z-index: 100000 !important; }
+  .ex-wrap { max-width: 46rem; margin: 0 auto; padding: 5.5rem 1.5rem 7rem; }
+  .ex-bar { display: flex; align-items: center; gap: 1.6rem; margin-bottom: 5rem; min-height: 2rem; }
+  .ex-mark { font-size: .72rem; letter-spacing: .22em; text-transform: uppercase; color: #77746e; }
+  .ex-lang, .ex-back { background: none; border: 0; border-bottom: 1px solid transparent; color: #8a867f; font: inherit; font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; cursor: pointer; padding: .4rem 0; transition: color .25s, border-color .25s; }
+  .ex-lang:hover, .ex-back:hover { color: #f1eee8; border-bottom-color: rgba(255,255,255,.3); }
+  .ex-label { font-size: .7rem; letter-spacing: .24em; text-transform: uppercase; color: #77746e; font-weight: 400; margin: 0 0 1.4rem; }
+  .ex-name, .ex-d-title, .ex-title, .ex-pager-title { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif; font-weight: 400; }
+  .ex-name { font-size: clamp(2.3rem, 7vw, 3.8rem); line-height: 1.08; letter-spacing: -.015em; color: #f1eee8; margin: 0 0 1rem; }
+  .ex-role { color: #a9a59d; font-size: 1.05rem; margin: 0 0 2.4rem; }
+  .ex-text { margin: 0 0 1.1rem; max-width: 38rem; color: #bdb9b1; font-size: 1.02rem; }
+  .ex-skills { margin: 1.8rem 0 0; color: #77746e; font-size: .85rem; letter-spacing: .04em; }
+  .ex-links { display: flex; flex-wrap: wrap; gap: .7rem 1.8rem; margin-top: 2.4rem; }
+  .ex-links a { color: #d9d5cc; text-decoration: none; font-size: .74rem; letter-spacing: .2em; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,.25); padding-bottom: .25rem; transition: border-color .25s, color .25s; }
+  .ex-links a:hover { color: #fff; border-bottom-color: #fff; }
+  .ex-section { margin-top: 6.5rem; }
+  .ex-list { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .ex-list li { border-top: 1px solid rgba(255,255,255,.08); }
+  .ex-row { display: grid; grid-template-columns: 2.6rem 1fr 1.4rem; align-items: center; width: 100%; margin: 0; padding: 1.7rem 0; background: none; border: 0;
+    color: inherit; font: inherit; text-align: left; cursor: pointer; transition: opacity .3s; }
+  .ex-num { grid-row: 1 / 3; align-self: start; padding-top: .65rem; color: #55524d; font-size: .72rem; letter-spacing: .18em; }
+  .ex-title { font-size: clamp(1.3rem, 3.4vw, 1.7rem); line-height: 1.25; color: #eae7e0; transition: color .25s; }
+  .ex-meta { grid-column: 2; margin-top: .25rem; color: #77746e; font-size: .82rem; }
+  .ex-arrow { grid-column: 3; grid-row: 1 / 3; justify-self: end; color: #55524d; transition: transform .3s, color .3s; }
+  .ex-list:hover .ex-row:not(:hover) { opacity: .4; }
+  .ex-row:hover .ex-title, .ex-row:focus-visible .ex-title { color: #fff; }
+  .ex-row:hover .ex-arrow, .ex-row:focus-visible .ex-arrow { transform: translateX(5px); color: #e7e4de; }
+  .ex-row:focus-visible { outline: 1px solid rgba(255,255,255,.5); outline-offset: 4px; }
+  .ex-d-title { font-size: clamp(2rem, 6vw, 3.2rem); line-height: 1.12; letter-spacing: -.01em; color: #f1eee8; margin: 0 0 .9rem; outline: none; }
+  .ex-lead { font-size: 1.2rem; color: #d3cfc6; margin: 2rem 0; max-width: 38rem; }
+  .ex-long { color: #bdb9b1; font-size: 1.02rem; max-width: 38rem; }
+  .ex-long p, .ex-long li { color: #bdb9b1 !important; text-align: left !important; }
+  .ex-long p { margin: 0 0 1.1rem !important; }
+  .ex-long ul { padding-left: 1.1rem; margin: 0 0 1.1rem; }
+  .ex-long b, .ex-long strong { color: #e7e4de; font-weight: 400; }
+  .ex-gap { margin-top: 4rem; }
+  .ex-videos, .ex-gallery { display: grid; gap: 1.4rem; }
+  .ex-videos iframe, .ex-videos video { width: 100%; aspect-ratio: 16 / 9; border: 0; background: #000; display: block; }
+  .ex-gallery img { width: 100%; height: auto; display: block; filter: saturate(.92); }
+  .ex-btn, .ex-send { display: inline-block; margin-top: 2.5rem; background: none; border: 1px solid rgba(255,255,255,.3); color: #e7e4de; text-decoration: none;
+    padding: .9rem 1.8rem; font: inherit; font-size: .74rem; letter-spacing: .22em; text-transform: uppercase; cursor: pointer; transition: background .25s, border-color .25s; }
+  .ex-btn:hover, .ex-send:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.6); }
+  .ex-send { margin-top: 0; }
+  .ex-send:disabled { opacity: .5; cursor: wait; }
+  .ex-pager { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 6rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,.08); }
+  .ex-pager button { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .ex-pager button:last-child { text-align: right; }
+  .ex-pager .ex-label { display: block; margin-bottom: .4rem; }
+  .ex-pager-title { display: block; font-size: 1.15rem; color: #d3cfc6; transition: color .25s; }
+  .ex-pager button:hover .ex-pager-title { color: #fff; }
+  .ex-form { display: grid; gap: 1.8rem; max-width: 34rem; margin-top: 1.6rem; }
+  .ex-field { display: grid; gap: .2rem; font-size: .7rem; letter-spacing: .2em; text-transform: uppercase; color: #77746e; }
+  .ex-field input, .ex-field textarea { background: transparent; border: 0; border-bottom: 1px solid rgba(255,255,255,.18); border-radius: 0; color: #f1eee8; padding: .6rem 0;
+    font: inherit; font-size: 1.05rem; letter-spacing: normal; text-transform: none; outline: none; resize: vertical; width: 100%; transition: border-color .25s; }
+  .ex-field input:focus, .ex-field textarea:focus { border-bottom-color: rgba(255,255,255,.7); }
+  .ex-status { min-height: 1.4em; margin: 0; font-size: .9rem; color: #a9a59d; }
+  .ex-status[data-state="ok"] { color: #b9c8b0; }
+  .ex-status[data-state="err"] { color: #d1a6a0; }
+  .ex-foot { margin-top: 7rem; color: #55524d; font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; }
+  @media (max-width: 640px) {
+    .ex-wrap { padding: 5.2rem 1.25rem 5rem; }
+    .ex-mark { display: none; }
+    .ex-bar { margin-bottom: 3rem; }
+    .ex-section { margin-top: 4.5rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { #terminal-container * { transition: none !important; scroll-behavior: auto !important; } }
+`;
+const executiveStyle = document.createElement('style');
+executiveStyle.id = 'ex-style';
+executiveStyle.innerHTML = EX_CSS;
+document.head.appendChild(executiveStyle);
+
 let isTerminalMode = false;
+const exState = { view: 'index', id: null, scroll: 0 };
+const exSaved = {}; // estilos originales de la interfaz 3D, para restaurarla tal cual
+
+const EX_TEXT = {
+  es: { eyebrow: 'Archivo ejecutivo', projects: 'Proyectos', cv: 'Currículum', contact: 'Contacto', contactSub: 'Para proyectos, invitaciones o colaboraciones.',
+        toArchive: 'Archivo ejecutivo', toImmersive: 'Universo 3D', startBtn: 'Archivo ejecutivo',
+        back: 'Volver', prev: 'Anterior', next: 'Siguiente', visit: 'Visitar proyecto', video: 'Video', images: 'Imágenes',
+        fName: 'Nombre', fMail: 'Correo', fMsg: 'Mensaje', send: 'Enviar', sending: 'Enviando…', sent: 'Mensaje enviado. Gracias.', failed: 'No se pudo enviar. Inténtalo de nuevo.' },
+  en: { eyebrow: 'Executive archive', projects: 'Projects', cv: 'Résumé', contact: 'Contact', contactSub: 'For projects, invitations or collaborations.',
+        toArchive: 'Executive archive', toImmersive: '3D universe', startBtn: 'Executive archive',
+        back: 'Back', prev: 'Previous', next: 'Next', visit: 'Visit project', video: 'Video', images: 'Images',
+        fName: 'Name', fMail: 'Email', fMsg: 'Message', send: 'Send', sending: 'Sending…', sent: 'Message sent. Thank you.', failed: 'Could not send. Please try again.' }
+};
+
+const EX_PROFILE = {
+  name: 'Daniel Rodríguez García',
+  role: { es: 'Profesor de Diseño Interactivo · Director del GameLab Tadeo', en: 'Interactive Design Professor · Director, Tadeo GameLab' },
+  background: {
+    es: 'Diseñador Industrial (PUJ) con Máster en Creación de Videojuegos (UPF). Candidato a Doctorado en Diseño, Arte y Ciencia. Ex-coordinador del MediaLab Cinemateca y coordinador/tallerista de Territorios Digitales con Plataforma Bogotá.',
+    en: "Industrial Designer (PUJ) with a Master's in Video Game Creation (UPF). PhD candidate in Design, Art and Science. Former coordinator of MediaLab Cinemateca and coordinator/workshop facilitator for Digital Territories with Plataforma Bogotá."
+  },
+  about: {
+    es: 'Mi preparación se enfoca en el diseño, creación y producción de videojuegos y experiencias interactivas inmersivas (Fulldome, VR, AR). Exploro las dimensiones críticas y sociales a través de los “Juegos Otros” y la pedagogía lúdica, integrando tecnologías físicas (Arduino, Raspberry Pi) y lógicas de diseño universal para la accesibilidad.',
+    en: 'My background focuses on the design, creation and production of video games and immersive interactive experiences (Fulldome, VR, AR). I explore critical and social dimensions through “Other Games” and playful pedagogy, integrating physical computing (Arduino, Raspberry Pi) and universal design principles for accessibility.'
+  },
+  skills: ['Game Mechanics', 'Creative Coding', 'TouchDesigner', 'Processing', 'Unity', 'Blender', 'FMOD', 'Physical Computing'],
+  cv: '/docs/CV_Daniel.pdf',
+  links: [
+    { label: 'LinkedIn', url: 'https://www.linkedin.com/in/dargdesigner/' },
+    { label: 'GitHub', url: 'https://github.com/darg88' },
+    { label: 'Instagram', url: 'https://www.instagram.com/danielrodgarc/' },
+    { label: 'YouTube', url: 'https://www.youtube.com/@GameLabTadeo' }
+  ]
+};
+
+// Entrada del núcleo D.A.C. (misma redacción que tenías)
+const EX_DAC = {
+  id: 99,
+  title: { es: 'D.A.C. // Núcleo investigativo', en: 'D.A.C. // Research core' },
+  desc: { es: 'Simulador de retórica procedimental.', en: 'Procedural rhetoric simulator.' },
+  longDesc: {
+    es: '<p style="margin-bottom:15px; text-align:left; color:#cccccc;">El núcleo D.A.C. (Diseño, Arte y Ciencia) no es un proyecto estático, sino un ecosistema vivo compuesto por tres atractores matemáticos interactivos:</p><ul style="text-align:left; line-height:1.8; color:#cccccc;"><li><b>La Máquina Poética:</b> Flujo de datos y partículas en enjambre.</li><li><b>La Máquina Errática:</b> Corrupción, desestabilización y glitch estructural.</li><li><b>La Máquina de Fricción:</b> Resistencia táctil y materia pesada.</li></ul><p style="margin-top:20px; padding-top:15px; border-top:1px solid rgba(255,255,255,0.1); text-align:left; color:#ffffff;">> Para experimentar el simulador completo, cierra este documento, regresa al <b>Modo Inmersivo (3D)</b> usando el botón superior derecho, y haz clic sobre el núcleo central.</p>',
+    en: '<p style="margin-bottom:15px; text-align:left; color:#cccccc;">The D.A.C. core (Design, Art, and Science) is not a static project, but a living ecosystem composed of three interactive mathematical attractors:</p><ul style="text-align:left; line-height:1.8; color:#cccccc;"><li><b>The Poetic Machine:</b> Data flow and swarm particles.</li><li><b>The Erratic Machine:</b> Corruption, destabilization, and structural glitch.</li><li><b>The Friction Machine:</b> Tactile resistance and heavy matter.</li></ul><p style="margin-top:20px; padding-top:15px; border-top:1px solid rgba(255,255,255,0.1); text-align:left; color:#ffffff;">> To experience the full simulator, close this document, return to the <b>Immersive Mode (3D)</b> using the top right button, and click on the central core.</p>'
+  },
+  role: { es: 'Simulación física y shaders', en: 'Physics simulation & shaders' },
+  tech: { es: ['Three.js', 'WebGL', 'GLSL', 'Math Chaos'], en: ['Three.js', 'WebGL', 'GLSL', 'Math Chaos'] },
+  videos: [], gallery: [], link: ''
+};
+
+const exEsc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const exTr = (v, lang) => (v && typeof v === 'object' && !Array.isArray(v)) ? (v[lang] ?? v.es) : v;
+const exLang = () => (window.currentLang === 'en' ? 'en' : 'es');
+const exIsRealImg = (s) => typeof s === 'string' && s !== '' && !s.startsWith('data:') && !s.includes('via.placeholder.com');
+const exVideos = (p) => [...new Set([...(p.videos || []), p.videoSrc].filter(Boolean))];
+
+function exProjects() {
+  const base = (typeof categoryPlanetData !== 'undefined' ? categoryPlanetData : []).filter(p => p && p.id !== 999);
+  return [...base, EX_DAC];
+}
+
+function exVideoHTML(src, title) {
+  if (/\.(mp4|webm)(\?|$)/i.test(src)) return `<video src="${exEsc(src)}" controls preload="none" playsinline></video>`;
+  const safe = String(src).replace('www.youtube.com/embed', 'www.youtube-nocookie.com/embed');
+  return `<iframe src="${exEsc(safe)}" title="${exEsc(title)}" loading="lazy" allow="fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+}
+
+// ---------- Vistas ----------
+function exBar(leftHTML) {
+  const lang = exLang();
+  return `<header class="ex-bar">${leftHTML}<button type="button" class="ex-lang" data-ex="lang" aria-label="Language / Idioma">${lang === 'es' ? 'EN' : 'ES'}</button></header>`;
+}
+
+function exRenderIndex() {
+  const lang = exLang(), T = EX_TEXT[lang], P = EX_PROFILE, list = exProjects();
+  const rows = list.map((p, i) => {
+    const meta = exTr(p.role, lang) || exTr(p.desc, lang) || '';
+    return `<li><button type="button" class="ex-row" data-ex="open" data-id="${exEsc(p.id)}">
+        <span class="ex-num">${String(i + 1).padStart(2, '0')}</span>
+        <span class="ex-title">${exEsc(exTr(p.title, lang))}</span>
+        <span class="ex-meta">${exEsc(meta)}</span>
+        <span class="ex-arrow" aria-hidden="true">→</span>
+      </button></li>`;
+  }).join('');
+  return `<div class="ex-wrap">
+    ${exBar(`<span class="ex-mark">${exEsc(P.name)}</span>`)}
+    <section class="ex-intro">
+      <p class="ex-label">${T.eyebrow}</p>
+      <h1 class="ex-name">${exEsc(P.name)}</h1>
+      <p class="ex-role">${exEsc(P.role[lang])}</p>
+      <p class="ex-text">${exEsc(P.background[lang])}</p>
+      <p class="ex-text">${exEsc(P.about[lang])}</p>
+      <p class="ex-skills">${P.skills.map(exEsc).join(' · ')}</p>
+      <nav class="ex-links">
+        <a href="${exEsc(P.cv)}" target="_blank" rel="noopener">${T.cv}</a>
+        ${P.links.map(l => `<a href="${exEsc(l.url)}" target="_blank" rel="noopener">${exEsc(l.label)}</a>`).join('')}
+        <a href="#ex-contact" data-ex="goto-contact">${T.contact}</a>
+      </nav>
+    </section>
+    <section class="ex-section" aria-labelledby="ex-h-projects">
+      <h2 class="ex-label" id="ex-h-projects">${T.projects}</h2>
+      <ol class="ex-list">${rows}</ol>
+    </section>
+    <section class="ex-section" id="ex-contact">
+      <h2 class="ex-label">${T.contact}</h2>
+      <p class="ex-text">${T.contactSub}</p>
+      <form class="ex-form" id="ex-form">
+        <label class="ex-field">${T.fName}<input type="text" name="identificacion" required autocomplete="name"></label>
+        <label class="ex-field">${T.fMail}<input type="email" name="email" required autocomplete="email"></label>
+        <label class="ex-field">${T.fMsg}<textarea name="mensaje" rows="4" required></textarea></label>
+        <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" style="display:none">
+        <button type="submit" class="ex-send">${T.send}</button>
+        <p class="ex-status" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+    <footer class="ex-foot">© ${new Date().getFullYear()} ${exEsc(P.name)}</footer>
+  </div>`;
+}
+
+function exRenderDetail(id) {
+  const lang = exLang(), T = EX_TEXT[lang], list = exProjects();
+  const idx = list.findIndex(p => String(p.id) === String(id));
+  if (idx < 0) { exState.view = 'index'; return exRenderIndex(); }
+  const p = list[idx], n = list.length;
+  const prev = list[(idx - 1 + n) % n], next = list[(idx + 1) % n];
+  const title = exTr(p.title, lang), role = exTr(p.role, lang), desc = exTr(p.desc, lang);
+  const tech = exTr(p.tech, lang) || [], longDesc = exTr(p.longDesc, lang) || '';
+  const imgs = (p.gallery || []).filter(exIsRealImg), vids = exVideos(p);
+  return `<div class="ex-wrap">
+    ${exBar(`<button type="button" class="ex-back" data-ex="back">← ${T.back}</button>`)}
+    <article aria-labelledby="ex-d-title">
+      <p class="ex-label">${String(idx + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}</p>
+      <h1 class="ex-d-title" id="ex-d-title" tabindex="-1">${exEsc(title)}</h1>
+      ${role ? `<p class="ex-role" style="margin-bottom:.6rem">${exEsc(role)}</p>` : ''}
+      ${tech.length ? `<p class="ex-skills" style="margin-top:0">${tech.map(exEsc).join(' · ')}</p>` : ''}
+      ${desc ? `<p class="ex-lead">${exEsc(desc)}</p>` : ''}
+      ${longDesc ? `<div class="ex-long">${longDesc}</div>` : ''}
+      ${vids.length ? `<h2 class="ex-label ex-gap">${T.video}</h2><div class="ex-videos">${vids.map(v => exVideoHTML(v, title)).join('')}</div>` : ''}
+      ${imgs.length ? `<h2 class="ex-label ex-gap">${T.images}</h2><div class="ex-gallery">${imgs.map(s => `<a href="${exEsc(s)}" target="_blank" rel="noopener"><img src="${exEsc(s)}" alt="${exEsc(title)}" loading="lazy"></a>`).join('')}</div>` : ''}
+      ${p.link ? `<a class="ex-btn" href="${exEsc(p.link)}" target="_blank" rel="noopener">${T.visit} ↗</a>` : ''}
+    </article>
+    <nav class="ex-pager" aria-label="Navegación entre proyectos">
+      <button type="button" data-ex="open" data-id="${exEsc(prev.id)}"><span class="ex-label">← ${T.prev}</span><span class="ex-pager-title">${exEsc(exTr(prev.title, lang))}</span></button>
+      <button type="button" data-ex="open" data-id="${exEsc(next.id)}"><span class="ex-label">${T.next} →</span><span class="ex-pager-title">${exEsc(exTr(next.title, lang))}</span></button>
+    </nav>
+  </div>`;
+}
+
+function exRender(opts = {}) {
+  const c = document.getElementById('terminal-container');
+  if (!c) return;
+  const keep = opts.keepScroll ? c.scrollTop : null;
+  c.innerHTML = exState.view === 'detail' ? exRenderDetail(exState.id) : exRenderIndex();
+  if (keep !== null) c.scrollTop = keep;
+  else c.scrollTop = exState.view === 'index' ? exState.scroll : 0;
+  if (!opts.keepScroll && exState.view === 'detail') c.querySelector('.ex-d-title')?.focus({ preventScroll: true });
+}
+
+// ---------- Navegación ----------
+window.openProjectFromTerminal = (id) => {
+  const c = document.getElementById('terminal-container');
+  if (!c || !isTerminalMode) return;
+  const p = exProjects().find(x => String(x.id) === String(id));
+  if (!p) return;
+  if (exState.view === 'index') exState.scroll = c.scrollTop;
+  exState.view = 'detail';
+  exState.id = p.id;
+  exRender();
+  if (typeof playSound === 'function') playSound('ui');
+  if (window.trackEvent) window.trackEvent('Ver_Proyecto', exTr(p.title, exLang()));
+};
+
+function exBack() {
+  if (exState.view !== 'detail') return;
+  exState.view = 'index';
+  exState.id = null;
+  exRender();
+  if (typeof playSound === 'function') playSound('ui');
+}
+
+function exStep(delta) {
+  const list = exProjects();
+  const idx = list.findIndex(p => String(p.id) === String(exState.id));
+  if (idx < 0) return;
+  window.openProjectFromTerminal(list[(idx + delta + list.length) % list.length].id);
+}
+
+async function exSubmitContact(form) {
+  const T = EX_TEXT[exLang()];
+  const status = form.querySelector('.ex-status'), btn = form.querySelector('button[type="submit"]');
+  status.dataset.state = ''; status.textContent = T.sending; btn.disabled = true;
+  try {
+    const res = await fetch('https://formspree.io/f/xojngrry', { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    status.dataset.state = 'ok'; status.textContent = T.sent; form.reset();
+    if (window.trackEvent) window.trackEvent('Contacto', 'Mensaje_Enviado_Exito');
+  } catch (err) {
+    status.dataset.state = 'err'; status.textContent = T.failed;
+  } finally { btn.disabled = false; }
+}
+
+window.renderTerminalGrid = exRender; // compatibilidad con el nombre anterior
+
+// ---------- Cambio de modo ----------
+window.toggleTerminalMode = function() {
+  const c = document.getElementById('terminal-container');
+  if (!c) return;
+  isTerminalMode = !isTerminalMode;
+  if (typeof playSound === 'function') playSound('ui');
+
+  const uiElements = ['portfolio-header', 'unified-hud', 'universe-legend', 'touch-controls', 'legend-sidebar', 'dac-microsite', 'legend-toggle-btn'];
+  const modeBtn = document.getElementById('mode-toggle-btn');
+  const T = EX_TEXT[exLang()];
+
+  if (isTerminalMode) {
+    if (typeof window.closeAllUIs === 'function') { try { window.closeAllUIs(); } catch (e) {} }
+    exState.view = 'index'; exState.id = null; exState.scroll = 0;
+    exRender();
+    c.style.display = 'block';
+    c.scrollTop = 0;
+    if (modeBtn) { modeBtn.textContent = T.toImmersive; modeBtn.style.top = '24px'; modeBtn.style.display = 'block'; }
+    if (typeof isPaused !== 'undefined') isPaused = true;
+    uiElements.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      exSaved[id] = { display: el.style.display, opacity: el.style.opacity };
+      el.style.display = 'none';
+    });
+  } else {
+    c.style.display = 'none';
+    c.innerHTML = '';
+    if (modeBtn) { modeBtn.textContent = T.toArchive; modeBtn.style.top = '90px'; }
+    if (typeof isPaused !== 'undefined') isPaused = false;
+    uiElements.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el || !exSaved[id]) return;
+      el.style.display = exSaved[id].display;   // se restaura el valor original, no se fuerza 'block'
+      el.style.opacity = exSaved[id].opacity;
+      delete exSaved[id];
+    });
+  }
+};
 
 function initTerminalMode() {
-  // 1. Modificar la pantalla de inicio (Start Screen)
   const startBtn = document.getElementById('start-btn');
   const skipBtn = document.getElementById('skip-btn');
   const startScreenContainer = startBtn ? startBtn.parentElement : null;
+  const T0 = () => EX_TEXT[exLang()];
 
+  // 1. Botón en la pantalla de inicio
   if (startBtn && startScreenContainer && !document.getElementById('terminal-start-btn')) {
-    // Actualizar textos del botón original
     if (typeof dict !== 'undefined') {
-      dict.es.startBtn = "[ DESPERTAR UNIVERSO 3D ]";
-      dict.en.startBtn = "[ AWAKEN 3D UNIVERSE ]";
+      dict.es.startBtn = '[ DESPERTAR UNIVERSO 3D ]';
+      dict.en.startBtn = '[ AWAKEN 3D UNIVERSE ]';
     }
     startBtn.innerText = (window.currentLang === 'en') ? dict.en.startBtn : dict.es.startBtn;
 
-    // Crear el nuevo botón de Terminal para la portada
     const terminalStartBtn = document.createElement('button');
     terminalStartBtn.id = 'terminal-start-btn';
-    terminalStartBtn.innerText = (window.currentLang === 'en') ? "[ ACCESS EXECUTIVE ARCHIVE ]" : "[ ACCEDER A MODO TERMINAL ]";
-    terminalStartBtn.className = startBtn.className; 
-    
-    // Estilos limpios y separados
-    terminalStartBtn.style.cssText = 'border: 1px solid rgba(170,204,255,0.4); background: rgba(170,204,255,0.05); color: #aaccff; padding: 15px 30px; font-family: "Share Tech Mono", monospace; cursor: pointer; letter-spacing: 2px; transition: 0.3s; margin-top: 15px; display: none;';
-    
-    terminalStartBtn.onmouseover = () => { terminalStartBtn.style.background = 'rgba(170,204,255,0.1)'; };
-    terminalStartBtn.onmouseout = () => { terminalStartBtn.style.background = 'rgba(170,204,255,0.05)'; };
-
+    terminalStartBtn.innerText = T0().startBtn;
+    terminalStartBtn.className = startBtn.className;
+    terminalStartBtn.style.cssText = 'border: 1px solid rgba(255,255,255,0.25); background: transparent; color: #e7e4de; padding: 15px 30px; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 0.78rem; font-weight: 300; text-transform: uppercase; cursor: pointer; letter-spacing: 0.22em; transition: 0.3s; margin-top: 15px; display: none; border-radius: 0;';
+    terminalStartBtn.onmouseover = () => { terminalStartBtn.style.background = 'rgba(255,255,255,0.07)'; };
+    terminalStartBtn.onmouseout = () => { terminalStartBtn.style.background = 'transparent'; };
     terminalStartBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       terminalStartBtn.blur();
       if (typeof playSound === 'function') playSound('ui');
-      
       const startScreen = document.getElementById('start-screen');
       if (startScreen) {
         startScreen.style.opacity = '0';
         setTimeout(() => { startScreen.style.display = 'none'; }, 1000);
       }
       if (typeof isGameStarted !== 'undefined') isGameStarted = true;
-      
-      window.toggleTerminalMode();
+      if (!isTerminalMode) window.toggleTerminalMode();
     });
-    
     startScreenContainer.appendChild(terminalStartBtn);
 
-    // 🔥 LA SOLUCIÓN AL BUG: Sincronizar la aparición con el final de la carga del motor 3D
     const syncInterval = setInterval(() => {
       if (startBtn.style.display === 'block') {
         terminalStartBtn.style.display = 'block';
-        if (skipBtn) skipBtn.style.display = 'none'; // Ocultamos el minijuego para no saturar la portada
+        if (skipBtn) skipBtn.style.display = 'none';
         clearInterval(syncInterval);
       }
     }, 100);
   }
 
-  // 2. Crear el botón interruptor general (Esquina superior derecha bajada a 90px)
+  // 2. Botón para cambiar entre los dos modos
   let toggleBtn = document.getElementById('mode-toggle-btn');
   if (!toggleBtn) {
     toggleBtn = document.createElement('button');
     toggleBtn.id = 'mode-toggle-btn';
-    toggleBtn.innerHTML = '⌗ MODO TERMINAL';
-    toggleBtn.style.cssText = 'position: fixed; top: 90px; right: 20px; z-index: 100000; background: rgba(10,15,25,0.4); border: 1px solid rgba(255,255,255,0.2); color: #ffffff; padding: 10px 20px; font-family: "Share Tech Mono", monospace; font-size: 0.85rem; cursor: pointer; transition: 0.3s; backdrop-filter: blur(10px); text-transform: uppercase; letter-spacing: 2px; border-radius: 4px; display: none;';
-    
-    toggleBtn.onmouseover = () => { toggleBtn.style.background = 'rgba(255,255,255,0.1)'; toggleBtn.style.borderColor = '#00ffff'; };
-    toggleBtn.onmouseout = () => { toggleBtn.style.background = 'rgba(10,15,25,0.4)'; toggleBtn.style.borderColor = 'rgba(255,255,255,0.2)'; };
+    toggleBtn.textContent = T0().toArchive;
+    toggleBtn.style.cssText = 'position: fixed; top: 90px; right: 20px; z-index: 100000; background: rgba(10,10,12,0.55); border: 1px solid rgba(255,255,255,0.2); color: #e7e4de; padding: 9px 16px; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 0.7rem; font-weight: 300; cursor: pointer; transition: 0.3s; backdrop-filter: blur(10px); text-transform: uppercase; letter-spacing: 0.2em; border-radius: 0; display: none;';
+    toggleBtn.onmouseover = () => { toggleBtn.style.background = 'rgba(255,255,255,0.08)'; toggleBtn.style.borderColor = 'rgba(255,255,255,0.45)'; };
+    toggleBtn.onmouseout = () => { toggleBtn.style.background = 'rgba(10,10,12,0.55)'; toggleBtn.style.borderColor = 'rgba(255,255,255,0.2)'; };
     document.body.appendChild(toggleBtn);
-    
-    // Mostrar este botón SÓLO cuando el usuario haya entrado activamente a la web
+
     const btnInterval = setInterval(() => {
       if (typeof isGameStarted !== 'undefined' && isGameStarted) {
-         toggleBtn.style.display = 'block';
-         clearInterval(btnInterval);
+        toggleBtn.style.display = 'block';
+        clearInterval(btnInterval);
       }
     }, 500);
   }
+  toggleBtn.onclick = window.toggleTerminalMode;
 
-  // 3. Crear el contenedor 2D (Cristal limpio)
+  // 3. Contenedor 2D
   let terminalContainer = document.getElementById('terminal-container');
   if (!terminalContainer) {
     terminalContainer = document.createElement('div');
     terminalContainer.id = 'terminal-container';
-    terminalContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 10, 0.6); backdrop-filter: blur(35px); z-index: 99990; overflow-y: auto; padding: 80px 8% 50px 8%; display: none; color: #fff; font-family: "-apple-system", BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-weight: 300;';
+    terminalContainer.setAttribute('role', 'region');
+    terminalContainer.setAttribute('aria-label', 'Archivo ejecutivo');
+    terminalContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99990; overflow-y: auto; display: none;';
     document.body.appendChild(terminalContainer);
+
+    // Aislar el contenedor de la escena 3D: sus manejadores globales (clics sobre planetas,
+    // arrastre, rueda, ondas de clic) no deben ver lo que pasa en la lectura 2D.
+    ['touchstart', 'touchmove', 'touchend', 'touchcancel', 'mousedown', 'mouseup', 'mousemove',
+     'pointerdown', 'pointerup', 'pointermove', 'wheel', 'click', 'dblclick', 'keydown', 'keyup']
+      .forEach(evt => terminalContainer.addEventListener(evt, (e) => e.stopPropagation(), { passive: true }));
+
+    terminalContainer.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-ex]');
+      if (!el) return;
+      const act = el.dataset.ex;
+      if (act === 'open') window.openProjectFromTerminal(el.dataset.id);
+      else if (act === 'back') exBack();
+      else if (act === 'lang') {
+        const gameLangBtn = document.getElementById('lang-toggle-btn');
+        if (gameLangBtn) gameLangBtn.click(); // mantiene sincronizados idioma y preferencias del juego
+        else { window.currentLang = exLang() === 'es' ? 'en' : 'es'; exRender({ keepScroll: true }); }
+      } else if (act === 'goto-contact') {
+        e.preventDefault();
+        const target = terminalContainer.querySelector('#ex-contact');
+        const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (target) target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        terminalContainer.querySelector('#ex-form input')?.focus({ preventScroll: true });
+      }
+    });
+
+    terminalContainer.addEventListener('submit', (e) => {
+      if (e.target && e.target.id === 'ex-form') { e.preventDefault(); exSubmitContact(e.target); }
+    });
   }
 
- // 4. Exponer función global para abrir los modales 3D desde el 2D
-  window.openProjectFromTerminal = (id) => {
-    if (typeof categoryPlanetData === 'undefined') return;
-    const pData = categoryPlanetData.find(p => p.id === id);
-    if (pData && typeof openProjectPopup === 'function') {
-      
-      // 🔥 LA CURA: Ocultamos el terminal temporalmente para que no tape la ventana
-      const termContainer = document.getElementById('terminal-container');
-      if (termContainer) termContainer.style.display = 'none';
-      
-      openProjectPopup(pData);
-    }
-  };
+  // 4. Teclado: Esc vuelve al índice; ← → recorren proyectos (solo en la vista de detalle)
+  document.addEventListener('keydown', (e) => {
+    if (!isTerminalMode || exState.view !== 'detail') return;
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); exBack(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); exStep(1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); exStep(-1); }
+  }, true);
 
-  // 🔥 PARCHE DE CERRADO: Cuando el usuario cierre el proyecto (botón X o Escape), restauramos el Terminal
-  if (typeof window.closeAllUIs === 'function' && !window.isClosePatched) {
-    const originalClose = window.closeAllUIs;
-    window.closeAllUIs = function() {
-      originalClose(); // Ejecuta el cierre normal de tu código original
-      
-      // Si estábamos leyendo el Modo Terminal, lo volvemos a mostrar al cerrar la ventana
-      if (isTerminalMode) {
-        const termContainer = document.getElementById('terminal-container');
-        if (termContainer) termContainer.style.display = 'block';
-      }
-    };
-    window.isClosePatched = true;
-  }
-
-  // 5. Lógica de renderizado del Grid 2D
-  window.renderTerminalGrid = function() {
-    const lang = window.currentLang || 'es';
-    const tTitle = lang === 'en' ? 'EXECUTIVE ARCHIVE' : 'ARCHIVO EJECUTIVO';
-    const profileTxt = (typeof dict !== 'undefined' && dict[lang]) ? dict[lang].profileContent : '';
-
-    let html = `
-      <div style="max-width: 1100px; margin: 0 auto;">
-        <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 25px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 15px;">
-          <div>
-            <h1 style="color: #ffffff; margin: 0; font-size: 2.5rem; letter-spacing: 6px; font-family: 'Share Tech Mono', monospace; font-weight: 300;">${tTitle}</h1>
-            <p style="color: #aaccff; font-family: 'Share Tech Mono', monospace; margin-top: 10px; font-size: 0.9rem; letter-spacing: 1px; opacity: 0.8;">> 3D ENGINE: SUSPENDED | DATA: SYNCED</p>
-          </div>
-        </div>
-        
-        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); padding: 35px; margin-bottom: 50px; border-left: 2px solid #00ffff; border-radius: 4px; line-height: 1.8; font-size: 1.05rem; color: #dddddd;">
-          ${profileTxt}
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 30px;">
-    `;
-
-    if (typeof categoryPlanetData !== 'undefined') {
-      categoryPlanetData.forEach(proj => {
-        if (proj.id === 999) return; 
-        
-        const title = typeof proj.title === 'object' ? proj.title[lang] : proj.title;
-        const desc = typeof proj.desc === 'object' ? proj.desc[lang] : proj.desc;
-        const role = typeof proj.role === 'object' ? proj.role[lang] : proj.role;
-        const techArr = typeof proj.tech === 'object' && !Array.isArray(proj.tech) ? proj.tech[lang] : proj.tech;
-        
-        let techHTML = '';
-        if (techArr && techArr.length > 0) {
-          techHTML = '<div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px;">';
-          techArr.forEach(t => {
-            techHTML += `<span style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 5px 12px; font-size: 0.75rem; border-radius: 20px; color: #aaccff; letter-spacing: 0.5px;">${t}</span>`;
-          });
-          techHTML += '</div>';
-        }
-
-        html += `
-          <div style="border: 1px solid rgba(255,255,255,0.08); background: rgba(15, 15, 20, 0.4); padding: 30px; border-radius: 6px; transition: all 0.4s cubic-bezier(0.1, 0.8, 0.3, 1); display: flex; flex-direction: column; justify-content: space-between;" 
-               onmouseover="this.style.borderColor='rgba(0, 255, 255, 0.5)'; this.style.transform='translateY(-4px)'; this.style.background='rgba(25, 25, 35, 0.6)';" 
-               onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.transform='translateY(0)'; this.style.background='rgba(15, 15, 20, 0.4)';">
-            
-            <div>
-              <h2 style="color: #ffffff; margin: 0 0 10px 0; font-size: 1.3rem; letter-spacing: 2px; font-family: 'Share Tech Mono', monospace; font-weight: 300;">> ${title}</h2>
-              ${role ? `<p style="color: #888899; font-size: 0.8rem; margin: 0 0 20px 0; font-family: 'Share Tech Mono', monospace; letter-spacing: 1px;">ROLE: ${role.toUpperCase()}</p>` : ''}
-              <p style="color: #bbbbcc; line-height: 1.6; margin: 0; font-size: 0.95rem;">${desc}</p>
-              ${techHTML}
-            </div>
-            
-            <button onclick="window.openProjectFromTerminal(${proj.id})" style="margin-top: 30px; width: 100%; background: transparent; border: 1px solid rgba(0,255,255,0.3); color: #00ffff; padding: 12px; cursor: pointer; font-family: 'Share Tech Mono', monospace; letter-spacing: 2px; transition: 0.3s; border-radius: 4px;" onmouseover="this.style.background='rgba(0,255,255,0.1)'" onmouseout="this.style.background='transparent'">VIEW DETAILS</button>
-          </div>
-        `;
-      });
-    }
-
-    html += `</div></div>`;
-    terminalContainer.innerHTML = html;
-  }
-
-  // 6. Lógica de Cambio de Contexto (Switch)
-  window.toggleTerminalMode = function() {
-    isTerminalMode = !isTerminalMode;
-    if (typeof playSound === 'function') playSound('ui');
-
-    const uiElements = ['portfolio-header', 'unified-hud', 'universe-legend', 'touch-controls', 'legend-sidebar', 'dac-microsite', 'legend-toggle-btn'];
-    let modeBtn = document.getElementById('mode-toggle-btn');
-    if (modeBtn) modeBtn.style.display = 'block'; 
-    
-    if (isTerminalMode) {
-      window.renderTerminalGrid();
-      document.getElementById('terminal-container').style.display = 'block';
-      if (modeBtn) {
-        modeBtn.innerHTML = '⎈ MODO INMERSIVO';
-        modeBtn.style.color = '#ffaa00';
-        modeBtn.style.borderColor = 'rgba(255, 170, 0, 0.5)';
-      }
-      if (typeof isPaused !== 'undefined') isPaused = true; 
-      uiElements.forEach(id => { const el = document.getElementById(id); if(el) el.style.opacity = '0'; setTimeout(()=> {if(el) el.style.display='none'}, 300); });
-      
-    } else {
-      document.getElementById('terminal-container').style.display = 'none';
-      if (modeBtn) {
-        modeBtn.innerHTML = '⌗ MODO TERMINAL';
-        modeBtn.style.color = '#ffffff';
-        modeBtn.style.borderColor = 'rgba(255,255,255,0.2)';
-      }
-      if (typeof isPaused !== 'undefined') isPaused = false;
-      uiElements.forEach(id => { const el = document.getElementById(id); if(el) { el.style.display = (id==='unified-hud'?'flex':'block'); setTimeout(()=> el.style.opacity = '1', 50); } });
-    }
-  };
-
-  if (toggleBtn) toggleBtn.onclick = window.toggleTerminalMode;
-
-  // Actualizar si cambian de idioma
+  // 5. El botón de idioma del juego: refrescar textos del modo ejecutivo
   document.getElementById('lang-toggle-btn')?.addEventListener('click', () => {
-    if (isTerminalMode) window.renderTerminalGrid();
+    const T = EX_TEXT[exLang()];
+    const btn = document.getElementById('mode-toggle-btn');
+    if (btn) btn.textContent = isTerminalMode ? T.toImmersive : T.toArchive;
+    const sb = document.getElementById('terminal-start-btn');
+    if (sb) sb.innerText = T.startBtn;
+    if (isTerminalMode) exRender({ keepScroll: true });
   });
 }
 
-// Iniciar configuración un segundo después de cargar la página
 setTimeout(initTerminalMode, 1000);
