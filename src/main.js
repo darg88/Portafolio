@@ -1654,12 +1654,130 @@ function updateScore(points) {
   if (score >= 5000 && !isBossBattle && !hasFoughtBoss) { isBossBattle = true; spawnBoss(); playSound('explosion'); shakeIntensity = 1.0; } else if (!isBossBattle) { checkLevelUp(); }
 }
 
-function spawnBoss() {
-  document.getElementById('boss-ui').classList.remove('hidden'); const bossGroup = new THREE.Group();
-  const saucer = new THREE.Mesh(new THREE.TorusGeometry(5, 1.5, 8, 30), new THREE.ShaderMaterial({ uniforms: { color: { value: new THREE.Color(0xff0000) }, lightDir: { value: new THREE.Vector3(1, 1, 1).normalize() } }, vertexShader: ditherShader.vertexShader, fragmentShader: ditherShader.fragmentShader, transparent: true })); 
+// ============================================================
+// 🔥 JEFE FINAL: "NÚCLEO CORRUPTO"
+// Un monolito cúbico de datos (como la Máquina Errática) con una jaula de
+// aristas, un ojo que sigue a tu nave y esquirlas triangulares en órbita.
+// Usa el mismo shader de tramado (dither) que el resto del universo.
+// ============================================================
 
-const dome = new THREE.Mesh(new THREE.SphereGeometry(3.5, 10, 10), new THREE.ShaderMaterial({ uniforms: { color: { value: new THREE.Color(0xffffff) }, lightDir: { value: new THREE.Vector3(1, 1, 1).normalize() } }, vertexShader: ditherShader.vertexShader, fragmentShader: ditherShader.fragmentShader, transparent: true }));
-  dome.position.y = 1; saucer.rotation.x = Math.PI / 2; bossGroup.add(saucer); bossGroup.add(dome); bossGroup.position.set(0, 35, 0); scene.add(bossGroup); bossEntity = bossGroup;
+// La barra de vida quedaba DETRÁS del HUD (z-index 10 frente a 10000, y en la misma franja
+// de la pantalla). Se baja debajo del HUD y de los botones, y se sube su capa.
+(function injectBossStyle() {
+  if (document.getElementById('boss-ui-style')) return;
+  const s = document.createElement('style');
+  s.id = 'boss-ui-style';
+  s.textContent = `
+    #boss-ui { top: 86px !important; width: min(92vw, 340px) !important; z-index: 10002 !important; pointer-events: none; }
+    #boss-title { font-size: 16px !important; letter-spacing: 4px !important; margin-bottom: 6px !important; text-shadow: 0 0 8px rgba(255, 0, 0, 0.5); }
+    #boss-hp-bg { height: 10px !important; }
+    #boss-hp-fill { box-shadow: 0 0 10px rgba(255, 0, 0, 0.55); }
+    @media (max-width: 768px) {
+      #boss-ui { top: 128px !important; }   /* bajo el HUD (25-82px) y la fila de botones (80-120px) */
+      #boss-title { font-size: 13px !important; letter-spacing: 3px !important; }
+    }
+  `;
+  document.head.appendChild(s);
+})();
+
+function makeBossMaterial(hex) {
+  return new THREE.ShaderMaterial({
+    uniforms: { color: { value: new THREE.Color(hex) }, lightDir: { value: new THREE.Vector3(1, 1, 1).normalize() } },
+    vertexShader: ditherShader.vertexShader, fragmentShader: ditherShader.fragmentShader, transparent: true
+  });
+}
+
+function spawnBoss() {
+  document.getElementById('boss-ui').classList.remove('hidden');
+  const bossTitle = document.getElementById('boss-title');
+  if (bossTitle) bossTitle.textContent = (window.currentLang === 'en') ? 'CORRUPTED CORE' : 'NÚCLEO CORRUPTO';
+
+  const bossGroup = new THREE.Group();
+
+  // children[0]: el cuerpo. El destello de impacto (blanco → rojo) actúa sobre este hijo.
+  const core = new THREE.Mesh(new THREE.BoxGeometry(5.2, 5.2, 5.2), makeBossMaterial(0xff0000));
+  core.rotation.set(0.5, 0, Math.PI / 4); // girado 45° para leerse como un diamante
+  bossGroup.add(core);
+
+  // Jaula de aristas (la "caja negra" que contiene al núcleo)
+  const cage = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(6.4, 1)),
+    new THREE.LineBasicMaterial({ color: 0xff3333, transparent: true, opacity: 0.5 })
+  );
+  bossGroup.add(cage);
+
+  // Ojo flotante delante del cuerpo: pupila + anillo
+  const eye = new THREE.Group();
+  eye.position.set(0, 0, 4.8);
+  const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.95, 12, 12), makeBossMaterial(0xffffff));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.12, 6, 40), makeBossMaterial(0xffffff));
+  eye.add(pupil);
+  eye.add(ring);
+  bossGroup.add(eye);
+
+  // Esquirlas triangulares en órbita (eco de la capa del viajero)
+  const shards = new THREE.Group();
+  for (let i = 0; i < 10; i++) {
+    const ang = (i / 10) * Math.PI * 2;
+    const r = 7.6 + (i % 2) * 0.9;
+    const shard = new THREE.Mesh(new THREE.TetrahedronGeometry(0.8, 0), makeBossMaterial(i % 2 ? 0xffffff : 0xff0000));
+    shard.position.set(Math.cos(ang) * r, Math.sin(ang) * r, ((i % 3) - 1) * 0.7);
+    shard.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+    shards.add(shard);
+  }
+  bossGroup.add(shards);
+
+  bossGroup.userData.parts = { core, cage, eye, pupil, ring, shards };
+  bossGroup.userData.rage = 0;
+  bossGroup.position.set(0, 35, 0);
+  scene.add(bossGroup);
+  bossEntity = bossGroup;
+}
+
+// Se llama en cada cuadro mientras dura el combate contra el jefe
+function animateBoss(boss) {
+  const parts = boss && boss.userData && boss.userData.parts;
+  if (!parts) return;
+  const { core, cage, eye, ring, shards } = parts;
+  const t = Date.now();
+  const hp = Math.max(0, bossHealth / bossMaxHealth);
+  const rage = hp < 0.25 ? 2 : (hp < 0.5 ? 1 : 0);
+
+  // Fases: al bajar la vida el núcleo se desestabiliza
+  if (rage > boss.userData.rage) {
+    boss.userData.rage = rage;
+    if (typeof showSystemToast === 'function') {
+      const en = window.currentLang === 'en';
+      showSystemToast(rage === 1 ? (en ? 'THE CORE DESTABILIZES' : 'EL NÚCLEO SE DESESTABILIZA')
+                                 : (en ? 'CRITICAL CORRUPTION' : 'CORRUPCIÓN CRÍTICA'), '#cc0000');
+    }
+  }
+
+  core.rotation.y = Math.sin(t * 0.0009) * 0.5;                     // vaivén lento
+  core.scale.setScalar(1 + Math.sin(t * 0.004) * 0.025 * (1 + rage)); // respira
+  cage.rotation.y += 0.004 + rage * 0.004;
+  cage.rotation.x -= 0.0025;
+  shards.rotation.z += 0.02 + rage * 0.015;
+  for (let i = 0; i < shards.children.length; i++) {
+    shards.children[i].rotation.x += 0.03 + i * 0.002;
+    shards.children[i].rotation.y += 0.04;
+  }
+  ring.rotation.z += 0.02;
+
+  // El ojo sigue a la nave del jugador
+  if (typeof ship !== 'undefined' && ship) {
+    const tx = Math.max(-1, Math.min(1, (ship.position.x - boss.position.x) / 20)) * 1.1;
+    const ty = Math.max(-1, Math.min(1, (ship.position.y - boss.position.y) / 20)) * 1.1;
+    eye.position.x += (tx - eye.position.x) * 0.1;
+    eye.position.y += (ty - eye.position.y) * 0.1;
+  }
+
+  // Última fase: tiembla como un archivo corrupto
+  if (rage === 2 && Math.random() > 0.9) {
+    core.position.set((Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, 0);
+  } else {
+    core.position.x *= 0.8; core.position.y *= 0.8;
+  }
 }
 
 function showLeaderboard() { openUIWindow('leaderboard-ui'); document.getElementById('final-score-display').innerText = score; updateLeaderboardUI(); }
@@ -4290,7 +4408,7 @@ if (isAR && frame && hitTestSource) {
       satelliteGroup.rotation.x += 0.01; satelliteGroup.rotation.y += 0.005; satelliteGroup.position.x += satelliteGroup.userData.vx; satelliteGroup.position.y += satelliteGroup.userData.vy; if (satelliteGroup.position.x > 30 || satelliteGroup.position.x < -30) satelliteGroup.userData.vx *= -1; if (satelliteGroup.position.y > 20 || satelliteGroup.position.y < -15) satelliteGroup.userData.vy *= -1;
 
       if (isBossBattle && bossEntity) {
-        bossEntity.position.y += (15 - bossEntity.position.y) * 0.05; bossEntity.position.x = Math.sin(Date.now() * 0.001) * 20; bossEntity.rotation.y += 0.05;
+        bossEntity.position.y += (15 - bossEntity.position.y) * 0.05; bossEntity.position.x = Math.sin(Date.now() * 0.001) * 20; animateBoss(bossEntity);
         if (Math.random() > 0.95 && bossEntity.position.y < 16) { const elaser = new THREE.Mesh(enemyProjGeo, enemyProjMat); elaser.position.set(bossEntity.position.x, bossEntity.position.y - 3, 0); scene.add(elaser); enemyProjectiles.push(elaser); playSound('boss_hit', bossEntity.position); }
       }
       
@@ -5538,6 +5656,9 @@ const EX_CSS = `
   .ex-links { display: flex; flex-wrap: wrap; gap: .7rem 1.8rem; margin-top: 2.4rem; }
   .ex-links a { color: #d9d5cc; text-decoration: none; font-size: .74rem; letter-spacing: .2em; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,.25); padding-bottom: .25rem; transition: border-color .25s, color .25s; }
   .ex-links a:hover { color: #fff; border-bottom-color: #fff; }
+  .ex-note { margin: 3rem 0 0; padding-top: 1.4rem; border-top: 1px solid rgba(255,255,255,.08); color: #8a867f; font-size: .88rem; max-width: 34rem; }
+  .ex-note a { color: #d9d5cc; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,.25); padding-bottom: .15rem; white-space: nowrap; transition: border-color .25s, color .25s; }
+  .ex-note a:hover { color: #fff; border-bottom-color: #fff; }
   .ex-section { margin-top: 6.5rem; }
   .ex-list { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid rgba(255,255,255,.08); }
   .ex-list li { border-top: 1px solid rgba(255,255,255,.08); }
@@ -5602,10 +5723,16 @@ const exSaved = {}; // estilos originales de la interfaz 3D, para restaurarla ta
 const EX_TEXT = {
   es: { eyebrow: 'Archivo ejecutivo', projects: 'Proyectos', cv: 'Currículum', contact: 'Contacto', contactSub: 'Para proyectos, invitaciones o colaboraciones.',
         toArchive: 'Archivo ejecutivo', toImmersive: 'Universo 3D', startBtn: 'Archivo ejecutivo',
+        soundOn: 'Sonido: sí', soundOff: 'Sonido: no',
+        note: 'Existe una versión inmersiva e interactiva de este portafolio, con juego y sonido.', noteLink: 'Entrar al universo 3D →',
+        hint3d: 'Universo 3D: exploración inmersiva e interactiva, con sonido. Usa más recursos.', hintExec: 'Archivo ejecutivo: lectura rápida de los proyectos.',
         back: 'Volver', prev: 'Anterior', next: 'Siguiente', visit: 'Visitar proyecto', video: 'Video', images: 'Imágenes',
         fName: 'Nombre', fMail: 'Correo', fMsg: 'Mensaje', send: 'Enviar', sending: 'Enviando…', sent: 'Mensaje enviado. Gracias.', failed: 'No se pudo enviar. Inténtalo de nuevo.' },
   en: { eyebrow: 'Executive archive', projects: 'Projects', cv: 'Résumé', contact: 'Contact', contactSub: 'For projects, invitations or collaborations.',
         toArchive: 'Executive archive', toImmersive: '3D universe', startBtn: 'Executive archive',
+        soundOn: 'Sound: on', soundOff: 'Sound: off',
+        note: 'There is an immersive, interactive version of this portfolio, with a game and sound.', noteLink: 'Enter the 3D universe →',
+        hint3d: '3D universe: immersive, interactive exploration, with sound. Uses more resources.', hintExec: 'Executive archive: a quick read of the projects.',
         back: 'Back', prev: 'Previous', next: 'Next', visit: 'Visit project', video: 'Video', images: 'Images',
         fName: 'Name', fMail: 'Email', fMsg: 'Message', send: 'Send', sending: 'Sending…', sent: 'Message sent. Thank you.', failed: 'Could not send. Please try again.' }
 };
@@ -5664,8 +5791,9 @@ function exVideoHTML(src, title) {
 
 // ---------- Vistas ----------
 function exBar(leftHTML) {
-  const lang = exLang();
-  return `<header class="ex-bar">${leftHTML}<button type="button" class="ex-lang" data-ex="lang" aria-label="Language / Idioma">${lang === 'es' ? 'EN' : 'ES'}</button></header>`;
+  const lang = exLang(), T = EX_TEXT[lang];
+  const snd = (typeof isSoundEnabled === 'undefined') || isSoundEnabled;
+  return `<header class="ex-bar">${leftHTML}<button type="button" class="ex-lang" data-ex="lang" aria-label="Language / Idioma">${lang === 'es' ? 'EN' : 'ES'}</button><button type="button" class="ex-lang" data-ex="sound" aria-pressed="${snd}">${snd ? T.soundOn : T.soundOff}</button></header>`;
 }
 
 function exRenderIndex() {
@@ -5693,6 +5821,7 @@ function exRenderIndex() {
         ${P.links.map(l => `<a href="${exEsc(l.url)}" target="_blank" rel="noopener">${exEsc(l.label)}</a>`).join('')}
         <a href="#ex-contact" data-ex="goto-contact">${T.contact}</a>
       </nav>
+      <p class="ex-note">${T.note} <a href="#" data-ex="to3d">${T.noteLink}</a></p>
     </section>
     <section class="ex-section" aria-labelledby="ex-h-projects">
       <h2 class="ex-label" id="ex-h-projects">${T.projects}</h2>
@@ -5759,11 +5888,13 @@ window.openProjectFromTerminal = (id) => {
   if (!c || !isTerminalMode) return;
   const p = exProjects().find(x => String(x.id) === String(id));
   if (!p) return;
-  if (exState.view === 'index') exState.scroll = c.scrollTop;
+  const fromIndex = exState.view === 'index';
+  if (fromIndex) exState.scroll = c.scrollTop;
   exState.view = 'detail';
   exState.id = p.id;
   exRender();
-  if (typeof playSound === 'function') playSound('ui');
+  // Igual que en el modo 3D: abrir un proyecto suena a 'project_open'; moverse entre proyectos, a 'ui'
+  if (typeof playSound === 'function') playSound(fromIndex ? 'project_open' : 'ui');
   if (window.trackEvent) window.trackEvent('Ver_Proyecto', exTr(p.title, exLang()));
 };
 
@@ -5780,6 +5911,25 @@ function exStep(delta) {
   const idx = list.findIndex(p => String(p.id) === String(exState.id));
   if (idx < 0) return;
   window.openProjectFromTerminal(list[(idx + delta + list.length) % list.length].id);
+}
+
+// Interruptor de sonido del modo ejecutivo (el menú del juego queda tapado en este modo).
+// Reutiliza el botón de silencio del juego si existe; si no, cambia la misma preferencia guardada.
+function exToggleSound() {
+  const muteBtn = document.getElementById('global-mute-btn');
+  if (muteBtn) muteBtn.click();
+  else if (typeof isSoundEnabled !== 'undefined') {
+    isSoundEnabled = !isSoundEnabled;
+    if (typeof sysPrefs !== 'undefined') { sysPrefs.sound = isSoundEnabled; try { localStorage.setItem('gamelab_prefs', JSON.stringify(sysPrefs)); } catch (e) {} }
+  }
+  if (typeof playSound === 'function') playSound('ui'); // solo suena si el sonido quedó activado
+}
+
+function exRenderStartHint() {
+  const hint = document.getElementById('ex-start-hint');
+  if (!hint) return;
+  const T = EX_TEXT[exLang()];
+  hint.innerHTML = exEsc(T.hint3d) + '<br>' + exEsc(T.hintExec);
 }
 
 async function exSubmitContact(form) {
@@ -5873,9 +6023,17 @@ function initTerminalMode() {
     });
     startScreenContainer.appendChild(terminalStartBtn);
 
+    // Frase breve bajo los botones: qué es cada modo
+    const startHint = document.createElement('p');
+    startHint.id = 'ex-start-hint';
+    startHint.style.cssText = 'display: none; max-width: 30rem; margin: 18px auto 0; text-align: center; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 300; font-size: 0.78rem; line-height: 1.7; letter-spacing: 0.04em; color: #8a867f;';
+    startScreenContainer.appendChild(startHint);
+    exRenderStartHint();
+
     const syncInterval = setInterval(() => {
       if (startBtn.style.display === 'block') {
         terminalStartBtn.style.display = 'block';
+        startHint.style.display = 'block';
         if (skipBtn) skipBtn.style.display = 'none';
         clearInterval(syncInterval);
       }
@@ -5928,6 +6086,12 @@ function initTerminalMode() {
         const gameLangBtn = document.getElementById('lang-toggle-btn');
         if (gameLangBtn) gameLangBtn.click(); // mantiene sincronizados idioma y preferencias del juego
         else { window.currentLang = exLang() === 'es' ? 'en' : 'es'; exRender({ keepScroll: true }); }
+      } else if (act === 'sound') {
+        exToggleSound();
+        exRender({ keepScroll: true });
+      } else if (act === 'to3d') {
+        e.preventDefault();
+        if (isTerminalMode) window.toggleTerminalMode();
       } else if (act === 'goto-contact') {
         e.preventDefault();
         const target = terminalContainer.querySelector('#ex-contact');
@@ -5959,6 +6123,7 @@ function initTerminalMode() {
     if (btn) btn.textContent = isTerminalMode ? T.toImmersive : T.toArchive;
     const sb = document.getElementById('terminal-start-btn');
     if (sb) sb.innerText = T.startBtn;
+    exRenderStartHint();
     if (isTerminalMode) exRender({ keepScroll: true });
   });
 }
