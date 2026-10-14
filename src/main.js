@@ -149,8 +149,8 @@ async function checkXRSupport() {
                 if (!isMobile && !document.getElementById('ar-desktop-msg')) {
                     const arMsg = document.createElement('div');
                     arMsg.id = 'ar-desktop-msg';
-                    arMsg.innerHTML = '📱 AR disponible SOLO en dispositivos móviles';
-                    arMsg.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.85); color: #ffaa00; font-size: 0.7rem; padding: 8px 12px; border-left: 3px solid #ffaa00; font-family: monospace; z-index: 100000; pointer-events: none; backdrop-filter: blur(5px);';
+                    arMsg.innerHTML = 'AR disponible SOLO en dispositivos móviles';
+                    arMsg.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: rgba(255,255,255,0.04); backdrop-filter: blur(6px); color: #cfcfd8; font-size: 0.7rem; padding: 8px 12px; border-left: 1px solid rgba(255,255,255,0.35); font-family: -apple-system, Helvetica, Arial, sans-serif; letter-spacing: 0.08em; font-weight: 300; z-index: 100000; pointer-events: none; backdrop-filter: blur(5px);';
                     document.body.appendChild(arMsg);
                 }
             }
@@ -911,7 +911,7 @@ function initSystem(skip = false) {
   // 4. Empezar siempre en modo paz (Play verde)
   isCombatActive = false;
   if(btnCombat) {
-    btnCombat.innerText = '▶'; 
+    btnCombat.innerText = '▶'; btnCombat.classList.remove('is-combat'); 
     btnCombat.style.borderColor = '#00ff00';
     btnCombat.style.color = '#00ff00';
   }
@@ -1128,7 +1128,7 @@ document.getElementById('combat-toggle-btn')?.addEventListener('click', (e) => {
   const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
   
   if (isCombatActive) {
-    btn.innerText = '⏸'; 
+    btn.innerText = '⏸'; btn.classList.add('is-combat'); 
     btn.style.borderColor = '#ff0000';
     btn.style.color = '#ff0000';
     btn.title = 'Pausar / Volver a Modo Paz'; // Tooltip
@@ -1138,7 +1138,7 @@ document.getElementById('combat-toggle-btn')?.addEventListener('click', (e) => {
     if (isTouchDevice && touchControls) touchControls.style.display = 'flex';
   } else {
     toggleCombatDimming(false); // Encender luces
-    btn.innerText = '▶'; 
+    btn.innerText = '▶'; btn.classList.remove('is-combat'); 
     btn.style.borderColor = '#00ff00';
     btn.style.color = '#00ff00';
     btn.title = 'Activar Minijuego (Asteroides)'; // Tooltip
@@ -1558,7 +1558,7 @@ if (livesEl) livesEl.innerText = '■ '.repeat(Math.max(0, playerLives));}
 function triggerGameOver() {
   try {
     playSound('explosion');
-    createExplosion(ship.position.x, ship.position.y, ship.position.z);
+    createExplosion(ship.position.x, ship.position.y, ship.position.z, 1.6, 0xff8888);
     
     if(bossEntity) { 
       scene.remove(bossEntity); 
@@ -1596,7 +1596,7 @@ function triggerGameOver() {
     // Restaurar botón de combate
     const btnCombat = document.getElementById('combat-toggle-btn');
     if(btnCombat) { 
-      btnCombat.innerText = '▶'; 
+      btnCombat.innerText = '▶'; btnCombat.classList.remove('is-combat'); 
       btnCombat.style.borderColor = '#00ff00'; 
       btnCombat.style.color = '#00ff00'; 
     }
@@ -1651,7 +1651,7 @@ function triggerGameOver() {
 }
 function updateScore(points) {
   score += points; document.getElementById('score-value').innerText = score;
-  if (score >= 5000 && !isBossBattle && !hasFoughtBoss) { isBossBattle = true; spawnBoss(); playSound('explosion'); shakeIntensity = 1.0; } else if (!isBossBattle) { checkLevelUp(); }
+  if (score >= 5000 && !isBossBattle && !hasFoughtBoss) { isBossBattle = true; spawnBoss(); playSound('double_pulse'); shakeIntensity = 1.0; } else if (!isBossBattle) { checkLevelUp(); }
 }
 
 // ============================================================
@@ -1926,7 +1926,50 @@ function spawnAsteroid() {
   scene.add(obj); asteroids.push(obj); 
 }
 
-function createExplosion(x, y, z) { for(let i=0; i<8; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.3), new THREE.MeshBasicMaterial({color: 0xaaaaaa})); p.position.set(x,y,z); p.userData = { vx: (Math.random()-0.5)*0.8, vy: (Math.random()-0.5)*0.8, vz: (Math.random()-0.5)*0.8, life: 1.0 }; scene.add(p); explosionParticles.push(p); } }
+// ============================================================
+// 🔥 PULSOS en lugar de explosiones
+// Cada impacto lanza un destello suave y anillos que se expanden y se desvanecen
+// (el mismo lenguaje del "doble pulso" del viajero). Se mantiene el nombre
+// createExplosion para no tocar los puntos de llamada; size y hex son opcionales.
+// ============================================================
+const pulseFX = [];
+let pulseRingGeo = null, pulseDiscGeo = null;
+
+function createExplosion(x, y, z, size = 1, hex = 0xbfefff) {
+  if (!pulseRingGeo) { pulseRingGeo = new THREE.RingGeometry(0.965, 1.0, 56); pulseDiscGeo = new THREE.CircleGeometry(1, 24); }
+  const now = performance.now();
+  const mk = (geo, delay, dur, from, max, alpha) => {
+    const mat = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.scale.setScalar(Math.max(0.01, from));
+    m.visible = false;
+    scene.add(m);
+    pulseFX.push({ mesh: m, born: now + delay, dur, from, max, alpha });
+  };
+  mk(pulseDiscGeo, 0, 260, 0.1 * size, 0.9 * size, 0.9); // destello central
+  const rings = size > 1.5 ? 3 : 2;
+  for (let i = 0; i < rings; i++) mk(pulseRingGeo, 90 + i * 130, 620 + i * 140, 0.2 * size, (2.6 + i * 1.5) * size, 0.8 - i * 0.15);
+}
+
+function updatePulseFX() {
+  if (!pulseFX.length) return;
+  const now = performance.now();
+  for (let i = pulseFX.length - 1; i >= 0; i--) {
+    const f = pulseFX[i], k = (now - f.born) / f.dur;
+    if (k < 0) continue; // aún en retardo
+    if (k >= 1) {
+      scene.remove(f.mesh); f.mesh.material.dispose();
+      if (f.ownGeo) f.mesh.geometry.dispose();
+      pulseFX.splice(i, 1);
+      continue;
+    }
+    f.mesh.visible = true;
+    const e = 1 - Math.pow(1 - k, 3); // frena al final, como una onda que se apaga
+    f.mesh.scale.setScalar(Math.max(0.01, f.from + (f.max - f.from) * e));
+    f.mesh.material.opacity = (1 - k) * f.alpha;
+  }
+}
 
 function triggerScrollExploration() { 
   document.getElementById('scroll-hint')?.classList.add('hidden');
@@ -2627,7 +2670,7 @@ mediaContainer.innerHTML = finalGallery.length === 0 ? '' : `<img id="gallery-im
     if (!restoreBtn) {
       restoreBtn = document.createElement('button');
       restoreBtn.id = 'btn-restore-planet';
-      restoreBtn.style = "background: transparent; border: none; color: #ffaa00; font-family: 'Share Tech Mono'; cursor: pointer; font-size: 0.9rem; transition: 0.3s; text-decoration: underline;";
+      restoreBtn.style = "background: transparent; border: none; color: #b9b9c4; font-family: -apple-system, Helvetica, Arial, sans-serif; letter-spacing: 0.08em; font-weight: 300; cursor: pointer; font-size: 0.85rem; transition: 0.3s; text-decoration: underline;";
       navBar.insertBefore(restoreBtn, nextBtn);
     }
     
@@ -3424,6 +3467,235 @@ window.travelerGroup.add(window.travelerSword);
 window.travelerGroup.position.set(-8, -3, -15); 
 window.travelerGroup.rotation.y = Math.PI / 3; 
 scene.add(window.travelerGroup);
+
+// ============================================================
+// ⚔ ESPADA DE PULSOS — se desbloquea al derrotar al Núcleo corrupto
+// ------------------------------------------------------------
+//  • Hoja piramidal con filo luminoso, guarda de alas triangulares, anillos de pulso que
+//    suben por la hoja y esquirlas en órbita (mismo tramado que el cuerpo del viajero).
+//  • Con ella, el TAJO (tecla Q o el botón de la espada) APAGA el modo creativo activo:
+//    Máquina Poética / Errática / Fricción y el modo Retro B&W, con una onda de pulsos.
+//  • El desbloqueo se guarda en localStorage ('gamelab_unlocks').
+// ============================================================
+const UNLOCKS_KEY = 'gamelab_unlocks';
+function readUnlocks() { try { return JSON.parse(localStorage.getItem(UNLOCKS_KEY)) || {}; } catch (e) { return {}; } }
+function writeUnlocks(o) { try { localStorage.setItem(UNLOCKS_KEY, JSON.stringify(o)); } catch (e) {} }
+window.pulseSword = { unlocked: !!readUnlocks().pulseSword, equipped: false, parts: null, slash: null };
+
+function buildPulseSword() {
+  const sword = new THREE.Group();
+  const glow = (mult) => {
+    const m = new THREE.MeshBasicMaterial({ color: 0x66f5ff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+    m.color.multiplyScalar(mult); // pasa el umbral del Bloom
+    return m;
+  };
+
+  // Hoja: pirámide de 4 caras, punta arriba. Comparte material con la espada original,
+  // así sus animaciones de color (saludo, máquinas) siguen funcionando.
+  const bladeGeo = new THREE.ConeGeometry(0.16, 3.3, 4);
+  bladeGeo.rotateY(Math.PI / 4);
+  const blade = new THREE.Mesh(bladeGeo, window.travelerSwordMat);
+  blade.position.y = 0.35;
+  sword.add(blade);
+
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(bladeGeo), new THREE.LineBasicMaterial({ color: 0x9ffaff, transparent: true, opacity: 0.9 }));
+  edges.position.y = 0.35;
+  sword.add(edges);
+
+  const core = new THREE.Mesh(new THREE.BoxGeometry(0.035, 3.0, 0.035), glow(2.6));
+  core.position.y = 0.35;
+  sword.add(core);
+
+  // Guarda: dos alas triangulares y pomo octaédrico
+  const wingGeo = new THREE.ConeGeometry(0.17, 1.15, 3);
+  [-1, 1].forEach(s => {
+    const w = new THREE.Mesh(wingGeo, makeTravelerDither(0xffffff));
+    w.rotation.z = -s * Math.PI / 2;
+    w.position.set(s * 0.58, -1.3, 0);
+    sword.add(w);
+  });
+  const pommel = new THREE.Mesh(new THREE.OctahedronGeometry(0.19, 0), makeTravelerDither(0xffffff));
+  pommel.position.y = -1.85;
+  sword.add(pommel);
+
+  // Anillos de pulso que ascienden por la hoja
+  const rings = [];
+  for (let i = 0; i < 3; i++) {
+    const r = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.014, 6, 40), glow(2.2));
+    r.rotation.x = Math.PI / 2;
+    sword.add(r);
+    rings.push(r);
+  }
+
+  // Esquirlas en órbita
+  const orbit = new THREE.Group();
+  orbit.position.y = 0.35;
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const s = new THREE.Mesh(new THREE.TetrahedronGeometry(0.085, 0), makeTravelerDither(i % 2 ? 0xffffff : 0x66f5ff));
+    s.position.set(Math.cos(a) * 0.55, ((i % 3) - 1) * 0.7, Math.sin(a) * 0.55);
+    orbit.add(s);
+  }
+  sword.add(orbit);
+
+  // Clic sobre la espada = clic sobre el viajero
+  sword.traverse(o => { o.userData = Object.assign({}, o.userData, { name: 'viajero' }); });
+  sword.userData.parts = { blade, edges, core, rings, orbit };
+  return sword;
+}
+
+function equipPulseSword() {
+  const tg = window.travelerGroup, ps = window.pulseSword;
+  if (!tg || ps.equipped) return;
+  const old = window.travelerSword;
+  const sword = buildPulseSword();
+  if (old) { sword.position.copy(old.position); sword.rotation.copy(old.rotation); tg.remove(old); }
+  else { sword.position.set(0.6, 0.2, 0.5); sword.rotation.set(Math.PI / 8, 0, Math.PI / -6); }
+  tg.add(sword);
+  window.travelerSword = sword;
+  ps.equipped = true;
+  ps.parts = sword.userData.parts;
+}
+
+// Se llama en cada cuadro desde la actualización del viajero
+function updateSwordFX(t) {
+  updatePulseFX();
+  const ps = window.pulseSword;
+  if (!ps || !ps.equipped || !ps.parts) return;
+  const { rings, orbit, core } = ps.parts;
+  for (let i = 0; i < rings.length; i++) {
+    const k = (t * 0.55 + i / rings.length) % 1;
+    const s = Math.sin(k * Math.PI);
+    rings[i].position.y = -1.1 + k * 3.0;
+    rings[i].scale.setScalar(0.7 + s * 0.9);
+    rings[i].material.opacity = s * 0.85;
+  }
+  orbit.rotation.y = t * 1.7;
+  core.material.opacity = 0.75 + Math.sin(t * 4) * 0.2;
+  if (ps.slash) { // el tajo barre un arco y la espada vuelve a su pose
+    const k = Math.min(1, (performance.now() - ps.slash.start) / ps.slash.dur);
+    if (window.travelerSword) window.travelerSword.rotation.z = ps.slash.base - Math.sin(k * Math.PI) * 2.4;
+    if (k >= 1) ps.slash = null;
+  }
+}
+
+// Apaga el modo creativo activo y devuelve la lista de los que estaban encendidos
+function deactivateCreativeModes() {
+  const off = [];
+  if (isPoeticaActive) off.push('poetica');
+  if (isErraticaActive) off.push('erratica');
+  if (isFriccionActive) off.push('friccion');
+  if (isRetroMode) off.push('retro');
+  if (!off.length) return off;
+
+  isPoeticaActive = false; isErraticaActive = false; isFriccionActive = false;
+  if (typeof window.stopDacMachines === 'function') { try { window.stopDacMachines(); } catch (e) {} }
+
+  // Mismo "seguro antibug" que usan las lunas al apagarse
+  categoryPlanets.forEach(p => {
+    if (p.userData.id !== 999 && p.material && p.material.color && p.userData.originalColor) {
+      p.material.color.setHex(p.userData.visited ? 0x555555 : p.userData.originalColor);
+      if (!p.userData.visited) p.material.color.multiplyScalar(1.8);
+      p.material.opacity = 0.95;
+    }
+  });
+  lunaPoetica.scale.set(1, 1, 1); lunaErratica.scale.set(1, 1, 1); lunaFriccion.scale.set(1, 1, 1);
+  document.body.style.cursor = 'default';
+  if (window.travelerSwordMat) window.travelerSwordMat.color.setHex(0xffffff);
+  if (window.travelerSword) window.travelerSword.rotation.z = Math.PI / -6;
+  if (isRetroMode) { const r = document.getElementById('menu-retro'); if (r) r.click(); }
+  return off;
+}
+
+function performSwordSlash() {
+  const ps = window.pulseSword;
+  if (!ps || !ps.unlocked || !window.travelerGroup) return;
+  // evita apilar tajos, pero nunca se queda bloqueado si la animación dejó de actualizarse (pausa, modo ejecutivo…)
+  if (ps.slash && performance.now() - ps.slash.start < ps.slash.dur + 120) return;
+  ps.slash = null;
+  if (!ps.equipped) equipPulseSword();
+  const off = deactivateCreativeModes();
+  const sw = window.travelerSword;
+  ps.slash = { start: performance.now(), dur: 520, base: sw ? sw.rotation.z : Math.PI / -6 };
+
+  const p = new THREE.Vector3();
+  window.travelerGroup.getWorldPosition(p);
+  p.y += 0.8;
+  createExplosion(p.x, p.y, p.z, off.length ? 2.2 : 1.1, off.length ? 0x9ffaff : 0xffffff);
+
+  // Arco del tajo, de cara a la cámara
+  const arcMat = new THREE.MeshBasicMaterial({ color: 0x9ffaff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const arc = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.06, 6, 48, Math.PI * 0.85), arcMat);
+  arc.position.copy(p);
+  if (typeof camera !== 'undefined' && camera.getWorldQuaternion) camera.getWorldQuaternion(arc.quaternion);
+  arc.rotateZ(Math.PI * 0.55);
+  arc.visible = false;
+  scene.add(arc);
+  pulseFX.push({ mesh: arc, born: performance.now(), dur: 520, from: 0.5, max: 1.25, alpha: 0.9, ownGeo: true });
+
+  if (typeof playSound === 'function') playSound(off.length ? 'double_pulse' : 'pulse');
+  if (typeof showSystemToast === 'function') {
+    const en = window.currentLang === 'en';
+    const names = { poetica: en ? 'Poetic Machine' : 'Máquina Poética', erratica: en ? 'Erratic Machine' : 'Máquina Errática',
+                    friccion: en ? 'Friction Machine' : 'Máquina Fricción', retro: 'Retro B&W' };
+    showSystemToast(off.length
+      ? `⚔ ${en ? 'SLASH · DISPELLED' : 'TAJO · SE DISIPA'}: ${off.map(k => names[k]).join(', ')}`
+      : (en ? '⚔ No creative mode is active' : '⚔ Ningún modo creativo activo'), '#9ffaff');
+  }
+}
+
+function ensureSwordButton() {
+  if (!window.pulseSword.unlocked) return null;
+  let b = document.getElementById('btn-sword');
+  if (b) return b;
+  b = document.createElement('button');
+  b.id = 'btn-sword';
+  b.type = 'button';
+  const en = window.currentLang === 'en';
+  b.title = en ? 'Pulse slash (Q): dispels the active creative mode' : 'Tajo de pulso (Q): disipa el modo creativo activo';
+  b.setAttribute('aria-label', b.title);
+  b.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4 9 15"/><path d="M7 11l6 6"/><path d="M9 15l-3.5 3.5"/><circle cx="4.5" cy="19.5" r="1.2"/></svg>';
+  b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); b.blur(); performSwordSlash(); });
+  document.body.appendChild(b);
+  // brilla cuando hay algún modo creativo que se pueda disipar
+  setInterval(() => b.classList.toggle('is-ready', !!(isPoeticaActive || isErraticaActive || isFriccionActive || isRetroMode)), 400);
+  return b;
+}
+
+function unlockPulseSword() {
+  const ps = window.pulseSword;
+  if (ps.unlocked) return;
+  ps.unlocked = true;
+  const u = readUnlocks(); u.pulseSword = true; writeUnlocks(u);
+  setTimeout(() => {
+    equipPulseSword();
+    ensureSwordButton();
+    if (window.travelerGroup) {
+      const p = new THREE.Vector3();
+      window.travelerGroup.getWorldPosition(p);
+      createExplosion(p.x, p.y + 0.8, p.z, 2.6, 0x9ffaff);
+    }
+    if (typeof playSound === 'function') playSound('double_pulse');
+    if (typeof showSystemToast === 'function') {
+      const en = window.currentLang === 'en';
+      showSystemToast(en ? '⚔ PULSE SWORD UNLOCKED · press Q to dispel a creative mode' : '⚔ ESPADA DE PULSOS DESBLOQUEADA · pulsa Q para disipar un modo creativo', '#9ffaff');
+    }
+  }, 2200);
+}
+
+window.addEventListener('keydown', (e) => {
+  if ((e.key === 'q' || e.key === 'Q') && window.pulseSword.unlocked) {
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (typeof isTerminalMode !== 'undefined' && isTerminalMode) return;
+    performSwordSlash();
+  }
+});
+
+// Si ya se había desbloqueado en una visita anterior, el viajero nace con ella
+if (window.pulseSword.unlocked) { equipPulseSword(); ensureSwordButton(); }
+
+
 // ============================================================
 // 🔥 VIAJERO CON PESO: gravedad radial (parado sobre los planetas)
 // ------------------------------------------------------------
@@ -3781,6 +4053,7 @@ function updateTraveler() {
   // ---- CAPA: se abre al caer y se asienta al aterrizar ----
   travelerCape.flare += (flareTarget - travelerCape.flare) * Math.min(1, dt * 10);
   updateTravelerCape(t, travelerCape.flare, erratic);
+  updateSwordFX(t);
 
   // ---- EL OBSERVADOR: la cabeza gira un poco hacia el ratón y la pupila se mueve más ----
   // (-PI/3 compensa el giro del cuerpo para que al reposo el visor mire a la cámara)
@@ -4433,7 +4706,7 @@ if (isAR && frame && hitTestSource) {
           if(hasShield) { 
             hasShield = false; shieldMesh.visible = false; playSound('explosion', ship.position); shakeIntensity = 0.5; createExplosion(a.position.x, a.position.y, a.position.z); scene.remove(a); asteroids.splice(i, 1); 
           } else { 
-            shakeIntensity = 0.8; playSound('damage', ship.position); createExplosion(ship.position.x, ship.position.y, ship.position.z); 
+            shakeIntensity = 0.8; playSound('damage', ship.position); createExplosion(ship.position.x, ship.position.y, ship.position.z, 1.6, 0xff8888); 
 showSystemToast('IMPACTO DETECTADO. DAÑO ESTRUCTURAL.', '#cc0000');
 shipBody.material.uniforms.color.value.setHex(0xff0000); 
 setTimeout(() => shipBody.material.uniforms.color.value.setHex(0xffffff), 200);            scene.remove(a); asteroids.splice(i, 1); 
@@ -4453,7 +4726,7 @@ setTimeout(() => shipBody.material.uniforms.color.value.setHex(0xffffff), 200); 
         if (c.position.y < -35) { scene.remove(c); guardianCats.splice(i, 1); } 
       }
 
-      for (let i = explosionParticles.length - 1; i >= 0; i--) { const p = explosionParticles[i]; p.position.x += p.userData.vx; p.position.y += p.userData.vy; p.position.z += p.userData.vz; p.userData.life -= 0.03; const s = Math.max(p.userData.life, 0.01); p.scale.set(s, s, s); if (p.userData.life <= 0) { scene.remove(p); explosionParticles.splice(i, 1); } }
+      updatePulseFX(); for (let i = explosionParticles.length - 1; i >= 0; i--) { const p = explosionParticles[i]; p.position.x += p.userData.vx; p.position.y += p.userData.vy; p.position.z += p.userData.vz; p.userData.life -= 0.03; const s = Math.max(p.userData.life, 0.01); p.scale.set(s, s, s); if (p.userData.life <= 0) { scene.remove(p); explosionParticles.splice(i, 1); } }
       
  // ========================================================
       // 🔥 REEMPLAZA TODO EL BUCLE DE PROYECTILES POR ESTO 🔥
@@ -4494,10 +4767,10 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
            bossEntity.children[0].material.uniforms.color.value.setHex(0xffffff); setTimeout(() => {if(bossEntity) bossEntity.children[0].material.uniforms.color.value.setHex(0xff0000)}, 100);
            document.getElementById('boss-hp-fill').style.width = (bossHealth / bossMaxHealth * 100) + '%'; 
            if (bossHealth <= 0) { 
-  hasFoughtBoss = true; 
+  hasFoughtBoss = true; unlockPulseSword(); 
   isBossBattle = false; 
-  playSound('explosion'); 
-  createExplosion(bossEntity.position.x, bossEntity.position.y, bossEntity.position.z); 
+  playSound('double_pulse'); 
+  createExplosion(bossEntity.position.x, bossEntity.position.y, bossEntity.position.z, 3.2, 0xffffff); 
   
   let bossBonus = 500 + (typeof combatCombo !== 'undefined' ? combatCombo * 10 : 0);
   
@@ -4540,7 +4813,7 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
   
   const btnCombat = document.getElementById('combat-toggle-btn'); 
   if(btnCombat) { 
-    btnCombat.innerText = '▶'; 
+    btnCombat.innerText = '▶'; btnCombat.classList.remove('is-combat'); 
     btnCombat.style.borderColor = '#00ff00'; 
     btnCombat.style.color = '#00ff00'; 
   }
@@ -4590,7 +4863,7 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
               if (typeof showFloatingText === 'function') showFloatingText('-1', '#ffffff', laser.position.x, laser.position.y, laser.position.z);
               
               if (f.userData.hp <= 0) {
-                playSound('explosion', f.position); createExplosion(f.position.x, f.position.y, f.position.z);
+                playSound('pulse', f.position); createExplosion(f.position.x, f.position.y, f.position.z);
                 scene.remove(f); fighters.splice(j, 1); updateScore(300);
                 if (typeof showFloatingText === 'function') showFloatingText('+30', '#ff0000', f.position.x, f.position.y, f.position.z);
                 if (typeof combatCombo !== 'undefined') { combatCombo++; clearTimeout(comboTimer); comboTimer = setTimeout(() => { combatCombo = 0; }, 2000); }
@@ -4605,7 +4878,7 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
           for (let k = asteroids.length - 1; k >= 0; k--) { 
             if (laser.position.distanceTo(asteroids[k].position) < (asteroids[k].userData.radius + 0.5)) { 
               hit = true; shakeIntensity = 0.4;    
-              playSound('explosion', asteroids[k].position); createExplosion(asteroids[k].position.x, asteroids[k].position.y, asteroids[k].position.z); 
+              playSound('pulse', asteroids[k].position); createExplosion(asteroids[k].position.x, asteroids[k].position.y, asteroids[k].position.z); 
               
               if (asteroids[k].userData.isBounty) {
                 playSound('levelup'); const rType = asteroids[k].userData.rewardType;
@@ -5619,6 +5892,77 @@ window.addEventListener('click', (e) => {
   }
 });
 // ============================================================
+// 🌫 PIEL SUBLIME DEL MODO INMERSIVO
+// Los botones, la cabecera, la leyenda y los controles táctiles conservaban el tono
+// antiguo (cajas cuadradas, verde/amarillo/rojo neón, monoespaciada). Ahora hablan el mismo
+// idioma que el menú inicial: cristal tenue, línea fina, tipografía ligera.
+// Todo va por CSS con !important para no tocar el HTML ni style.css.
+// ============================================================
+(function injectSublimeSkin() {
+  if (document.getElementById('sublime-skin')) return;
+  const s = document.createElement('style');
+  s.id = 'sublime-skin';
+  s.textContent = `
+    #menu-toggle, #lang-toggle-btn, #combat-toggle-btn, #ARButton, #VRButton {
+      background: rgba(255,255,255,0.02) !important;
+      border: 1px solid rgba(255,255,255,0.16) !important;
+      border-radius: 50% !important;
+      color: #dcdce2 !important;
+      font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+      font-weight: 300 !important; font-size: 0.72rem !important; letter-spacing: 0.12em !important;
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      box-shadow: none !important;
+      transition: background .35s ease, border-color .35s ease, box-shadow .35s ease !important;
+    }
+    #menu-toggle:hover, #lang-toggle-btn:hover, #combat-toggle-btn:hover, #ARButton:hover, #VRButton:hover {
+      background: rgba(255,255,255,0.09) !important; color: #ffffff !important;
+      border-color: rgba(255,255,255,0.5) !important; box-shadow: 0 0 24px rgba(255,255,255,0.12) !important;
+    }
+    /* ▶ / ⏸: el estado de combate se indica con un rojo tenue en vez de verde/rojo neón */
+    #combat-toggle-btn.is-combat { border-color: rgba(255,150,150,0.6) !important; color: #ffd0d0 !important; box-shadow: 0 0 22px rgba(255,90,90,0.22) !important; }
+
+    #portfolio-header { color: #f4f4f7 !important; font-weight: 300 !important; font-size: 0.95rem !important; letter-spacing: 0.32em !important;
+      text-shadow: 0 0 24px rgba(255,255,255,0.18) !important; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif !important; }
+    #portfolio-header span { color: #8c8c99 !important; letter-spacing: 0.24em !important; font-size: 0.68rem !important; }
+
+    #universe-legend { background: rgba(255,255,255,0.025) !important; border: 1px solid rgba(255,255,255,0.12) !important; border-radius: 14px !important;
+      box-shadow: none !important; backdrop-filter: blur(8px) !important; -webkit-backdrop-filter: blur(8px) !important; }
+    #universe-legend, #universe-legend * { font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif !important; letter-spacing: 0.1em; }
+    #universe-legend #legend-header * { color: #aaaab6 !important; }
+
+    #btn-recenter, #helpBtn {
+      border-radius: 50% !important; background: rgba(255,255,255,0.03) !important; border: 1px solid rgba(255,255,255,0.16) !important;
+      color: #dcdce2 !important; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif !important; font-weight: 300 !important;
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transition: background .35s ease, border-color .35s ease, box-shadow .35s ease !important;
+    }
+    #btn-recenter:hover, #helpBtn:hover { background: rgba(255,255,255,0.09) !important; border-color: rgba(255,255,255,0.5) !important; box-shadow: 0 0 24px rgba(255,255,255,0.12) !important; }
+
+    /* Controles táctiles: antes verdes y un disparo amarillo; ahora cristal blanco */
+    #btn-left, #btn-right, #btn-shoot {
+      background: rgba(255,255,255,0.04) !important; border: 1px solid rgba(255,255,255,0.22) !important; color: #e6e6ec !important;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 0 26px rgba(255,255,255,0.05) !important;
+      transition: background .2s ease, box-shadow .2s ease !important;
+    }
+    #btn-shoot { background: rgba(255,255,255,0.09) !important; border-color: rgba(255,255,255,0.4) !important; }
+    #btn-left:active, #btn-right:active { background: rgba(255,255,255,0.18) !important; }
+    #btn-shoot:active { background: rgba(255,255,255,0.28) !important; box-shadow: 0 0 34px rgba(255,255,255,0.22) !important; }
+
+    /* Botón del tajo (aparece al desbloquear la espada de pulsos) */
+    #btn-sword { position: fixed; right: 25px; bottom: 205px; box-sizing: border-box; width: 40px !important; height: 40px !important; min-width: 0 !important; padding: 0 !important; display: flex; align-items: center; justify-content: center;
+      border-radius: 50% !important; background: rgba(255,255,255,0.03) !important; border: 1px solid rgba(160,250,255,0.35) !important; color: #bff9ff !important;
+      cursor: pointer; z-index: 10001; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      transition: box-shadow .3s ease, border-color .3s ease, background .3s ease !important; }
+    @media (max-width: 768px) { #btn-sword { bottom: 225px; } } /* sobre recentrar (175px) y ayuda (125px) en móvil */
+    #btn-sword svg { flex: none; width: 20px; height: 20px; }
+    #btn-sword:hover { background: rgba(160,250,255,0.12) !important; }
+    #btn-sword.is-ready { border-color: rgba(160,250,255,0.9) !important; animation: swordReady 2.2s ease-in-out infinite alternate; }
+    @keyframes swordReady { from { box-shadow: 0 0 8px rgba(120,240,255,0.2); } to { box-shadow: 0 0 26px rgba(120,240,255,0.6); } }
+    @media (prefers-reduced-motion: reduce) { #btn-sword.is-ready { animation: none; box-shadow: 0 0 18px rgba(120,240,255,0.5); } }
+  `;
+  document.head.appendChild(s);
+})();
+
+// ============================================================
 // 🔥 MODO EJECUTIVO 2D — lectura autónoma, estética sobria
 // ------------------------------------------------------------
 // Reescrito. Cambios clave frente a la versión anterior:
@@ -5648,9 +5992,15 @@ const EX_CSS = `
     text-transform: uppercase; cursor: pointer; padding: .4rem 0; transition: color .25s, border-color .25s; }
   .ex-lang:hover, .ex-back:hover { color: #f1eee8; border-bottom-color: rgba(255,255,255,.3); }
   .ex-label { font-size: .7rem; letter-spacing: .24em; text-transform: uppercase; color: #77746e; font-weight: 400; margin: 0 0 1.4rem; }
-  .ex-name, .ex-d-title, .ex-title, .ex-pager-title { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif; font-weight: 400; }
-  .ex-name { font-size: clamp(2.3rem, 7vw, 3.8rem); line-height: 1.08; letter-spacing: -.015em; color: #f1eee8; margin: 0 0 1rem; }
-  .ex-role { color: #a9a59d; font-size: 1.05rem; margin: 0 0 2.4rem; }
+  .ex-name, .ex-d-title, .ex-title, .ex-pager-title { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 300; }
+  .ex-name { font-size: clamp(1.7rem, 5.4vw, 3rem); line-height: 1.25; letter-spacing: .16em; text-transform: uppercase; color: #fff; margin: 0 0 1rem; text-shadow: 0 0 30px rgba(255,255,255,.14); animation: exDriftA 11s ease-in-out infinite alternate; }
+  .ex-eyebrow { color: #888899 !important; letter-spacing: .3em !important; animation: exGlow 4s ease-in-out infinite alternate; }
+  .ex-sub { margin: -1.6rem 0 2.4rem; color: #77746e; font-size: .82rem; letter-spacing: .26em; text-transform: uppercase; animation: exDriftC 16s ease-in-out infinite alternate; }
+  @keyframes exDriftA { 0% { transform: translate3d(0,0,0) rotateZ(0deg); } 100% { transform: translate3d(6px,-8px,0) rotateZ(.25deg); } }
+  @keyframes exDriftB { 0% { transform: translate3d(0,0,0) rotateZ(0deg); } 100% { transform: translate3d(-7px,5px,0) rotateZ(-.3deg); } }
+  @keyframes exDriftC { 0% { transform: translate3d(0,0,0) rotateZ(0deg); } 100% { transform: translate3d(5px,6px,0) rotateZ(.2deg); } }
+  @keyframes exGlow { from { opacity: .35; text-shadow: 0 0 0 rgba(255,255,255,0); } to { opacity: 1; text-shadow: 0 0 15px rgba(255,255,255,.4); } }
+  .ex-role { color: #a9a59d; font-size: 1.05rem; letter-spacing: .06em; margin: 0 0 2.4rem; animation: exDriftB 14s ease-in-out infinite alternate; }
   .ex-text { margin: 0 0 1.1rem; max-width: 38rem; color: #bdb9b1; font-size: 1.02rem; }
   .ex-skills { margin: 1.8rem 0 0; color: #77746e; font-size: .85rem; letter-spacing: .04em; }
   .ex-links { display: flex; flex-wrap: wrap; gap: .7rem 1.8rem; margin-top: 2.4rem; }
@@ -5665,15 +6015,15 @@ const EX_CSS = `
   .ex-row { display: grid; grid-template-columns: 2.6rem 1fr 1.4rem; align-items: center; width: 100%; margin: 0; padding: 1.7rem 0; background: none; border: 0;
     color: inherit; font: inherit; text-align: left; cursor: pointer; transition: opacity .3s; }
   .ex-num { grid-row: 1 / 3; align-self: start; padding-top: .65rem; color: #55524d; font-size: .72rem; letter-spacing: .18em; }
-  .ex-title { font-size: clamp(1.3rem, 3.4vw, 1.7rem); line-height: 1.25; color: #eae7e0; transition: color .25s; }
+  .ex-title { font-size: clamp(1.05rem, 2.6vw, 1.35rem); line-height: 1.35; letter-spacing: .08em; color: #eae7e0; transition: color .25s; }
   .ex-meta { grid-column: 2; margin-top: .25rem; color: #77746e; font-size: .82rem; }
   .ex-arrow { grid-column: 3; grid-row: 1 / 3; justify-self: end; color: #55524d; transition: transform .3s, color .3s; }
   .ex-list:hover .ex-row:not(:hover) { opacity: .4; }
   .ex-row:hover .ex-title, .ex-row:focus-visible .ex-title { color: #fff; }
   .ex-row:hover .ex-arrow, .ex-row:focus-visible .ex-arrow { transform: translateX(5px); color: #e7e4de; }
   .ex-row:focus-visible { outline: 1px solid rgba(255,255,255,.5); outline-offset: 4px; }
-  .ex-d-title { font-size: clamp(2rem, 6vw, 3.2rem); line-height: 1.12; letter-spacing: -.01em; color: #f1eee8; margin: 0 0 .9rem; outline: none; }
-  .ex-lead { font-size: 1.2rem; color: #d3cfc6; margin: 2rem 0; max-width: 38rem; }
+  .ex-d-title { font-size: clamp(1.5rem, 4.6vw, 2.5rem); line-height: 1.25; letter-spacing: .14em; text-transform: uppercase; color: #fff; margin: 0 0 .9rem; outline: none; text-shadow: 0 0 30px rgba(255,255,255,.14); animation: exDriftA 12s ease-in-out infinite alternate; }
+  .ex-lead { font-size: 1.2rem; letter-spacing: .03em; color: #d3cfc6; margin: 2rem 0; max-width: 38rem; animation: exDriftC 15s ease-in-out infinite alternate; }
   .ex-long { color: #bdb9b1; font-size: 1.02rem; max-width: 38rem; }
   .ex-long p, .ex-long li { color: #bdb9b1 !important; text-align: left !important; }
   .ex-long p { margin: 0 0 1.1rem !important; }
@@ -5692,7 +6042,7 @@ const EX_CSS = `
   .ex-pager button { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
   .ex-pager button:last-child { text-align: right; }
   .ex-pager .ex-label { display: block; margin-bottom: .4rem; }
-  .ex-pager-title { display: block; font-size: 1.15rem; color: #d3cfc6; transition: color .25s; }
+  .ex-pager-title { display: block; font-size: 1.05rem; letter-spacing: .06em; color: #d3cfc6; transition: color .25s; }
   .ex-pager button:hover .ex-pager-title { color: #fff; }
   .ex-form { display: grid; gap: 1.8rem; max-width: 34rem; margin-top: 1.6rem; }
   .ex-field { display: grid; gap: .2rem; font-size: .7rem; letter-spacing: .2em; text-transform: uppercase; color: #77746e; }
@@ -5709,7 +6059,7 @@ const EX_CSS = `
     .ex-bar { margin-bottom: 3rem; }
     .ex-section { margin-top: 4.5rem; }
   }
-  @media (prefers-reduced-motion: reduce) { #terminal-container * { transition: none !important; scroll-behavior: auto !important; } }
+  @media (prefers-reduced-motion: reduce) { #terminal-container * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
 `;
 const executiveStyle = document.createElement('style');
 executiveStyle.id = 'ex-style';
@@ -5721,17 +6071,17 @@ const exState = { view: 'index', id: null, scroll: 0 };
 const exSaved = {}; // estilos originales de la interfaz 3D, para restaurarla tal cual
 
 const EX_TEXT = {
-  es: { eyebrow: 'Archivo ejecutivo', projects: 'Proyectos', cv: 'Currículum', contact: 'Contacto', contactSub: 'Para proyectos, invitaciones o colaboraciones.',
+  es: { eyebrow: 'Archivo en calma…', sub: 'Un archivo para leer despacio.', projects: 'Proyectos', cv: 'Currículum', contact: 'Contacto', contactSub: 'Para proyectos, invitaciones o colaboraciones.',
         toArchive: 'Archivo ejecutivo', toImmersive: 'Universo 3D', startBtn: 'Archivo ejecutivo',
         soundOn: 'Sonido: sí', soundOff: 'Sonido: no',
-        note: 'Existe una versión inmersiva e interactiva de este portafolio, con juego y sonido.', noteLink: 'Entrar al universo 3D →',
+        note: 'Existe otra manera de recorrer este archivo: un universo inmersivo e interactivo, con juego y sonido.', noteLink: 'Despertar el universo →',
         hint3d: 'Universo 3D: exploración inmersiva e interactiva, con sonido. Usa más recursos.', hintExec: 'Archivo ejecutivo: lectura rápida de los proyectos.',
         back: 'Volver', prev: 'Anterior', next: 'Siguiente', visit: 'Visitar proyecto', video: 'Video', images: 'Imágenes',
         fName: 'Nombre', fMail: 'Correo', fMsg: 'Mensaje', send: 'Enviar', sending: 'Enviando…', sent: 'Mensaje enviado. Gracias.', failed: 'No se pudo enviar. Inténtalo de nuevo.' },
-  en: { eyebrow: 'Executive archive', projects: 'Projects', cv: 'Résumé', contact: 'Contact', contactSub: 'For projects, invitations or collaborations.',
+  en: { eyebrow: 'Archive at rest…', sub: 'An archive to be read slowly.', projects: 'Projects', cv: 'Résumé', contact: 'Contact', contactSub: 'For projects, invitations or collaborations.',
         toArchive: 'Executive archive', toImmersive: '3D universe', startBtn: 'Executive archive',
         soundOn: 'Sound: on', soundOff: 'Sound: off',
-        note: 'There is an immersive, interactive version of this portfolio, with a game and sound.', noteLink: 'Enter the 3D universe →',
+        note: 'There is another way to wander through this archive: an immersive, interactive universe, with a game and sound.', noteLink: 'Awaken the universe →',
         hint3d: '3D universe: immersive, interactive exploration, with sound. Uses more resources.', hintExec: 'Executive archive: a quick read of the projects.',
         back: 'Back', prev: 'Previous', next: 'Next', visit: 'Visit project', video: 'Video', images: 'Images',
         fName: 'Name', fMail: 'Email', fMsg: 'Message', send: 'Send', sending: 'Sending…', sent: 'Message sent. Thank you.', failed: 'Could not send. Please try again.' }
@@ -5810,9 +6160,10 @@ function exRenderIndex() {
   return `<div class="ex-wrap">
     ${exBar(`<span class="ex-mark">${exEsc(P.name)}</span>`)}
     <section class="ex-intro">
-      <p class="ex-label">${T.eyebrow}</p>
+      <p class="ex-label ex-eyebrow">${T.eyebrow}</p>
       <h1 class="ex-name">${exEsc(P.name)}</h1>
       <p class="ex-role">${exEsc(P.role[lang])}</p>
+      <p class="ex-sub">${T.sub}</p>
       <p class="ex-text">${exEsc(P.background[lang])}</p>
       <p class="ex-text">${exEsc(P.about[lang])}</p>
       <p class="ex-skills">${P.skills.map(exEsc).join(' · ')}</p>
@@ -5955,7 +6306,7 @@ window.toggleTerminalMode = function() {
   isTerminalMode = !isTerminalMode;
   if (typeof playSound === 'function') playSound('ui');
 
-  const uiElements = ['portfolio-header', 'unified-hud', 'universe-legend', 'touch-controls', 'legend-sidebar', 'dac-microsite', 'legend-toggle-btn'];
+  const uiElements = ['portfolio-header', 'unified-hud', 'universe-legend', 'touch-controls', 'legend-sidebar', 'dac-microsite', 'legend-toggle-btn', 'btn-sword'];
   const modeBtn = document.getElementById('mode-toggle-btn');
   const T = EX_TEXT[exLang()];
 
@@ -6006,7 +6357,7 @@ function initTerminalMode() {
     terminalStartBtn.id = 'terminal-start-btn';
     terminalStartBtn.innerText = T0().startBtn;
     terminalStartBtn.className = startBtn.className;
-    terminalStartBtn.style.cssText = 'border: 1px solid rgba(255,255,255,0.25); background: transparent; color: #e7e4de; padding: 15px 30px; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 0.78rem; font-weight: 300; text-transform: uppercase; cursor: pointer; letter-spacing: 0.22em; transition: 0.3s; margin-top: 15px; display: none; border-radius: 0;';
+    terminalStartBtn.style.cssText = 'border: 1px solid rgba(255,255,255,0.25); background: transparent; color: #e7e4de; padding: 15px 30px; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 0.78rem; font-weight: 300; text-transform: uppercase; cursor: pointer; letter-spacing: 0.22em; transition: background 0.3s; margin-top: 15px; display: none; border-radius: 0; animation: driftText1 8s ease-in-out infinite alternate;';
     terminalStartBtn.onmouseover = () => { terminalStartBtn.style.background = 'rgba(255,255,255,0.07)'; };
     terminalStartBtn.onmouseout = () => { terminalStartBtn.style.background = 'transparent'; };
     terminalStartBtn.addEventListener('click', (e) => {
@@ -6026,7 +6377,7 @@ function initTerminalMode() {
     // Frase breve bajo los botones: qué es cada modo
     const startHint = document.createElement('p');
     startHint.id = 'ex-start-hint';
-    startHint.style.cssText = 'display: none; max-width: 30rem; margin: 18px auto 0; text-align: center; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 300; font-size: 0.78rem; line-height: 1.7; letter-spacing: 0.04em; color: #8a867f;';
+    startHint.style.cssText = 'display: none; max-width: 30rem; margin: 18px auto 0; text-align: center; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 300; font-size: 0.78rem; line-height: 1.7; letter-spacing: 0.04em; color: #8a867f; animation: driftText2 12s ease-in-out infinite alternate;';
     startScreenContainer.appendChild(startHint);
     exRenderStartHint();
 
