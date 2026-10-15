@@ -149,7 +149,7 @@ async function checkXRSupport() {
                 if (!isMobile && !document.getElementById('ar-desktop-msg')) {
                     const arMsg = document.createElement('div');
                     arMsg.id = 'ar-desktop-msg';
-                    arMsg.innerHTML = '📱 AR disponible SOLO en dispositivos móviles';
+                    arMsg.innerHTML = 'AR disponible SOLO en dispositivos móviles';
                     arMsg.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: rgba(255,255,255,0.04); backdrop-filter: blur(6px); color: #cfcfd8; font-size: 0.7rem; padding: 8px 12px; border-left: 1px solid rgba(255,255,255,0.35); font-family: -apple-system, Helvetica, Arial, sans-serif; letter-spacing: 0.08em; font-weight: 300; z-index: 100000; pointer-events: none; backdrop-filter: blur(5px);';
                     document.body.appendChild(arMsg);
                 }
@@ -586,8 +586,10 @@ function showSystemToast(msg, color) {
   toast.innerText = msg;
   
   // 🔥 ESTILO ETÉREO Y CRISTALINO
-  toast.style.color = color || '#ffffff';
-  toast.style.textShadow = `0 0 15px ${color || '#ffffff'}80`; 
+  // style.css trae `#system-toast { color: #cc0000 !important; text-shadow: none !important }`: un estilo en línea
+  // normal pierde contra eso, por eso todos los avisos salían rojos. Con 'important' manda el color que se pide.
+  toast.style.setProperty('color', color || '#ffffff', 'important');
+  toast.style.setProperty('text-shadow', `0 0 15px ${color || '#ffffff'}80`, 'important'); 
   toast.style.background = 'rgba(5, 5, 10, 0.25)';
   toast.style.backdropFilter = 'blur(12px)';
   toast.style.border = '1px solid rgba(255, 255, 255, 0.05)';
@@ -1778,7 +1780,7 @@ function animateBoss(boss) {
     if (typeof showSystemToast === 'function') {
       const en = window.currentLang === 'en';
       showSystemToast(rage === 1 ? (en ? 'THE CORE DESTABILIZES' : 'EL NÚCLEO SE DESESTABILIZA')
-                                 : (en ? 'CRITICAL CORRUPTION' : 'CORRUPCIÓN CRÍTICA'), '#cc0000');
+                                 : (en ? 'CRITICAL CORRUPTION' : 'CORRUPCIÓN CRÍTICA'), '#fef9f9');
     }
   }
 
@@ -3221,7 +3223,7 @@ xrController1.addEventListener('select', (event) => {
           // Primer toque: Marcar en rojo y avisar
           obj.userData.markedForDeletion = true;
           playSound('ui');
-          showSystemToast('⚠️ TOCA DE NUEVO PARA CONFIRMAR ELIMINACIÓN', '#cc0000');
+          showSystemToast('⚠️ TOCA DE NUEVO PARA CONFIRMAR ELIMINACIÓN', '#fffcfc');
           
           // Cambiar color a rojo táctico temporalmente
           obj.traverse((child) => {
@@ -3780,6 +3782,101 @@ if (readUnlocks().invertedMode && !ACH.got.cartographer) ACH.got.cartographer = 
 const achEsc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const achCount = () => ACHIEVEMENTS.filter(a => ACH.got[a.id]).length;
 
+// ---------- Siluetas y categorías ----------
+// Cada logro tiene su silueta propia (rejilla 24×24, trazo fino y relleno tenue): bloqueado se ve apagada y
+// desbloqueado brilla; en el aviso emergente el contorno se dibuja trazo a trazo.
+const ACH_ICONS = {
+  first:        '<path d="M7 3h7l4 4v14H7z" fill="currentColor" fill-opacity=".12"/><path d="M14 3v4h4"/><circle cx="12.5" cy="14.5" r="1.7"/>',
+  cartographer: '<circle cx="12" cy="12" r="9"/><path d="M15.8 8.2 13.6 13.6 8.2 15.8 10.4 10.4z" fill="currentColor" fill-opacity=".2"/><circle cx="12" cy="12" r=".8" fill="currentColor"/><path d="M12 3v1.8M12 19.2V21M3 12h1.8M19.2 12H21"/>',
+  anomaly:      '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" fill="currentColor" fill-opacity=".1"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r=".9" fill="currentColor"/><path d="M12 1.8v1.9M5 3.8l1.2 1.5M19 3.8l-1.2 1.5"/>',
+  core:         '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.2" fill="currentColor" fill-opacity=".1"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/>',
+  poetica:      '<path d="M12 4 20 18H4z" fill="currentColor" fill-opacity=".1"/><path d="M12 4v9.6M4 18l8-4.4M20 18l-8-4.4"/><circle cx="12" cy="4" r="1.5" fill="currentColor"/><circle cx="20" cy="18" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/>',
+  erratica:     '<path d="M5 5.5h8.5v5.5H5z"/><path d="M10.5 13h8.5v5.5h-8.5z" fill="currentColor" fill-opacity=".16"/><path d="M2.5 9h2M17 8h4M6 20.5h3M14 3h4"/>',
+  friccion:     '<path d="M4.5 20.5h15"/><path d="m7 20.5 1.6-7.5h6.8l1.6 7.5z" fill="currentColor" fill-opacity=".14"/><path d="M10.2 13a1.8 1.8 0 0 1 3.6 0"/><path d="M12 3v5.5M9.5 6.5 12 9l2.5-2.5"/>',
+  trio:         '<circle cx="9" cy="10" r="5"/><circle cx="15" cy="10" r="5"/><circle cx="12" cy="15.5" r="5"/>',
+  retro:        '<rect x="3" y="4" width="18" height="13" rx="2" fill="currentColor" fill-opacity=".08"/><path d="M6.5 8h11M6.5 11h11M6.5 14h7"/><path d="M9 20.5h6M12 17v3.5"/>',
+  painter:      '<path d="M3.5 17c3.2-9.5 6.3 3 9.3-5.5s5.2 2 7.2-4"/><circle cx="20" cy="6" r="1.7" fill="currentColor"/><path d="M4 21h8" opacity=".5"/>',
+  combo:        '<path d="M4 12v0.1M7.3 8.5v7M10.6 4.5v15M13.9 8v8M17.2 6v12M20.2 11v2"/>',
+  boss:         '<path d="M12 2.5 21.5 12 12 21.5 2.5 12z" fill="currentColor" fill-opacity=".1"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/>',
+  untouched:    '<path d="M12 3 19.5 6v5.5c0 4.5-3.2 8-7.5 9.5-4.3-1.5-7.5-5-7.5-9.5V6z" fill="currentColor" fill-opacity=".1"/><path d="m8.8 12 2.4 2.4 4.2-4.8"/>',
+  slash:        '<path d="M20 4 9.5 14.5"/><path d="m7.5 11.5 5 5"/><path d="M9.5 14.5 5.5 18.5"/><circle cx="4.5" cy="19.5" r="1.2"/><path d="M15.5 4.2h-3.2M19.8 8.5v3.2" opacity=".5"/>',
+  dispel:       '<path d="M12 3a9 9 0 0 1 8.4 5.9"/><path d="M20.9 13.6a9 9 0 0 1-6.6 6.9"/><path d="M9.4 20.6A9 9 0 0 1 3.3 10.4"/><circle cx="12" cy="12" r="2.3" fill="currentColor"/><path d="M12 7v1.6M12 15.4V17M7 12h1.6M15.4 12H17"/>',
+  hall:         '<path d="M8 4h8v5a4 4 0 0 1-8 0z" fill="currentColor" fill-opacity=".1"/><path d="M8 6H5v1.5A3 3 0 0 0 8 10.5M16 6h3v1.5A3 3 0 0 1 16 10.5"/><path d="M12 13v4M10 17h4v3.5h-4zM8.5 20.5h7"/>',
+  twoWorlds:    '<circle cx="8.5" cy="12" r="5.5"/><circle cx="15.5" cy="12" r="5.5" fill="currentColor" fill-opacity=".12"/>',
+  reader:       '<path d="M3.5 5.5C6 4.5 9.5 4.5 12 6c2.5-1.5 6-1.5 8.5-.5V19c-2.5-1-6-1-8.5.5-2.5-1.5-6-1.5-8.5-.5z" fill="currentColor" fill-opacity=".08"/><path d="M12 6v13.5"/>',
+  polyglot:     '<path d="M3.5 4.5h11v8H8.5l-3 3v-3h-2z" fill="currentColor" fill-opacity=".1"/><path d="M9.5 14.5v1.5h5l3 3v-3h3v-8h-5"/>',
+  secret:       '<circle cx="12" cy="12" r="9"/><path d="M9.4 9.6a2.6 2.6 0 1 1 3.6 2.4c-.8.4-1 .9-1 1.8"/><circle cx="12" cy="17" r=".9" fill="currentColor"/>',
+  trophy:       '<path d="M8 4h8v5a4 4 0 0 1-8 0z" fill="currentColor" fill-opacity=".1"/><path d="M8 6H5v1.5A3 3 0 0 0 8 10.5M16 6h3v1.5A3 3 0 0 1 16 10.5"/><path d="M12 13v4M10 17h4v3.5h-4zM8.5 20.5h7"/>'
+};
+
+const ACH_CATS = {
+  first: 'explore', cartographer: 'explore', anomaly: 'explore', core: 'explore',
+  poetica: 'create', erratica: 'create', friccion: 'create', trio: 'create', retro: 'create', painter: 'create',
+  combo: 'combat', boss: 'combat', untouched: 'combat', slash: 'combat', dispel: 'combat',
+  hall: 'system', twoWorlds: 'system', reader: 'system', polyglot: 'system'
+};
+const ACH_CAT_LABEL = {
+  explore: { es: 'Exploración', en: 'Exploration' }, create: { es: 'Creación', en: 'Creation' },
+  combat:  { es: 'Combate',     en: 'Combat' },      system: { es: 'Sistema',   en: 'System' }
+};
+function achIconSVG(id) {
+  const inner = (ACH_ICONS[id] || ACH_ICONS.trophy).replace(/<(path|circle|rect|line|ellipse|polyline|polygon)\b/g, '<$1 pathLength="1"');
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${inner}</svg>`;
+}
+
+// ---------- Aviso emergente (estilo Steam, con la estética del universo) ----------
+const achToast = { queue: [], busy: false, overflow: 0 };
+function queueAchievementPopup(def) {
+  if (achToast.queue.length >= 3) { achToast.overflow++; return; } // si llegan muchos de golpe, se resumen en uno
+  achToast.queue.push({ def });
+  pumpAchievementPopups();
+}
+function buildAchievementToast(item) {
+  const en = window.currentLang === 'en';
+  let id, name, desc, cat, reward = '';
+  if (item.summary) {
+    id = 'trophy'; cat = 'system';
+    name = en ? `+${item.summary} more achievements` : `+${item.summary} logros más`;
+    desc = en ? 'Open the panel to see them.' : 'Abre el panel para verlos.';
+  } else {
+    const d = item.def; id = d.id; cat = ACH_CATS[id] || 'system';
+    [name, desc] = en ? d.en : d.es;
+    if (d.reward) reward = en ? d.reward.en : d.reward.es;
+  }
+  const el = document.createElement('div');
+  el.className = 'ach-toast' + (reward ? ' is-reward' : '');
+  el.setAttribute('role', 'status');
+  el.dataset.id = item.summary ? '' : id;
+  el.innerHTML = `<div class="ach-ico">${achIconSVG(id)}</div>
+    <div class="ach-t-body">
+      <span class="ach-t-kicker">${en ? 'Achievement unlocked' : 'Logro desbloqueado'}<span class="ach-t-cat"> · ${achEsc(ACH_CAT_LABEL[cat][en ? 'en' : 'es'])}</span></span>
+      <strong>${achEsc(name)}</strong>
+      <span class="ach-t-desc">${achEsc(desc)}</span>
+      ${reward ? `<em class="ach-t-reward">${achEsc(reward)}</em>` : ''}
+    </div>
+    <span class="ach-t-count">${achCount()}/${ACHIEVEMENTS.length}</span><i class="ach-t-bar"></i>`;
+  return el;
+}
+function pumpAchievementPopups() {
+  if (achToast.busy) return;
+  let next = achToast.queue.shift();
+  if (!next && achToast.overflow > 0) { next = { summary: achToast.overflow }; achToast.overflow = 0; }
+  if (!next) return;
+  achToast.busy = true;
+  const el = buildAchievementToast(next);
+  const life = (next.def && next.def.reward) ? 6800 : 5200;
+  el.style.setProperty('--life', life + 'ms');
+  document.body.appendChild(el);
+  let closed = false;
+  const close = () => {
+    if (closed) return; closed = true;
+    el.classList.add('is-out');
+    setTimeout(() => { el.remove(); achToast.busy = false; pumpAchievementPopups(); }, 450);
+  };
+  el.addEventListener('click', () => { const id = el.dataset.id; close(); openAchievements(id || undefined); });
+  setTimeout(close, life);
+}
+
 (function injectAchievementsStyle() {
   if (document.getElementById('ach-style')) return;
   const s = document.createElement('style');
@@ -3791,6 +3888,50 @@ const achCount = () => ACHIEVEMENTS.filter(a => ACH.got[a.id]).length;
     #ach-panel .ach-box { position: relative; width: min(640px, 100%); max-height: 88vh; overflow-y: auto; padding: 38px 34px 30px; border-radius: 14px;
       border: 1px solid rgba(255,255,255,0.12); background: rgba(10,10,14,0.94); color: #d9d9e0; touch-action: pan-y; user-select: text; -webkit-user-select: text;
       font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 300; scrollbar-width: thin; scrollbar-color: #2a2a2a transparent; }
+
+    /* Silueta (marco + dibujo) compartida por el panel y el aviso */
+    .ach-ico { flex: none; display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 14px; color: #fff;
+      border: 1px solid rgba(255,255,255,0.24); background: rgba(255,255,255,0.03); box-shadow: 0 0 18px rgba(255,255,255,0.13), inset 0 0 14px rgba(255,255,255,0.06); }
+    .ach-ico svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.15; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+
+    /* Aviso emergente: abajo al centro en escritorio; en móvil, sobre los controles táctiles y sin tapar la columna de botones de la derecha */
+    .ach-toast { position: fixed; left: 50%; bottom: 54px; z-index: 100030; width: min(440px, 92vw); box-sizing: border-box; display: flex; align-items: center; gap: 14px;
+      padding: 14px 18px 17px 14px; border-radius: 16px; overflow: hidden; cursor: pointer; transform: translateX(-50%);
+      border: 1px solid rgba(255,255,255,0.14); background: rgba(8,8,12,0.9); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 18px 50px rgba(0,0,0,0.55), 0 0 30px rgba(255,255,255,0.06);
+      color: #d9d9e0; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 300;
+      animation: achIn .7s cubic-bezier(.2,.9,.2,1) both; }
+    .ach-toast.is-out { animation: achOut .45s ease-in both; }
+    .ach-toast.is-reward { border-color: rgba(160,250,255,0.4); box-shadow: 0 18px 50px rgba(0,0,0,0.55), 0 0 40px rgba(120,240,255,0.16); }
+    .ach-toast::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.1) 50%, transparent 65%);
+      transform: translateX(-120%); animation: achShine 1.6s ease-out .5s 1 both; }
+    .ach-toast .ach-ico { animation: achGlow 2.6s ease-in-out .9s 2; }
+    .ach-toast .ach-ico svg * { stroke-dasharray: 1; stroke-dashoffset: 1; animation: achDraw .95s ease-out .35s forwards; }
+    .ach-t-body { min-width: 0; flex: 1; }
+    .ach-t-kicker { display: block; font-size: .6rem; letter-spacing: .24em; text-transform: uppercase; color: #8c8c99; margin-bottom: 2px; }
+    .ach-toast strong { display: block; font-weight: 300; font-size: 1.05rem; letter-spacing: .1em; color: #fff; text-shadow: 0 0 18px rgba(255,255,255,0.25); }
+    .ach-t-desc { display: block; font-size: .8rem; color: #9a9aa8; line-height: 1.35; }
+    .ach-t-reward { display: block; margin-top: 4px; font-style: normal; font-size: .72rem; letter-spacing: .1em; color: #9ffaff; }
+    .ach-t-count { align-self: flex-start; font-size: .62rem; letter-spacing: .18em; color: #77778a; }
+    .ach-t-bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: rgba(255,255,255,0.7); transform-origin: left; animation: achBar var(--life, 5200ms) linear forwards; }
+    @keyframes achIn { from { opacity: 0; transform: translate(-50%, 24px) scale(.97); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+    @keyframes achOut { to { opacity: 0; transform: translate(-50%, 14px) scale(.98); } }
+    @keyframes achShine { to { transform: translateX(120%); } }
+    @keyframes achDraw { to { stroke-dashoffset: 0; } }
+    @keyframes achGlow { 0%, 100% { box-shadow: 0 0 18px rgba(255,255,255,0.13), inset 0 0 14px rgba(255,255,255,0.06); } 50% { box-shadow: 0 0 34px rgba(255,255,255,0.4), inset 0 0 18px rgba(255,255,255,0.14); } }
+    @keyframes achBar { to { transform: scaleX(0); } }
+    @media (max-width: 768px) {
+      .ach-toast { left: 12px; right: 72px; bottom: 118px; width: auto; transform: none; }
+      .ach-t-kicker { font-size: .56rem; letter-spacing: .16em; white-space: nowrap; }
+      .ach-t-cat { display: none; } /* en móvil no cabe la categoría junto al rótulo */
+      @keyframes achIn { from { opacity: 0; transform: translateY(24px) scale(.97); } to { opacity: 1; transform: none; } }
+      @keyframes achOut { to { opacity: 0; transform: translateY(14px) scale(.98); } }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ach-toast, .ach-toast *, .ach-toast::after { animation: none !important; }
+      .ach-toast .ach-ico svg * { stroke-dashoffset: 0; }
+    }
+
     #ach-panel .ach-eyebrow { margin: 0 0 .6rem; font-size: .7rem; letter-spacing: .3em; text-transform: uppercase; color: #888899; }
     #ach-panel h2 { margin: 0 0 .3rem; font-weight: 300; font-size: 1.6rem; letter-spacing: .22em; text-transform: uppercase; color: #fff; text-shadow: 0 0 24px rgba(255,255,255,.14); }
     #ach-panel .ach-sub { margin: 0 0 1.4rem; color: #8c8c99; font-size: .85rem; letter-spacing: .06em; }
@@ -3798,12 +3939,16 @@ const achCount = () => ACHIEVEMENTS.filter(a => ACH.got[a.id]).length;
     #ach-panel .ach-bar { height: 2px; margin: .5rem 0 1.4rem; background: rgba(255,255,255,0.1); }
     #ach-panel .ach-bar i { display: block; height: 100%; background: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.6); transition: width .5s ease; }
     #ach-panel ul { list-style: none; margin: 0; padding: 0; }
-    #ach-panel .ach-item { display: grid; grid-template-columns: 1.6rem 1fr; gap: 0 .6rem; padding: .85rem 0; border-top: 1px solid rgba(255,255,255,0.07); opacity: .42; transition: opacity .3s; }
+    #ach-panel .ach-item { display: grid; grid-template-columns: 52px 1fr; gap: 0 .95rem; align-items: center; padding: .8rem 0; border-top: 1px solid rgba(255,255,255,0.07); opacity: .5; transition: opacity .3s; }
+    #ach-panel .ach-item:not(.is-got) .ach-ico { color: #7d7d8a; border-color: rgba(255,255,255,0.09); box-shadow: none; }
+    #ach-panel .ach-item.is-flash { animation: achFlash 1.8s ease-out 1; }
+    @keyframes achFlash { 0% { background: rgba(255,255,255,0.16); } 100% { background: transparent; } }
     #ach-panel .ach-item.is-got { opacity: 1; }
-    #ach-panel .ach-mark { color: #fff; font-size: .9rem; line-height: 1.6; }
     #ach-panel strong { display: block; font-weight: 400; letter-spacing: .08em; color: #f2f2f6; }
     #ach-panel .ach-item span.ach-desc { display: block; font-size: .85rem; color: #9a9aa8; }
     #ach-panel .ach-item em { display: block; margin-top: .2rem; font-style: normal; font-size: .76rem; letter-spacing: .08em; color: #9ffaff; }
+    #ach-panel h3.ach-cat { display: flex; justify-content: space-between; }
+    #ach-panel h3.ach-cat span { letter-spacing: .12em; color: #6d6d7a; }
     #ach-panel h3 { margin: 1.8rem 0 .4rem; font-weight: 300; font-size: .72rem; letter-spacing: .26em; text-transform: uppercase; color: #888899; }
     #ach-panel .ach-reward { display: grid; grid-template-columns: 1.6rem 1fr auto; gap: 0 .6rem; align-items: center; padding: .8rem 0; border-top: 1px solid rgba(255,255,255,0.07); }
     #ach-panel .ach-reward small { display: block; color: #8c8c99; font-size: .8rem; }
@@ -3827,7 +3972,7 @@ function unlockAchievement(id) {
   ACH.got[id] = Date.now();
   const u = readUnlocks(); u.ach = ACH.got; writeUnlocks(u);
   const en = window.currentLang === 'en';
-  if (typeof showSystemToast === 'function') showSystemToast(`✦ ${en ? 'ACHIEVEMENT' : 'LOGRO'}: ${(en ? def.en : def.es)[0]}`, '#ffffff');
+  queueAchievementPopup(def);
   if (typeof playSound === 'function') playSound('levelup');
   if (window.trackEvent) window.trackEvent('Logro', id);
   if (id === 'cartographer') grantInvertedMode();
@@ -3908,12 +4053,17 @@ function renderAchievementsPanel() {
   const p = document.getElementById('ach-panel'); if (!p) return;
   const en = window.currentLang === 'en';
   const got = achCount(), total = ACHIEVEMENTS.length;
-  const rows = ACHIEVEMENTS.map(a => {
+  const rowHTML = (a) => {
     const has = !!ACH.got[a.id], hidden = a.secret && !has;
     const [name, desc] = en ? a.en : a.es;
     const reward = a.reward ? (en ? a.reward.en : a.reward.es) : '';
-    return `<li class="ach-item${has ? ' is-got' : ''}"><span class="ach-mark" aria-hidden="true">${has ? '✦' : '·'}</span><div>
+    return `<li class="ach-item${has ? ' is-got' : ''}" data-id="${a.id}"><span class="ach-ico" aria-hidden="true">${achIconSVG(hidden ? 'secret' : a.id)}</span><div>
       <strong>${achEsc(hidden ? '???' : name)}</strong><span class="ach-desc">${achEsc(hidden ? (en ? 'A secret of the universe.' : 'Un secreto del universo.') : desc)}</span>${reward ? `<em>${achEsc(reward)}</em>` : ''}</div></li>`;
+  };
+  const rows = ['explore', 'create', 'combat', 'system'].map(cat => {
+    const items = ACHIEVEMENTS.filter(a => ACH_CATS[a.id] === cat);
+    const n = items.filter(a => ACH.got[a.id]).length;
+    return `<h3 class="ach-cat">${achEsc(ACH_CAT_LABEL[cat][en ? 'en' : 'es'])} <span>${n}/${items.length}</span></h3><ul>${items.map(rowHTML).join('')}</ul>`;
   }).join('');
   const inverted = document.body.classList.contains('inverted-mode');
   const rewards = [];
@@ -3927,18 +4077,23 @@ function renderAchievementsPanel() {
       <h2 id="ach-title">${en ? 'Achievements' : 'Logros'}</h2>
       <p class="ach-sub">${en ? 'What the universe remembers about you.' : 'Lo que el universo recuerda de ti.'}</p>
       <p class="ach-count">${got} / ${total}</p><div class="ach-bar"><i style="width:${Math.round((got / total) * 100)}%"></i></div>
-      <ul>${rows}</ul>
+      ${rows}
       ${rewards.length ? `<h3>${en ? 'Rewards' : 'Recompensas'}</h3><ul>${rewards.join('')}</ul>` : ''}
     </div>`;
 }
-function openAchievements() {
-  if (ACH.open) return;
+function openAchievements(focusId) {
   const p = buildAchievementsPanel();
-  ACH.open = true; isUIOpen = true;
-  renderAchievementsPanel();
-  p.hidden = false;
-  const c = p.querySelector('.ach-close'); if (c) c.focus();
-  if (typeof playSound === 'function') playSound('ui');
+  if (!ACH.open) {
+    ACH.open = true; isUIOpen = true;
+    renderAchievementsPanel();
+    p.hidden = false;
+    const c = p.querySelector('.ach-close'); if (c) c.focus();
+    if (typeof playSound === 'function') playSound('ui');
+  }
+  if (focusId) { // desde el aviso: lleva al logro y lo resalta
+    const li = p.querySelector(`.ach-item[data-id="${focusId}"]`);
+    if (li) { li.scrollIntoView({ block: 'center' }); li.classList.remove('is-flash'); void li.offsetWidth; li.classList.add('is-flash'); }
+  }
 }
 function closeAchievements() {
   const p = document.getElementById('ach-panel');
@@ -5002,7 +5157,7 @@ if (isAR && frame && hitTestSource) {
             hasShield = false; shieldMesh.visible = false; playSound('explosion', ship.position); shakeIntensity = 0.5; createExplosion(a.position.x, a.position.y, a.position.z); scene.remove(a); asteroids.splice(i, 1); 
           } else { 
             shakeIntensity = 0.8; playSound('damage', ship.position); createExplosion(ship.position.x, ship.position.y, ship.position.z, 1.6, 0xff8888); 
-showSystemToast('IMPACTO DETECTADO. DAÑO ESTRUCTURAL.', '#cc0000');
+showSystemToast('IMPACTO DETECTADO. DAÑO ESTRUCTURAL.', '#fcf6f6');
 shipBody.material.uniforms.color.value.setHex(0xff0000); 
 setTimeout(() => shipBody.material.uniforms.color.value.setHex(0xffffff), 200);            scene.remove(a); asteroids.splice(i, 1); 
             playerLives--; updateLivesUI(); if(playerLives <= 0) triggerGameOver();
@@ -5040,7 +5195,7 @@ setTimeout(() => shipBody.material.uniforms.color.value.setHex(0xffffff), 200); 
             shipBody.material.uniforms.color.value.setHex(0xff0000); setTimeout(() => shipBody.material.uniforms.color.value.setHex(0xffffff), 200);
             playerLives--; if(typeof updateLivesUI === 'function') updateLivesUI(); if(playerLives <= 0) triggerGameOver();
 if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 5);    
-        showSystemToast('IMPACTO: POTENCIA DE ARMA REDUCIDA', '#cc0000');
+        showSystemToast('IMPACTO: POTENCIA DE ARMA REDUCIDA', '#f8f0f0');
           }
           createExplosion(f.position.x, f.position.y, f.position.z); scene.remove(f); fighters.splice(i, 1);
           continue;
@@ -5314,7 +5469,7 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
              secretDiscovered = true; 
              planet.visible = true;
              playSound('boss_hit'); 
-showSystemToast('ANOMALÍA DETECTADA A TUS ESPALDAS', '#cc0000');           }
+showSystemToast('ANOMALÍA DETECTADA A TUS ESPALDAS', '#efeaea');           }
         }
 
         if (!secretDiscovered) {
@@ -5666,6 +5821,8 @@ const dict = {
     startBtn: "> EXPLORAR PORTAFOLIO _",
     skipBtn: "[ JUGAR MINIJUEGO ARCADIA ]",
     files: "ARCHIVOS",
+    hudLives: "VIDAS",
+    hudFiles: "ARCHIVOS",
     menuSys: "SISTEMA",
     menuProfile: "> Perfil_Usuario",
     menuContact: "> Enviar Transmisión",
@@ -5696,6 +5853,8 @@ const dict = {
     startBtn: "> EXPLORE PORTFOLIO _",
     skipBtn: "[ PLAY ARCADIA MINIGAME ]",
     files: "FILES",
+    hudLives: "LIVES",
+    hudFiles: "FILES",
     menuSys: "SYSTEM",
     menuProfile: "> User_Profile",
     menuContact: "> Send Transmission",
@@ -5735,8 +5894,8 @@ document.getElementById('lang-toggle-btn')?.addEventListener('click', (e) => {
   const lang = dict[window.currentLang];
   if(document.getElementById('start-btn')) document.getElementById('start-btn').innerText = lang.startBtn;
   if(document.getElementById('skip-btn')) document.getElementById('skip-btn').innerText = lang.skipBtn;
-  if(document.getElementById('label-lives')) document.getElementById('label-lives').innerText = lang.hudLives;
-  if(document.getElementById('label-files')) document.getElementById('label-files').innerText = lang.hudFiles;  
+  if(document.getElementById('label-lives')) document.getElementById('label-lives').innerText = lang.hudLives || 'VIDAS';
+  if(document.getElementById('label-files')) document.getElementById('label-files').innerText = lang.hudFiles || 'ARCHIVOS';  
   if(document.getElementById('menu-about')) document.getElementById('menu-about').innerText = lang.menuProfile;
   if(document.getElementById('menu-contact')) document.getElementById('menu-contact').innerText = lang.menuContact;
   if(document.getElementById('menu-leaderboard')) document.getElementById('menu-leaderboard').innerText = lang.menuLeaderboard; // 🔥 NUEVO
@@ -5886,7 +6045,7 @@ function validateContactForm() {
   const isMsgValid = msgInput.value.trim().length >= 10; 
   
   const applyStyle = (el, isValid) => {
-    const color = isValid ? '#00ffaa' : (el.value.trim().length > 0 ? '#cc0000' : 'rgba(255,255,255,0.2)');
+    const color = isValid ? '#00ffaa' : (el.value.trim().length > 0 ? '#f6efef' : 'rgba(255,255,255,0.2)');
     el.style.setProperty('border-color', color, 'important');
     el.style.setProperty('box-shadow', isValid ? '0 0 5px rgba(0,255,170,0.3)' : 'none', 'important');
   };
@@ -5904,8 +6063,8 @@ function validateContactForm() {
   } else {
     submitBtn.disabled = true;
     submitBtn.style.setProperty('opacity', '0.4', 'important');
-    submitBtn.style.setProperty('border-color', '#cc0000', 'important');
-    submitBtn.style.setProperty('color', '#cc0000', 'important');
+    submitBtn.style.setProperty('border-color', '#f1eaea', 'important');
+    submitBtn.style.setProperty('color', '#fcf6f6', 'important');
     submitBtn.style.setProperty('background', 'transparent', 'important');
   }
 }
@@ -6198,6 +6357,7 @@ window.addEventListener('click', (e) => {
   const s = document.createElement('style');
   s.id = 'sublime-skin';
   s.textContent = `
+  
     #menu-toggle, #lang-toggle-btn, #combat-toggle-btn, #ARButton, #VRButton {
       background: rgba(255,255,255,0.02) !important;
       border: 1px solid rgba(255,255,255,0.16) !important;
@@ -6213,7 +6373,6 @@ window.addEventListener('click', (e) => {
       background: rgba(255,255,255,0.09) !important; color: #ffffff !important;
       border-color: rgba(255,255,255,0.5) !important; box-shadow: 0 0 24px rgba(255,255,255,0.12) !important;
     }
-    /* ▶ / ⏸: el estado de combate se indica con un rojo tenue en vez de verde/rojo neón */
     #combat-toggle-btn.is-combat { border-color: rgba(255,150,150,0.6) !important; color: #ffd0d0 !important; box-shadow: 0 0 22px rgba(255,90,90,0.22) !important; }
 
     #portfolio-header { color: #f4f4f7 !important; font-weight: 300 !important; font-size: 0.95rem !important; letter-spacing: 0.32em !important;
@@ -6225,14 +6384,22 @@ window.addEventListener('click', (e) => {
     #universe-legend, #universe-legend * { font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif !important; letter-spacing: 0.1em; }
     #universe-legend #legend-header * { color: #aaaab6 !important; }
 
+    /* 🔥 FIX MÓVIL: Posiciones estrictas para que no choquen con el texto de scroll */
     #btn-recenter, #helpBtn {
+      position: fixed !important; 
+      right: 20px !important;
+      width: 40px !important; height: 40px !important; z-index: 9999 !important; 
+      display: flex !important; align-items: center !important; justify-content: center !important;
       border-radius: 50% !important; background: rgba(255,255,255,0.03) !important; border: 1px solid rgba(255,255,255,0.16) !important;
       color: #dcdce2 !important; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif !important; font-weight: 300 !important;
       backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transition: background .35s ease, border-color .35s ease, box-shadow .35s ease !important;
     }
+    #btn-recenter { bottom: 85px !important; }
+    #helpBtn { bottom: 35px !important; }
+    #scroll-hint { bottom: 45px !important; z-index: 9998 !important; pointer-events: none; }
+
     #btn-recenter:hover, #helpBtn:hover { background: rgba(255,255,255,0.09) !important; border-color: rgba(255,255,255,0.5) !important; box-shadow: 0 0 24px rgba(255,255,255,0.12) !important; }
 
-    /* Controles táctiles: antes verdes y un disparo amarillo; ahora cristal blanco */
     #btn-left, #btn-right, #btn-shoot {
       background: rgba(255,255,255,0.04) !important; border: 1px solid rgba(255,255,255,0.22) !important; color: #e6e6ec !important;
       backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 0 26px rgba(255,255,255,0.05) !important;
@@ -6242,12 +6409,23 @@ window.addEventListener('click', (e) => {
     #btn-left:active, #btn-right:active { background: rgba(255,255,255,0.18) !important; }
     #btn-shoot:active { background: rgba(255,255,255,0.28) !important; box-shadow: 0 0 34px rgba(255,255,255,0.22) !important; }
 
-    /* Botón del tajo (aparece al desbloquear la espada de pulsos) */
+    /* HUD en pantallas estrechas: antes COMBO quedaba cortado por la derecha */
+    @media (max-width: 520px) {
+      /* style.css deja min-width: 400px: en pantallas de 390/360 px el HUD se salía del borde */
+      #unified-hud { box-sizing: border-box !important; min-width: 0 !important; width: 98vw !important; max-width: 98vw !important; padding: 5px 8px !important; justify-content: space-between !important; gap: 0 !important; }
+      #unified-hud .hud-item { padding: 0 3px !important; margin: 0 !important; min-width: 0 !important; }
+      #unified-hud .hud-item:last-child { padding-left: 8px !important; margin-left: 2px !important; }
+      #unified-hud .hud-label { letter-spacing: 1px !important; font-size: 0.5rem !important; }
+      #unified-hud .hud-val { font-size: 0.8rem !important; letter-spacing: 0 !important; }
+      #portfolio-header { font-size: 0.8rem !important; letter-spacing: 0.18em !important; white-space: nowrap; }
+      #portfolio-header span { font-size: 0.58rem !important; letter-spacing: 0.14em !important; }
+    }
+
     #btn-sword { position: fixed; right: 25px; bottom: 205px; box-sizing: border-box; width: 40px !important; height: 40px !important; min-width: 0 !important; padding: 0 !important; display: flex; align-items: center; justify-content: center;
       border-radius: 50% !important; background: rgba(255,255,255,0.03) !important; border: 1px solid rgba(160,250,255,0.35) !important; color: #bff9ff !important;
       cursor: pointer; z-index: 10001; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
       transition: box-shadow .3s ease, border-color .3s ease, background .3s ease !important; }
-    @media (max-width: 768px) { #btn-sword { bottom: 225px; } } /* sobre recentrar (175px) y ayuda (125px) en móvil */
+    @media (max-width: 768px) { #btn-sword { bottom: 145px !important; } } 
     #btn-sword svg { flex: none; width: 20px; height: 20px; }
     #btn-sword:hover { background: rgba(160,250,255,0.12) !important; }
     #btn-sword.is-ready { border-color: rgba(160,250,255,0.9) !important; animation: swordReady 2.2s ease-in-out infinite alternate; }
@@ -6348,11 +6526,26 @@ const EX_CSS = `
   .ex-status[data-state="ok"] { color: #b9c8b0; }
   .ex-status[data-state="err"] { color: #d1a6a0; }
   .ex-foot { margin-top: 7rem; color: #55524d; font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; }
-  @media (max-width: 640px) {
+ @media (max-width: 768px) {
     .ex-wrap { padding: 5.2rem 1.25rem 5rem; }
     .ex-mark { display: none; }
     .ex-bar { margin-bottom: 3rem; }
     .ex-section { margin-top: 4.5rem; }
+    
+    /* 🔥 FIX MÓVIL: Reposicionamos el botón debajo del HUD superior */
+    #mode-toggle-btn { 
+      top: 140px !important; 
+      bottom: auto !important; 
+      left: 50% !important; 
+      right: auto !important; 
+      transform: translateX(-50%) !important;
+      white-space: nowrap !important;
+      font-size: 0.7rem !important;
+      padding: 8px 18px !important;
+      border-radius: 20px !important;
+      background: rgba(10,10,12,0.85) !important;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.5) !important;
+    }
   }
   @media (prefers-reduced-motion: reduce) { #terminal-container * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
 `;
