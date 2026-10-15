@@ -363,7 +363,21 @@ body.retro-mode button, body.retro-mode .control-btn { background: #fff !importa
     background: rgba(10, 10, 10, 0.8) !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; box-sizing: border-box !important;
     font-family: 'Share Tech Mono', monospace !important; color: #cccccc !important; z-index: 10001 !important; text-shadow: none !important;
   }
-  
+  /* 🔥 FIX: ELIMINA LA BARRA GRIS O FANTASMAS DETRÁS DE LOS BOTONES */
+.controls-container, #top-controls, .button-row, .hud-wrapper, 
+div[style*="background: rgba(5, 5, 5, 0.9)"] { /* Apunta a contenedores sospechosos */
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Forzamos a que el contenedor específico del HUD y controles flote sin fondo */
+#unified-hud {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
   /* Textos AR/VR Inyectados */
   #ARButton, #VRButton { color: transparent !important; overflow: hidden !important; white-space: nowrap !important; }
   #ARButton::after { content: 'AR'; color: #ffffff !important; position: absolute; font-size: 0.8rem !important; font-weight: bold !important; text-shadow: none !important; }

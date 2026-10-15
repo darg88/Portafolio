@@ -149,7 +149,7 @@ async function checkXRSupport() {
                 if (!isMobile && !document.getElementById('ar-desktop-msg')) {
                     const arMsg = document.createElement('div');
                     arMsg.id = 'ar-desktop-msg';
-                    arMsg.innerHTML = 'AR disponible SOLO en dispositivos móviles';
+                    arMsg.innerHTML = '📱 AR disponible SOLO en dispositivos móviles';
                     arMsg.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: rgba(255,255,255,0.04); backdrop-filter: blur(6px); color: #cfcfd8; font-size: 0.7rem; padding: 8px 12px; border-left: 1px solid rgba(255,255,255,0.35); font-family: -apple-system, Helvetica, Arial, sans-serif; letter-spacing: 0.08em; font-weight: 300; z-index: 100000; pointer-events: none; backdrop-filter: blur(5px);';
                     document.body.appendChild(arMsg);
                 }
@@ -745,20 +745,9 @@ function updateProgress(id) {
   } 
 }
 
+// Al llegar a 13/13 se otorga el logro «Cartógrafo»; su recompensa (modo invertido) vive en el menú lateral y el panel de logros.
 function unlockInvertedMode() {
-showSystemToast('ANOMALÍA DETECTADA A TUS ESPALDAS', '#cc0000');  playSound('levelup');
-  
-  // Crear el botón de recompensa flotante
-  const btn = document.createElement('button');
-  btn.innerHTML = '☯ MODO INVERTIDO';
-  btn.style.cssText = "position: fixed; bottom: 20px; left: 20px; z-index: 100000; background: #00ffff; color: #000; border: none; padding: 10px 15px; font-family: 'Share Tech Mono', monospace; font-weight: bold; cursor: pointer; box-shadow: 0 0 15px #00ffff;";
-  
-  btn.onclick = () => {
-    document.body.classList.toggle('inverted-mode');
-    playSound('ui');
-    btn.innerHTML = document.body.classList.contains('inverted-mode') ? '☾ MODO OSCURO' : '☯ MODO INVERTIDO';
-  };
-  document.body.appendChild(btn);
+  unlockAchievement('cartographer');
 }
 // 🔥 2. ARRANQUE FORZADO ANTIBLOQUEOS
 const manager = new THREE.LoadingManager(); 
@@ -777,26 +766,30 @@ let voyagerModelTemplate = null;
 let gamberModelTemplate = null;
 let chaplinModelTemplate = null;
 
-function createTextSprite(message, colorHex = "#ffffff") { 
+function createTextSprite(message, colorHex = "#ffffff", fontPx = 35) { 
   const canvas = document.createElement('canvas'); 
   const context = canvas.getContext('2d'); 
   canvas.width = 1024; canvas.height = 256; 
   context.clearRect(0, 0, canvas.width, canvas.height);
   
-  // 🔥 Tipografía más técnica y delgada
-  context.font = "35px 'Share Tech Mono', monospace"; 
+  context.font = `${fontPx}px 'Share Tech Mono', monospace`; 
   context.textAlign = "center"; context.textBaseline = "middle"; 
-  
-  // 🔥 Quitamos las sombras pesadas
-  context.shadowColor = "transparent"; context.shadowBlur = 0;
-  
-  // 🔥 Color blanco técnico
-  context.fillStyle = "rgba(255, 255, 255, 0.85)"; 
+
+  // 🔥 LEGIBILIDAD: el texto era blanco puro sin contorno y desaparecía sobre planetas claros
+  // (amarillo, gris, magenta). Un contorno oscuro redondeado + un halo suave lo separan de
+  // cualquier fondo, sin cambiar la tipografía delgada.
+  context.lineJoin = "round"; context.miterLimit = 2;
+  context.shadowColor = "rgba(0, 0, 0, 0.8)"; context.shadowBlur = Math.round(fontPx * 0.22);
+  context.lineWidth = Math.max(4, Math.round(fontPx * 0.2));
+  context.strokeStyle = "rgba(0, 0, 0, 0.9)";
+  context.strokeText(message, 512, 128);
+  context.shadowBlur = 0;
+  context.fillStyle = "rgba(255, 255, 255, 0.95)"; 
   context.fillText(message, 512, 128); 
   
   const texture = new THREE.CanvasTexture(canvas); 
   texture.minFilter = THREE.LinearFilter; 
-const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0.95, depthTest: false });
+  const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0.95, depthTest: false });
   const sprite = new THREE.Sprite(spriteMat); 
   sprite.scale.set(16, 4, 1); sprite.userData = { id: Math.random() }; 
   return sprite; 
@@ -1515,7 +1508,7 @@ dacNetworkGroup.add(dacLines);
 const dacConceptos = ["Autopoiesis", "Ana-arqueología", "Saber-del-cuerpo", "Fricción", "Glitch", "Cacharreo", "Soberanía"];
 const dacWords = [];
 dacConceptos.forEach(txt => {
-  const sp = createTextSprite(txt, '#00ffff');
+  const sp = createTextSprite(txt, '#00ffff', 56);
   // 🔥 ESPACIO: Aumentamos el área de aparición (50 de ancho, 35 de alto) para que rieguen por toda la pantalla
   sp.position.set((Math.random()-0.5)*50, (Math.random()-0.5)*35, 2);
   // 🔥 ESCALA CORREGIDA: Proporción 4:1 (32x8) exacta al canvas, para que dejen de verse aplastadas
@@ -1526,6 +1519,42 @@ dacConceptos.forEach(txt => {
   dacNetworkGroup.add(sp);
   dacWords.push(sp);
 });
+
+// 🔥 Reparte las palabras clave por TODA la pantalla mientras se está dentro del planeta DAC.
+// Antes nacían en posiciones aleatorias dentro del planeta (se amontonaban y se pisaban) y, como
+// son hijas del planeta, giraban con él. Ahora se calcula, en cada cuadro, una posición fija en
+// pantalla (casillas repartidas por el borde, o en zigzag en vertical) y se convierte a
+// coordenadas locales del planeta: la rotación del DAC no las mueve.
+const _dacTmp = { cam: new THREE.Vector3(), fwd: new THREE.Vector3(), right: new THREE.Vector3(), up: new THREE.Vector3(), w: new THREE.Vector3() };
+function layoutDacWords() {
+  if (!dacWords.length) return null;
+  planetaDAC.updateWorldMatrix(true, false);
+  camera.updateWorldMatrix(true, false);
+  const t = _dacTmp;
+  camera.getWorldPosition(t.cam);
+  camera.getWorldDirection(t.fwd);
+  t.right.setFromMatrixColumn(camera.matrixWorld, 0).normalize();
+  t.up.setFromMatrixColumn(camera.matrixWorld, 1).normalize();
+  const depth = Math.max(8, t.cam.distanceTo(planetaDAC.position) - 2);
+  const hH = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * depth;
+  const hW = hH * camera.aspect;
+  const portrait = camera.aspect < 1;
+  const slots = portrait
+    ? [[-0.38, 0.78], [0.38, 0.52], [-0.38, 0.26], [0.38, 0.0], [-0.38, -0.26], [0.38, -0.52], [-0.38, -0.78]]
+    : [[-0.6, 0.62], [0.02, 0.8], [0.62, 0.6], [-0.76, 0.0], [0.76, 0.04], [-0.5, -0.66], [0.48, -0.72]];
+  const W = portrait ? hW * 2.0 : Math.min(hW * 0.95, hH * 2.2); // ancho del sprite (4:1)
+  const k = 1 / (planetaDAC.scale.x || 1);
+  dacWords.forEach((word, i) => {
+    const s = slots[i % slots.length];
+    t.w.copy(t.cam).addScaledVector(t.fwd, depth).addScaledVector(t.right, s[0] * hW * 0.92).addScaledVector(t.up, s[1] * hH * 0.92);
+    planetaDAC.worldToLocal(t.w);
+    word.userData.basePos.copy(t.w);
+    word.position.x = t.w.x;
+    word.position.z = t.w.z;
+    word.scale.set(W * k, (W / 4) * k, 1);
+  });
+  return { hW, hH };
+}
 
 dacNetworkGroup.visible = false;
 
@@ -2168,6 +2197,17 @@ function startPointerDown(clientX, clientY) {
   // Agregamos window.travelerGroup a los objetos agarrables
 const grabTargets = [...categoryPlanets, ...ambientWhales, ...guardianCats, ...discoveredVoyagers, window.travelerGroup];
   const intersects = dragRaycaster.intersectObjects(grabTargets, true);
+  // 🔥 El DAC también se arrastra en modo constelación. Solo se prueba contra su núcleo (sin sus hijos: la red
+  // de palabras invisible tiene sprites enormes que agarrarían el planeta desde cualquier sitio). En zoom
+  // (aislado) NO se agarra: ahí arrastrar sigue ROTANDO el planeta, como antes.
+  if (typeof planetaDAC !== 'undefined' && !planetaDAC.userData.isIsolated && !isAligned) {
+    const dacHit = dragRaycaster.intersectObject(planetaDAC, false);
+    if (dacHit.length > 0 && (intersects.length === 0 || dacHit[0].distance < intersects[0].distance)) {
+      draggedPlanet = planetaDAC;
+      if (navigator.vibrate) vibrateDevice(50);
+      return;
+    }
+  }
   
   if (intersects.length > 0) {
     let hit = intersects[0].object;
@@ -2205,6 +2245,10 @@ function handlePointerMove(clientX, clientY) {
       
       draggedPlanet.position.add(moveVector);
       draggedPlanet.userData.baseY = draggedPlanet.position.y;
+      if (typeof planetaDAC !== 'undefined' && draggedPlanet === planetaDAC) { // el DAC tiende a su posición guardada: que la siga
+        if (!planetaDAC.userData.savedPos) planetaDAC.userData.savedPos = new THREE.Vector3();
+        planetaDAC.userData.savedPos.copy(planetaDAC.position);
+      }
       
       if (draggedPlanet.userData.randomPos) {
         draggedPlanet.userData.randomPos.copy(draggedPlanet.position);
@@ -3615,6 +3659,8 @@ function performSwordSlash() {
   ps.slash = null;
   if (!ps.equipped) equipPulseSword();
   const off = deactivateCreativeModes();
+  unlockAchievement('slash');
+  if (off.length) unlockAchievement('dispel');
   const sw = window.travelerSword;
   ps.slash = { start: performance.now(), dur: 520, base: sw ? sw.rotation.z : Math.PI / -6 };
 
@@ -3667,6 +3713,7 @@ function unlockPulseSword() {
   if (ps.unlocked) return;
   ps.unlocked = true;
   const u = readUnlocks(); u.pulseSword = true; writeUnlocks(u);
+  unlockAchievement('boss');
   setTimeout(() => {
     equipPulseSword();
     ensureSwordButton();
@@ -3691,6 +3738,249 @@ window.addEventListener('keydown', (e) => {
     performSwordSlash();
   }
 });
+
+
+// ============================================================
+// ✦ LOGROS
+// ------------------------------------------------------------
+//  • Reúnen lo que antes eran premios sueltos: el MODO INVERTIDO (antes un botón cian flotante que
+//    aparecía al encontrar los 13 archivos) y la ESPADA DE PULSOS (al vencer al Núcleo corrupto).
+//    Ahora son las recompensas de dos logros y se gestionan desde el menú lateral y el panel.
+//  • Se guardan en localStorage ('gamelab_unlocks' → ach). Los de estado se detectan cada 700 ms
+//    sin tocar los manejadores existentes; los de evento (tajo, jefe intacto, ranking, modo
+//    ejecutivo) se avisan desde su propio punto del código.
+// ============================================================
+const ACHIEVEMENTS = [
+  { id: 'first',        es: ['Primer contacto', 'Abre tu primer archivo.'],                          en: ['First contact', 'Open your first file.'] },
+  { id: 'cartographer', es: ['Cartógrafo', 'Encuentra los 13 archivos del universo.'],               en: ['Cartographer', 'Find all 13 files in the universe.'],
+    reward: { es: 'Recompensa: Modo invertido', en: 'Reward: Inverted mode' } },
+  { id: 'anomaly', secret: true, es: ['A tus espaldas', 'Descubre la anomalía.'],                     en: ['Behind you', 'Discover the anomaly.'] },
+  { id: 'core',         es: ['Dentro del núcleo', 'Entra al planeta D.A.C.'],                        en: ['Inside the core', 'Enter the D.A.C. planet.'] },
+  { id: 'poetica',      es: ['Poeta', 'Activa la Máquina Poética.'],                                  en: ['Poet', 'Activate the Poetic Machine.'] },
+  { id: 'erratica',     es: ['Error fértil', 'Activa la Máquina Errática.'],                          en: ['Fertile error', 'Activate the Erratic Machine.'] },
+  { id: 'friccion',     es: ['Peso propio', 'Activa la Máquina Fricción.'],                           en: ['Own weight', 'Activate the Friction Machine.'] },
+  { id: 'trio',         es: ['Tres máquinas', 'Activa las tres máquinas creativas.'],                 en: ['Three machines', 'Activate all three creative machines.'] },
+  { id: 'retro',        es: ['Fósforo', 'Activa el modo Retro B&W.'],                                 en: ['Phosphor', 'Activate Retro B&W mode.'] },
+  { id: 'painter',      es: ['Pintor del vacío', 'Pinta sobre el espacio.'],                          en: ['Painter of the void', 'Paint on empty space.'] },
+  { id: 'combo',        es: ['Ritmo', 'Logra un combo x10.'],                                         en: ['Rhythm', 'Reach a x10 combo.'] },
+  { id: 'boss',         es: ['Núcleo vencido', 'Derrota al Núcleo corrupto.'],                        en: ['Core defeated', 'Defeat the Corrupted Core.'],
+    reward: { es: 'Recompensa: Espada de pulsos', en: 'Reward: Pulse sword' } },
+  { id: 'untouched',    es: ['Intocable', 'Derrota al jefe sin perder una vida.'],                    en: ['Untouchable', 'Defeat the boss without losing a life.'] },
+  { id: 'slash',        es: ['Tajo', 'Usa la Espada de Pulsos.'],                                     en: ['Slash', 'Use the Pulse Sword.'] },
+  { id: 'dispel',       es: ['Disipación', 'Apaga un modo creativo con la espada.'],                  en: ['Dispelled', 'Turn off a creative mode with the sword.'] },
+  { id: 'hall',         es: ['Salón de la Fama', 'Registra tu puntaje.'],                             en: ['Hall of Fame', 'Register your score.'] },
+  { id: 'twoWorlds',    es: ['Dos mundos', 'Recorre el archivo ejecutivo y el universo 3D.'],         en: ['Two worlds', 'Explore both the executive archive and the 3D universe.'] },
+  { id: 'reader',       es: ['Lector atento', 'Lee tres proyectos en el archivo ejecutivo.'],         en: ['Attentive reader', 'Read three projects in the executive archive.'] },
+  { id: 'polyglot',     es: ['Políglota', 'Cambia el idioma del universo.'],                          en: ['Polyglot', 'Change the universe language.'] }
+];
+const ACH = { got: Object.assign({}, readUnlocks().ach), initialLang: null, toggles: 0, open: false, lastLang: null };
+if (window.pulseSword.unlocked && !ACH.got.boss) ACH.got.boss = Date.now();            // quien ya tenía la espada, ya tiene el logro
+if (readUnlocks().invertedMode && !ACH.got.cartographer) ACH.got.cartographer = Date.now();
+
+const achEsc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const achCount = () => ACHIEVEMENTS.filter(a => ACH.got[a.id]).length;
+
+(function injectAchievementsStyle() {
+  if (document.getElementById('ach-style')) return;
+  const s = document.createElement('style');
+  s.id = 'ach-style';
+  s.textContent = `
+    #ach-panel { position: fixed; inset: 0; z-index: 100020; display: flex; align-items: center; justify-content: center; padding: 20px;
+      background: rgba(3,3,6,0.78); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    #ach-panel[hidden] { display: none; }
+    #ach-panel .ach-box { position: relative; width: min(640px, 100%); max-height: 88vh; overflow-y: auto; padding: 38px 34px 30px; border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12); background: rgba(10,10,14,0.94); color: #d9d9e0; touch-action: pan-y; user-select: text; -webkit-user-select: text;
+      font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 300; scrollbar-width: thin; scrollbar-color: #2a2a2a transparent; }
+    #ach-panel .ach-eyebrow { margin: 0 0 .6rem; font-size: .7rem; letter-spacing: .3em; text-transform: uppercase; color: #888899; }
+    #ach-panel h2 { margin: 0 0 .3rem; font-weight: 300; font-size: 1.6rem; letter-spacing: .22em; text-transform: uppercase; color: #fff; text-shadow: 0 0 24px rgba(255,255,255,.14); }
+    #ach-panel .ach-sub { margin: 0 0 1.4rem; color: #8c8c99; font-size: .85rem; letter-spacing: .06em; }
+    #ach-panel .ach-count { margin: 0; font-size: .74rem; letter-spacing: .2em; text-transform: uppercase; color: #a9a9b6; }
+    #ach-panel .ach-bar { height: 2px; margin: .5rem 0 1.4rem; background: rgba(255,255,255,0.1); }
+    #ach-panel .ach-bar i { display: block; height: 100%; background: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.6); transition: width .5s ease; }
+    #ach-panel ul { list-style: none; margin: 0; padding: 0; }
+    #ach-panel .ach-item { display: grid; grid-template-columns: 1.6rem 1fr; gap: 0 .6rem; padding: .85rem 0; border-top: 1px solid rgba(255,255,255,0.07); opacity: .42; transition: opacity .3s; }
+    #ach-panel .ach-item.is-got { opacity: 1; }
+    #ach-panel .ach-mark { color: #fff; font-size: .9rem; line-height: 1.6; }
+    #ach-panel strong { display: block; font-weight: 400; letter-spacing: .08em; color: #f2f2f6; }
+    #ach-panel .ach-item span.ach-desc { display: block; font-size: .85rem; color: #9a9aa8; }
+    #ach-panel .ach-item em { display: block; margin-top: .2rem; font-style: normal; font-size: .76rem; letter-spacing: .08em; color: #9ffaff; }
+    #ach-panel h3 { margin: 1.8rem 0 .4rem; font-weight: 300; font-size: .72rem; letter-spacing: .26em; text-transform: uppercase; color: #888899; }
+    #ach-panel .ach-reward { display: grid; grid-template-columns: 1.6rem 1fr auto; gap: 0 .6rem; align-items: center; padding: .8rem 0; border-top: 1px solid rgba(255,255,255,0.07); }
+    #ach-panel .ach-reward small { display: block; color: #8c8c99; font-size: .8rem; }
+    #ach-panel button { font-family: inherit !important; font-weight: 300 !important; cursor: pointer; }
+    #ach-panel .ach-act { background: transparent !important; border: 1px solid rgba(255,255,255,0.3) !important; border-radius: 999px !important; color: #e7e7ee !important;
+      padding: .5rem 1.1rem !important; font-size: .72rem !important; letter-spacing: .18em !important; text-transform: uppercase; box-shadow: none !important; }
+    #ach-panel .ach-act:hover { background: rgba(255,255,255,0.08) !important; border-color: rgba(255,255,255,0.6) !important; }
+    #ach-panel .ach-close { position: absolute; top: 12px; right: 14px; width: 36px; height: 36px; padding: 0 !important; background: transparent !important; border: 0 !important;
+      color: #9a9aa6 !important; font-size: 1.5rem !important; line-height: 1; box-shadow: none !important; }
+    #ach-panel .ach-close:hover { color: #fff !important; }
+    #ach-panel :focus-visible { outline: 1px solid rgba(255,255,255,0.6); outline-offset: 3px; }
+    @media (max-width: 520px) { #ach-panel .ach-box { padding: 34px 20px 24px; } #ach-panel h2 { font-size: 1.3rem; } }
+  `;
+  document.head.appendChild(s);
+})();
+
+// ---------- Desbloqueo ----------
+function unlockAchievement(id) {
+  const def = ACHIEVEMENTS.find(a => a.id === id);
+  if (!def || ACH.got[id]) return false;
+  ACH.got[id] = Date.now();
+  const u = readUnlocks(); u.ach = ACH.got; writeUnlocks(u);
+  const en = window.currentLang === 'en';
+  if (typeof showSystemToast === 'function') showSystemToast(`✦ ${en ? 'ACHIEVEMENT' : 'LOGRO'}: ${(en ? def.en : def.es)[0]}`, '#ffffff');
+  if (typeof playSound === 'function') playSound('levelup');
+  if (window.trackEvent) window.trackEvent('Logro', id);
+  if (id === 'cartographer') grantInvertedMode();
+  updateAchievementsMenu();
+  if (ACH.open) renderAchievementsPanel();
+  return true;
+}
+
+// Recompensa del logro "Cartógrafo": el modo invertido (antes, un botón cian flotante)
+function grantInvertedMode() {
+  const u = readUnlocks(); u.invertedMode = true; writeUnlocks(u);
+  ensureInvertedMenu();
+  setTimeout(() => {
+    if (typeof showSystemToast === 'function') showSystemToast(window.currentLang === 'en' ? '☯ INVERTED MODE UNLOCKED · side menu' : '☯ MODO INVERTIDO DESBLOQUEADO · menú lateral', '#ffffff');
+  }, 1800);
+}
+function toggleInvertedMode() {
+  document.body.classList.toggle('inverted-mode');
+  if (typeof playSound === 'function') playSound('ui');
+  updateInvertedMenu();
+  if (ACH.open) renderAchievementsPanel();
+}
+
+// ---------- Menú lateral ----------
+function menuList() { const r = document.getElementById('menu-retro'); return r ? { ul: r.closest('ul'), retroLi: r.closest('li') } : null; }
+function ensureAchievementsMenu() {
+  const m = menuList(); if (!m || !m.ul || document.getElementById('menu-achievements')) return;
+  const li = document.createElement('li');
+  li.innerHTML = '<a href="#" id="menu-achievements" class="social-item"></a>';
+  m.ul.insertBefore(li, m.retroLi);
+  li.firstChild.addEventListener('click', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (typeof sideMenu !== 'undefined') sideMenu.classList.remove('open');
+    openAchievements();
+  });
+  updateAchievementsMenu();
+}
+function updateAchievementsMenu() {
+  const a = document.getElementById('menu-achievements');
+  if (a) a.textContent = `✦ ${window.currentLang === 'en' ? 'Achievements' : 'Logros'} · ${achCount()}/${ACHIEVEMENTS.length}`;
+}
+function ensureInvertedMenu() {
+  const m = menuList(); if (!m || !m.ul || document.getElementById('menu-inverted')) return;
+  const li = document.createElement('li');
+  li.innerHTML = '<a href="#" id="menu-inverted" class="social-item"></a>';
+  m.ul.insertBefore(li, m.retroLi.nextSibling);
+  li.firstChild.addEventListener('click', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (typeof sideMenu !== 'undefined') sideMenu.classList.remove('open');
+    toggleInvertedMode();
+  });
+  updateInvertedMenu();
+}
+function updateInvertedMenu() {
+  const a = document.getElementById('menu-inverted'); if (!a) return;
+  const on = document.body.classList.contains('inverted-mode'), en = window.currentLang === 'en';
+  a.textContent = on ? (en ? '☾ Back to dark mode' : '☾ Volver al modo oscuro') : (en ? '☯ Inverted mode' : '☯ Modo invertido');
+}
+
+// ---------- Panel ----------
+function buildAchievementsPanel() {
+  let p = document.getElementById('ach-panel');
+  if (p) return p;
+  p = document.createElement('div');
+  p.id = 'ach-panel'; p.hidden = true;
+  p.setAttribute('role', 'dialog'); p.setAttribute('aria-modal', 'true'); p.setAttribute('aria-labelledby', 'ach-title');
+  document.body.appendChild(p);
+  p.addEventListener('click', (e) => {
+    if (e.target === p || e.target.closest('.ach-close')) { closeAchievements(); return; }
+    const act = e.target.closest('[data-act]');
+    if (act && act.dataset.act === 'inverted') toggleInvertedMode();
+  });
+  // el panel no debe disparar acciones del juego (arrastre, clics sobre planetas)
+  ['touchstart', 'touchmove', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'wheel'].forEach(evt => p.addEventListener(evt, (e) => e.stopPropagation(), { passive: true }));
+  return p;
+}
+function renderAchievementsPanel() {
+  const p = document.getElementById('ach-panel'); if (!p) return;
+  const en = window.currentLang === 'en';
+  const got = achCount(), total = ACHIEVEMENTS.length;
+  const rows = ACHIEVEMENTS.map(a => {
+    const has = !!ACH.got[a.id], hidden = a.secret && !has;
+    const [name, desc] = en ? a.en : a.es;
+    const reward = a.reward ? (en ? a.reward.en : a.reward.es) : '';
+    return `<li class="ach-item${has ? ' is-got' : ''}"><span class="ach-mark" aria-hidden="true">${has ? '✦' : '·'}</span><div>
+      <strong>${achEsc(hidden ? '???' : name)}</strong><span class="ach-desc">${achEsc(hidden ? (en ? 'A secret of the universe.' : 'Un secreto del universo.') : desc)}</span>${reward ? `<em>${achEsc(reward)}</em>` : ''}</div></li>`;
+  }).join('');
+  const inverted = document.body.classList.contains('inverted-mode');
+  const rewards = [];
+  if (ACH.got.cartographer) rewards.push(`<li class="ach-reward"><span aria-hidden="true">☯</span><div><strong>${en ? 'Inverted mode' : 'Modo invertido'}</strong></div>
+      <button type="button" class="ach-act" data-act="inverted">${inverted ? (en ? 'Dark mode' : 'Modo oscuro') : (en ? 'Activate' : 'Activar')}</button></li>`);
+  if (window.pulseSword.unlocked) rewards.push(`<li class="ach-reward"><span aria-hidden="true">⚔</span><div><strong>${en ? 'Pulse sword' : 'Espada de pulsos'}</strong>
+      <small>${en ? 'Press Q or the sword button: dispels the active creative mode.' : 'Pulsa Q o el botón de la espada: disipa el modo creativo activo.'}</small></div><span></span></li>`);
+  p.innerHTML = `<div class="ach-box">
+      <button type="button" class="ach-close" aria-label="${en ? 'Close' : 'Cerrar'}">×</button>
+      <p class="ach-eyebrow">✦</p>
+      <h2 id="ach-title">${en ? 'Achievements' : 'Logros'}</h2>
+      <p class="ach-sub">${en ? 'What the universe remembers about you.' : 'Lo que el universo recuerda de ti.'}</p>
+      <p class="ach-count">${got} / ${total}</p><div class="ach-bar"><i style="width:${Math.round((got / total) * 100)}%"></i></div>
+      <ul>${rows}</ul>
+      ${rewards.length ? `<h3>${en ? 'Rewards' : 'Recompensas'}</h3><ul>${rewards.join('')}</ul>` : ''}
+    </div>`;
+}
+function openAchievements() {
+  if (ACH.open) return;
+  const p = buildAchievementsPanel();
+  ACH.open = true; isUIOpen = true;
+  renderAchievementsPanel();
+  p.hidden = false;
+  const c = p.querySelector('.ach-close'); if (c) c.focus();
+  if (typeof playSound === 'function') playSound('ui');
+}
+function closeAchievements() {
+  const p = document.getElementById('ach-panel');
+  if (p) p.hidden = true;
+  ACH.open = false; isUIOpen = false;
+  if (typeof playSound === 'function') playSound('ui');
+}
+document.addEventListener('keydown', (e) => {
+  if (ACH.open && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeAchievements(); }
+}, true);
+
+// ---------- Detección ----------
+const ACH_CHECKS = {
+  first:        () => foundProjects.size >= 1,
+  cartographer: () => foundProjects.size >= totalProjects,
+  anomaly:      () => secretDiscovered === true,
+  core:         () => planetaDAC.userData.isIsolated === true,
+  poetica:      () => isPoeticaActive,
+  erratica:     () => isErraticaActive,
+  friccion:     () => isFriccionActive,
+  trio:         () => !!(ACH.got.poetica && ACH.got.erratica && ACH.got.friccion),
+  retro:        () => isRetroMode,
+  painter:      () => !!window.isPainting,
+  combo:        () => combatCombo >= 10,
+  boss:         () => !!window.pulseSword.unlocked,
+  polyglot:     () => !!ACH.initialLang && window.currentLang !== ACH.initialLang
+};
+setInterval(() => {
+  if (document.hidden) return;
+  if (!ACH.initialLang && window.currentLang) ACH.initialLang = window.currentLang;
+  for (const id in ACH_CHECKS) {
+    if (ACH.got[id]) continue;
+    try { if (ACH_CHECKS[id]()) unlockAchievement(id); } catch (e) { /* variable aún sin inicializar */ }
+  }
+  if (ACH.lastLang !== window.currentLang) { ACH.lastLang = window.currentLang; updateAchievementsMenu(); updateInvertedMenu(); if (ACH.open) renderAchievementsPanel(); }
+}, 700);
+
+// Eventos sueltos
+document.getElementById('score-form')?.addEventListener('submit', () => unlockAchievement('hall'));
+
+ensureAchievementsMenu();
+if (ACH.got.cartographer) ensureInvertedMenu();
 
 // Si ya se había desbloqueado en una visita anterior, el viajero nace con ella
 if (window.pulseSword.unlocked) { equipPulseSword(); ensureSwordButton(); }
@@ -4299,10 +4589,12 @@ if (isAR && frame && hitTestSource) {
             dacBrush.material.color.setHex(0xff3300);
           } else {
             dacBrush.position.lerp(targetPos, 0.15); // Fluido
-            dacLinesMat.color.setHex(isPoeticaActive ? 0xff00ff : 0x00ffff);
-            dacBrush.material.color.setHex(isPoeticaActive ? 0xff00ff : 0x00ffff);
+            dacLinesMat.color.setHex(isPoeticaActive ? 0xffffff : 0x00ffff);
+            dacBrush.material.color.setHex(isPoeticaActive ? 0xffffff : 0x00ffff);
+            if (isPoeticaActive) { dacLinesMat.color.multiplyScalar(1.7); dacBrush.material.color.multiplyScalar(2.2); } // Poética: blanco más brillante (antes violeta)
           }
 
+          dacLinesMat.opacity = (isPoeticaActive && !isFriccionActive && !isErraticaActive) ? 0.88 : 0.6;
           // Matemáticas de Nodos y Líneas
           let lineIndex = 0;
           const positions = dacParticlesGeo.attributes.position.array;
@@ -4379,13 +4671,15 @@ if (isAR && frame && hitTestSource) {
           dacLinesGeo.attributes.position.needsUpdate = true;
 
          // 🔥 Revelar Palabras (Conceptos)
+          const dacDim = layoutDacWords();
+          const revealR = dacDim ? Math.max(25, Math.max(dacDim.hW, dacDim.hH) * 1.1) : 25; // el radio de revelado crece con la pantalla
           dacWords.forEach((word) => {
             let dx = dacBrush.position.x - word.userData.basePos.x;
             let dy = dacBrush.position.y - word.userData.basePos.y;
             let dist2D = Math.sqrt(dx * dx + dy * dy);
 
             // 🔥 Aumentamos el radio visual a 25 para iluminarlas desde más lejos
-            if (dist2D < 25) {
+            if (dist2D < revealR) {
               word.visible = true;
               word.position.y = word.userData.basePos.y + Math.sin(Date.now() * 0.002 + word.id) * 0.4;
 
@@ -4395,8 +4689,9 @@ if (isAR && frame && hitTestSource) {
                 word.material.color.setHex(0xff3300);
               } else {
                 word.material.rotation = 0;
-                word.material.opacity = Math.max(0.4, 1 - (dist2D / 25)); // Adaptamos el fade de opacidad a 25
-                word.material.color.setHex(isPoeticaActive ? 0xff00ff : 0x00ffff);
+                word.material.opacity = Math.max(0.6, 1 - (dist2D / revealR)); // Adaptamos el fade de opacidad a 25
+                word.material.color.setHex(isPoeticaActive ? 0xffffff : 0x00ffff);
+                if (isPoeticaActive) word.material.color.multiplyScalar(1.6); // blanco un poco más brillante
               }
             } else {
               word.visible = false;
@@ -4767,7 +5062,7 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
            bossEntity.children[0].material.uniforms.color.value.setHex(0xffffff); setTimeout(() => {if(bossEntity) bossEntity.children[0].material.uniforms.color.value.setHex(0xff0000)}, 100);
            document.getElementById('boss-hp-fill').style.width = (bossHealth / bossMaxHealth * 100) + '%'; 
            if (bossHealth <= 0) { 
-  hasFoughtBoss = true; unlockPulseSword(); 
+  hasFoughtBoss = true; if (playerLives >= 3) unlockAchievement('untouched'); unlockPulseSword(); 
   isBossBattle = false; 
   playSound('double_pulse'); 
   createExplosion(bossEntity.position.x, bossEntity.position.y, bossEntity.position.z, 3.2, 0xffffff); 
@@ -6244,6 +6539,9 @@ window.openProjectFromTerminal = (id) => {
   exState.view = 'detail';
   exState.id = p.id;
   exRender();
+  exState.readIds = exState.readIds || new Set();
+  exState.readIds.add(String(p.id));
+  if (exState.readIds.size >= 3) unlockAchievement('reader');
   // Igual que en el modo 3D: abrir un proyecto suena a 'project_open'; moverse entre proyectos, a 'ui'
   if (typeof playSound === 'function') playSound(fromIndex ? 'project_open' : 'ui');
   if (window.trackEvent) window.trackEvent('Ver_Proyecto', exTr(p.title, exLang()));
@@ -6305,6 +6603,8 @@ window.toggleTerminalMode = function() {
   if (!c) return;
   isTerminalMode = !isTerminalMode;
   if (typeof playSound === 'function') playSound('ui');
+  ACH.toggles++;
+  if (ACH.toggles >= 2) unlockAchievement('twoWorlds'); // pasó de un mundo al otro
 
   const uiElements = ['portfolio-header', 'unified-hud', 'universe-legend', 'touch-controls', 'legend-sidebar', 'dac-microsite', 'legend-toggle-btn', 'btn-sword'];
   const modeBtn = document.getElementById('mode-toggle-btn');
