@@ -1586,7 +1586,21 @@ if (livesEl) livesEl.innerText = '■ '.repeat(Math.max(0, playerLives));}
 // ==========================================
 // 🔥 GAME OVER CORREGIDO - GUARDA PUNTAJE
 // ==========================================
+// 🔥 CAUSA DEL CONGELAMIENTO AL PERDER: triggerGameOver() se llama DENTRO de los bucles de colisión del cuadro y vaciaba
+// aquí mismo las listas (asteroids.length = 0, fighters…). El bucle seguía con el siguiente índice, leía un elemento
+// undefined, lanzaba una excepción y three.js dejaba de programar cuadros: todo congelado. Ahora el game over se
+// APLAZA hasta que termine el cuadro y se ignora si ya hay uno en curso (varias colisiones en el mismo cuadro).
+let gameOverQueued = false;
 function triggerGameOver() {
+  if (gameOverQueued) return;
+  gameOverQueued = true;
+  setTimeout(() => {
+    try { performGameOver(); }
+    finally { gameOverQueued = false; }
+  }, 0);
+}
+
+function performGameOver() {
   try {
     playSound('explosion');
     createExplosion(ship.position.x, ship.position.y, ship.position.z, 1.6, 0xff8888);
@@ -1662,6 +1676,7 @@ function triggerGameOver() {
           finalScoreDisplay.innerText = finalScoreValue;
           console.log("📊 Leaderboard muestra:", finalScoreValue);
         }
+        armScoreForm(finalScoreValue, true); // partida nueva terminada: habilita UN registro
         
         // Abrir leaderboard
         openUIWindow('leaderboard-ui');
@@ -1811,7 +1826,7 @@ function animateBoss(boss) {
   }
 }
 
-function showLeaderboard() { openUIWindow('leaderboard-ui'); document.getElementById('final-score-display').innerText = score; updateLeaderboardUI(); }
+function showLeaderboard() { openUIWindow('leaderboard-ui'); document.getElementById('final-score-display').innerText = score; armScoreForm(score, false); updateLeaderboardUI(); }
 
 // Agrega el ".json" al final de tu URL de Firebase (es obligatorio para que funcione sin instalar nada extra)
 // 🔥 CONFIGURACIÓN DE FIREBASE (Asegúrate de pegar AQUÍ la URL que te dio Firebase)
@@ -1854,44 +1869,69 @@ async function updateLeaderboardUI() {
   }
 }
 
+// 🔥 Un solo registro por puntaje. Antes, al terminar de enviar se reactivaba el botón y se podía guardar el mismo
+// récord una y otra vez. Ahora cada partida terminada ("armScoreForm(puntaje, true)") habilita UN envío; después el
+// formulario queda bloqueado. Desde el menú solo se vuelve a habilitar si el puntaje actual es distinto al ya enviado.
+const scoreSubmission = { value: 0, done: false, sending: false, label: null };
+function applyScoreFormState() {
+  const form = document.getElementById('score-form'); if (!form) return;
+  const btn = form.querySelector('button[type="submit"]'), input = document.getElementById('player-name');
+  if (btn && scoreSubmission.label === null) scoreSubmission.label = btn.innerText;
+  const locked = scoreSubmission.done || scoreSubmission.sending || scoreSubmission.value <= 0;
+  const en = window.currentLang === 'en';
+  if (btn) {
+    btn.disabled = locked;
+    btn.style.opacity = locked ? '0.55' : '';
+    btn.style.cursor = locked ? 'default' : '';
+    btn.innerText = scoreSubmission.sending ? (en ? 'SENDING...' : 'TRANSMITIENDO...')
+                  : scoreSubmission.done ? (en ? 'SCORE SAVED ✓' : 'PUNTAJE REGISTRADO ✓')
+                  : (scoreSubmission.label || 'GUARDAR');
+  }
+  if (input) input.disabled = scoreSubmission.done || scoreSubmission.sending;
+}
+function armScoreForm(value, newRun) {
+  const v = parseInt(value) || 0;
+  if (newRun || v !== scoreSubmission.value) { scoreSubmission.value = v; scoreSubmission.done = false; }
+  applyScoreFormState();
+}
+
 document.getElementById('score-form')?.addEventListener('submit', async (e) => { 
   e.preventDefault(); 
+  if (scoreSubmission.done || scoreSubmission.sending || scoreSubmission.value <= 0) {
+    if (scoreSubmission.done && typeof showSystemToast === 'function') showSystemToast(window.currentLang === 'en' ? 'This score is already saved' : 'Este puntaje ya está registrado', '#f4f4f7');
+    return;
+  }
   
   const nameInput = document.getElementById('player-name');
-  const name = nameInput ? (nameInput.value || 'Anónimo') : 'Anónimo'; 
-  const submitBtn = e.target.querySelector('button'); 
+  const name = nameInput ? (nameInput.value.trim() || 'Anónimo') : 'Anónimo'; 
+  // 🔥 Se envía el puntaje congelado de la partida terminada, no la variable del juego que ya se reseteó
+  const finalScoreToSend = scoreSubmission.value;
   
-  // 🔥 LA SOLUCIÓN: Leemos el puntaje congelado de la pantalla, no la variable del juego que ya se reseteó
-  const finalScoreText = document.getElementById('final-score-display').innerText;
-  const finalScoreToSend = parseInt(finalScoreText) || 0;
-  
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.innerText = 'TRANSMITIENDO...';
-  }
+  scoreSubmission.sending = true;
+  applyScoreFormState();
   
   try {
-    await fetch(FIREBASE_URL, {
+    const res = await fetch(FIREBASE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      // Enviamos el finalScoreToSend en lugar de la variable score
       body: JSON.stringify({ name: name, score: finalScoreToSend }) 
     });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     
-    await updateLeaderboardUI(); 
+    scoreSubmission.done = true;
     if (nameInput) nameInput.value = ''; 
     playSound('levelup');
-    
+    unlockAchievement('hall');
+    await updateLeaderboardUI(); 
   } catch (error) {
     console.error("Error al guardar:", error);
-    showSystemToast('Error de conexión al guardar el puntaje', '#ff0000');
-  }
-  
-  if (submitBtn) {
-    submitBtn.disabled = false;
-    submitBtn.innerText = 'GUARDAR PUNTAJE';
+    showSystemToast('Error de conexión al guardar el puntaje', '#f4f4f7');
+  } finally {
+    scoreSubmission.sending = false;
+    applyScoreFormState();   // si falló, el botón vuelve a estar disponible para reintentar; si salió bien, queda bloqueado
   }
 });
+applyScoreFormState(); // al cargar: bloqueado hasta que termine una partida
 function checkLevelUp() { 
   const expectedLevel = Math.floor(score / 500) + 1; 
   if(expectedLevel > currentLevel) { currentLevel = expectedLevel; document.getElementById('level-value').innerText = currentLevel; const anim = document.getElementById('level-up-anim'); anim.classList.remove('active'); void anim.offsetWidth; anim.classList.add('active'); playSound('levelup', ship.position); shakeIntensity = 0.6; hasShield = true; shieldMesh.visible = true; if (currentLevel === 2) { weaponLevel = 2; shipSpeed = 0.65; } else if (currentLevel >= 3) { weaponLevel = 3; shipSpeed = 0.8; } } 
@@ -4132,7 +4172,6 @@ setInterval(() => {
 }, 700);
 
 // Eventos sueltos
-document.getElementById('score-form')?.addEventListener('submit', () => unlockAchievement('hall'));
 
 ensureAchievementsMenu();
 if (ACH.got.cartographer) ensureInvertedMenu();
@@ -4552,6 +4591,10 @@ let frames = 0; let lastTime = performance.now(); let lowFPSCount = 0;
 let totalRotated = 0; let prevAngle = 0;
 
 renderer.setAnimationLoop((timestamp, frame) => {
+  // 🛟 Red de seguridad: three.js solo programa el SIGUIENTE cuadro si el actual termina sin lanzar. Un solo error
+  // (p. ej. leer un elemento que ya se borró de una lista) dejaba el juego congelado para siempre.
+  // Ahora el error se registra y el bucle sigue vivo.
+  try {
  // 🔥 ANIMACIÓN DEL VIAJERO (Libre y Arrastrable)
    
   const isXR = renderer.xr.isPresenting;
@@ -5288,6 +5331,7 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
     try {
       const finalScoreDisplay = document.getElementById('final-score-display');
       if (finalScoreDisplay) finalScoreDisplay.innerText = finalScoreValue;
+      armScoreForm(finalScoreValue, true); // victoria: habilita UN registro
       openUIWindow('leaderboard-ui');
       updateLeaderboardUI();
       isCombatActive = false;
@@ -5660,6 +5704,11 @@ if (isXR) {
   } else { 
     try { composer.render(); } 
     catch(e) { renderer.render(scene, camera); } 
+  }
+
+  } catch (err) {
+    window.__loopErrors = (window.__loopErrors || 0) + 1;
+    if (window.__loopErrors <= 5 || window.__loopErrors % 300 === 0) console.error('Error en el bucle de animación (el juego sigue):', err);
   }
 });
 
@@ -6357,7 +6406,37 @@ window.addEventListener('click', (e) => {
   const s = document.createElement('style');
   s.id = 'sublime-skin';
   s.textContent = `
-  
+    /* =========================================================
+       0. FIX AR/VR DOBLE TEXTO: Apagamos el ::after de style.css
+       ========================================================= */
+    #ARButton::after, #VRButton::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    /* =========================================================
+       1. MENÚ HAMBURGUESA DESDE LA DERECHA (3D HOLOGRÁFICO)
+       ========================================================= */
+    #side-menu {
+      left: auto !important;
+      right: -400px !important;
+      border-radius: 25px 0 0 25px !important;
+      border-right: none !important;
+      border-left: 1px solid rgba(255, 255, 255, 0.15) !important;
+      box-shadow: -30px 0 50px rgba(0,0,0,0.6), inset 1px 0 20px rgba(255,255,255,0.02) !important;
+      transform: perspective(1000px) rotateY(-15deg) translateY(-50%) !important;
+      transform-origin: right center !important;
+      transition: right 0.6s cubic-bezier(0.1, 0.8, 0.3, 1), transform 0.6s !important;
+    }
+    #side-menu.open {
+      left: auto !important;
+      right: 0 !important;
+      transform: perspective(1000px) rotateY(-4deg) translateY(-50%) !important;
+    }
+
+    /* =========================================================
+       2. ESTILO BASE SUBLIME (ESCRITORIO Y GENERAL)
+       ========================================================= */
     #menu-toggle, #lang-toggle-btn, #combat-toggle-btn, #ARButton, #VRButton {
       background: rgba(255,255,255,0.02) !important;
       border: 1px solid rgba(255,255,255,0.16) !important;
@@ -6369,7 +6448,8 @@ window.addEventListener('click', (e) => {
       box-shadow: none !important;
       transition: background .35s ease, border-color .35s ease, box-shadow .35s ease !important;
     }
-    #menu-toggle:hover, #lang-toggle-btn:hover, #combat-toggle-btn:hover, #ARButton:hover, #VRButton:hover {
+    #menu-toggle:hover, #lang-toggle-btn:hover, #combat-toggle-btn:hover, #ARButton:hover, #VRButton:hover,
+    body:not(.ex-mode-active) #mode-toggle-btn:hover, #universe-legend:hover {
       background: rgba(255,255,255,0.09) !important; color: #ffffff !important;
       border-color: rgba(255,255,255,0.5) !important; box-shadow: 0 0 24px rgba(255,255,255,0.12) !important;
     }
@@ -6384,10 +6464,182 @@ window.addEventListener('click', (e) => {
     #universe-legend, #universe-legend * { font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif !important; letter-spacing: 0.1em; }
     #universe-legend #legend-header * { color: #aaaab6 !important; }
 
-    /* 🔥 FIX MÓVIL: Posiciones estrictas para que no choquen con el texto de scroll */
+    /* =========================================================
+       2B. EN ESCRITORIO (>= 769px): EJECUTIVO AL LADO DE LEYENDA
+       ========================================================= */
+    @media (min-width: 769px) {
+      #universe-legend {
+        top: 72px !important;
+        left: 20px !important;
+        padding: 8px 14px !important;
+        border-radius: 18px !important;
+      }
+      body:not(.ex-mode-active) #mode-toggle-btn {
+        position: fixed !important;
+        top: 72px !important;
+        left: 175px !important;
+        right: auto !important;
+        bottom: auto !important;
+        transform: none !important;
+        padding: 8px 16px !important;
+        font-size: 0.72rem !important;
+        letter-spacing: 0.14em !important;
+        border-radius: 18px !important;
+        background: rgba(255,255,255,0.025) !important;
+        border: 1px solid rgba(255,255,255,0.12) !important;
+        color: #aaaab6 !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        box-shadow: none !important;
+      }
+    }
+
+    /* =========================================================
+       3. BARRA DE PESTAÑAS EDITORIAL (SOLO EN MÓVIL <= 768px)
+       ========================================================= */
+ @media (max-width: 768px) {
+      /* Contenedor unificado de pestañas en top: 76px (ALTURA EXACTA CLAVADA) */
+      #universe-legend,
+      body:not(.ex-mode-active) #mode-toggle-btn,
+      #ARButton,
+      #VRButton,
+      #combat-toggle-btn,
+      #lang-toggle-btn,
+      #menu-toggle {
+        position: fixed !important;
+        top: 76px !important;
+        bottom: auto !important;
+        box-sizing: border-box !important; /* 🔥 CLAVE: hace que el div y los buttons midan exactamente igual con bordes */
+        height: 36px !important;
+        min-height: 36px !important;
+        max-height: 36px !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        background: rgba(12, 12, 16, 0.72) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border: none !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.14) !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+        box-shadow: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+        font-size: 0.62rem !important;
+        font-weight: 300 !important;
+        letter-spacing: 0.14em !important;
+        color: #cfd0d8 !important;
+        transform: none !important;
+        z-index: 10002 !important;
+      }
+
+      /* 1. Pestaña LEYENDA (0% a 22%) */
+      #universe-legend {
+        left: 0 !important;
+        width: 22vw !important;
+        max-width: 22vw !important;
+        border-bottom-left-radius: 10px !important;
+      }
+  #universe-legend #legend-header {
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 4px !important;
+      }
+      #universe-legend #legend-header span:first-child { font-size: 0 !important; }
+      #universe-legend #legend-header span:first-child::after {
+        content: 'LEYENDA'; font-size: 0.58rem !important; letter-spacing: 0.1em !important;
+      }
+      #universe-legend #legend-icon { font-size: 0.6rem !important; color: #8c8c99 !important; }
+
+      #universe-legend #legend-content {
+        position: fixed !important;
+        top: 112px !important;
+        left: 8px !important;
+        width: 190px !important;
+        background: rgba(10, 10, 14, 0.95) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border-radius: 10px !important;
+        padding: 10px 12px !important;
+        margin-top: 0 !important;
+        box-shadow: 0 14px 30px rgba(0,0,0,0.7) !important;
+        z-index: 10005 !important;
+      }
+
+      /* 2. Pestaña ARCHIVO 2D (22% a 46%) */
+      body:not(.ex-mode-active) #mode-toggle-btn {
+        left: 22vw !important;
+        right: auto !important;
+        width: 24vw !important;
+        min-width: 24vw !important;
+        font-size: 0 !important;
+      }
+      body:not(.ex-mode-active) #mode-toggle-btn::after {
+        content: 'ARCHIVO';
+        font-size: 0.58rem !important;
+        letter-spacing: 0.12em !important;
+        color: #e7e4de !important;
+      }
+
+      /* 3. Pestaña AR (46% a 58%) */
+      #ARButton {
+        left: 46vw !important;
+        right: auto !important;
+        width: 12vw !important;
+        min-width: 12vw !important;
+      }
+      /* 4. Pestaña VR (58% a 70%) */
+      #VRButton {
+        left: 58vw !important;
+        right: auto !important;
+        width: 12vw !important;
+        min-width: 12vw !important;
+      }
+      #ARButton[style*="display: none"] ~ #VRButton {
+        left: 46vw !important;
+        width: 24vw !important;
+      }
+
+      /* 5. Pestaña PLAY / COMBATE (70% a 80%) */
+      #combat-toggle-btn {
+        left: 70vw !important;
+        right: auto !important;
+        width: 10vw !important;
+        min-width: 10vw !important;
+      }
+
+      /* 6. Pestaña IDIOMA EN/ES (80% a 90%) */
+      #lang-toggle-btn {
+        left: 80vw !important;
+        right: auto !important;
+        width: 10vw !important;
+        min-width: 10vw !important;
+      }
+
+      /* 7. Pestaña MENÚ HAMBURGUESA (90% a 100%) */
+      #menu-toggle {
+        left: 90vw !important;
+        right: 0 !important;
+        width: 10vw !important;
+        min-width: 10vw !important;
+        border-right: none !important;
+        border-bottom-right-radius: 10px !important;
+      }
+      #menu-toggle svg { width: 17px !important; height: 17px !important; }
+    }
+
+    /* Botones flotantes inferiores */
     #btn-recenter, #helpBtn {
-      position: fixed !important; 
-      right: 20px !important;
+      position: fixed !important; right: 20px !important;
       width: 40px !important; height: 40px !important; z-index: 9999 !important; 
       display: flex !important; align-items: center !important; justify-content: center !important;
       border-radius: 50% !important; background: rgba(255,255,255,0.03) !important; border: 1px solid rgba(255,255,255,0.16) !important;
@@ -6409,10 +6661,8 @@ window.addEventListener('click', (e) => {
     #btn-left:active, #btn-right:active { background: rgba(255,255,255,0.18) !important; }
     #btn-shoot:active { background: rgba(255,255,255,0.28) !important; box-shadow: 0 0 34px rgba(255,255,255,0.22) !important; }
 
-    /* HUD en pantallas estrechas: antes COMBO quedaba cortado por la derecha */
     @media (max-width: 520px) {
-      /* style.css deja min-width: 400px: en pantallas de 390/360 px el HUD se salía del borde */
-      #unified-hud { box-sizing: border-box !important; min-width: 0 !important; width: 98vw !important; max-width: 98vw !important; padding: 5px 8px !important; justify-content: space-between !important; gap: 0 !important; }
+      #unified-hud { box-sizing: border-box !important; min-width: 0 !important; width: 100vw !important; max-width: 100vw !important; padding: 5px 10px !important; justify-content: space-between !important; gap: 0 !important; border-radius: 0 !important; }
       #unified-hud .hud-item { padding: 0 3px !important; margin: 0 !important; min-width: 0 !important; }
       #unified-hud .hud-item:last-child { padding-left: 8px !important; margin-left: 2px !important; }
       #unified-hud .hud-label { letter-spacing: 1px !important; font-size: 0.5rem !important; }
@@ -6434,7 +6684,6 @@ window.addEventListener('click', (e) => {
   `;
   document.head.appendChild(s);
 })();
-
 // ============================================================
 // 🔥 MODO EJECUTIVO 2D — lectura autónoma, estética sobria
 // ------------------------------------------------------------
@@ -6526,12 +6775,26 @@ const EX_CSS = `
   .ex-status[data-state="ok"] { color: #b9c8b0; }
   .ex-status[data-state="err"] { color: #d1a6a0; }
   .ex-foot { margin-top: 7rem; color: #55524d; font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; }
- @media (max-width: 768px) {
+@media (max-width: 768px) {
     .ex-wrap { padding: 5.2rem 1.25rem 5rem; }
     .ex-mark { display: none; }
     .ex-bar { margin-bottom: 3rem; }
     .ex-section { margin-top: 4.5rem; }
     
+    /* Solo cuando el Archivo Ejecutivo está abierto, el botón "UNIVERSO 3D" flota arriba a la derecha */
+    body.ex-mode-active #mode-toggle-btn { 
+      top: 18px !important; 
+      right: 16px !important; 
+      left: auto !important; 
+      width: auto !important;
+      transform: none !important;
+      font-size: 0.68rem !important;
+      padding: 8px 16px !important;
+      border-radius: 20px !important;
+      background: rgba(18,18,22,0.9) !important;
+      border: 1px solid rgba(255,255,255,0.22) !important;
+    }
+  }
     /* 🔥 FIX MÓVIL: Reposicionamos el botón debajo del HUD superior */
     #mode-toggle-btn { 
       top: 140px !important; 
@@ -6795,6 +7058,7 @@ window.toggleTerminalMode = function() {
   const c = document.getElementById('terminal-container');
   if (!c) return;
   isTerminalMode = !isTerminalMode;
+  document.body.classList.toggle('ex-mode-active', isTerminalMode);
   if (typeof playSound === 'function') playSound('ui');
   ACH.toggles++;
   if (ACH.toggles >= 2) unlockAchievement('twoWorlds'); // pasó de un mundo al otro
