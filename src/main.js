@@ -405,7 +405,7 @@ renderer.xr.addEventListener('sessionend', () => {
 checkXRSupport();
 // 🔥 RESTAURACIÓN DEL MOTOR GRÁFICO Y VARIABLES GLOBALES 🔥
 const renderScene = new RenderPass(scene, camera);
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.5, 0.8, 0.85);
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.4, 0.9);
 const composer = new EffectComposer(renderer); composer.addPass(renderScene); composer.addPass(bloomPass);
 
 let isSoundEnabled = true; let audioCtx = null; 
@@ -1194,12 +1194,11 @@ categoryPlanetData.forEach((proj, index) => {
 
 // 2. MODO 'GRIS': Esferas lisas y etéreas de luz pura (MeshBasicMaterial)
   const baseColor = new THREE.Color(proj.color);
+// ✨ AHORA (Gris Sublime / Elegante y Mate):
   const planetMat = new THREE.MeshBasicMaterial({
-    // 🔥 MAGIA: Multiplicamos el color pastel x1.8 para forzar que sobrepase
-    // el umbral del Bloom y genere ese brillo externo difuminado de tu imagen.
-  color: baseColor.multiplyScalar(3.5),
+    color: baseColor.lerp(new THREE.Color(0x888899), 0.75).multiplyScalar(1.2), // Desatura el color y lo fusiona con gris neutral
     transparent: true, 
-    opacity: 0.95 // Ligeramente translúcidos
+    opacity: 0.75 // Más etéreo y translúcido
   });
 
   const planet = new THREE.Mesh(geo, planetMat); 
@@ -1264,7 +1263,7 @@ planet.userData = {
 // ==========================================
 
 // 🔥 1. LUZ INTENSA: Subimos la intensidad para que el núcleo resalte sobre el resto del universo
-const dacLight = new THREE.DirectionalLight( 0xffffff, 3.5 ); // Subimos de 1.0 a 3.5
+const dacLight = new THREE.DirectionalLight( 0xffffff, 1.2 ); // Subimos de 1.0 a 3.5
 dacLight.position.set( 1, 1, 1 ).normalize();
 scene.add( dacLight );
 
@@ -1507,7 +1506,7 @@ const dacLines = new THREE.LineSegments(dacLinesGeo, dacLinesMat);
 dacNetworkGroup.add(dacLines);
 
 // 4. Las Palabras Clave de la Investigación
-const dacConceptos = ["Autopoiesis", "Ana-arqueología", "Saber-del-cuerpo", "Fricción", "Glitch", "Cacharreo", "Soberanía"];
+const dacConceptos = ["Autopoiesis", "An-arqueología", "Saber-del-cuerpo", "Fricción", "Glitch", "Cacharreo", "Soberanía"];
 const dacWords = [];
 dacConceptos.forEach(txt => {
   const sp = createTextSprite(txt, '#00ffff', 56);
@@ -6751,6 +6750,22 @@ const EX_CSS = `
   .ex-long p { margin: 0 0 1.1rem !important; }
   .ex-long ul { padding-left: 1.1rem; margin: 0 0 1.1rem; }
   .ex-long b, .ex-long strong { color: #e7e4de; font-weight: 400; }
+  .ex-long-wide { max-width: 100%; margin: 2.4rem 0; }
+  .ex-quote { border-left: 2px solid #ff6644; padding: .4rem 0 .4rem 1.2rem; margin: 2rem 0 2.5rem; }
+  .ex-quote p { font-size: 1.25rem; color: #f1eee8 !important; margin: 0 0 .35rem !important; letter-spacing: .02em; }
+  .ex-quote small { display: block; font-size: .72rem; letter-spacing: .2em; text-transform: uppercase; color: #8a867f; }
+  .ex-triad { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)); gap: 1rem; margin: 1.8rem 0 2.4rem; }
+  .ex-card { border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.015); padding: 1.15rem; }
+  .ex-card-kicker { font-size: .65rem; letter-spacing: .22em; text-transform: uppercase; color: #ff6644; margin-bottom: .4rem; display: block; }
+  .ex-card strong { display: block; color: #fff; font-weight: 400; letter-spacing: .06em; margin-bottom: .5rem; font-size: .98rem; }
+  .ex-card p { font-size: .88rem !important; line-height: 1.6; margin: 0 !important; color: #bdb9b1 !important; }
+  .ex-table-wrap { overflow-x: auto; margin: 1.8rem 0 2.6rem; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.01); }
+  .ex-table { width: 100%; border-collapse: collapse; font-size: .84rem; line-height: 1.6; text-align: left; min-width: 38rem; }
+  .ex-table th, .ex-table td { padding: .95rem 1rem; border-bottom: 1px solid rgba(255,255,255,.08); border-right: 1px solid rgba(255,255,255,.06); vertical-align: top; }
+  .ex-table th:last-child, .ex-table td:last-child { border-right: 0; }
+  .ex-table th { font-size: .66rem; letter-spacing: .2em; text-transform: uppercase; color: #8a867f; font-weight: 400; background: rgba(255,255,255,.025); }
+  .ex-table td ul { margin: 0; padding-left: 1rem; }
+  .ex-table td li { margin-bottom: .35rem; }
   .ex-gap { margin-top: 4rem; }
   .ex-videos, .ex-gallery { display: grid; gap: 1.4rem; }
   .ex-videos iframe, .ex-videos video { width: 100%; aspect-ratio: 16 / 9; border: 0; background: #000; display: block; }
@@ -6860,23 +6875,376 @@ const EX_PROFILE = {
 };
 
 // Entrada del núcleo D.A.C. (misma redacción que tenías)
+// ============================================================
+// 📐 LÁMINAS DIAGRAMÁTICAS DEL MARCO DOCTORAL D.A.C. (SVG EMBEBIDO)
+// ============================================================
+const dacSlideSvg = (inner) => 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 430" width="800" height="430">
+    <rect width="800" height="430" fill="#0d0d10"/>
+    <rect x="1" y="1" width="798" height="428" fill="none" stroke="#ffffff" stroke-opacity="0.09"/>
+    <g stroke="#ffffff" stroke-opacity="0.22" stroke-width="1">
+      <path d="M16 26h14M23 19v14M770 26h14M777 19v14M16 404h14M23 397v14M770 404h14M777 397v14"/>
+    </g>
+    ${inner}
+  </svg>`
+);
+
+// Lámina I: El Bucle DAC (Arte, Ciencia, Diseño) y sus sustratos teóricos
+const DAC_FIG_BUCLE = dacSlideSvg(`
+  <text x="38" y="42" fill="#8a867f" font-family="monospace" font-size="11" letter-spacing="2.5">LÁMINA I // EL BUCLE D.A.C. — RECHAZO AL DETERMINISMO Y PENSAMIENTO PERIFÉRICO</text>
+  <g fill="none" stroke="#e7e4de" stroke-width="1.2" stroke-opacity="0.72">
+    <circle cx="400" cy="165" r="78"/><circle cx="400" cy="165" r="62" stroke-opacity="0.25" stroke-dasharray="3 3"/>
+    <circle cx="340" cy="260" r="78"/><circle cx="340" cy="260" r="62" stroke-opacity="0.25" stroke-dasharray="3 3"/>
+    <circle cx="460" cy="260" r="78"/><circle cx="460" cy="260" r="62" stroke-opacity="0.25" stroke-dasharray="3 3"/>
+  </g>
+  <circle cx="400" cy="228" r="25" fill="#ff6644" fill-opacity="0.16" stroke="#ff6644" stroke-width="1.2"/>
+  <circle cx="400" cy="228" r="3" fill="#ff6644"/>
+  <text x="400" y="128" fill="#ffffff" font-family="sans-serif" font-weight="300" font-size="13" letter-spacing="4" text-anchor="middle">ARTE · ETHOS</text>
+  <text x="292" y="290" fill="#ffffff" font-family="sans-serif" font-weight="300" font-size="13" letter-spacing="3" text-anchor="middle">CIENCIA · LOGOS</text>
+  <text x="508" y="290" fill="#ffffff" font-family="sans-serif" font-weight="300" font-size="13" letter-spacing="3" text-anchor="middle">DISEÑO · PATHOS</text>
+  <text x="55" y="88" fill="#e7e4de" font-family="monospace" font-size="10">SUSTRATO: PENSAMIENTO PERIFÉRICO (KENTRIDGE)</text>
+  <text x="55" y="104" fill="#8a867f" font-family="monospace" font-size="9.5">Operación: Ana-arqueología y desmantelamiento de la caja negra</text>
+  <text x="55" y="348" fill="#e7e4de" font-family="monospace" font-size="10">SUSTRATO: BIOLOGÍA DEL CONOCIMIENTO (MATURANA / VARELA)</text>
+  <text x="55" y="364" fill="#8a867f" font-family="monospace" font-size="9.5">Operación: Autopoiesis y acoplamiento estructural activo</text>
+  <text x="745" y="348" fill="#e7e4de" font-family="monospace" font-size="10" text-anchor="end">SUSTRATO: RETÓRICA PROCEDIMENTAL (BOGOST)</text>
+  <text x="745" y="364" fill="#8a867f" font-family="monospace" font-size="9.5" text-anchor="end">Operación: El hardware como enunciador persuasivo</text>
+  <text x="400" y="404" fill="#77746e" font-family="monospace" font-size="10" letter-spacing="2" text-anchor="middle">LA CIENCIA NO SOLO MIDE · EL ARTE NO SOLO EXPRESA · EL DISEÑO NO SOLO SOLUCIONA</text>
+`);
+
+// Lámina II: La Poética del Error y la Máquina Errática (Logos / Ciencia)
+const DAC_FIG_ERRATICA = dacSlideSvg(`
+  <text x="38" y="42" fill="#8a867f" font-family="monospace" font-size="11" letter-spacing="2.5">LÁMINA II // LOGOS · LA MÁQUINA ERRÁTICA Y EL GLITCH COMO MANIFIESTO</text>
+  <g fill="none" stroke="#8a867f" stroke-width="1">
+    <rect x="60" y="105" width="210" height="210" stroke-opacity="0.4"/>
+    <path d="M95 105v210M155 105v210M215 105v210M60 155h210M60 210h210M60 265h210" stroke-opacity="0.2"/>
+  </g>
+  <polyline points="270,210 330,210 348,180 368,245 388,162 408,234 424,210 500,210" fill="none" stroke="#ff6644" stroke-width="2.2"/>
+  <g transform="translate(580,210) rotate(45)" fill="none" stroke="#e7e4de" stroke-width="1.2">
+    <rect x="-65" y="-65" width="130" height="130"/>
+    <rect x="-42" y="-42" width="84" height="84" stroke-opacity="0.45"/>
+    <rect x="-18" y="-18" width="36" height="36" stroke="#ff6644" fill="#ff6644" fill-opacity="0.16"/>
+  </g>
+  <circle cx="580" cy="210" r="3.5" fill="#ff6644"/>
+  <text x="388" y="135" fill="#ff6644" font-family="monospace" font-size="10.5" letter-spacing="1.5" text-anchor="middle">EL FALLO NO ES UN DEFECTO A OPTIMIZAR: ES UN ARGUMENTO PERSUASIVO</text>
+  <text x="165" y="348" fill="#bdb9b1" font-family="monospace" font-size="10" text-anchor="middle">CIRCUITO CERRADO (CAJA HERMÉTICA)</text>
+  <text x="580" y="348" fill="#bdb9b1" font-family="monospace" font-size="10" text-anchor="middle">REVELACIÓN DE LA ARQUITECTURA DEL SILICIO</text>
+  <text x="400" y="404" fill="#77746e" font-family="monospace" font-size="10" letter-spacing="2" text-anchor="middle">EL «ERRAR» Y LA INFERENCIA ABDUCTIVA EN LA INVESTIGACIÓN-CREACIÓN (I+C)</text>
+`);
+
+// Lámina III: La Máquina Poética (Ethos / Arte)
+const DAC_FIG_POETICA = dacSlideSvg(`
+  <text x="38" y="42" fill="#8a867f" font-family="monospace" font-size="11" letter-spacing="2.5">LÁMINA III // ETHOS · LA MÁQUINA POÉTICA — DESCALIBRACIÓN COMO PRODUCCIÓN ESTÉTICA</text>
+  <g stroke="#ffffff" stroke-opacity="0.16" stroke-width="1">
+    <path d="M65 92h260v240H65z" fill="none"/>
+    <path d="M117 92v240M169 92v240M221 92v240M273 92v240M65 140h260M65 188h260M65 236h260M65 284h260"/>
+  </g>
+  <line x1="382" y1="80" x2="382" y2="344" stroke="#ff6644" stroke-width="1.2" stroke-dasharray="4 4"/>
+  <g fill="#e7e4de" fill-opacity="0.75">
+    <circle cx="440" cy="120" r="2"/><circle cx="485" cy="108" r="1.5"/><circle cx="520" cy="145" r="2.2"/><circle cx="570" cy="118" r="1.8"/>
+    <circle cx="625" cy="135" r="2"/><circle cx="670" cy="112" r="1.5"/><circle cx="458" cy="185" r="1.8"/><circle cx="545" cy="195" r="2.2"/>
+    <circle cx="605" cy="178" r="1.6"/><circle cx="685" cy="195" r="2"/><circle cx="435" cy="248" r="2"/><circle cx="508" cy="260" r="1.5"/>
+    <circle cx="590" cy="245" r="2.2"/><circle cx="648" cy="268" r="1.8"/><circle cx="470" cy="308" r="1.6"/><circle cx="555" cy="312" r="2"/>
+  </g>
+  <g stroke="#ff6644" stroke-opacity="0.55" stroke-width="1" fill="none">
+    <path d="M490 142 L585 162 L532 238 L468 218 Z"/><line x1="585" y1="162" x2="645" y2="225"/><line x1="532" y1="238" x2="645" y2="225"/>
+  </g>
+  <g fill="#ff6644">
+    <circle cx="490" cy="142" r="5"/><circle cx="585" cy="162" r="5"/><circle cx="532" cy="238" r="5"/><circle cx="468" cy="218" r="5"/><circle cx="645" cy="225" r="5"/>
+  </g>
+  <text x="195" y="365" fill="#8a867f" font-family="monospace" font-size="10" text-anchor="middle">CUADRÍCULA PULCRA CORPORATIVA</text>
+  <text x="565" y="365" fill="#e7e4de" font-family="monospace" font-size="10" text-anchor="middle">MATRIZ DE DATOS CRUDOS (NUBE DE PUNTOS) COMO LIENZO</text>
+  <text x="400" y="404" fill="#77746e" font-family="monospace" font-size="10" letter-spacing="2" text-anchor="middle">SUBVERSIÓN DEL SENTIDO · ABANDONO DE LA LÓGICA INSTRUMENTAL · CREACIÓN DE MUNDOS</text>
+`);
+
+// Lámina IV: Saber Situado y El Plano de la Fricción (Pathos / Diseño)
+const DAC_FIG_SABER = dacSlideSvg(`
+  <text x="38" y="42" fill="#8a867f" font-family="monospace" font-size="11" letter-spacing="2.5">LÁMINA IV // PATHOS · SABER SITUADO Y EL PLANO DE LA FRICCIÓN</text>
+  <circle cx="130" cy="220" r="16" fill="#ff6644" fill-opacity="0.18" stroke="#ff6644" stroke-width="1.5"/>
+  <circle cx="130" cy="220" r="4" fill="#ff6644"/>
+  <text x="130" y="258" fill="#ffffff" font-family="sans-serif" font-weight="300" font-size="12" letter-spacing="2" text-anchor="middle">EL ARTEFACTO</text>
+  <text x="130" y="275" fill="#8a867f" font-family="monospace" font-size="10" text-anchor="middle">DISPOSITIVO EPISTÉMICO</text>
+  <g fill="none" stroke="#e7e4de" stroke-opacity="0.55" stroke-width="1.2">
+    <path d="M146 214 C 255 210, 285 115, 410 115"/>
+    <path d="M146 220 L 410 220"/>
+    <path d="M146 226 C 255 230, 285 325, 410 325"/>
+  </g>
+  <circle cx="410" cy="115" r="4" fill="#ff6644"/><circle cx="410" cy="220" r="4" fill="#ff6644"/><circle cx="410" cy="325" r="4" fill="#ff6644"/>
+  <text x="430" y="110" fill="#ffffff" font-family="sans-serif" font-weight="400" font-size="11.5" letter-spacing="1.8">1. EL SABER-DEL-CUERPO / DIMENSIÓN SOMÁTICA</text>
+  <text x="430" y="128" fill="#bdb9b1" font-family="monospace" font-size="9.5">Reactivación propioceptiva · Negociación táctil con la ruina tecnológica</text>
+  <text x="430" y="215" fill="#ffffff" font-family="sans-serif" font-weight="400" font-size="11.5" letter-spacing="1.8">2. LUDOACTIVISMO / DIMENSIÓN PROCEDIMENTAL</text>
+  <text x="430" y="233" fill="#bdb9b1" font-family="monospace" font-size="9.5">El juego desobediente · Auditar y subvertir reglas opacas</text>
+  <text x="430" y="320" fill="#ffffff" font-family="sans-serif" font-weight="400" font-size="11.5" letter-spacing="1.8">3. LABORATORIOS ITINERANTES / DIMENSIÓN TERRITORIAL</text>
+  <text x="430" y="338" fill="#bdb9b1" font-family="monospace" font-size="9.5">GameLab Tadeo → Mercados de pulgas → Periferia de la basura electrónica</text>
+  <text x="400" y="404" fill="#77746e" font-family="monospace" font-size="10" letter-spacing="2" text-anchor="middle">LA PRÁCTICA DEL CACHARREO COMO ARTICULADOR DE LA TRÍADA</text>
+`);
+
+// ============================================================
+// 🔥 ENTRADA TEÓRICA EXPANDIDA DEL NÚCLEO D.A.C. (ARCHIVO EJECUTIVO)
+// ============================================================
 const EX_DAC = {
   id: 99,
-  title: { es: 'D.A.C. // Núcleo investigativo', en: 'D.A.C. // Research core' },
-  desc: { es: 'Simulador de retórica procedimental.', en: 'Procedural rhetoric simulator.' },
-  longDesc: {
-    es: '<p style="margin-bottom:15px; text-align:left; color:#cccccc;">El núcleo D.A.C. (Diseño, Arte y Ciencia) no es un proyecto estático, sino un ecosistema vivo compuesto por tres atractores matemáticos interactivos:</p><ul style="text-align:left; line-height:1.8; color:#cccccc;"><li><b>La Máquina Poética:</b> Flujo de datos y partículas en enjambre.</li><li><b>La Máquina Errática:</b> Corrupción, desestabilización y glitch estructural.</li><li><b>La Máquina de Fricción:</b> Resistencia táctil y materia pesada.</li></ul><p style="margin-top:20px; padding-top:15px; border-top:1px solid rgba(255,255,255,0.1); text-align:left; color:#ffffff;">> Para experimentar el simulador completo, cierra este documento, regresa al <b>Modo Inmersivo (3D)</b> usando el botón superior derecho, y haz clic sobre el núcleo central.</p>',
-    en: '<p style="margin-bottom:15px; text-align:left; color:#cccccc;">The D.A.C. core (Design, Art, and Science) is not a static project, but a living ecosystem composed of three interactive mathematical attractors:</p><ul style="text-align:left; line-height:1.8; color:#cccccc;"><li><b>The Poetic Machine:</b> Data flow and swarm particles.</li><li><b>The Erratic Machine:</b> Corruption, destabilization, and structural glitch.</li><li><b>The Friction Machine:</b> Tactile resistance and heavy matter.</li></ul><p style="margin-top:20px; padding-top:15px; border-top:1px solid rgba(255,255,255,0.1); text-align:left; color:#ffffff;">> To experience the full simulator, close this document, return to the <b>Immersive Mode (3D)</b> using the top right button, and click on the central core.</p>'
+  title: {
+    es: 'D.A.C. // Retórica Procedimental Material',
+    en: 'D.A.C. // Material Procedural Rhetoric'
   },
-  role: { es: 'Simulación física y shaders', en: 'Physics simulation & shaders' },
-  tech: { es: ['Three.js', 'WebGL', 'GLSL', 'Math Chaos'], en: ['Three.js', 'WebGL', 'GLSL', 'Math Chaos'] },
-  videos: [], gallery: [], link: ''
+  desc: {
+    es: 'El diseño de «Juegos Otros» como dispositivo epistémico para la soberanía tecnológica situada.',
+    en: 'The design of "Other Games" as an epistemic device for situated technological sovereignty.'
+  },
+  role: {
+    es: 'Postura Epistémica · Doctorado en Diseño, Arte y Ciencia',
+    en: 'Epistemic Posture · PhD in Design, Art, and Science'
+  },
+  tech: {
+    es: ['Diseñarticienciar', 'Retórica Material', 'Juegos Otros', 'Ana-arqueología', 'Cacharreo', 'Ludoactivismo', 'Soberanía Tecnológica'],
+    en: ['Diseñarticienciar', 'Material Rhetoric', 'Other Games', 'Media An-archaeology', 'Cacharreo', 'Ludo-activism', 'Tech Sovereignty']
+  },
+  longDesc: {
+    es: `
+      <div class="ex-quote">
+        <p>«La usabilidad sin fricción es una anestesia cognitiva.»</p>
+        <small>Diseñarticienciar · Retórica Procedimental Material en el Bucle D.A.C.</small>
+      </div>
+
+      <h3 class="ex-label" style="margin-top:2.4rem">I. La Máquina Hermética vs. El Imperativo Material</h3>
+      <p>El paradigma comercial contemporáneo descansa sobre tres mecanismos de domesticación: una <b>interfaz pulcra estandarizada</b>, la <b>ilusión de inmaterialidad</b> y el <b>acoplamiento pasivo del usuario</b>. Su costo somático es profundo: el ocultamiento de la arquitectura física del dispositivo, el letargo del cuerpo frente a la pantalla y la automatización de la cognición del sujeto.</p>
+      <p>Frente a ello, el imperativo del proyecto doctoral consiste en <b>desmantelar la máquina hermética</b> y reintroducir la resistencia material intencional frente al diseño aséptico.</p>
+
+      <h3 class="ex-label" style="margin-top:2.6rem">II. La Poética del Error y la Retórica Material</h3>
+      <p>En esta postura epistémica, <b>el fallo técnico no es un defecto a optimizar; es un argumento persuasivo</b>. La investigación opera desde tres premisas:</p>
+      <ul>
+        <li><b>El Glitch como Manifiesto:</b> La inestabilidad introducida obliga al sistema cerrado a confesar su propia física, materialidad y arquitectura oculta.</li>
+        <li><b>Procedimientos Persuasivos:</b> Las mecánicas del hardware y las resistencias del circuito no son neutrales; argumentan, orientan y moldean activamente la conducta.</li>
+        <li><b>Revelación de la Materia:</b> La falla destruye la magia tecnológica inmaterial. La materia técnica deja de ser un reproductor silencioso para convertirse en una enunciadora.</li>
+      </ul>
+
+      <h3 class="ex-label" style="margin-top:2.6rem">III. Juegos Otros: Diseñar para el Errar</h3>
+      <p>Asumir <b>la fricción material como método proyectual</b> implica diseñar desde la inestabilidad para transformar el vínculo entre sujeto y artefacto en tres niveles:</p>
+      <ul>
+        <li><b>1. Negociación Física:</b> Sistemas lúdicos construidos desde la precariedad (hardware abierto, residuos y <em>E-waste</em>) que exigen una participación táctil, inestable y no automatizada.</li>
+        <li><b>2. Conciencia Somática:</b> La resistencia material del dispositivo opera como una perturbación intencional en el ecosistema del usuario para despertar el <em>«saber-del-cuerpo»</em>.</li>
+        <li><b>3. Agencia Crítica:</b> Transición del letargo del consumidor a la reorganización activa. Al exigir una adaptación constante, se recupera la soberanía frente al dispositivo.</li>
+      </ul>
+
+      <div class="ex-long-wide">
+        <h3 class="ex-label" style="margin-top:2.8rem">IV. El Bucle D.A.C. y la Tríada de Máquinas (Discrepancia como Motor Ontológico)</h3>
+        <p style="max-width:38rem; margin-bottom:1.2rem;">El Bucle D.A.C. rechaza el determinismo disciplinar: <b>la ciencia no solo mide, el arte no solo expresa, el diseño no solo soluciona</b>. Articuladas por la práctica del <b>Cacharreo</b>, tres máquinas configuran el motor ontológico de la investigación:</p>
+        <div class="ex-triad">
+          <div class="ex-card">
+            <span class="ex-card-kicker">Modo Pathos · Diseño</span>
+            <strong>Máquina de Fricción</strong>
+            <p><b>Función:</b> Perturbación material intencional.<br><b>Concepto:</b> Resistencia física, basura electrónica y ruptura de la hiper-usabilidad.<br><b>Sustrato:</b> Retórica Procedimental Material (Bogost) — el hardware como enunciador persuasivo.</p>
+          </div>
+          <div class="ex-card">
+            <span class="ex-card-kicker">Modo Ethos · Arte</span>
+            <strong>Máquina Poética</strong>
+            <p><b>Función:</b> Subversión del sentido.<br><b>Concepto:</b> Poética digital de la descalibración; la matriz de datos crudos (nube de puntos) como lienzo de expresión frente a la representación pulcra corporativa.<br><b>Sustrato:</b> Pensamiento Periférico (Kentridge) y Ana-arqueología de medios.</p>
+          </div>
+          <div class="ex-card">
+            <span class="ex-card-kicker">Modo Logos · Ciencia</span>
+            <strong>Máquina Errática</strong>
+            <p><b>Función:</b> El glitch y la inestabilidad.<br><b>Concepto:</b> El «errar» y la inferencia abductiva en la Investigación-Creación (I+C). El tartamudeo de la materia técnica revela la arquitectura interna del silicio.<br><b>Sustrato:</b> Biología del Conocimiento (Maturana / Varela) — autopoiesis y acoplamiento estructural.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="ex-label" style="margin-top:2.4rem">V. Saber Situado: El Plano de la Fricción</h3>
+      <p>El artefacto («Juego Otro») se despliega como dispositivo epistémico en tres dimensiones situadas:</p>
+      <ul>
+        <li><b>El Saber-del-Cuerpo (Dimensión Somática):</b> Reactivación propioceptiva y negociación táctil con la ruina tecnológica. Validación: quiebre de la anestesia cognitiva mediante el acoplamiento activo.</li>
+        <li><b>Ludoactivismo (Dimensión Procedimental):</b> El juego desobediente. Validación: soberanía tecnológica y capacidad de auditar y subvertir reglas opacas.</li>
+        <li><b>Laboratorios Itinerantes (Dimensión Territorial):</b> <em>GameLab Tadeo → Mercados de pulgas → Redes populares</em>. Validación: transformación micropolítica en la periferia de la basura electrónica.</li>
+      </ul>
+
+      <div class="ex-long-wide">
+        <h3 class="ex-label" style="margin-top:2.8rem">VI. Matriz Epistémica del Marco Doctoral</h3>
+        <div class="ex-table-wrap">
+          <table class="ex-table">
+            <thead>
+              <tr>
+                <th>Esfera D.A.C. &amp; Modo Retórico</th>
+                <th>Subdisciplinas / Prácticas Específicas</th>
+                <th>Operación en el Artefacto («Juego Otro»)</th>
+                <th>Autores Marco Doctoral</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong style="color:#fff;">DISEÑO</strong><br><span style="color:#ff6644; font-size:.75rem;">[MODO PATHOS]</span><br><small style="color:#8a867f;">Máquina de Fricción</small></td>
+                <td>
+                  <ul>
+                    <li><b>Diseño de «Juegos Otros» y Ludoactivismo:</b> Subversión de reglas y mecánicas regionales.</li>
+                    <li><b>Diseño Interactivo y Computación Física:</b> Prototipado con hardware libre y <em>E-waste</em>.</li>
+                    <li><b>Retórica Procedimental Material:</b> El objeto físico como argumento persuasivo.</li>
+                    <li><b>Diseño Ontológico y Ecoproyectualidad:</b> Autonomía y reparación frente al proyecto «vulgar».</li>
+                  </ul>
+                </td>
+                <td>Materializa la crítica en interfaces tangibles e indóciles. Introduce fricción física (soldaduras expuestas, latón oxidado, sensores descalibrados) para quebrar la hiper-usabilidad de la <em>caja hermética</em>, exigiendo una negociación somática que despierta el <b>«saber-del-cuerpo»</b>.</td>
+                <td>Ian Bogost · Arturo Escobar · Blanca Callén · Durgan A. Nallar · William Gaver · Donald Norman (crítica) · Y.M.M. Martínez / P.C. Herrera</td>
+              </tr>
+              <tr>
+                <td><strong style="color:#fff;">ARTE</strong><br><span style="color:#ff6644; font-size:.75rem;">[MODO ETHOS]</span><br><small style="color:#8a867f;">Máquina Poética</small></td>
+                <td>
+                  <ul>
+                    <li><b>Artes Electrónicas y Media Arts:</b> Intervención estética de señales y circuitos.</li>
+                    <li><b>Arte del Glitch y Estética del Error:</b> La falla técnica como lenguaje insubordinado.</li>
+                    <li><b>Tecnopoéticas Latinoamericanas:</b> Desestabilización de regímenes de representación.</li>
+                    <li><b>Ecología de la Mirada:</b> Pensamiento periférico frente a la visión central corporativa.</li>
+                  </ul>
+                </td>
+                <td>Abandona la funcionalidad utilitaria para abrir mundos. Subvierte la imagen pulcra proyectando matrices de datos crudos (nubes de puntos inestables) y dota a la ruina electrónica de un carácter ético, poético y decolonial situado en el Sur Global.</td>
+                <td>Claudia Kozak · Rosa Menkman · William Kentridge · Fernando Suárez-Carballo · Suely Rolnik &amp; Félix Guattari</td>
+              </tr>
+              <tr>
+                <td><strong style="color:#fff;">CIENCIA</strong><br><span style="color:#ff6644; font-size:.75rem;">[MODO LOGOS]</span><br><small style="color:#8a867f;">Máquina Errática</small></td>
+                <td>
+                  <ul>
+                    <li><b>Biología del Conocimiento y Cibernética:</b> Autopoiesis y acoplamiento estructural.</li>
+                    <li><b>Ana-arqueología y Geología de Medios:</b> Excavación física y mineral del hardware.</li>
+                    <li><b>Física Electrónica y Lógica Inferencial:</b> Voltajes, sensores y método abductivo.</li>
+                    <li><b>Pensamiento Sistémico y Epistemologías del Sur:</b> Ecología profunda e IAPT sentipensante.</li>
+                  </ul>
+                </td>
+                <td>Provee modelos de observación rigurosa y validación. Mediante la inferencia abductiva, convierte el comportamiento errático del silicio y el ruido eléctrico en regla del sistema, revelando la arquitectura física interna de la máquina.</td>
+                <td>H. Maturana &amp; F. Varela · Jussi Parikka / Sean Cubitt · Siegfried Zielinski / W. Ernst · Timothy Morton · Bruno Latour / D. Haraway · Orlando Fals Borda · Paola Ricaurte / A. Quijano</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p style="margin-top:2rem; padding-top:1.2rem; border-top:1px solid rgba(255,255,255,0.1); color:#e7e4de;">
+        → Para experimentar el simulador espacial de las tres máquinas (Poética, Errática y de Fricción), cambia al <b>Universo 3D</b> con el botón superior derecho y toca el núcleo D.A.C.
+      </p>
+    `,
+    en: `
+      <div class="ex-quote">
+        <p>"Frictionless usability is a cognitive anesthesia."</p>
+        <small>Diseñarticienciar · Material Procedural Rhetoric in the D.A.C. Loop</small>
+      </div>
+
+      <h3 class="ex-label" style="margin-top:2.4rem">I. The Hermetic Machine vs. The Material Imperative</h3>
+      <p>The contemporary commercial paradigm rests on three domesticating mechanisms: a <b>standardized spotless interface</b>, the <b>illusion of immateriality</b>, and <b>passive user coupling</b>. Its somatic cost is profound: concealing the physical architecture of the device, bodily lethargy in front of the screen, and the automation of the subject's cognition.</p>
+      <p>Against this, the imperative of this doctoral research is to <b>dismantle the hermetic machine</b> and reintroduce intentional material resistance against aseptic design.</p>
+
+      <h3 class="ex-label" style="margin-top:2.6rem">II. Poetics of Error and Material Rhetoric</h3>
+      <p>Within this epistemic posture, <b>technical failure is not a defect to optimize; it is a persuasive argument</b>. The research operates from three premises:</p>
+      <ul>
+        <li><b>Glitch as Manifesto:</b> Introduced instability forces the closed system to confess its own physics, materiality, and hidden architecture.</li>
+        <li><b>Persuasive Procedures:</b> Hardware mechanics and circuit resistances are not neutral; they actively argue, orient, and shape behavior.</li>
+        <li><b>Revelation of Matter:</b> Failure shatters immaterial technological magic. Technical matter ceases to be a silent player to become an enunciator.</li>
+      </ul>
+
+      <h3 class="ex-label" style="margin-top:2.6rem">III. Other Games: Designing for Erring</h3>
+      <p>Embracing <b>material friction as a design method</b> entails designing from instability to transform the bond between subject and artifact across three levels:</p>
+      <ul>
+        <li><b>1. Physical Negotiation:</b> Playful systems built from precarity (open hardware, residues, and <em>E-waste</em>) demanding tactile, unstable, and non-automated participation.</li>
+        <li><b>2. Somatic Awareness:</b> The device's material resistance acts as an intentional perturbation in the user's ecosystem to awaken <em>"body-knowledge"</em>.</li>
+        <li><b>3. Critical Agency:</b> Transitioning from consumer lethargy to active reorganization. Demanding constant adaptation reclaims sovereignty over the device.</li>
+      </ul>
+
+      <div class="ex-long-wide">
+        <h3 class="ex-label" style="margin-top:2.8rem">IV. The D.A.C. Loop and the Triad of Machines (Discrepancy as Ontological Engine)</h3>
+        <p style="max-width:38rem; margin-bottom:1.2rem;">The D.A.C. Loop rejects disciplinary determinism: <b>science does not only measure, art does not only express, design does not only solve</b>. Articulated through the practice of <b>Cacharreo</b>, three machines form the ontological engine of the research:</p>
+        <div class="ex-triad">
+          <div class="ex-card">
+            <span class="ex-card-kicker">Pathos Mode · Design</span>
+            <strong>Friction Machine</strong>
+            <p><b>Function:</b> Intentional material perturbation.<br><b>Concept:</b> Physical resistance, electronic waste, and rupture of hyper-usability.<br><b>Substrate:</b> Material Procedural Rhetoric (Bogost) — hardware as a persuasive enunciator.</p>
+          </div>
+          <div class="ex-card">
+            <span class="ex-card-kicker">Ethos Mode · Art</span>
+            <strong>Poetic Machine</strong>
+            <p><b>Function:</b> Subversion of meaning.<br><b>Concept:</b> Digital poetics of miscalibration; raw data matrices (point clouds) as an expressive canvas against corporate spotless representation.<br><b>Substrate:</b> Peripheral Thinking (Kentridge) and Media An-archaeology.</p>
+          </div>
+          <div class="ex-card">
+            <span class="ex-card-kicker">Logos Mode · Science</span>
+            <strong>Erratic Machine</strong>
+            <p><b>Function:</b> Glitch and instability.<br><b>Concept:</b> "Erring" and abductive inference in Research-Creation. The stuttering of technical matter reveals silicon's internal architecture.<br><b>Substrate:</b> Biology of Cognition (Maturana / Varela) — autopoiesis and structural coupling.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="ex-label" style="margin-top:2.4rem">V. Situated Knowledge: The Plane of Friction</h3>
+      <p>The artifact ("Other Game") unfolds as an epistemic device across three situated dimensions:</p>
+      <ul>
+        <li><b>Body-Knowledge (Somatic Dimension):</b> Proprioceptive reactivation and tactile negotiation with technological ruins. Validation: breaking cognitive anesthesia through active coupling.</li>
+        <li><b>Ludo-activism (Procedural Dimension):</b> Disobedient play. Validation: technological sovereignty and the ability to audit and subvert opaque rules.</li>
+        <li><b>Itinerant Laboratories (Territorial Dimension):</b> <em>GameLab Tadeo → Flea markets → Popular networks</em>. Validation: micropolitical transformation in the periphery of electronic waste.</li>
+      </ul>
+
+      <div class="ex-long-wide">
+        <h3 class="ex-label" style="margin-top:2.8rem">VI. Doctoral Framework Epistemic Matrix</h3>
+        <div class="ex-table-wrap">
+          <table class="ex-table">
+            <thead>
+              <tr>
+                <th>D.A.C. Sphere &amp; Rhetorical Mode</th>
+                <th>Subdisciplines / Specific Practices</th>
+                <th>Artifact Operation ("Other Game")</th>
+                <th>Doctoral Framework Authors</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong style="color:#fff;">DESIGN</strong><br><span style="color:#ff6644; font-size:.75rem;">[PATHOS MODE]</span><br><small style="color:#8a867f;">Friction Machine</small></td>
+                <td>
+                  <ul>
+                    <li><b>"Other Games" Design &amp; Ludo-activism:</b> Subverting rules and regional mechanics.</li>
+                    <li><b>Interactive Design &amp; Physical Computing:</b> Prototyping with open hardware and <em>E-waste</em>.</li>
+                    <li><b>Material Procedural Rhetoric:</b> The physical object as a persuasive argument.</li>
+                    <li><b>Ontological &amp; Eco-design:</b> Autonomy and repair against the "vulgar" project.</li>
+                  </ul>
+                </td>
+                <td>Materializes critique into tangible, unruly interfaces. Introduces physical friction (exposed solder joints, oxidized brass, uncalibrated sensors) to shatter the hyper-usability of the <em>hermetic box</em>, demanding somatic negotiation that awakens <b>"body-knowledge"</b>.</td>
+                <td>Ian Bogost · Arturo Escobar · Blanca Callén · Durgan A. Nallar · William Gaver · Donald Norman (critique) · Y.M.M. Martínez / P.C. Herrera</td>
+              </tr>
+              <tr>
+                <td><strong style="color:#fff;">ART</strong><br><span style="color:#ff6644; font-size:.75rem;">[ETHOS MODE]</span><br><small style="color:#8a867f;">Poetic Machine</small></td>
+                <td>
+                  <ul>
+                    <li><b>Electronic &amp; Media Arts:</b> Aesthetic intervention of signals and circuits.</li>
+                    <li><b>Glitch Art &amp; Aesthetics of Error:</b> Technical failure as insubordinate language.</li>
+                    <li><b>Latin American Technopoetics:</b> Destabilizing regimes of representation.</li>
+                    <li><b>Ecology of the Gaze:</b> Peripheral thinking against corporate central vision.</li>
+                  </ul>
+                </td>
+                <td>Abandons utilitarian functionality to open worlds. Subverts spotless imagery by projecting raw data matrices (unstable point clouds) and endows electronic ruins with an ethical, poetic, and decolonial character situated in the Global South.</td>
+                <td>Claudia Kozak · Rosa Menkman · William Kentridge · Fernando Suárez-Carballo · Suely Rolnik &amp; Félix Guattari</td>
+              </tr>
+              <tr>
+                <td><strong style="color:#fff;">SCIENCE</strong><br><span style="color:#ff6644; font-size:.75rem;">[LOGOS MODE]</span><br><small style="color:#8a867f;">Erratic Machine</small></td>
+                <td>
+                  <ul>
+                    <li><b>Biology of Cognition &amp; Cybernetics:</b> Autopoiesis and structural coupling.</li>
+                    <li><b>Media An-archaeology &amp; Geology:</b> Physical and mineral excavation of hardware.</li>
+                    <li><b>Electronic Physics &amp; Inferential Logic:</b> Voltages, sensors, and abductive method.</li>
+                    <li><b>Systems Thinking &amp; Epistemologies of the South:</b> Deep ecology and feeling-thinking PAR.</li>
+                  </ul>
+                </td>
+                <td>Provides rigorous observation and validation models. Through abductive inference, it turns erratic silicon behavior and electrical noise into system rules, revealing the machine's internal physical architecture.</td>
+                <td>H. Maturana &amp; F. Varela · Jussi Parikka / Sean Cubitt · Siegfried Zielinski / W. Ernst · Timothy Morton · Bruno Latour / D. Haraway · Orlando Fals Borda · Paola Ricaurte / A. Quijano</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p style="margin-top:2rem; padding-top:1.2rem; border-top:1px solid rgba(255,255,255,0.1); color:#e7e4de;">
+        → To experience the spatial simulator of the three machines (Poetic, Erratic, and Friction), switch to the <b>3D Universe</b> using the top-right button and click on the D.A.C. core.
+      </p>
+    `
+  },
+  videos: [],
+  gallery: [DAC_FIG_BUCLE, DAC_FIG_ERRATICA, DAC_FIG_POETICA, DAC_FIG_SABER],
+  link: ''
 };
 
 const exEsc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const exTr = (v, lang) => (v && typeof v === 'object' && !Array.isArray(v)) ? (v[lang] ?? v.es) : v;
 const exLang = () => (window.currentLang === 'en' ? 'en' : 'es');
-const exIsRealImg = (s) => typeof s === 'string' && s !== '' && !s.startsWith('data:') && !s.includes('via.placeholder.com');
+// Permitimos los diagramas vectoriales del DAC (> 400 caracteres) manteniendo ocultos los placeholders cortos de data.js
+const exIsRealImg = (s) => typeof s === 'string' && s !== '' && !s.includes('via.placeholder.com') && (!s.startsWith('data:') || s.length > 400);
 const exVideos = (p) => [...new Set([...(p.videos || []), p.videoSrc].filter(Boolean))];
 
 function exProjects() {
