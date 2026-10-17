@@ -583,19 +583,27 @@ function playSound(type, targetPosition = null) {
 function showSystemToast(msg, color) {
   const toast = document.getElementById('system-toast');
   if(!toast) return;
-  toast.innerText = msg;
   
-  // 🔥 ESTILO ETÉREO Y CRISTALINO
-  // style.css trae `#system-toast { color: #cc0000 !important; text-shadow: none !important }`: un estilo en línea
-  // normal pierde contra eso, por eso todos los avisos salían rojos. Con 'important' manda el color que se pide.
-  toast.style.setProperty('color', color || '#ffffff', 'important');
-  toast.style.setProperty('text-shadow', `0 0 15px ${color || '#ffffff'}80`, 'important'); 
-  toast.style.background = 'rgba(5, 5, 10, 0.25)';
+  // 🔥 FILTRO SUBLIME: Eliminar emojis y mapear colores neón a tonos elegantes
+  let cleanMsg = msg.replace(/[\u{1F300}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{2384}\u{2B50}\u{2694}\u{262F}\u{26A0}\u{1F480}\u{1F389}\u{2728}☯✧💀🎉⚔⚠️📡]/gu, '').replace(/\[\vert{}\]/g, '').trim();
+  if (!cleanMsg.startsWith('>')) cleanMsg = '> ' + cleanMsg; // Unificar diseño
+  
+  let sublimeColor = color;
+  if (color === '#ff0000' || color === '#ff3333') sublimeColor = '#ff6644'; // Rojo -> Coral
+  else if (color === '#00ffaa' || color === '#00ff00') sublimeColor = '#b9c8b0'; // Verde -> Sage
+  else if (color === '#00ffff' || color === '#00ffcc' || color === '#9ffaff') sublimeColor = '#8a867f'; // Cian -> Pizarra
+  else if (color === '#ff00ff' || color === '#ffaa00') sublimeColor = '#b89947'; // Magenta/Naranja -> Ámbar
+  else if (color === '#ffffff' || color === '#fcf6f6' || color === '#f8f0f0' || color === '#efeaea') sublimeColor = '#e7e4de'; // Blanco -> Hueso
+  
+  toast.innerText = cleanMsg;
+  toast.style.setProperty('color', sublimeColor, 'important');
+  toast.style.setProperty('text-shadow', 'none', 'important'); // Cero resplandor neón
+  toast.style.background = 'rgba(8, 8, 10, 0.85)';
   toast.style.backdropFilter = 'blur(12px)';
-  toast.style.border = '1px solid rgba(255, 255, 255, 0.05)';
-  toast.style.borderRadius = '8px';
-  toast.style.padding = '12px 25px';
-  toast.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
+  toast.style.border = `1px solid ${sublimeColor}40`; // Borde técnico tenue
+  toast.style.borderRadius = '2px'; // Corte arquitectónico
+  toast.style.padding = '10px 20px';
+  toast.style.boxShadow = '0 15px 30px rgba(0,0,0,0.5)';
   toast.style.fontFamily = "'-apple-system', sans-serif";
   toast.style.fontWeight = '300';
   toast.style.letterSpacing = '3px';
@@ -1333,10 +1341,77 @@ const planetaDAC = new THREE.Mesh( dacCoreGeo, dacMaterial );
 planetaDAC.position.set(40, 0, -50); 
 planetaDAC.name = "planeta_dac";
 
-// Escudo invisible
-const dacHitboxPlanet = new THREE.Mesh(new THREE.SphereGeometry(7, 16, 16), new THREE.MeshBasicMaterial({visible: false}));
+// 🌐 Escudo Invisible D.A.C. (Mantiene el aspecto de basura electrónica libre y caótica)
+const dacHitboxPlanet = new THREE.Mesh(
+  new THREE.SphereGeometry(7.2, 16, 16),
+  new THREE.MeshBasicMaterial({ 
+    visible: false // Cero rastro visual, funciona únicamente para recibir el clic del ratón
+  })
+);
 dacHitboxPlanet.name = "planeta_dac"; 
 planetaDAC.add(dacHitboxPlanet);
+// 🪐 ANILLOS ARQUITECTÓNICOS DEL NÚCLEO D.A.C. (NUBES DE PARTÍCULAS)
+const dacRings = new THREE.Group();
+dacRings.name = "dac_rings";
+dacRings.rotation.x = Math.PI / 2.2; 
+dacRings.rotation.y = Math.PI / 8;
+
+// Función para forjar anillos de partículas (Efecto nube/polvo estelar)
+const createDacRing = (radius, thickness, hexColor, alpha, isPoetica) => {
+  const particleCount = isPoetica ? 3000 : 2000;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(particleCount * 3);
+  const basePos = new Float32Array(particleCount * 3); // Para recordar forma original
+
+  for (let i = 0; i < particleCount; i++) {
+    const theta = Math.random() * Math.PI * 2; // Ángulo del anillo principal
+    const phi = Math.random() * Math.PI * 2;   // Ángulo del tubo
+    const r = thickness * Math.sqrt(Math.random()); // Distribución espesa al centro
+    
+    const x = (radius + r * Math.cos(phi)) * Math.cos(theta);
+    const y = r * Math.sin(phi);
+    const z = (radius + r * Math.cos(phi)) * Math.sin(theta);
+
+    pos[i*3] = x; pos[i*3+1] = y; pos[i*3+2] = z;
+    basePos[i*3] = x; basePos[i*3+1] = y; basePos[i*3+2] = z;
+  }
+  
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('basePosition', new THREE.BufferAttribute(basePos, 3));
+
+  // Glow sutil y elegante: Additive Blending + Multiplicar color base para activar el Neon
+  const ringMat = new THREE.PointsMaterial({ 
+    color: new THREE.Color(hexColor).multiplyScalar(1.5), 
+    size: 0.05,
+    transparent: true, 
+    opacity: alpha,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false 
+  });
+
+  const points = new THREE.Points(geo, ringMat);
+  points.raycast = function() {}; // Inmune al ratón
+  return points;
+};
+
+// 1. Anillo interno (Poética / Arte / Hueso perlado radiante)
+const ringP = createDacRing(8.5, 0.25, 0xe7e4de, 0.5, true);
+ringP.userData = { type: 'poetica', baseColor: 0xe7e4de };
+dacRings.add(ringP);
+
+// 2. Anillo medio (Errática / Ciencia / Gris pizarra tenue)
+const ringE = createDacRing(9.8, 0.15, 0x8a867f, 0.35, false);
+ringE.userData = { type: 'erratica', baseColor: 0x8a867f };
+dacRings.add(ringE);
+
+// 3. Anillo exterior (Fricción / Diseño / Coral profundo esparcido)
+const ringF = createDacRing(11.2, 0.4, 0xff6644, 0.2, false);
+ringF.userData = { type: 'friccion', baseColor: 0xff6644 };
+dacRings.add(ringF);
+
+planetaDAC.add(dacRings);
+// Opcional: Dale una rotación contraria súper lenta para que se sienta como un mecanismo vivo
+// En tu AnimationLoop puedes agregar: dacHitboxPlanet.rotation.y -= 0.0005;
 
 // 2. LA TRÍADA DE MÁQUINAS (Atractores Matemáticos de Partículas)
 
@@ -1427,23 +1502,27 @@ function createAttractor(type, colorHex) {
   return new THREE.Points(geo, mat);
 }
 
-// 🔥 Máquina Poética: Nube de luz fluida
-const lunaPoetica = createAttractor('poetica', 0xffffff);
-lunaPoetica.position.set(12, 0, 0); 
-lunaPoetica.name = "maquina_poetica";
+// 🔥 TONOS "SUBLIMES" Y ETIQUETAS TÉCNICAS
+const lunaPoetica = createAttractor('poetica', 0xdcdce2); 
+lunaPoetica.position.set(12, 0, 0); lunaPoetica.name = "maquina_poetica";
 const hitP = new THREE.Mesh(new THREE.BoxGeometry(3,3,3), new THREE.MeshBasicMaterial({visible:false})); lunaPoetica.add(hitP);
+const labelP = createTextSprite('[ MÁQUINA POÉTICA ]', '#dcdce2', 26);
+labelP.position.y = 3.5; labelP.visible = false; labelP.name = "dac_label";
+lunaPoetica.add(labelP);
 
-// 🔥 Máquina Errática: Tormenta de código rojo
-const lunaErratica = createAttractor('erratica', 0xff3300);
-lunaErratica.position.set(-8, 6, -8);
-lunaErratica.name = "maquina_erratica";
+const lunaErratica = createAttractor('erratica', 0xcc5544); 
+lunaErratica.position.set(-8, 6, -8); lunaErratica.name = "maquina_erratica";
 const hitE = new THREE.Mesh(new THREE.BoxGeometry(3,3,3), new THREE.MeshBasicMaterial({visible:false})); lunaErratica.add(hitE);
+const labelE = createTextSprite('[ MÁQUINA ERRÁTICA ]', '#cc5544', 26);
+labelE.position.y = 3.5; labelE.visible = false; labelE.name = "dac_label";
+lunaErratica.add(labelE);
 
-// 🔥 Máquina de Fricción: Bloque denso amarillo
-const lunaFriccion = createAttractor('friccion', 0xffff00);
-lunaFriccion.position.set(0, -10, 8);
-lunaFriccion.name = "maquina_friccion";
+const lunaFriccion = createAttractor('friccion', 0xb89947); 
+lunaFriccion.position.set(0, -10, 8); lunaFriccion.name = "maquina_friccion";
 const hitF = new THREE.Mesh(new THREE.BoxGeometry(3,3,3), new THREE.MeshBasicMaterial({visible:false})); lunaFriccion.add(hitF);
+const labelF = createTextSprite('[ MÁQUINA DE FRICCIÓN ]', '#b89947', 26);
+labelF.position.y = 3.5; labelF.visible = false; labelF.name = "dac_label";
+lunaFriccion.add(labelF);
 
 // 3. ENSAMBLAJE
 planetaDAC.add(lunaPoetica);
@@ -1461,14 +1540,13 @@ let isFriccionActive = false;
 const dacNetworkGroup = new THREE.Group();
 planetaDAC.add(dacNetworkGroup); // Se ancla al planeta central
 
-// 1. Los Nodos (🔥 Subimos a 200 partículas para llenar la nueva atmósfera gigante)
-const dacParticleCount = 100;
+// 1. Los Nodos (Estética Sublime: puntos hueso translúcidos)
+const dacParticleCount = 1000;
 const dacParticlesGeo = new THREE.BufferGeometry();
-const dacParticlePositions = new Float32Array(dacParticleCount * 3);
+const dacParticlePositions = new Float32Array(dacParticleCount * 8);
 const dacParticleData = [];
 
 for (let i = 0; i < dacParticleCount; i++) {
-  // 🔥 Volumen expandido de 15 a 55 para que fluyan libres en el espacio
   const x = (Math.random() - 0.5) * 10;
   const y = (Math.random() - 0.5) * 10;
   const z = (Math.random() - 0.5) * 10;
@@ -1479,29 +1557,29 @@ for (let i = 0; i < dacParticleCount; i++) {
   });
 }
 dacParticlesGeo.setAttribute('position', new THREE.BufferAttribute(dacParticlePositions, 3));
-const dacParticles = new THREE.Points(dacParticlesGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.5 }));
+// 🔥 Puntos más pequeños (0.08) y menos opacos
+const dacParticles = new THREE.Points(dacParticlesGeo, new THREE.PointsMaterial({ color: 0xe7e4de, size: 0.08, transparent: true, opacity: 0.35 }));
 dacNetworkGroup.add(dacParticles);
+
 // 2. El Pincel de Interacción
-// 🔥 Devolvemos la esfera visual a un tamaño elegante y pequeño (0.2).
-// El radio de luz seguirá siendo enorme gracias a las matemáticas del fondo.
-const dacBrush = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true }));
-
-// 🔥 ESCUDO FANTASMA: Desactivamos sus colisiones. Ahora los clics lo atraviesan
-// y van directo a las lunas, sin importar dónde esté el ratón.
+// 🔥 Pincel sutil, sin neón cian
+const dacBrush = new THREE.Mesh(
+  new THREE.SphereGeometry(0.15, 8, 8), 
+  new THREE.MeshBasicMaterial({ color: 0xe7e4de, wireframe: true, transparent: true, opacity: 0.4 })
+);
 dacBrush.raycast = function() {}; 
-
 dacNetworkGroup.add(dacBrush);
 
-// 3. Las Conexiones Dinámicas (Líneas - ESTILO WEBGL_INTERACTIVE)
+// 3. Las Conexiones Dinámicas (Líneas - ESTILO CAD)
 const dacLinesGeo = new THREE.BufferGeometry();
-// 🔥 CORRECCIÓN: Memoria para miles de conexiones simultáneas entre partículas
 const maxLines = 3000; 
 const dacLinePositions = new Float32Array(maxLines * 6); 
 const dacLineAttr = new THREE.BufferAttribute(dacLinePositions, 3);
 try { if (dacLineAttr.setUsage) dacLineAttr.setUsage(THREE.DynamicDrawUsage); } catch(e){}
 dacLinesGeo.setAttribute('position', dacLineAttr);
 
-const dacLinesMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.6 });
+// 🔥 Líneas gris pizarra con opacidad muy baja para que no saturen la pantalla
+const dacLinesMat = new THREE.LineBasicMaterial({ color: 0x8a867f, transparent: true, opacity: 0.18 });
 const dacLines = new THREE.LineSegments(dacLinesGeo, dacLinesMat);
 dacNetworkGroup.add(dacLines);
 
@@ -1509,14 +1587,13 @@ dacNetworkGroup.add(dacLines);
 const dacConceptos = ["Autopoiesis", "An-arqueología", "Saber-del-cuerpo", "Fricción", "Glitch", "Cacharreo", "Soberanía"];
 const dacWords = [];
 dacConceptos.forEach(txt => {
-  const sp = createTextSprite(txt, '#00ffff', 56);
-  // 🔥 ESPACIO: Aumentamos el área de aparición (50 de ancho, 35 de alto) para que rieguen por toda la pantalla
+  const sp = createTextSprite(txt, '#e7e4de', 56); // Tono hueso sublime
   sp.position.set((Math.random()-0.5)*50, (Math.random()-0.5)*35, 2);
-  // 🔥 ESCALA CORREGIDA: Proporción 4:1 (32x8) exacta al canvas, para que dejen de verse aplastadas
   sp.scale.set(32, 8, 1);
   sp.material.depthTest = false; 
   sp.visible = false;
   sp.userData = { basePos: sp.position.clone() };
+  sp.raycast = function() {}; // 🔥 ESCUDO: Evita que el ratón las detecte y agrande
   dacNetworkGroup.add(sp);
   dacWords.push(sp);
 });
@@ -1571,7 +1648,7 @@ let scrollSpeedBoost = 0; let lastSpawnTime = 0;
 const discoveredVoyagers = []; const ambientWhales = []; const scrollKeywords = [];
 let score = 0; let currentLevel = 1; let weaponLevel = 1; let hasShield = false; let shipSpeed = 0.5; let combatCombo = 0; let comboTimer = null;
 let isBossBattle = false; let hasFoughtBoss = false; let bossEntity = null; 
-let bossMaxHealth = 150; let bossHealth = 150; // 🔥 Jefe mucho más resistente
+let bossMaxHealth = 1; let bossHealth = 1; // 🔥 Jefe mucho más resistente
 let enemyProjectiles = []; const enemyProjGeo = new THREE.CapsuleGeometry(0.2, 1, 4, 8); const enemyProjMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 let playerLives = 3; 
 
@@ -2494,7 +2571,93 @@ document.addEventListener('touchend', (e) => {
     targetCarouselAngle = Math.round(targetCarouselAngle / angleStep) * angleStep;
   }
 });
+// ============================================================
+// 🌱 MOTOR BOTÁNICO: FLORA DE DATOS (INSTANCING SCATTER)
+// ============================================================
+function spawnPlanetFlora(planetMesh) {
+  if (!planetMesh.userData.floraMesh) {
+    // 🔥 Geometría Suave: Esporas / Brotes redondeados (CERO púas)
+    // Una cápsula es como una píldora con puntas perfectamente redondas
+    const flowerGeo = new THREE.CapsuleGeometry(0.05, 0.15, 4, 12);
+    flowerGeo.translate(0, 0.15, 0); // Anclamos desde la base
+    flowerGeo.rotateX(Math.PI / 2);  // Apuntamos hacia afuera
 
+    // Material: Verde salvia muy tenue y elegante
+    const flowerMat = new THREE.MeshBasicMaterial({ 
+      color: 0xb9c8b0, 
+      transparent: true, 
+      opacity: 0, 
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    // Subimos la cantidad pero los hacemos más pequeños (efecto musgo)
+    const count = 140; 
+    const instancedMesh = new THREE.InstancedMesh(flowerGeo, flowerMat, count);
+    instancedMesh.name = "flora";
+    
+    const dummy = new THREE.Object3D();
+    const radius = 3.0; // Radio del planeta
+
+    // Distribución esférica uniforme
+    for (let i = 0; i < count; i++) {
+      const phi = Math.acos(-1 + (2 * i) / count);
+      const theta = Math.sqrt(count * Math.PI) * phi;
+      
+      dummy.position.set(
+        radius * Math.cos(theta) * Math.sin(phi),
+        radius * Math.sin(theta) * Math.sin(phi),
+        radius * Math.cos(phi)
+      );
+      
+      // Que miren hacia afuera
+      const normal = dummy.position.clone().normalize();
+      dummy.lookAt(dummy.position.clone().add(normal));
+      
+      // Tamaño aleatorio sutil. 
+      // Al escalar más en "X" que en "Z", aplanamos la cápsula para que parezca una hojita suave
+      const s = 0.3 + Math.random() * 0.6;
+      dummy.scale.set(s * 1.6, s, s * 0.6);
+
+      dummy.updateMatrix();
+      instancedMesh.setMatrixAt(i, dummy.matrix);
+    }
+    
+    planetMesh.add(instancedMesh);
+    planetMesh.userData.floraMesh = instancedMesh;
+  }
+  
+  // 🔥 Animación de Florecer (Fade-In)
+  const flora = planetMesh.userData.floraMesh;
+  flora.visible = true;
+  let opacity = flora.material.opacity;
+  if (flora.fadeAnim) clearInterval(flora.fadeAnim);
+  
+  flora.fadeAnim = setInterval(() => {
+    opacity += 0.03;
+    flora.material.opacity = Math.min(opacity, 0.65);
+    if (opacity >= 0.65) clearInterval(flora.fadeAnim);
+  }, 50);
+}
+
+// Para cuando el usuario hace clic en "Marcar como no leído"
+function removePlanetFlora(planetMesh) {
+  const flora = planetMesh.userData.floraMesh;
+  if (!flora) return;
+  
+  // Animación de Marchitarse (Fade-Out)
+  let opacity = flora.material.opacity;
+  if (flora.fadeAnim) clearInterval(flora.fadeAnim);
+  
+  flora.fadeAnim = setInterval(() => {
+    opacity -= 0.05;
+    flora.material.opacity = Math.max(opacity, 0);
+    if (opacity <= 0) {
+      flora.visible = false;
+      clearInterval(flora.fadeAnim);
+    }
+  }, 30);
+}
 function openProjectPopup(data) {
   if (data.id) updateProgress(data.id);  
   openUIWindow('portfolio-ui');
@@ -2531,6 +2694,7 @@ function openProjectPopup(data) {
         newLabel.position.set(0, 0, 0);
         planetMesh.add(newLabel);
       }
+      if (typeof spawnPlanetFlora === 'function') spawnPlanetFlora(planetMesh);
     }
   }
 
@@ -2782,6 +2946,7 @@ mediaContainer.innerHTML = finalGallery.length === 0 ? '' : `<img id="gallery-im
           origLabel.position.set(0, 0, 0);
           pMesh.add(origLabel);
         }
+        if (typeof removePlanetFlora === 'function') removePlanetFlora(pMesh);
         
         playSound('ui');
         restoreBtn.innerText = isEn ? '✔ RESTORED' : '✔ RESTAURADO';
@@ -3812,7 +3977,8 @@ const ACHIEVEMENTS = [
   { id: 'hall',         es: ['Salón de la Fama', 'Registra tu puntaje.'],                             en: ['Hall of Fame', 'Register your score.'] },
   { id: 'twoWorlds',    es: ['Dos mundos', 'Recorre el archivo ejecutivo y el universo 3D.'],         en: ['Two worlds', 'Explore both the executive archive and the 3D universe.'] },
   { id: 'reader',       es: ['Lector atento', 'Lee tres proyectos en el archivo ejecutivo.'],         en: ['Attentive reader', 'Read three projects in the executive archive.'] },
-  { id: 'polyglot',     es: ['Políglota', 'Cambia el idioma del universo.'],                          en: ['Polyglot', 'Change the universe language.'] }
+  { id: 'polyglot',     es: ['Políglota', 'Cambia el idioma del universo.'],                          en: ['Polyglot', 'Change the universe language.'] },
+  { id: 'sovereignty', secret: true, es: ['Soberanía', 'Alcanza la madurez del sistema (100%).'], en: ['Sovereignty', 'Reach system maturity (100%).'], reward: { es: 'Insignia de Sistema', en: 'System Badge' } }
 ];
 const ACH = { got: Object.assign({}, readUnlocks().ach), initialLang: null, toggles: 0, open: false, lastLang: null };
 if (window.pulseSword.unlocked && !ACH.got.boss) ACH.got.boss = Date.now();            // quien ya tenía la espada, ya tiene el logro
@@ -3844,15 +4010,17 @@ const ACH_ICONS = {
   twoWorlds:    '<circle cx="8.5" cy="12" r="5.5"/><circle cx="15.5" cy="12" r="5.5" fill="currentColor" fill-opacity=".12"/>',
   reader:       '<path d="M3.5 5.5C6 4.5 9.5 4.5 12 6c2.5-1.5 6-1.5 8.5-.5V19c-2.5-1-6-1-8.5.5-2.5-1.5-6-1.5-8.5-.5z" fill="currentColor" fill-opacity=".08"/><path d="M12 6v13.5"/>',
   polyglot:     '<path d="M3.5 4.5h11v8H8.5l-3 3v-3h-2z" fill="currentColor" fill-opacity=".1"/><path d="M9.5 14.5v1.5h5l3 3v-3h3v-8h-5"/>',
+    sovereignty:  '<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>', // Geometría sublime apilada
   secret:       '<circle cx="12" cy="12" r="9"/><path d="M9.4 9.6a2.6 2.6 0 1 1 3.6 2.4c-.8.4-1 .9-1 1.8"/><circle cx="12" cy="17" r=".9" fill="currentColor"/>',
   trophy:       '<path d="M8 4h8v5a4 4 0 0 1-8 0z" fill="currentColor" fill-opacity=".1"/><path d="M8 6H5v1.5A3 3 0 0 0 8 10.5M16 6h3v1.5A3 3 0 0 1 16 10.5"/><path d="M12 13v4M10 17h4v3.5h-4zM8.5 20.5h7"/>'
+
 };
 
 const ACH_CATS = {
   first: 'explore', cartographer: 'explore', anomaly: 'explore', core: 'explore',
   poetica: 'create', erratica: 'create', friccion: 'create', trio: 'create', retro: 'create', painter: 'create',
   combo: 'combat', boss: 'combat', untouched: 'combat', slash: 'combat', dispel: 'combat',
-  hall: 'system', twoWorlds: 'system', reader: 'system', polyglot: 'system'
+  hall: 'system', twoWorlds: 'system', reader: 'system', polyglot: 'system', sovereignty: 'system'
 };
 const ACH_CAT_LABEL = {
   explore: { es: 'Exploración', en: 'Exploration' }, create: { es: 'Creación', en: 'Creation' },
@@ -4158,7 +4326,8 @@ const ACH_CHECKS = {
   painter:      () => !!window.isPainting,
   combo:        () => combatCombo >= 10,
   boss:         () => !!window.pulseSword.unlocked,
-  polyglot:     () => !!ACH.initialLang && window.currentLang !== ACH.initialLang
+ polyglot:     () => !!ACH.initialLang && window.currentLang !== ACH.initialLang,
+  sovereignty:  () => achCount() >= ACHIEVEMENTS.length - 1
 };
 setInterval(() => {
   if (document.hidden) return;
@@ -4168,6 +4337,18 @@ setInterval(() => {
     try { if (ACH_CHECKS[id]()) unlockAchievement(id); } catch (e) { /* variable aún sin inicializar */ }
   }
   if (ACH.lastLang !== window.currentLang) { ACH.lastLang = window.currentLang; updateAchievementsMenu(); updateInvertedMenu(); if (ACH.open) renderAchievementsPanel(); }
+  
+// 🔥 INSIGNIA DE SOBERANÍA (100% COMPLETADO)
+  if (ACH.got['sovereignty'] && !document.getElementById('soberania-badge')) {
+    const header = document.getElementById('portfolio-header');
+    if (header) {
+      const badge = document.createElement('span');
+      badge.id = 'soberania-badge';
+      badge.innerText = window.currentLang === 'en' ? ' [ SOVEREIGNTY ]' : ' [ SOBERANÍA ]';
+      badge.style.cssText = 'color: #ff6644; font-size: 0.6rem; letter-spacing: 0.25em; margin-left: 12px; border-left: 1px solid rgba(255,255,255,0.15); padding-left: 12px;';
+      header.appendChild(badge);
+    }
+  }
 }, 700);
 
 // Eventos sueltos
@@ -4670,85 +4851,86 @@ if (isAR && frame && hitTestSource) {
         planetaDAC.rotation.y += 0.002;
         planetaDAC.rotation.z += 0.001;
 
-        // 🔥 NUEVO: INTEGRACIÓN CON EL CARRUSEL (COMO NÚCLEO CENTRAL)
-        // 🔥 INTEGRACIÓN CON EL CARRUSEL (COMO EL ÚLTIMO PLANETA DEL ANILLO)
-        if (!planetaDAC.userData.isIsolated) {
-          if (isAligned) {
-            let activeCount = (typeof secretDiscovered !== 'undefined' && secretDiscovered) ? categoryPlanets.length : (categoryPlanets.length - 1);
-            let totalItems = activeCount + 2; // +1 por el DAC
-            let dacIndex = activeCount; // Se pone de último
-            let angle = (dacIndex / totalItems) * Math.PI * 2 + carouselAngleOffset;
-            let radius = window.innerWidth < 600 ? 20 : 22; 
-            
-            planetaDAC.position.lerp(new THREE.Vector3(Math.cos(angle)*radius, Math.sin((Date.now()*0.001) + dacIndex)*1.5, Math.sin(angle)*radius - 10), 0.08);
-            planetaDAC.scale.lerp(new THREE.Vector3(0.55, 0.55, 0.55), 0.05);
-          } else {
-            // MODO CONSTELACIÓN
-            let target = planetaDAC.userData.savedPos ? planetaDAC.userData.savedPos : new THREE.Vector3(40, 0, -50);
-            planetaDAC.position.lerp(target, 0.05);
-            planetaDAC.scale.lerp(new THREE.Vector3(1, 1, 1), 0.05);
-          }
-        
-        } else {
-          // MODO AISLADO (AL HACER CLIC): Se clava al frente de la cámara
-          planetaDAC.position.lerp(new THREE.Vector3(0, 0, 0), 0.1);
-          planetaDAC.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
-        }
+        // 🔥 Rotación y Reacciones Procedimentales de los Anillos D.A.C.
+        const rings = planetaDAC.getObjectByName("dac_rings");
+        if (rings) {
+          rings.rotation.z -= 0.0035; 
 
-        
-   // 1. Efecto Poética: Lenta y contemplativa
-      lunaPoetica.rotation.x += isPoeticaActive ? 0.015 : 0.005;
-      lunaPoetica.rotation.y += isPoeticaActive ? 0.02 : 0.008;
+          rings.children.forEach((ring) => {
+            const pos = ring.geometry.attributes.position.array;
+            const base = ring.geometry.attributes.basePosition.array;
+            let needsUpdate = false;
 
-      // 2. Efecto Errática: Tartamudeo espacial y rotación caótica
-      if (isErraticaActive) {
-        lunaErratica.position.x = -8 + (Math.random() - 0.5) * 0.4;
-        lunaErratica.position.y = 6 + (Math.random() - 0.5) * 0.4;
-        lunaErratica.rotation.y += 0.05; // Gira locamente
-        if (Math.random() > 0.95) triggerSubtleGlitch();
-        
-        // 🔥 SHATTER EFFECT: Las partículas explotan y se intentan reensamblar
-        if (lunaErratica.geometry.attributes.basePosition) {
-          const positions = lunaErratica.geometry.attributes.position.array;
-          const basePositions = lunaErratica.geometry.attributes.basePosition.array;
-          
-          for (let i = 0; i < positions.length; i += 3) {
-            if (Math.random() > 0.85) {
-              // El 15% de las partículas salen disparadas hacia afuera (Glitch)
-              positions[i] = basePositions[i] * (1 + Math.random() * 0.8);
-              positions[i+1] = basePositions[i+1] * (1 + Math.random() * 0.8);
-              positions[i+2] = basePositions[i+2] * (1 + Math.random() * 0.8);
-            } else {
-              // El resto intenta volver desesperadamente a su lugar original magnéticamente
-              positions[i] += (basePositions[i] - positions[i]) * 0.3;
-              positions[i+1] += (basePositions[i+1] - positions[i+1]) * 0.3;
-              positions[i+2] += (basePositions[i+2] - positions[i+2]) * 0.3;
+            // Reacción Máquina Poética
+            if (ring.userData.type === 'poetica') {
+              if (typeof isPoeticaActive !== 'undefined' && isPoeticaActive) {
+                ring.scale.setScalar(1.05 + Math.sin(Date.now() * 0.003) * 0.02);
+                ring.material.opacity = 0.85;
+                ring.material.color.setHex(0xffffff);
+                ring.material.color.multiplyScalar(2.0); // Más glow
+                ring.rotation.x += 0.015; 
+              } else {
+                ring.scale.setScalar(1.0);
+                ring.material.opacity = 0.5;
+                ring.material.color.setHex(ring.userData.baseColor);
+                ring.material.color.multiplyScalar(1.5);
+              }
             }
-          }
-          lunaErratica.geometry.attributes.position.needsUpdate = true;
-        }
-
-      } else {
-        lunaErratica.position.set(-8, 6, -8);
-        lunaErratica.rotation.x -= 0.008;
-        lunaErratica.rotation.z += 0.01;
-        
-        // 🔥 REENSAMBLAJE: Si estaba rota, se "cura" sola al apagarse
-        if (lunaErratica.geometry.attributes.basePosition) {
-           const positions = lunaErratica.geometry.attributes.position.array;
-           const basePositions = lunaErratica.geometry.attributes.basePosition.array;
-           let needsUpdate = false;
-           for (let i = 0; i < positions.length; i += 3) {
-             if (Math.abs(positions[i] - basePositions[i]) > 0.01) {
-                positions[i] += (basePositions[i] - positions[i]) * 0.1;
-                positions[i+1] += (basePositions[i+1] - positions[i+1]) * 0.1;
-                positions[i+2] += (basePositions[i+2] - positions[i+2]) * 0.1;
+            // Reacción Máquina Errática (Tartamudeo real de partículas)
+            else if (ring.userData.type === 'erratica') {
+              if (typeof isErraticaActive !== 'undefined' && isErraticaActive) {
+                ring.material.color.setHex(0xff6644); // Coral brillante
+                ring.material.color.multiplyScalar(2.0);
+                ring.material.opacity = 0.8;
+                
+                // Explotar partículas individualmente
+                for(let i=0; i<pos.length; i+=3) {
+                   if(Math.random() > 0.85) {
+                      pos[i] = base[i] * (1 + (Math.random()-0.5)*0.15);
+                      pos[i+1] = base[i+1] + (Math.random()-0.5)*0.8;
+                      pos[i+2] = base[i+2] * (1 + (Math.random()-0.5)*0.15);
+                   } else {
+                      pos[i] += (base[i] - pos[i]) * 0.3;
+                      pos[i+1] += (base[i+1] - pos[i+1]) * 0.3;
+                      pos[i+2] += (base[i+2] - pos[i+2]) * 0.3;
+                   }
+                }
                 needsUpdate = true;
-             }
-           }
-           if (needsUpdate) lunaErratica.geometry.attributes.position.needsUpdate = true;
+              } else {
+                ring.material.opacity = 0.35;
+                ring.material.color.setHex(ring.userData.baseColor);
+                ring.material.color.multiplyScalar(1.5);
+                
+                // Curar partículas magnéticamente a su origen
+                for(let i=0; i<pos.length; i+=3) {
+                   if (Math.abs(pos[i] - base[i]) > 0.01) {
+                      pos[i] += (base[i] - pos[i]) * 0.1;
+                      pos[i+1] += (base[i+1] - pos[i+1]) * 0.1;
+                      pos[i+2] += (base[i+2] - pos[i+2]) * 0.1;
+                      needsUpdate = true;
+                   }
+                }
+              }
+            }
+            // Reacción Máquina de Fricción (Densidad y pesadez)
+            else if (ring.userData.type === 'friccion') {
+              if (typeof isFriccionActive !== 'undefined' && isFriccionActive) {
+                ring.scale.setScalar(0.96); 
+                ring.material.color.setHex(0xb89947); 
+                ring.material.color.multiplyScalar(1.8);
+                ring.material.opacity = 0.5;
+                ring.rotation.y -= 0.02; 
+              } else {
+                ring.scale.setScalar(1.0);
+                ring.material.color.setHex(ring.userData.baseColor);
+                ring.material.color.multiplyScalar(1.5);
+                ring.material.opacity = 0.2;
+              }
+            }
+            
+            if(needsUpdate) ring.geometry.attributes.position.needsUpdate = true;
+          });
         }
-      }
 
       // 3. Efecto Fricción: Temblor constante en la cámara y rotación densa
       lunaFriccion.rotation.x += 0.004;
@@ -4774,24 +4956,25 @@ if (isAR && frame && hitTestSource) {
           } else {
             targetPos.set(0, 0, 0);
           }
-
-          // Retórica del Pincel según máquina activa
+// Retórica del Pincel según máquina activa (SIN NEONES)
           if (isFriccionActive) {
             dacBrush.position.lerp(targetPos, 0.015); // Pesado
-            dacLinesMat.color.setHex(0xffff00);
-            dacBrush.material.color.setHex(0xffff00);
+            dacLinesMat.color.setHex(0xb89947);       // Ámbar bruñido
+            dacBrush.material.color.setHex(0xb89947);
           } else if (isErraticaActive) {
             dacBrush.position.copy(targetPos).add(new THREE.Vector3((Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, 0)); // Tiembla
-            dacLinesMat.color.setHex(0xff3300);
-            dacBrush.material.color.setHex(0xff3300);
+            dacLinesMat.color.setHex(0xff6644);       // Coral apagado
+            dacBrush.material.color.setHex(0xff6644);
           } else {
-            dacBrush.position.lerp(targetPos, 0.15); // Fluido
-            dacLinesMat.color.setHex(isPoeticaActive ? 0xffffff : 0x00ffff);
-            dacBrush.material.color.setHex(isPoeticaActive ? 0xffffff : 0x00ffff);
-            if (isPoeticaActive) { dacLinesMat.color.multiplyScalar(1.7); dacBrush.material.color.multiplyScalar(2.2); } // Poética: blanco más brillante (antes violeta)
+            dacBrush.position.lerp(targetPos, 0.15);  // Fluido
+            // Gris pizarra para reposo, Blanco perla para la Máquina Poética
+            dacLinesMat.color.setHex(isPoeticaActive ? 0xdcdce2 : 0x8a867f);
+            dacBrush.material.color.setHex(isPoeticaActive ? 0xffffff : 0xe7e4de);
+            // Eliminamos los "multiplyScalar(2.2)" que generaban el brillo cegador
           }
 
-          dacLinesMat.opacity = (isPoeticaActive && !isFriccionActive && !isErraticaActive) ? 0.88 : 0.6;
+          // Opacidad general mucho más fina y arquitectónica
+          dacLinesMat.opacity = (isPoeticaActive && !isFriccionActive && !isErraticaActive) ? 0.35 : 0.18;
           // Matemáticas de Nodos y Líneas
           let lineIndex = 0;
           const positions = dacParticlesGeo.attributes.position.array;
@@ -5106,43 +5289,73 @@ if (isAR && frame && hitTestSource) {
       if (intersects.length > 0 && !intersects[0].object.userData.isAsteroid) {
         let obj = intersects[0].object;
         if (obj.type === 'Sprite') obj = obj.parent;
-        while (obj.parent && obj.parent.type === 'Group') obj = obj.parent;
+        
+        // 1. Si tocamos la caja invisible (hitbox) de una luna, redirigimos el foco a la luna real
+        if (obj.parent && obj.parent.name && obj.parent.name.startsWith('maquina_')) {
+           obj = obj.parent;
+        } else {
+           while (obj.parent && obj.parent.type === 'Group') obj = obj.parent;
+        }
 
-        // 2. MAGIA: Cursor especial de doble círculo para el Viajero
+        // 2. Cursor especial de doble círculo para el Viajero
         if (obj === window.travelerGroup || (obj.userData && obj.userData.name === "viajero")) {
-          // Cursor SVG codificado (Anillo exterior blanco 70% transparente, núcleo cian puro)
           const svgCursor = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='none' stroke='%23ffffff' stroke-width='1.5' opacity='0.7'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%2300ffff' opacity='0.9'/%3E%3C/svg%3E";
           if (canvasEl) canvasEl.style.cursor = `url("${svgCursor}") 16 16, pointer`;
         } else {
-          // La clásica "manita" para los planetas normales
           if (canvasEl) canvasEl.style.cursor = 'pointer';
         }
 
-        // 3. Efecto de "aumento" visual al señalar (Protegemos al Viajero para que no se deforme al mirarlo)
-        if (obj !== window.travelerGroup) {
+        // 3. Efectos visuales de foco (Hover)
+        if (obj !== window.travelerGroup && obj !== planetaDAC) {
           if (window.hoveredObject !== obj) {
+            
+            // A. APAGAR EL ANTERIOR
             if (window.hoveredObject && window.hoveredObject !== window.travelerGroup) {
-              window.hoveredObject.scale.copy(window.hoveredObject.userData.baseScaleVector || window.hoveredObject.scale);
+              if (!window.hoveredObject.name || !window.hoveredObject.name.startsWith('maquina_')) {
+                // Restaurar tamaño si era un planeta normal
+                window.hoveredObject.scale.copy(window.hoveredObject.userData.baseScaleVector || window.hoveredObject.scale);
+              } else {
+                // Si era una Luna DAC, ocultar etiqueta y apagar brillo extra
+                const lbl = window.hoveredObject.children.find(c => c.name === 'dac_label');
+                if (lbl) lbl.visible = false;
+                window.hoveredObject.material.color.multiplyScalar(1/1.5); 
+              }
             }
+
             window.hoveredObject = obj;
+            
+            // B. ENCENDER EL NUEVO
             if (!window.hoveredObject.userData.baseScaleVector) {
               window.hoveredObject.userData.baseScaleVector = window.hoveredObject.scale.clone();
             }
-            window.hoveredObject.scale.set(
-              window.hoveredObject.userData.baseScaleVector.x * 1.2,
-              window.hoveredObject.userData.baseScaleVector.y * 1.2,
-              window.hoveredObject.userData.baseScaleVector.z * 1.2
-            );
+
+            if (window.hoveredObject.name && window.hoveredObject.name.startsWith('maquina_')) {
+              // Si es Luna DAC: Mostrar texto técnico y dar brillo (sin deformar tamaño)
+              const lbl = window.hoveredObject.children.find(c => c.name === 'dac_label');
+              if (lbl) lbl.visible = true;
+              window.hoveredObject.material.color.multiplyScalar(1.5); 
+            } else {
+              // Si es planeta normal: Efecto elástico clásico
+              window.hoveredObject.scale.set(
+                window.hoveredObject.userData.baseScaleVector.x * 1.2,
+                window.hoveredObject.userData.baseScaleVector.y * 1.2,
+                window.hoveredObject.userData.baseScaleVector.z * 1.2
+              );
+            }
           }
         }
       } else {
         // Volver al cursor de cruz en el vacío espacial
         if (canvasEl) canvasEl.style.cursor = 'crosshair';
         
-        // Restaurar el tamaño de los planetas si quitas el ratón
+        // APAGAR TODO AL SALIR AL VACÍO
         if (window.hoveredObject && window.hoveredObject !== window.travelerGroup) {
-          if (window.hoveredObject.userData.baseScaleVector) {
-            window.hoveredObject.scale.copy(window.hoveredObject.userData.baseScaleVector);
+          if (!window.hoveredObject.name || !window.hoveredObject.name.startsWith('maquina_')) {
+             window.hoveredObject.scale.copy(window.hoveredObject.userData.baseScaleVector);
+          } else {
+             const lbl = window.hoveredObject.children.find(c => c.name === 'dac_label');
+             if (lbl) lbl.visible = false;
+             window.hoveredObject.material.color.multiplyScalar(1/1.5);
           }
           window.hoveredObject = null;
         }
@@ -6043,20 +6256,32 @@ if (legendHeader) {
 // ==========================================
 function showFloatingText(msg, colorHex, x, y, z) {
   const el = document.createElement('div');
-  el.innerText = msg;
-  el.style.position = 'fixed';
-  el.style.color = colorHex;
   
-  // 🔥 Estilo artístico, tipografía delgada y resplandor sutil
-  el.style.textShadow = `0 0 15px ${colorHex}80`;
+  // 🔥 FILTRO SUBLIME: Limpiar emojis del combate
+  let cleanMsg = msg.replace(/[\u{1F300}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{2384}\u{2B50}\u{2694}\u{262F}\u{26A0}\u{1F480}\u{1F389}\u{2728}☯✧💀🎉⚔⚠️📡]/gu, '').trim();
+  
+  let sublimeColor = colorHex;
+  if (colorHex === '#ff0000' || colorHex === '#ff3333') sublimeColor = '#ff6644';
+  else if (colorHex === '#00ffaa' || colorHex === '#00ff00') sublimeColor = '#b9c8b0';
+  else if (colorHex === '#00ffff' || colorHex === '#00ffcc') sublimeColor = '#dfd9cf';
+  else if (colorHex === '#ff00ff' || colorHex === '#ffaa00') sublimeColor = '#e6f4df';
+  else if (colorHex === '#ffffff') sublimeColor = '#e7e4de';
+
+  el.innerText = cleanMsg;
+  el.style.position = 'fixed';
+  el.style.color = sublimeColor;
+  el.style.textShadow = 'none'; // Sin efecto neón
+  el.style.border = `1px solid ${sublimeColor}50`;
+  el.style.background = 'rgba(10,10,12,0.85)';
+  el.style.padding = '3px 8px';
+  el.style.borderRadius = '2px';
   el.style.fontFamily = "'-apple-system', sans-serif";
   el.style.fontWeight = '300';
-  el.style.letterSpacing = '2px';
+  el.style.letterSpacing = '1px';
   el.style.pointerEvents = 'none';
   el.style.zIndex = '9999';
   el.style.transition = 'all 1.5s cubic-bezier(0.1, 0.8, 0.3, 1)';
   
-  // Proyectar coordenadas 3D a la pantalla 2D
   const vector = new THREE.Vector3(x, y, z);
   vector.project(camera);
   const xPos = (vector.x * 0.5 + 0.5) * window.innerWidth;
@@ -6066,7 +6291,6 @@ function showFloatingText(msg, colorHex, x, y, z) {
   el.style.top = `${yPos}px`;
   document.body.appendChild(el);
   
-  // Animar hacia arriba lentamente difuminándose
   setTimeout(() => { 
     el.style.top = `${yPos - 60}px`; 
     el.style.opacity = '0'; 
@@ -6074,7 +6298,6 @@ function showFloatingText(msg, colorHex, x, y, z) {
   }, 50);
   setTimeout(() => { if(el.parentNode) el.parentNode.removeChild(el); }, 1550);
 }
-
 
 // ==========================================
 // 🔥 VALIDACIÓN EN TIEMPO REAL (FORMULARIOS)
@@ -6476,7 +6699,7 @@ window.addEventListener('click', (e) => {
       body:not(.ex-mode-active) #mode-toggle-btn {
         position: fixed !important;
         top: 72px !important;
-        left: 175px !important;
+        left: 235px !important;
         right: auto !important;
         bottom: auto !important;
         transform: none !important;
@@ -6697,6 +6920,10 @@ window.addEventListener('click', (e) => {
 //  • Estética: papel negro, tipografía serif ligera, líneas finas, sin neón.
 // ============================================================
 
+// ============================================================
+// 🔥 MODO EJECUTIVO 2D — lectura autónoma, estética sobria
+// ============================================================
+
 const EX_CSS = `
   #terminal-container { box-sizing: border-box; background: #0a0a0a !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
     padding: 0 !important; color: #bdb9b1; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -6769,7 +6996,17 @@ const EX_CSS = `
   .ex-gap { margin-top: 4rem; }
   .ex-videos, .ex-gallery { display: grid; gap: 1.4rem; }
   .ex-videos iframe, .ex-videos video { width: 100%; aspect-ratio: 16 / 9; border: 0; background: #000; display: block; }
-  .ex-gallery img { width: 100%; height: auto; display: block; filter: saturate(.92); }
+  
+  /* 🔥 ESTILOS DEL VISOR AMPLIADO (LIGHTBOX) PARA TODAS LAS IMÁGENES 🔥 */
+  .ex-gallery .ex-schema-card { background: #0d0d10; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; padding: 10px; cursor: zoom-in; transition: transform .3s ease; }
+  .ex-gallery .ex-schema-card:hover { transform: scale(1.01); border-color: rgba(255,255,255,0.3); }
+  .ex-gallery .ex-schema-card img { width: 100%; height: auto; display: block; filter: saturate(.92); pointer-events: none; }
+  
+  #ex-lightbox { position: fixed; inset: 0; z-index: 100050; display: flex; align-items: center; justify-content: center; padding: 3vw; background: rgba(5,5,8,0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); cursor: zoom-out; animation: exLbIn 0.3s ease forwards; }
+  #ex-lightbox[hidden] { display: none; }
+  #ex-lightbox img { max-width: 94vw; max-height: 90vh; object-fit: contain; border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 30px 90px rgba(0,0,0,0.8); background: #0d0d10; border-radius: 4px; }
+  @keyframes exLbIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+
   .ex-btn, .ex-send { display: inline-block; margin-top: 2.5rem; background: none; border: 1px solid rgba(255,255,255,.3); color: #e7e4de; text-decoration: none;
     padding: .9rem 1.8rem; font: inherit; font-size: .74rem; letter-spacing: .22em; text-transform: uppercase; cursor: pointer; transition: background .25s, border-color .25s; }
   .ex-btn:hover, .ex-send:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.6); }
@@ -6790,43 +7027,20 @@ const EX_CSS = `
   .ex-status[data-state="ok"] { color: #b9c8b0; }
   .ex-status[data-state="err"] { color: #d1a6a0; }
   .ex-foot { margin-top: 7rem; color: #55524d; font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; }
-@media (max-width: 768px) {
+  @media (max-width: 768px) {
     .ex-wrap { padding: 5.2rem 1.25rem 5rem; }
     .ex-mark { display: none; }
     .ex-bar { margin-bottom: 3rem; }
     .ex-section { margin-top: 4.5rem; }
-    
-    /* Solo cuando el Archivo Ejecutivo está abierto, el botón "UNIVERSO 3D" flota arriba a la derecha */
     body.ex-mode-active #mode-toggle-btn { 
-      top: 18px !important; 
-      right: 16px !important; 
-      left: auto !important; 
-      width: auto !important;
-      transform: none !important;
-      font-size: 0.68rem !important;
-      padding: 8px 16px !important;
-      border-radius: 20px !important;
-      background: rgba(18,18,22,0.9) !important;
-      border: 1px solid rgba(255,255,255,0.22) !important;
-    }
-  }
-    /* 🔥 FIX MÓVIL: Reposicionamos el botón debajo del HUD superior */
-    #mode-toggle-btn { 
-      top: 140px !important; 
-      bottom: auto !important; 
-      left: 50% !important; 
-      right: auto !important; 
-      transform: translateX(-50%) !important;
-      white-space: nowrap !important;
-      font-size: 0.7rem !important;
-      padding: 8px 18px !important;
-      border-radius: 20px !important;
-      background: rgba(10,10,12,0.85) !important;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.5) !important;
+      top: 18px !important; right: 16px !important; left: auto !important; width: auto !important;
+      transform: none !important; font-size: 0.68rem !important; padding: 8px 16px !important;
+      border-radius: 20px !important; background: rgba(18,18,22,0.9) !important; border: 1px solid rgba(255,255,255,0.22) !important;
     }
   }
   @media (prefers-reduced-motion: reduce) { #terminal-container * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
 `;
+
 const executiveStyle = document.createElement('style');
 executiveStyle.id = 'ex-style';
 executiveStyle.innerHTML = EX_CSS;
@@ -6834,7 +7048,7 @@ document.head.appendChild(executiveStyle);
 
 let isTerminalMode = false;
 const exState = { view: 'index', id: null, scroll: 0 };
-const exSaved = {}; // estilos originales de la interfaz 3D, para restaurarla tal cual
+const exSaved = {}; 
 
 const EX_TEXT = {
   es: { eyebrow: 'Archivo en calma…', sub: 'Un archivo para leer despacio.', projects: 'Proyectos', cv: 'Currículum', contact: 'Contacto', contactSub: 'Para proyectos, invitaciones o colaboraciones.',
@@ -6842,15 +7056,15 @@ const EX_TEXT = {
         soundOn: 'Sonido: sí', soundOff: 'Sonido: no',
         note: 'Existe otra manera de recorrer este archivo: un universo inmersivo e interactivo, con juego y sonido.', noteLink: 'Despertar el universo →',
         hint3d: 'Universo 3D: exploración inmersiva e interactiva, con sonido. Usa más recursos.', hintExec: 'Archivo ejecutivo: lectura rápida de los proyectos.',
-        back: 'Volver', prev: 'Anterior', next: 'Siguiente', visit: 'Visitar proyecto', video: 'Video', images: 'Imágenes',
-        fName: 'Nombre', fMail: 'Correo', fMsg: 'Mensaje', send: 'Enviar', sending: 'Enviando…', sent: 'Mensaje enviado. Gracias.', failed: 'No se pudo enviar. Inténtalo de nuevo.' },
+        back: 'Volver', prev: 'Anterior', next: 'Siguiente', visit: 'Visitar enlace externo', video: 'Video', images: 'Galería',
+        fName: 'Nombre', fMail: 'Correo', fMsg: 'Mensaje', send: 'Enviar', sending: 'Enviando…', sent: 'Mensaje enviado. Gracias.', failed: 'No se pudo enviar. Inténtalo de nuevo.', expandImg: 'Clic para ampliar imagen' },
   en: { eyebrow: 'Archive at rest…', sub: 'An archive to be read slowly.', projects: 'Projects', cv: 'Résumé', contact: 'Contact', contactSub: 'For projects, invitations or collaborations.',
         toArchive: 'Executive archive', toImmersive: '3D universe', startBtn: 'Executive archive',
         soundOn: 'Sound: on', soundOff: 'Sound: off',
         note: 'There is another way to wander through this archive: an immersive, interactive universe, with a game and sound.', noteLink: 'Awaken the universe →',
         hint3d: '3D universe: immersive, interactive exploration, with sound. Uses more resources.', hintExec: 'Executive archive: a quick read of the projects.',
-        back: 'Back', prev: 'Previous', next: 'Next', visit: 'Visit project', video: 'Video', images: 'Images',
-        fName: 'Name', fMail: 'Email', fMsg: 'Message', send: 'Send', sending: 'Sending…', sent: 'Message sent. Thank you.', failed: 'Could not send. Please try again.' }
+        back: 'Back', prev: 'Previous', next: 'Next', visit: 'Visit external link', video: 'Video', images: 'Gallery',
+        fName: 'Name', fMail: 'Email', fMsg: 'Message', send: 'Send', sending: 'Sending…', sent: 'Message sent. Thank you.', failed: 'Could not send. Please try again.', expandImg: 'Click to expand' }
 };
 
 const EX_PROFILE = {
@@ -6874,12 +7088,11 @@ const EX_PROFILE = {
   ]
 };
 
-// Entrada del núcleo D.A.C. (misma redacción que tenías)
 // ============================================================
 // 📐 LÁMINAS DIAGRAMÁTICAS DEL MARCO DOCTORAL D.A.C. (SVG EMBEBIDO)
 // ============================================================
 const dacSlideSvg = (inner) => 'data:image/svg+xml;utf8,' + encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 430" width="800" height="430">
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 430">
     <rect width="800" height="430" fill="#0d0d10"/>
     <rect x="1" y="1" width="798" height="428" fill="none" stroke="#ffffff" stroke-opacity="0.09"/>
     <g stroke="#ffffff" stroke-opacity="0.22" stroke-width="1">
@@ -6889,7 +7102,6 @@ const dacSlideSvg = (inner) => 'data:image/svg+xml;utf8,' + encodeURIComponent(
   </svg>`
 );
 
-// Lámina I: El Bucle DAC (Arte, Ciencia, Diseño) y sus sustratos teóricos
 const DAC_FIG_BUCLE = dacSlideSvg(`
   <text x="38" y="42" fill="#8a867f" font-family="monospace" font-size="11" letter-spacing="2.5">LÁMINA I // EL BUCLE D.A.C. — RECHAZO AL DETERMINISMO Y PENSAMIENTO PERIFÉRICO</text>
   <g fill="none" stroke="#e7e4de" stroke-width="1.2" stroke-opacity="0.72">
@@ -6911,7 +7123,6 @@ const DAC_FIG_BUCLE = dacSlideSvg(`
   <text x="400" y="404" fill="#77746e" font-family="monospace" font-size="10" letter-spacing="2" text-anchor="middle">LA CIENCIA NO SOLO MIDE · EL ARTE NO SOLO EXPRESA · EL DISEÑO NO SOLO SOLUCIONA</text>
 `);
 
-// Lámina II: La Poética del Error y la Máquina Errática (Logos / Ciencia)
 const DAC_FIG_ERRATICA = dacSlideSvg(`
   <text x="38" y="42" fill="#8a867f" font-family="monospace" font-size="11" letter-spacing="2.5">LÁMINA II // LOGOS · LA MÁQUINA ERRÁTICA Y EL GLITCH COMO MANIFIESTO</text>
   <g fill="none" stroke="#8a867f" stroke-width="1">
@@ -6931,7 +7142,6 @@ const DAC_FIG_ERRATICA = dacSlideSvg(`
   <text x="400" y="404" fill="#77746e" font-family="monospace" font-size="10" letter-spacing="2" text-anchor="middle">EL «ERRAR» Y LA INFERENCIA ABDUCTIVA EN LA INVESTIGACIÓN-CREACIÓN (I+C)</text>
 `);
 
-// Lámina III: La Máquina Poética (Ethos / Arte)
 const DAC_FIG_POETICA = dacSlideSvg(`
   <text x="38" y="42" fill="#8a867f" font-family="monospace" font-size="11" letter-spacing="2.5">LÁMINA III // ETHOS · LA MÁQUINA POÉTICA — DESCALIBRACIÓN COMO PRODUCCIÓN ESTÉTICA</text>
   <g stroke="#ffffff" stroke-opacity="0.16" stroke-width="1">
@@ -6956,7 +7166,6 @@ const DAC_FIG_POETICA = dacSlideSvg(`
   <text x="400" y="404" fill="#77746e" font-family="monospace" font-size="10" letter-spacing="2" text-anchor="middle">SUBVERSIÓN DEL SENTIDO · ABANDONO DE LA LÓGICA INSTRUMENTAL · CREACIÓN DE MUNDOS</text>
 `);
 
-// Lámina IV: Saber Situado y El Plano de la Fricción (Pathos / Diseño)
 const DAC_FIG_SABER = dacSlideSvg(`
   <text x="38" y="42" fill="#8a867f" font-family="monospace" font-size="11" letter-spacing="2.5">LÁMINA IV // PATHOS · SABER SITUADO Y EL PLANO DE LA FRICCIÓN</text>
   <circle cx="130" cy="220" r="16" fill="#ff6644" fill-opacity="0.18" stroke="#ff6644" stroke-width="1.5"/>
@@ -6978,38 +7187,21 @@ const DAC_FIG_SABER = dacSlideSvg(`
   <text x="400" y="404" fill="#77746e" font-family="monospace" font-size="10" letter-spacing="2" text-anchor="middle">LA PRÁCTICA DEL CACHARREO COMO ARTICULADOR DE LA TRÍADA</text>
 `);
 
-// ============================================================
-// 🔥 ENTRADA TEÓRICA EXPANDIDA DEL NÚCLEO D.A.C. (ARCHIVO EJECUTIVO)
-// ============================================================
 const EX_DAC = {
   id: 99,
-  title: {
-    es: 'D.A.C. // Retórica Procedimental Material',
-    en: 'D.A.C. // Material Procedural Rhetoric'
-  },
-  desc: {
-    es: 'El diseño de «Juegos Otros» como dispositivo epistémico para la soberanía tecnológica situada.',
-    en: 'The design of "Other Games" as an epistemic device for situated technological sovereignty.'
-  },
-  role: {
-    es: 'Postura Epistémica · Doctorado en Diseño, Arte y Ciencia',
-    en: 'Epistemic Posture · PhD in Design, Art, and Science'
-  },
-  tech: {
-    es: ['Diseñarticienciar', 'Retórica Material', 'Juegos Otros', 'Ana-arqueología', 'Cacharreo', 'Ludoactivismo', 'Soberanía Tecnológica'],
-    en: ['Diseñarticienciar', 'Material Rhetoric', 'Other Games', 'Media An-archaeology', 'Cacharreo', 'Ludo-activism', 'Tech Sovereignty']
-  },
+  title: { es: 'D.A.C. // Retórica Procedimental Material', en: 'D.A.C. // Material Procedural Rhetoric' },
+  desc: { es: 'El diseño de «Juegos Otros» como dispositivo epistémico para la soberanía tecnológica situada.', en: 'The design of "Other Games" as an epistemic device for situated technological sovereignty.' },
+  role: { es: 'Postura Epistémica · Doctorado en Diseño, Arte y Ciencia', en: 'Epistemic Posture · PhD in Design, Art, and Science' },
+  tech: { es: ['Diseñarticienciar', 'Retórica Material', 'Juegos Otros', 'Ana-arqueología', 'Cacharreo', 'Ludoactivismo', 'Soberanía Tecnológica'], en: ['Diseñarticienciar', 'Material Rhetoric', 'Other Games', 'Media An-archaeology', 'Cacharreo', 'Ludo-activism', 'Tech Sovereignty'] },
   longDesc: {
     es: `
       <div class="ex-quote">
         <p>«La usabilidad sin fricción es una anestesia cognitiva.»</p>
         <small>Diseñarticienciar · Retórica Procedimental Material en el Bucle D.A.C.</small>
       </div>
-
       <h3 class="ex-label" style="margin-top:2.4rem">I. La Máquina Hermética vs. El Imperativo Material</h3>
       <p>El paradigma comercial contemporáneo descansa sobre tres mecanismos de domesticación: una <b>interfaz pulcra estandarizada</b>, la <b>ilusión de inmaterialidad</b> y el <b>acoplamiento pasivo del usuario</b>. Su costo somático es profundo: el ocultamiento de la arquitectura física del dispositivo, el letargo del cuerpo frente a la pantalla y la automatización de la cognición del sujeto.</p>
       <p>Frente a ello, el imperativo del proyecto doctoral consiste en <b>desmantelar la máquina hermética</b> y reintroducir la resistencia material intencional frente al diseño aséptico.</p>
-
       <h3 class="ex-label" style="margin-top:2.6rem">II. La Poética del Error y la Retórica Material</h3>
       <p>En esta postura epistémica, <b>el fallo técnico no es un defecto a optimizar; es un argumento persuasivo</b>. La investigación opera desde tres premisas:</p>
       <ul>
@@ -7017,7 +7209,6 @@ const EX_DAC = {
         <li><b>Procedimientos Persuasivos:</b> Las mecánicas del hardware y las resistencias del circuito no son neutrales; argumentan, orientan y moldean activamente la conducta.</li>
         <li><b>Revelación de la Materia:</b> La falla destruye la magia tecnológica inmaterial. La materia técnica deja de ser un reproductor silencioso para convertirse en una enunciadora.</li>
       </ul>
-
       <h3 class="ex-label" style="margin-top:2.6rem">III. Juegos Otros: Diseñar para el Errar</h3>
       <p>Asumir <b>la fricción material como método proyectual</b> implica diseñar desde la inestabilidad para transformar el vínculo entre sujeto y artefacto en tres niveles:</p>
       <ul>
@@ -7025,7 +7216,6 @@ const EX_DAC = {
         <li><b>2. Conciencia Somática:</b> La resistencia material del dispositivo opera como una perturbación intencional en el ecosistema del usuario para despertar el <em>«saber-del-cuerpo»</em>.</li>
         <li><b>3. Agencia Crítica:</b> Transición del letargo del consumidor a la reorganización activa. Al exigir una adaptación constante, se recupera la soberanía frente al dispositivo.</li>
       </ul>
-
       <div class="ex-long-wide">
         <h3 class="ex-label" style="margin-top:2.8rem">IV. El Bucle D.A.C. y la Tríada de Máquinas (Discrepancia como Motor Ontológico)</h3>
         <p style="max-width:38rem; margin-bottom:1.2rem;">El Bucle D.A.C. rechaza el determinismo disciplinar: <b>la ciencia no solo mide, el arte no solo expresa, el diseño no solo soluciona</b>. Articuladas por la práctica del <b>Cacharreo</b>, tres máquinas configuran el motor ontológico de la investigación:</p>
@@ -7047,7 +7237,6 @@ const EX_DAC = {
           </div>
         </div>
       </div>
-
       <h3 class="ex-label" style="margin-top:2.4rem">V. Saber Situado: El Plano de la Fricción</h3>
       <p>El artefacto («Juego Otro») se despliega como dispositivo epistémico en tres dimensiones situadas:</p>
       <ul>
@@ -7055,7 +7244,6 @@ const EX_DAC = {
         <li><b>Ludoactivismo (Dimensión Procedimental):</b> El juego desobediente. Validación: soberanía tecnológica y capacidad de auditar y subvertir reglas opacas.</li>
         <li><b>Laboratorios Itinerantes (Dimensión Territorial):</b> <em>GameLab Tadeo → Mercados de pulgas → Redes populares</em>. Validación: transformación micropolítica en la periferia de la basura electrónica.</li>
       </ul>
-
       <div class="ex-long-wide">
         <h3 class="ex-label" style="margin-top:2.8rem">VI. Matriz Epistémica del Marco Doctoral</h3>
         <div class="ex-table-wrap">
@@ -7112,7 +7300,6 @@ const EX_DAC = {
           </table>
         </div>
       </div>
-
       <p style="margin-top:2rem; padding-top:1.2rem; border-top:1px solid rgba(255,255,255,0.1); color:#e7e4de;">
         → Para experimentar el simulador espacial de las tres máquinas (Poética, Errática y de Fricción), cambia al <b>Universo 3D</b> con el botón superior derecho y toca el núcleo D.A.C.
       </p>
@@ -7122,11 +7309,9 @@ const EX_DAC = {
         <p>"Frictionless usability is a cognitive anesthesia."</p>
         <small>Diseñarticienciar · Material Procedural Rhetoric in the D.A.C. Loop</small>
       </div>
-
       <h3 class="ex-label" style="margin-top:2.4rem">I. The Hermetic Machine vs. The Material Imperative</h3>
       <p>The contemporary commercial paradigm rests on three domesticating mechanisms: a <b>standardized spotless interface</b>, the <b>illusion of immateriality</b>, and <b>passive user coupling</b>. Its somatic cost is profound: concealing the physical architecture of the device, bodily lethargy in front of the screen, and the automation of the subject's cognition.</p>
       <p>Against this, the imperative of this doctoral research is to <b>dismantle the hermetic machine</b> and reintroduce intentional material resistance against aseptic design.</p>
-
       <h3 class="ex-label" style="margin-top:2.6rem">II. Poetics of Error and Material Rhetoric</h3>
       <p>Within this epistemic posture, <b>technical failure is not a defect to optimize; it is a persuasive argument</b>. The research operates from three premises:</p>
       <ul>
@@ -7134,7 +7319,6 @@ const EX_DAC = {
         <li><b>Persuasive Procedures:</b> Hardware mechanics and circuit resistances are not neutral; they actively argue, orient, and shape behavior.</li>
         <li><b>Revelation of Matter:</b> Failure shatters immaterial technological magic. Technical matter ceases to be a silent player to become an enunciator.</li>
       </ul>
-
       <h3 class="ex-label" style="margin-top:2.6rem">III. Other Games: Designing for Erring</h3>
       <p>Embracing <b>material friction as a design method</b> entails designing from instability to transform the bond between subject and artifact across three levels:</p>
       <ul>
@@ -7142,7 +7326,6 @@ const EX_DAC = {
         <li><b>2. Somatic Awareness:</b> The device's material resistance acts as an intentional perturbation in the user's ecosystem to awaken <em>"body-knowledge"</em>.</li>
         <li><b>3. Critical Agency:</b> Transitioning from consumer lethargy to active reorganization. Demanding constant adaptation reclaims sovereignty over the device.</li>
       </ul>
-
       <div class="ex-long-wide">
         <h3 class="ex-label" style="margin-top:2.8rem">IV. The D.A.C. Loop and the Triad of Machines (Discrepancy as Ontological Engine)</h3>
         <p style="max-width:38rem; margin-bottom:1.2rem;">The D.A.C. Loop rejects disciplinary determinism: <b>science does not only measure, art does not only express, design does not only solve</b>. Articulated through the practice of <b>Cacharreo</b>, three machines form the ontological engine of the research:</p>
@@ -7164,7 +7347,6 @@ const EX_DAC = {
           </div>
         </div>
       </div>
-
       <h3 class="ex-label" style="margin-top:2.4rem">V. Situated Knowledge: The Plane of Friction</h3>
       <p>The artifact ("Other Game") unfolds as an epistemic device across three situated dimensions:</p>
       <ul>
@@ -7172,7 +7354,6 @@ const EX_DAC = {
         <li><b>Ludo-activism (Procedural Dimension):</b> Disobedient play. Validation: technological sovereignty and the ability to audit and subvert opaque rules.</li>
         <li><b>Itinerant Laboratories (Territorial Dimension):</b> <em>GameLab Tadeo → Flea markets → Popular networks</em>. Validation: micropolitical transformation in the periphery of electronic waste.</li>
       </ul>
-
       <div class="ex-long-wide">
         <h3 class="ex-label" style="margin-top:2.8rem">VI. Doctoral Framework Epistemic Matrix</h3>
         <div class="ex-table-wrap">
@@ -7229,7 +7410,6 @@ const EX_DAC = {
           </table>
         </div>
       </div>
-
       <p style="margin-top:2rem; padding-top:1.2rem; border-top:1px solid rgba(255,255,255,0.1); color:#e7e4de;">
         → To experience the spatial simulator of the three machines (Poetic, Erratic, and Friction), switch to the <b>3D Universe</b> using the top-right button and click on the D.A.C. core.
       </p>
@@ -7243,7 +7423,6 @@ const EX_DAC = {
 const exEsc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const exTr = (v, lang) => (v && typeof v === 'object' && !Array.isArray(v)) ? (v[lang] ?? v.es) : v;
 const exLang = () => (window.currentLang === 'en' ? 'en' : 'es');
-// Permitimos los diagramas vectoriales del DAC (> 400 caracteres) manteniendo ocultos los placeholders cortos de data.js
 const exIsRealImg = (s) => typeof s === 'string' && s !== '' && !s.includes('via.placeholder.com') && (!s.startsWith('data:') || s.length > 400);
 const exVideos = (p) => [...new Set([...(p.videos || []), p.videoSrc].filter(Boolean))];
 
@@ -7322,6 +7501,7 @@ function exRenderDetail(id) {
   const title = exTr(p.title, lang), role = exTr(p.role, lang), desc = exTr(p.desc, lang);
   const tech = exTr(p.tech, lang) || [], longDesc = exTr(p.longDesc, lang) || '';
   const imgs = (p.gallery || []).filter(exIsRealImg), vids = exVideos(p);
+
   return `<div class="ex-wrap">
     ${exBar(`<button type="button" class="ex-back" data-ex="back">← ${T.back}</button>`)}
     <article aria-labelledby="ex-d-title">
@@ -7332,7 +7512,16 @@ function exRenderDetail(id) {
       ${desc ? `<p class="ex-lead">${exEsc(desc)}</p>` : ''}
       ${longDesc ? `<div class="ex-long">${longDesc}</div>` : ''}
       ${vids.length ? `<h2 class="ex-label ex-gap">${T.video}</h2><div class="ex-videos">${vids.map(v => exVideoHTML(v, title)).join('')}</div>` : ''}
-      ${imgs.length ? `<h2 class="ex-label ex-gap">${T.images}</h2><div class="ex-gallery">${imgs.map(s => `<a href="${exEsc(s)}" target="_blank" rel="noopener"><img src="${exEsc(s)}" alt="${exEsc(title)}" loading="lazy"></a>`).join('')}</div>` : ''}
+      ${imgs.length ? `
+        <h2 class="ex-label ex-gap">${T.images}</h2>
+        <div class="ex-gallery">
+          ${imgs.map((s, imgIdx) => `
+            <div class="ex-schema-card" data-src="${exEsc(s)}" style="background: #0d0d10; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; padding: 10px; cursor: zoom-in;" title="${lang === 'en' ? 'Click to expand' : 'Clic para ampliar imagen'}">
+              <img src="${exEsc(s)}" alt="${exEsc(title)} - Imagen ${imgIdx + 1}" loading="lazy" style="width: 100%; height: auto; pointer-events: none;">
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
       ${p.link ? `<a class="ex-btn" href="${exEsc(p.link)}" target="_blank" rel="noopener">${T.visit} ↗</a>` : ''}
     </article>
     <nav class="ex-pager" aria-label="Navegación entre proyectos">
@@ -7366,7 +7555,6 @@ window.openProjectFromTerminal = (id) => {
   exState.readIds = exState.readIds || new Set();
   exState.readIds.add(String(p.id));
   if (exState.readIds.size >= 3) unlockAchievement('reader');
-  // Igual que en el modo 3D: abrir un proyecto suena a 'project_open'; moverse entre proyectos, a 'ui'
   if (typeof playSound === 'function') playSound(fromIndex ? 'project_open' : 'ui');
   if (window.trackEvent) window.trackEvent('Ver_Proyecto', exTr(p.title, exLang()));
 };
@@ -7386,8 +7574,7 @@ function exStep(delta) {
   window.openProjectFromTerminal(list[(idx + delta + list.length) % list.length].id);
 }
 
-// Interruptor de sonido del modo ejecutivo (el menú del juego queda tapado en este modo).
-// Reutiliza el botón de silencio del juego si existe; si no, cambia la misma preferencia guardada.
+// Interruptor de sonido del modo ejecutivo
 function exToggleSound() {
   const muteBtn = document.getElementById('global-mute-btn');
   if (muteBtn) muteBtn.click();
@@ -7395,7 +7582,7 @@ function exToggleSound() {
     isSoundEnabled = !isSoundEnabled;
     if (typeof sysPrefs !== 'undefined') { sysPrefs.sound = isSoundEnabled; try { localStorage.setItem('gamelab_prefs', JSON.stringify(sysPrefs)); } catch (e) {} }
   }
-  if (typeof playSound === 'function') playSound('ui'); // solo suena si el sonido quedó activado
+  if (typeof playSound === 'function') playSound('ui'); 
 }
 
 function exRenderStartHint() {
@@ -7419,7 +7606,7 @@ async function exSubmitContact(form) {
   } finally { btn.disabled = false; }
 }
 
-window.renderTerminalGrid = exRender; // compatibilidad con el nombre anterior
+window.renderTerminalGrid = exRender; 
 
 // ---------- Cambio de modo ----------
 window.toggleTerminalMode = function() {
@@ -7429,7 +7616,7 @@ window.toggleTerminalMode = function() {
   document.body.classList.toggle('ex-mode-active', isTerminalMode);
   if (typeof playSound === 'function') playSound('ui');
   ACH.toggles++;
-  if (ACH.toggles >= 2) unlockAchievement('twoWorlds'); // pasó de un mundo al otro
+  if (ACH.toggles >= 2) unlockAchievement('twoWorlds'); 
 
   const uiElements = ['portfolio-header', 'unified-hud', 'universe-legend', 'touch-controls', 'legend-sidebar', 'dac-microsite', 'legend-toggle-btn', 'btn-sword'];
   const modeBtn = document.getElementById('mode-toggle-btn');
@@ -7457,7 +7644,7 @@ window.toggleTerminalMode = function() {
     uiElements.forEach(id => {
       const el = document.getElementById(id);
       if (!el || !exSaved[id]) return;
-      el.style.display = exSaved[id].display;   // se restaura el valor original, no se fuerza 'block'
+      el.style.display = exSaved[id].display;   
       el.style.opacity = exSaved[id].opacity;
       delete exSaved[id];
     });
@@ -7499,7 +7686,6 @@ function initTerminalMode() {
     });
     startScreenContainer.appendChild(terminalStartBtn);
 
-    // Frase breve bajo los botones: qué es cada modo
     const startHint = document.createElement('p');
     startHint.id = 'ex-start-hint';
     startHint.style.cssText = 'display: none; max-width: 30rem; margin: 18px auto 0; text-align: center; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 300; font-size: 0.78rem; line-height: 1.7; letter-spacing: 0.04em; color: #8a867f; animation: driftText2 12s ease-in-out infinite alternate;';
@@ -7546,13 +7732,37 @@ function initTerminalMode() {
     terminalContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99990; overflow-y: auto; display: none;';
     document.body.appendChild(terminalContainer);
 
-    // Aislar el contenedor de la escena 3D: sus manejadores globales (clics sobre planetas,
-    // arrastre, rueda, ondas de clic) no deben ver lo que pasa en la lectura 2D.
+    // Contenedor flotante para ampliar esquemas y fotos (Lightbox)
+    let lightbox = document.getElementById('ex-lightbox');
+    if (!lightbox) {
+      lightbox = document.createElement('div');
+      lightbox.id = 'ex-lightbox';
+      lightbox.hidden = true;
+      lightbox.innerHTML = `<img src="" alt="Esquema ampliado">`;
+      lightbox.addEventListener('click', () => { lightbox.hidden = true; });
+      document.body.appendChild(lightbox);
+    }
+
+    // Aislar el contenedor de la escena 3D:
     ['touchstart', 'touchmove', 'touchend', 'touchcancel', 'mousedown', 'mouseup', 'mousemove',
      'pointerdown', 'pointerup', 'pointermove', 'wheel', 'click', 'dblclick', 'keydown', 'keyup']
       .forEach(evt => terminalContainer.addEventListener(evt, (e) => e.stopPropagation(), { passive: true }));
 
+    // 🔥 Delegación de eventos (incluyendo el visor de imágenes infalible)
     terminalContainer.addEventListener('click', (e) => {
+      // Detección de clic en una imagen
+      const schemaCard = e.target.closest('.ex-schema-card');
+      if (schemaCard) {
+        const lb = document.getElementById('ex-lightbox');
+        if (lb && schemaCard.dataset.src) {
+          lb.querySelector('img').src = schemaCard.dataset.src;
+          lb.hidden = false;
+          if (typeof playSound === 'function') playSound('ui');
+        }
+        return; // Detenemos el clic aquí
+      }
+
+      // Resto de la lógica del archivo
       const el = e.target.closest('[data-ex]');
       if (!el) return;
       const act = el.dataset.ex;
@@ -7560,7 +7770,7 @@ function initTerminalMode() {
       else if (act === 'back') exBack();
       else if (act === 'lang') {
         const gameLangBtn = document.getElementById('lang-toggle-btn');
-        if (gameLangBtn) gameLangBtn.click(); // mantiene sincronizados idioma y preferencias del juego
+        if (gameLangBtn) gameLangBtn.click(); 
         else { window.currentLang = exLang() === 'es' ? 'en' : 'es'; exRender({ keepScroll: true }); }
       } else if (act === 'sound') {
         exToggleSound();
@@ -7582,7 +7792,7 @@ function initTerminalMode() {
     });
   }
 
-  // 4. Teclado: Esc vuelve al índice; ← → recorren proyectos (solo en la vista de detalle)
+  // 4. Teclado: Esc vuelve al índice; ← → recorren proyectos
   document.addEventListener('keydown', (e) => {
     if (!isTerminalMode || exState.view !== 'detail') return;
     const tag = (e.target && e.target.tagName) || '';
@@ -7592,7 +7802,7 @@ function initTerminalMode() {
     else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); exStep(-1); }
   }, true);
 
-  // 5. El botón de idioma del juego: refrescar textos del modo ejecutivo
+  // 5. El botón de idioma del juego
   document.getElementById('lang-toggle-btn')?.addEventListener('click', () => {
     const T = EX_TEXT[exLang()];
     const btn = document.getElementById('mode-toggle-btn');
@@ -7605,3 +7815,72 @@ function initTerminalMode() {
 }
 
 setTimeout(initTerminalMode, 1000);
+// ============================================================
+// 🔥 SISTEMA GLOBAL DE ACCESIBILIDAD Y TOOLTIPS (UX SUBLIME)
+// ============================================================
+function syncAccessibilityTooltips() {
+  const en = window.currentLang === 'en';
+  
+  // Función inyectora: Aplica title (Tooltip visual nativo) y aria-label (Lector de pantalla)
+  const setTT = (id, textEs, textEn) => {
+    const el = document.getElementById(id);
+    if (el) {
+      const txt = en ? textEn : textEs;
+      el.title = txt;
+      el.setAttribute('aria-label', txt);
+    }
+  };
+
+  // 1. Botones Principales de Navegación
+  setTT('menu-toggle', 'Menú del Sistema', 'System Menu');
+  setTT('lang-toggle-btn', 'Cambiar Idioma (ES/EN)', 'Change Language (ES/EN)');
+  setTT('btn-recenter', 'Centrar Vista de Cámara', 'Recenter Camera View');
+  setTT('helpBtn', 'Manual de Usuario / Ayuda', 'User Manual / Help');
+  setTT('legend-toggle-btn', 'Mostrar / Ocultar Leyenda', 'Toggle Legend');
+  
+  // 2. Botones de Estado Dinámico (Cambian según lo que esté pasando en el universo)
+  const muteBtn = document.getElementById('global-mute-btn');
+  if (muteBtn) {
+    setTT('global-mute-btn', 
+      typeof isSoundEnabled !== 'undefined' && isSoundEnabled ? 'Silenciar Audio' : 'Activar Audio', 
+      typeof isSoundEnabled !== 'undefined' && isSoundEnabled ? 'Mute Audio' : 'Enable Audio'
+    );
+  }
+
+  const combatBtn = document.getElementById('combat-toggle-btn');
+  if (combatBtn) {
+    setTT('combat-toggle-btn', 
+      typeof isCombatActive !== 'undefined' && isCombatActive ? 'Abortar Simulación (Modo Paz)' : 'Activar Anomalías (Minijuego)', 
+      typeof isCombatActive !== 'undefined' && isCombatActive ? 'Abort Simulation (Peace Mode)' : 'Activate Anomalies (Minigame)'
+    );
+  }
+
+  const modeBtn = document.getElementById('mode-toggle-btn');
+  if (modeBtn) {
+    setTT('mode-toggle-btn', 
+      typeof isTerminalMode !== 'undefined' && isTerminalMode ? 'Despertar Universo 3D' : 'Cambiar a Archivo Ejecutivo 2D', 
+      typeof isTerminalMode !== 'undefined' && isTerminalMode ? 'Awaken 3D Universe' : 'Switch to 2D Executive Archive'
+    );
+  }
+  
+  // 3. Herramientas, Armas y Realidad Extendida
+  setTT('btn-sword', 'Tajo de Pulso (Tecla Q): Disipa la anomalía o modo creativo activo', 'Pulse Slash (Q Key): Dispels active creative mode or anomaly');
+  setTT('ARButton', 'Activar Realidad Aumentada', 'Activate Augmented Reality');
+  setTT('VRButton', 'Activar Realidad Virtual', 'Activate Virtual Reality');
+
+  // 4. Opciones del Menú Lateral
+  setTT('menu-bloom', 'Alternar filtro de neón', 'Toggle neon filter');
+  setTT('menu-align', 'Cambiar distribución del espacio', 'Change space layout');
+  setTT('menu-retro', 'Alternar estética retro', 'Toggle retro aesthetics');
+}
+
+// Ejecutar el motor al terminar de cargar la página
+setTimeout(syncAccessibilityTooltips, 1500);
+
+// Escucha global: Ejecutar automáticamente cada vez que el usuario hace clic en CUALQUIER BOTÓN.
+// Esto mantiene los tooltips perfectamente sincronizados si cambias de idioma, pausas o sacas la espada.
+window.addEventListener('click', (e) => {
+  if (e.target.closest('button') || e.target.closest('a')) {
+    setTimeout(syncAccessibilityTooltips, 50); // Retraso de 50ms para dejar que el juego cambie sus variables primero
+  }
+});
