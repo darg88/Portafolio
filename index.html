@@ -45,8 +45,8 @@
     <div id="start-screen">
       <div class="ethereal-float">
         <h1>DANIEL_OS <br><span>Sistema en reposo...</span></h1>
-      <button id="start-btn" style="display: none;">Despertar Universo</button>
-   <button id="skip-btn" style="display: none;">Explorar Anomalías</button>
+      <button id="start-btn" style="display: none;">&gt; EXPLORAR PORTAFOLIO _</button>
+   <button id="skip-btn" style="display: none;">[ JUGAR MINIJUEGO ARCADIA ]</button>
       </div>
     </div>
 
@@ -125,12 +125,13 @@
         <li><a href="#" class="menu-item" id="menu-bloom" style="color: #00ffaa;">[*] Efecto Neón: ON</a></li>
         <li><a href="#" class="menu-item" id="menu-align" style="color: #ffaa00;">[O] Vista: CONSTELACIÓN</a></li>
         <li><a href="#" class="menu-item" data-id="1">1. GameLab Tadeo</a></li>
-        <li><a href="#" class="menu-item" data-id="2">2. Toolbox Arduino</a></li>
+        <li><a href="#" class="menu-item" data-id="2">2. Consola Arduino</a></li>
         <li><a href="#" class="menu-item" data-id="3">3. MediaLab Cinemateca</a></li>
-        <li><a href="#" class="menu-item" data-id="4">4. Docencia Diseño</a></li>
+        <li><a href="#" class="menu-item" data-id="4">4. Docencia en Diseño</a></li>
         <li><a href="#" class="menu-item" data-id="5">5. Games for Change</a></li>
-        <li><a href="#" class="menu-item" data-id="6">6. VR / Entornos 3D</a></li>
+        <li><a href="#" class="menu-item" data-id="6">6. TouchDesigner &amp; VR</a></li>
         <li><a href="#" class="menu-item" data-id="7" style="color: #ffaa00;">> DIR: /Galería_Archivos</a></li>
+        <li><a href="#" class="menu-item" data-id="8">8. Módulo WebAR</a></li>
         <li><a href="#" id="menu-leaderboard" class="menu-item" style="color: #ff0000; font-weight: bold;">> Salón_de_Fama</a></li>
         <li style="margin-top: 15px; border-top: 1px dashed #555; padding-top: 10px;"><a href="#" id="menu-about" class="menu-item" style="color: #00ffff;">> User_Profile</a></li>
         <li><a href="#" id="menu-contact" class="menu-item" style="color: #ffff00;">> Enviar Transmisión</a></li>
@@ -231,26 +232,38 @@
     </div>
 
     <!-- Ventana de Tutorial -->
-    <div id="tutorial-ui" class="modal-ui hidden" style="border-color: #333; max-width: 650px;">
+<div id="tutorial-ui" class="modal-ui hidden" style="border-color: rgba(255,255,255,0.14); max-width: 650px;">
       <button class="close-btn" onclick="window.closeAllUIs()">X</button>
-      <h2 style="color: #ffffff; text-align: left; margin-top: 0; text-transform: uppercase; border-left: 4px solid #ffffff; background: rgba(255, 255, 255, 0.1); padding: 8px 15px; font-weight: 400; font-size: 1.2rem; clip-path: polygon(0 0, 98% 0, 100% 100%, 0% 100%);">> MANUAL_DE_USUARIO</h2>
+      <h2 style="color: #ffffff; text-align: left; margin-top: 0; text-transform: uppercase; border-left: 4px solid #e7e4de; background: rgba(255, 255, 255, 0.05); padding: 8px 15px; font-weight: 300; font-size: 1.2rem; letter-spacing: 0.15em; clip-path: polygon(0 0, 98% 0, 100% 100%, 0% 100%);">> MANUAL_DEL_SISTEMA</h2>
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-        <p style="color: #cccccc; font-size: 1rem; line-height: 1.5; margin-bottom: 20px;">Has accedido a la simulación interactiva 3D. Revisa los controles antes de proceder:</p>
-        <ul style="color: #999999; text-align: left; line-height: 1.8; margin-bottom: 30px; list-style-type: none; padding-left: 0;">
-          <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px;"><strong style="color: #ffffff;">[ NAVEGAR ]</strong> Arrastra el espacio vacío para girar la vista.</li>
-          <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-top: 5px;"><strong style="color: #ffffff;">[ EXPLORAR ]</strong> Toca cualquier planeta para abrir los archivos del proyecto.</li>
-          <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-top: 5px;"><strong style="color: #ffffff;">[ CONSTRUIR ]</strong> Arrastra y suelta los planetas para diseñar tu propia constelación.</li>
-          <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-top: 5px;"><strong style="color: #ffffff;">[ COMBATE ]</strong> Activa el Modo Combate (▶) en el menú lateral para defenderte.</li>
+        
+        <p style="color: #bdb9b1; font-size: 0.9rem; font-weight: 300; line-height: 1.5; margin-bottom: 20px;">Estás accediendo a un archivo vivo con dualidad de visualización. Conoce las mecánicas antes de proceder:</p>
+        
+        <ul style="color: #8a867f; font-weight: 300; text-align: left; line-height: 1.8; margin-bottom: 30px; list-style-type: none; padding-left: 0; font-size: 0.85rem;">
+          <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px;">
+            <strong style="color: #e7e4de; font-weight: 400; letter-spacing: 1px;">[ VISUALIZAR ]</strong> Alterna en cualquier momento entre la exploración del <b>Universo 3D (Inmersivo)</b> y la lectura limpia del <b>Archivo 2D (Ejecutivo)</b> con el botón superior derecho.
+          </li>
+          <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-top: 5px;">
+            <strong style="color: #e7e4de; font-weight: 400; letter-spacing: 1px;">[ NAVEGAR ]</strong> En el universo 3D, arrastra el vacío para girar la vista, arrastra los planetas para reordenarlos, o usa la rueda para acercarte.
+          </li>
+          <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-top: 5px;">
+            <strong style="color: #e7e4de; font-weight: 400; letter-spacing: 1px;">[ DESENCRIPTAR ]</strong> Toca cualquier planeta para abrir y leer los archivos del proyecto.
+          </li>
+          <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-top: 5px;">
+            <strong style="color: #e7e4de; font-weight: 400; letter-spacing: 1px;">[ SINCRONIZAR ]</strong> Activa el Modo Extracción (▶) en el menú lateral. Usa <kbd style="background:rgba(255,255,255,0.1); padding:1px 5px; border-radius:3px;">←</kbd> <kbd style="background:rgba(255,255,255,0.1); padding:1px 5px; border-radius:3px;">→</kbd> para moverte y <kbd style="background:rgba(255,255,255,0.1); padding:1px 5px; border-radius:3px;">ESPACIO</kbd> para emitir pulsos a la basura electrónica y anomalías.
+          </li>
         </ul>
-        <h2 style="color: #ffffff; text-align: left; margin-top: 0; text-transform: uppercase; border-left: 4px solid #ffffff; background: rgba(255, 255, 255, 0.1); padding: 8px 15px; font-weight: 400; font-size: 1.1rem; clip-path: polygon(0 0, 98% 0, 100% 100%, 0% 100%);">> BASE_DE_CONOCIMIENTO (F.A.Q.)</h2>
-        <div style="text-align: left; color: #ccc; line-height: 1.5; font-size: 0.9rem; max-height: 180px; overflow-y: auto; padding-right: 10px; margin-bottom: 20px;">
-          <p style="margin-top: 10px;"><strong style="color: #fff;">Q: ¿Qué motor usa este portafolio?</strong><br>A: Está construido con Three.js y WebGL nativo, optimizado para navegadores web sin plugins.</p>
-          <p><strong style="color: #fff;">Q: ¿Cómo accedo a los módulos de Realidad Aumentada?</strong><br>A: Desde un dispositivo móvil compatible con WebXR. Aparecerá un botón [AR] en tu pantalla.</p>
-          <p><strong style="color: #fff;">Q: ¿Hay algún secreto en la simulación?</strong><br>A: Los registros indican que existe un archivo anómalo fuera de los límites convencionales. Mantén los ojos abiertos.</p>
-          <p><strong style="color: #fff;">Q: ¿Puedo usar este código?</strong><br>A: Revisa mi repositorio en GitHub en la sección de enlaces externos.</p>
+
+        <h2 style="color: #ffffff; text-align: left; margin-top: 0; text-transform: uppercase; border-left: 4px solid #e7e4de; background: rgba(255, 255, 255, 0.05); padding: 8px 15px; font-weight: 300; font-size: 1.1rem; letter-spacing: 0.15em; clip-path: polygon(0 0, 98% 0, 100% 100%, 0% 100%);">> BASE_DE_CONOCIMIENTO (F.A.Q.)</h2>
+        
+        <div style="text-align: left; color: #bdb9b1; font-weight: 300; line-height: 1.6; font-size: 0.85rem; max-height: 180px; overflow-y: auto; padding-right: 10px; margin-bottom: 20px;">
+          <p style="margin-top: 10px;"><strong style="color: #e7e4de; font-weight: 400;">Q: ¿Puedo explorar el sistema en Realidad Virtual o Aumentada?</strong><br>A: Sí. Desde un dispositivo móvil o visor compatible con WebXR, aparecerán los botones [AR] o [VR] para proyectar el universo en tu propio entorno.</p>
+          <p><strong style="color: #e7e4de; font-weight: 400;">Q: ¿Qué es el núcleo central (D.A.C.)?</strong><br>A: Es el ecosistema interactivo de la investigación doctoral. Tócalo en el modo 3D para aislarlo y experimentar sus tres máquinas conceptuales.</p>
+          <p><strong style="color: #e7e4de; font-weight: 400;">Q: ¿Hay algún secreto en la simulación?</strong><br>A: El sistema está diseñado para premiar la curiosidad. Juega, sincroniza los datos, lee los archivos pacientemente y mantén los ojos abiertos a las anomalías. La Insignia de Soberanía aguarda a quienes exploran a fondo.</p>
         </div>
       </div>
-      <button onclick="window.closeAllUIs()" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); color: #aaaaaa; border: 1px solid rgba(255,255,255,0.2); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.3s; text-transform: uppercase;" onmouseover="this.style.background='#ffffff'; this.style.color='#000000'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#aaaaaa'">CERRAR MANUAL</button>
+      
+      <button onclick="window.closeAllUIs()" style="width: 100%; padding: 12px; background: transparent; color: #e7e4de; border: 1px solid rgba(255,255,255,0.3); border-radius: 999px; font-family: -apple-system, sans-serif; font-weight: 300; font-size: 0.8rem; letter-spacing: 0.2em; cursor: pointer; transition: 0.3s; text-transform: uppercase;" onmouseover="this.style.background='rgba(255,255,255,0.08)'; this.style.borderColor='rgba(255,255,255,0.6)';" onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(255,255,255,0.3)';">CERRAR MANUAL</button>
     </div>
 
     <!-- Ventana de Acerca De (Perfil) -->

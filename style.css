@@ -612,3 +612,17 @@ body.ar-active #VRButton {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* ==========================================
+   ACCESIBILIDAD: el menú lateral cerrado no recibe foco con Tab
+   (estaba solo desplazado fuera de pantalla, así que el teclado entraba en enlaces invisibles)
+   ========================================== */
+#side-menu:not(.open) {
+  visibility: hidden;
+  transition: left 0.6s cubic-bezier(0.1, 0.8, 0.3, 1), transform 0.6s, visibility 0s linear 0.6s !important;
+}
+#side-menu.open {
+  visibility: visible;
+  transition: left 0.6s cubic-bezier(0.1, 0.8, 0.3, 1), transform 0.6s, visibility 0s !important;
+}

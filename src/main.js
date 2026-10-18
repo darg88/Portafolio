@@ -188,14 +188,14 @@ if (customArBtn) {
     customArBtn.addEventListener('click', async () => {
         try {
             if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-                if (typeof showSystemToast === 'function') showSystemToast('⚠️ AR requiere HTTPS', '#ffaa00');
+                if (typeof showSystemToast === 'function') showSystemToast(' AR requiere HTTPS', '#f7f4ed');
                 return;
             }
 
             if (renderer.xr.isPresenting) { await renderer.xr.getSession()?.end(); return; }
             
             window.isARSession = true;
-            console.log("🔥 Solicitando sesión AR nativa...");
+            console.log(" Solicitando sesión AR nativa...");
             
             // 🔥 SOLUCIÓN 1: Mover TODO a optionalFeatures.
             // Esto evita que Quest 3 y Android rechacen la sesión por tecnicismos de tracking.
@@ -583,31 +583,22 @@ function playSound(type, targetPosition = null) {
 function showSystemToast(msg, color) {
   const toast = document.getElementById('system-toast');
   if(!toast) return;
+  toast.innerText = msg;
   
-  // 🔥 FILTRO SUBLIME: Eliminar emojis y mapear colores neón a tonos elegantes
-  let cleanMsg = msg.replace(/[\u{1F300}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{2384}\u{2B50}\u{2694}\u{262F}\u{26A0}\u{1F480}\u{1F389}\u{2728}☯✧💀🎉⚔⚠️📡]/gu, '').replace(/\[\vert{}\]/g, '').trim();
-  if (!cleanMsg.startsWith('>')) cleanMsg = '> ' + cleanMsg; // Unificar diseño
-  
-  let sublimeColor = color;
-  if (color === '#ff0000' || color === '#ff3333') sublimeColor = '#ff6644'; // Rojo -> Coral
-  else if (color === '#00ffaa' || color === '#00ff00') sublimeColor = '#b9c8b0'; // Verde -> Sage
-  else if (color === '#00ffff' || color === '#00ffcc' || color === '#9ffaff') sublimeColor = '#8a867f'; // Cian -> Pizarra
-  else if (color === '#ff00ff' || color === '#ffaa00') sublimeColor = '#b89947'; // Magenta/Naranja -> Ámbar
-  else if (color === '#ffffff' || color === '#fcf6f6' || color === '#f8f0f0' || color === '#efeaea') sublimeColor = '#e7e4de'; // Blanco -> Hueso
-  
-  toast.innerText = cleanMsg;
-  toast.style.setProperty('color', sublimeColor, 'important');
-  toast.style.setProperty('text-shadow', 'none', 'important'); // Cero resplandor neón
-  toast.style.background = 'rgba(8, 8, 10, 0.85)';
+  // 🔥 ESTILO ETÉREO Y CRISTALINO
+  toast.style.setProperty('color', '#f1f1f5', 'important');
+  toast.style.setProperty('text-shadow', '0 0 18px rgba(255,255,255,0.18)', 'important'); 
+  toast.style.background = 'rgba(5, 5, 10, 0.25)';
   toast.style.backdropFilter = 'blur(12px)';
-  toast.style.border = `1px solid ${sublimeColor}40`; // Borde técnico tenue
-  toast.style.borderRadius = '2px'; // Corte arquitectónico
-  toast.style.padding = '10px 20px';
-  toast.style.boxShadow = '0 15px 30px rgba(0,0,0,0.5)';
+  toast.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+  toast.style.borderRadius = '8px';
+  toast.style.padding = '12px 25px';
+  toast.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
   toast.style.fontFamily = "'-apple-system', sans-serif";
   toast.style.fontWeight = '300';
-  toast.style.letterSpacing = '3px';
-  toast.style.textTransform = 'uppercase';
+  toast.style.letterSpacing = '0.1em';
+  toast.style.textTransform = 'none';
+  toast.style.setProperty('text-transform', 'none', 'important');
   
   toast.classList.remove('hidden');
   toast.style.opacity = '1';
@@ -704,7 +695,9 @@ function toggleCombatDimming(isCombat) {
 // ========================================================
 // FUNCIÓN DE GLITCH SUTIL Y PARCIAL (CORREGIDA)
 // ========================================================
+const reduceMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
 function triggerSubtleGlitch() {
+  if (reduceMotionMQ.matches) return; // los destellos son JS, el CSS de movimiento reducido no los alcanza
   if (!isGameStarted || isPaused || isUIOpen || renderer.xr.isPresenting) return;
 
   const numBlocks = Math.floor(Math.random() * 3) + 1;
@@ -719,7 +712,7 @@ function triggerSubtleGlitch() {
     const top = Math.random() * (window.innerHeight - height);
     const left = Math.random() * (window.innerWidth - width);
 
-    const color = Math.random() > 0.5 ? '#00ffff' : '#ff00ff';
+    const color = Math.random() > 0.5 ? '#00f947' : '#08a0cf';
 
     block.style.width = `${width}px`;
     block.style.height = `${height}px`;
@@ -782,8 +775,8 @@ function createTextSprite(message, colorHex = "#ffffff", fontPx = 35) {
   canvas.width = 1024; canvas.height = 256; 
   context.clearRect(0, 0, canvas.width, canvas.height);
   
-  context.font = `${fontPx}px 'Share Tech Mono', monospace`; 
-  context.textAlign = "center"; context.textBaseline = "middle"; 
+// 🔥 FUENTE EJECUTIVA: Delgada, elegante y sin serifa
+  context.font = `300 ${fontPx}px '-apple-system', 'Helvetica Neue', Helvetica, Arial, sans-serif`;  context.textAlign = "center"; context.textBaseline = "middle"; 
 
   // 🔥 LEGIBILIDAD: el texto era blanco puro sin contorno y desaparecía sobre planetas claros
   // (amarillo, gris, magenta). Un contorno oscuro redondeado + un halo suave lo separan de
@@ -879,7 +872,7 @@ gltfLoader.load('chaplin.glb', (gltf) => {
     } 
   }); 
   chaplinModelTemplate.scale.set(0.7, 0.7, 0.7); 
-  const text = createTextSprite('SYS_CHAPLIN', '#aa00ff'); text.position.y = -2; text.scale.set(1, 1.5, 1); 
+  const text = createTextSprite('SYS_CHAPLIN', '#acf3b1'); text.position.y = -2; text.scale.set(1, 1.5, 1); 
   chaplinModelTemplate.add(text);
 });
 
@@ -1004,7 +997,7 @@ function openUIWindow(elementId) {
 }
 
 const sideMenu = document.getElementById('side-menu'); 
-document.getElementById('menu-toggle')?.addEventListener('click', (e) => { e.stopPropagation(); e.currentTarget.blur(); sideMenu.classList.toggle('open'); }); 
+document.getElementById('menu-toggle')?.addEventListener('click', (e) => { e.stopPropagation(); e.currentTarget.blur(); sideMenu.classList.toggle('open'); if (sideMenu.classList.contains('open')) setTimeout(() => document.getElementById('menu-close')?.focus(), 60); }); 
 document.getElementById('menu-close')?.addEventListener('click', (e) => { e.stopPropagation(); sideMenu.classList.remove('open'); });
 
 document.querySelectorAll('.menu-item').forEach(item => { 
@@ -1136,7 +1129,7 @@ document.getElementById('combat-toggle-btn')?.addEventListener('click', (e) => {
     btn.style.color = '#ff0000';
     btn.title = 'Pausar / Volver a Modo Paz'; // Tooltip
     playSound('ui');
-    showSystemToast('✧ ANOMALÍAS REVELADAS : SISTEMA INESTABLE ✧', '#ffffff');
+    showSystemToast('ANOMALÍAS REVELADAS : SISTEMA INESTABLE ', '#ffffff');
     toggleCombatDimming(true); // Apagar luces
     if (isTouchDevice && touchControls) touchControls.style.display = 'flex';
   } else {
@@ -1144,7 +1137,7 @@ document.getElementById('combat-toggle-btn')?.addEventListener('click', (e) => {
     btn.innerText = '▶'; btn.classList.remove('is-combat'); 
     btn.style.borderColor = '#00ff00';
     btn.style.color = '#00ff00';
-    btn.title = 'Activar Minijuego (Asteroides)'; // Tooltip
+    btn.title = 'Activar Minijuego (ARCADA)'; // Tooltip
     asteroids.forEach(a => scene.remove(a)); asteroids.length = 0;
     enemyProjectiles.forEach(p => scene.remove(p)); enemyProjectiles.length = 0;
     if(bossEntity) { scene.remove(bossEntity); bossEntity = null; document.getElementById('boss-ui').classList.add('hidden'); }
@@ -1648,9 +1641,10 @@ let scrollSpeedBoost = 0; let lastSpawnTime = 0;
 const discoveredVoyagers = []; const ambientWhales = []; const scrollKeywords = [];
 let score = 0; let currentLevel = 1; let weaponLevel = 1; let hasShield = false; let shipSpeed = 0.5; let combatCombo = 0; let comboTimer = null;
 let isBossBattle = false; let hasFoughtBoss = false; let bossEntity = null; 
-let bossMaxHealth = 1; let bossHealth = 1; // 🔥 Jefe mucho más resistente
-let enemyProjectiles = []; const enemyProjGeo = new THREE.CapsuleGeometry(0.2, 1, 4, 8); const enemyProjMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-let playerLives = 3; 
+let bossMaxHealth = 120; let bossHealth = 120; // 🔥 Jefe mucho más resistente
+let enemyProjectiles = []; 
+const enemyProjGeo = new THREE.TetrahedronGeometry(0.3, 0); // ⚠️ Fragmento de Glitch
+const enemyProjMat = new THREE.MeshBasicMaterial({ color: 0xff6644, wireframe: true });let playerLives = 3; 
 
 function updateLivesUI() {
   const livesEl = document.getElementById('lives-value');
@@ -1760,7 +1754,7 @@ function performGameOver() {
         // Actualizar la lista
         updateLeaderboardUI();
         
-        showSystemToast('💀 GAME OVER! Puntaje: ' + finalScoreValue, '#ff0000');
+        showSystemToast(' GAME OVER! Puntaje: ' + finalScoreValue, '#cef4c0');
       } catch(e) {
         console.error("Error mostrando leaderboard:", e);
         showSystemToast('GAME OVER! Puntaje: ' + finalScoreValue, '#ff0000');
@@ -2120,7 +2114,7 @@ function updatePulseFX() {
 
 function triggerScrollExploration() { 
   document.getElementById('scroll-hint')?.classList.add('hidden');
-  if (!isGameStarted || isPaused || isUIOpen || renderer.xr.isPresenting || isBossBattle) return; 
+  if (!isGameStarted || isPaused || isUIOpen || renderer.xr.isPresenting || isBossBattle || window.isTuningGameActive || window.isWiringGameActive) return; 
   scrollSpeedBoost += 0.8; if (scrollSpeedBoost > 2.5) scrollSpeedBoost = 2.5; 
   const now = Date.now(); 
   if (now - lastSpawnTime > 400) { 
@@ -2157,7 +2151,7 @@ catData: {
   desc: { es: 'Anomalía pacífica. Un rastro de afecto anclado en el código base.', en: 'Peaceful anomaly. A trace of affection anchored in the codebase.' }, 
   longDesc: { es: 'Esta subrutina patrulla los sectores principales buscando vulnerabilidades. Se dice que fue programada por el Creador para mantener a raya a los gusanos de memoria.', en: 'This subroutine patrols main sectors looking for vulnerabilities. It is said the Creator programmed it to keep memory worms at bay.' }, 
   mediaType: 'image', 
-  mediaSrc: './img/gamber.png', 
+  mediaSrc: '/imge/gamber.png', 
   link: '' 
 }      };
       scene.add(gamber); guardianCats.push(gamber);
@@ -2172,7 +2166,7 @@ catData: {
   desc: { es: 'Anomalía sigilosa. Se mueve entre los nodos de memoria olvidados.', en: 'Stealth anomaly. It moves between forgotten memory nodes.' }, 
   longDesc: { es: 'Su presencia estabiliza las caídas de framerate en las zonas más oscuras del servidor. Funciona en simbiosis con el Guardián Alfa.', en: 'Its presence stabilizes framerate drops in the darkest areas of the server. It works in symbiosis with the Alpha Guardian.' }, 
   mediaType: 'image', 
-  mediaSrc: './img/chaplin.jpg', 
+  mediaSrc: '/imge/chaplin.jpg', 
   link: '' 
 }      };
       scene.add(chaplin); guardianCats.push(chaplin);
@@ -2290,7 +2284,11 @@ document.getElementById('btn-save-paint').onclick = (e) => {
   } catch(err) { console.log(err); }
 };
 
-function startPointerDown(clientX, clientY) {
+ function startPointerDown(clientX, clientY) {
+  // 🎮 JUEGOS OTROS: cada minijuego maneja su propio puntero
+  if (window.isWiringGameActive) { window.wiringDown(clientX, clientY); return; }
+  if (window.isTuningGameActive) { window.MG.setPointer(clientX, clientY); return; }
+
   // 🔥 Si hay una luna encendida, pasamos a MODO PINTURA PERMANENTE
   if (isPoeticaActive || isErraticaActive || isFriccionActive) {
     window.isPainting = true;
@@ -2312,14 +2310,11 @@ function startPointerDown(clientX, clientY) {
   mouseNDC.y = -(clientY / window.innerHeight) * 2 + 1;
   dragRaycaster.setFromCamera(mouseNDC, camera);
   
-  // Agregamos window.travelerGroup a los objetos agarrables
-const grabTargets = [...categoryPlanets, ...ambientWhales, ...guardianCats, ...discoveredVoyagers, window.travelerGroup];
+  const grabTargets = [...categoryPlanets, ...ambientWhales, ...guardianCats, ...discoveredVoyagers, window.travelerGroup];
   const intersects = dragRaycaster.intersectObjects(grabTargets, true);
-  // 🔥 El DAC también se arrastra en modo constelación. Solo se prueba contra su núcleo (sin sus hijos: la red
-  // de palabras invisible tiene sprites enormes que agarrarían el planeta desde cualquier sitio). En zoom
-  // (aislado) NO se agarra: ahí arrastrar sigue ROTANDO el planeta, como antes.
+  
   if (typeof planetaDAC !== 'undefined' && !planetaDAC.userData.isIsolated && !isAligned) {
-    const dacHit = dragRaycaster.intersectObject(planetaDAC, false);
+    const dacHit = dragRaycaster.intersectObject(dacHitboxPlanet, false);
     if (dacHit.length > 0 && (intersects.length === 0 || dacHit[0].distance < intersects[0].distance)) {
       draggedPlanet = planetaDAC;
       if (navigator.vibrate) vibrateDevice(50);
@@ -2333,7 +2328,6 @@ const grabTargets = [...categoryPlanets, ...ambientWhales, ...guardianCats, ...d
     if (hit && grabTargets.includes(hit)) {
       if (!(hit.userData.id === 999 && typeof secretDiscovered !== 'undefined' && !secretDiscovered)) {
         draggedPlanet = hit;
-        
         if (navigator.vibrate) vibrateDevice(50);
       }
     }
@@ -2341,6 +2335,10 @@ const grabTargets = [...categoryPlanets, ...ambientWhales, ...guardianCats, ...d
 }
 
 function handlePointerMove(clientX, clientY) {
+  // 🎮 JUEGOS OTROS
+  if (window.isWiringGameActive) { window.wiringMove(clientX, clientY); return; }
+  if (window.isTuningGameActive) { window.MG.setPointer(clientX, clientY); return; }
+
   // 🔥 Si estamos pintando, solo actualizamos el cursor, NO giramos la cámara
   if (window.isPainting) {
     mouseNDC.x = (clientX / window.innerWidth) * 2 - 1;
@@ -2357,15 +2355,15 @@ function handlePointerMove(clientX, clientY) {
       const pixelDeltaY = clientY - lastTouchY;
       const pixelDeltaX = clientX - lastTouchX;
       
-      // 🔥 LA CURA DEL ALEJAMIENTO: Traducimos el movimiento 2D de tu pantalla a la orientación 3D actual de la cámara
       const moveVector = new THREE.Vector3(pixelDeltaX * 0.05, -pixelDeltaY * 0.05, 0);
       moveVector.applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
       
       draggedPlanet.position.add(moveVector);
       draggedPlanet.userData.baseY = draggedPlanet.position.y;
-      if (typeof planetaDAC !== 'undefined' && draggedPlanet === planetaDAC) { // el DAC tiende a su posición guardada: que la siga
+      if (typeof planetaDAC !== 'undefined' && draggedPlanet === planetaDAC) { 
         if (!planetaDAC.userData.savedPos) planetaDAC.userData.savedPos = new THREE.Vector3();
         planetaDAC.userData.savedPos.copy(planetaDAC.position);
+        planetaDAC.userData.homePos = planetaDAC.position.clone(); 
       }
       
       if (draggedPlanet.userData.randomPos) {
@@ -2377,13 +2375,16 @@ function handlePointerMove(clientX, clientY) {
     const deltaX = Math.abs(clientX - touchStartX); const deltaY = Math.abs(clientY - touchStartY);
     if (deltaX > 5 || deltaY > 5) window.isDraggingCanvas = true;
 
-   if (window.isDraggingCanvas) {
-      const dragResistance = isFriccionActive ? 0.0005 : 0.005; 
+    if (window.isDraggingCanvas) {
+      const dragResistance = typeof isFriccionActive !== 'undefined' && isFriccionActive ? 0.0005 : 0.005; 
       
-      // 🔥 Permitir rotar el Planeta DAC con el ratón/dedo
       if (typeof planetaDAC !== 'undefined' && planetaDAC.userData.isIsolated) {
         planetaDAC.rotation.y += (clientX - lastTouchX) * dragResistance * 2;
         planetaDAC.rotation.x += (clientY - lastTouchY) * dragResistance * 2;
+        if (typeof _dacSpin !== 'undefined') {
+          _dacSpin.vy = (clientX - lastTouchX) * dragResistance * 0.8; 
+          _dacSpin.vx = (clientY - lastTouchY) * dragResistance * 0.8;
+        }
       }
       else if (isAligned) { 
         targetCarouselAngle += (clientX - lastTouchX) * dragResistance;
@@ -2399,20 +2400,20 @@ function handlePointerMove(clientX, clientY) {
 }
 
 function handlePointerUp() {
+  // 🎮 JUEGOS OTROS
+  if (window.isWiringGameActive) { window.wiringUp(); return; }
+  if (window.isTuningGameActive) return;
+
   window.isPainting = false;
   if (draggedPlanet) {
     if (isDraggingPlanet) {
       playSound('ui'); window.justDropped = true; 
       
-      // ===============================================
-      // 🔥 NUEVO: LÓGICA DE ATERRIZAJE DEL VIAJERO
-      // ===============================================
       if (draggedPlanet === window.travelerGroup) {
         let snapped = false;
         let closestPlanet = null;
-        let minDistance = 35.0; // Radio magnético de atracción
+        let minDistance = 35.0; 
         
-        // Buscar el planeta más cercano
         categoryPlanets.forEach(p => {
           if(p.userData.id === 999) return; 
           const dist = window.travelerGroup.position.distanceTo(p.position);
@@ -2422,49 +2423,31 @@ function handlePointerUp() {
           }
         });
 
-      if (closestPlanet) {
-          // 1. Lo anclamos magnéticamente al planeta
-      window.startTravelerFall(closestPlanet);
+        if (closestPlanet) {
+          window.startTravelerFall(closestPlanet);
           snapped = true;
-          
           playSound('project_open');
           
-          // 2. Diccionario de conocimiento del Oráculo (Tus líneas de investigación)
           const pId = closestPlanet.userData.id;
           const pTitle = typeof closestPlanet.userData.title === 'object' ? closestPlanet.userData.title[window.currentLang||'es'] : closestPlanet.userData.title;
           
           let phrase = "";
-          // Frases dinámicas basadas en tu perfil (Se adaptan si agregas más IDs)
           if (pId === 1 || pTitle.includes("GameLab")) {
-            phrase = window.currentLang === 'en' 
-              ? "GameLab Tadeo: Where code becomes culture and social transformation." 
-              : "GameLab Tadeo: Donde el código se vuelve cultura y transformación social.";
+            phrase = window.currentLang === 'en' ? "GameLab Tadeo: Where code becomes culture and social transformation." : "GameLab Tadeo: Donde el código se vuelve cultura y transformación social.";
           } else if (pId === 2 || pTitle.includes("Media")) {
-            phrase = window.currentLang === 'en' 
-              ? "Media archaeology. Preserving the memory of what was once cutting-edge." 
-              : "Arqueología de los medios. Preservando la memoria de lo que alguna vez fue vanguardia.";
+            phrase = window.currentLang === 'en' ? "Media archaeology. Preserving the memory of what was once cutting-edge." : "Arqueología de los medios. Preservando la memoria de lo que alguna vez fue vanguardia.";
           } else if (pId === 3 || pTitle.includes("Semillas") || pTitle.includes("Juegos Otros")) {
-            phrase = window.currentLang === 'en' 
-              ? "Other Games. Seeding disobedience and exploring decolonial mechanics." 
-              : "Juegos Otros. Sembrando desobediencia y explorando mecánicas decoloniales.";
+            phrase = window.currentLang === 'en' ? "Other Games. Seeding disobedience and exploring decolonial mechanics." : "Juegos Otros. Sembrando desobediencia y explorando mecánicas decoloniales.";
           } else if (pId === 4 || pTitle.includes("Domo")) {
-            phrase = window.currentLang === 'en' 
-              ? "Expanding the narrative to the celestial vault. Full-dome interaction." 
-              : "Expandiendo la narrativa a la bóveda celeste. Interacción Fulldome.";
+            phrase = window.currentLang === 'en' ? "Expanding the narrative to the celestial vault. Full-dome interaction." : "Expandiendo la narrativa a la bóveda celeste. Interacción Fulldome.";
           } else if (pId === 5 || pTitle.includes("Accesi")) {
-            phrase = window.currentLang === 'en' 
-              ? "Universal design. Play is a right, accessible to all." 
-              : "Diseño universal y accesibilidad. El juego es un territorio para todos.";
+            phrase = window.currentLang === 'en' ? "Universal design. Play is a right, accessible to all." : "Diseño universal y accesibilidad. El juego es un territorio para todos.";
           } else {
-            // Frase por defecto adaptada al título del planeta
-            phrase = window.currentLang === 'en' 
-              ? `Exploring the margins of [ ${pTitle} ].` 
-              : `Explorando los márgenes de [ ${pTitle} ].`;
+            phrase = window.currentLang === 'en' ? `Exploring the margins of [ ${pTitle} ].` : `Explorando los márgenes de [ ${pTitle} ].`;
           }
 
-          showPoeticReflection(phrase, "#00ffcc");
+          if (typeof showPoeticReflection === 'function') showPoeticReflection(phrase, "#00ffcc");
           
-          // 3. Animación de "Conquista" (Levanta la espada)
           if (window.travelerSword && window.travelerSwordMat) {
             window.travelerSword.rotation.z = Math.PI / 4; 
             window.travelerSwordMat.color.setHex(0x00ffff); 
@@ -2476,16 +2459,12 @@ function handlePointerUp() {
           }
         }
         
-        // Si lo sueltas en el espacio profundo, se desvincula
         if (!snapped) {
           window.travelerGroup.userData.anchoredPlanet = null;
           window.travelerGroup.userData.baseY = window.travelerGroup.position.y;
           window.travelerGroup.userData.baseX = window.travelerGroup.position.x;
         }
       }
-      // ===============================================
-      // LÓGICA DE GUARDADO PARA LOS DEMÁS PLANETAS
-      // ===============================================
       else if (!isAligned && draggedPlanet.userData.id !== undefined && draggedPlanet.userData.id !== 999) {
         if (!draggedPlanet.userData.randomPos) draggedPlanet.userData.randomPos = new THREE.Vector3();
         if (!draggedPlanet.userData.targetPos) draggedPlanet.userData.targetPos = new THREE.Vector3();
@@ -2498,7 +2477,7 @@ function handlePointerUp() {
         draggedPlanet.userData.randomPos.y = draggedPlanet.userData.baseY;
         draggedPlanet.userData.targetPos.copy(draggedPlanet.userData.randomPos);
         
-        saveConstellationData();
+        if (typeof saveConstellationData === 'function') saveConstellationData();
       }
       
       setTimeout(() => window.justDropped = false, 150);
@@ -2507,7 +2486,6 @@ function handlePointerUp() {
   }
   window.isDraggingCanvas = false;
 }
-
 // Escuchas de eventos
 window.addEventListener('mousedown', (e) => { startPointerDown(e.clientX, e.clientY); });
 window.addEventListener('mousemove', (e) => { if(e.buttons === 1) handlePointerMove(e.clientX, e.clientY); });
@@ -2519,7 +2497,7 @@ document.addEventListener('touchstart', (e) => {
     touchStartTime = Date.now();
     const currentTime = Date.now();
     const tapLength = currentTime - lastTapTime;
-    if (tapLength < 300 && tapLength > 0 && !isUIOpen && !isBossBattle && !isAligned && !isDraggingPlanet) {
+    if (tapLength < 300 && tapLength > 0 && !window.isTuningGameActive && !window.isWiringGameActive && !isUIOpen && !isBossBattle && !isAligned && !isDraggingPlanet) {
       isMobileZoomed = !isMobileZoomed;
       targetFov = isMobileZoomed ? 35 : 75; 
       playSound('ui');
@@ -2534,7 +2512,7 @@ document.addEventListener('touchmove', (e) => {
     if (draggedPlanet) e.preventDefault();
     handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
     let touchY = e.touches[0].clientY;
-    if (!draggedPlanet && (touchStartY - touchY > 40 || touchStartY - touchY < -40)) { 
+    if (!draggedPlanet && !window.isTuningGameActive && !window.isWiringGameActive && (touchStartY - touchY > 40 || touchStartY - touchY < -40)) { 
       triggerScrollExploration(); touchStartY = touchY; 
     } 
   } 
@@ -2560,15 +2538,13 @@ document.addEventListener('touchend', (e) => {
     const deltaX = touchEndX - touchStartX;
     const deltaTime = Date.now() - touchStartTime;
     
-    // 🔥 CORRECCIÓN: Contamos 9 planetas reales para que el giro en móvil sea perfecto
-    let activeCount = (typeof secretDiscovered !== 'undefined' && secretDiscovered) ? categoryPlanets.length : (categoryPlanets.length - 1);
-    const angleStep = (Math.PI * 2) / activeCount;
+    const angleStep = (Math.PI * 2) / carouselSlots(); // incluye al DAC (y a la anomalía si ya apareció)
 
     if (deltaTime < 300 && Math.abs(deltaX) > 40) {
       if (deltaX > 0) targetCarouselAngle += angleStep; 
       else targetCarouselAngle -= angleStep; 
     } 
-    targetCarouselAngle = Math.round(targetCarouselAngle / angleStep) * angleStep;
+    targetCarouselAngle = carouselSnap(targetCarouselAngle);
   }
 });
 // ============================================================
@@ -2674,7 +2650,7 @@ function openProjectPopup(data) {
 
   if (window.trackEvent) window.trackEvent('Ver_Proyecto', currentTitle);
 
-  if (!data.isVoyager && !data.isCat && data.id !== 99) {
+  if (!data.isVoyager && !data.isCat && data.id !== 98) {
     const planetMesh = categoryPlanets.find(p => p.userData.id === data.id);
     if (planetMesh && !planetMesh.userData.visited) {
       planetMesh.userData.visited = true;
@@ -2702,9 +2678,12 @@ function openProjectPopup(data) {
   if (isAligned) {
     const planetMesh = categoryPlanets.find(p => p.userData.id === data.id);
     if (planetMesh) {
-      const pIndex = categoryPlanets.indexOf(planetMesh);
-      let activeCount = (typeof secretDiscovered !== 'undefined' && secretDiscovered) ? categoryPlanets.length : (categoryPlanets.length - 1);
-      if (pIndex !== -1) targetCarouselAngle = (Math.PI / 2) - ((pIndex / activeCount) * Math.PI * 2);
+      const slot = carouselSlotOf(planetMesh);
+      if (slot !== -1) {
+        let a = (Math.PI / 2) - ((slot / carouselSlots()) * Math.PI * 2);
+        a += Math.round((targetCarouselAngle - a) / (Math.PI * 2)) * (Math.PI * 2); // equivalente más cercano: sin dar vueltas de más
+        targetCarouselAngle = a;
+      }
     }
   }
   
@@ -2774,7 +2753,7 @@ function openProjectPopup(data) {
       
       document.getElementById('project-title').style.color = '#ffffff';
 
-      let finalGallery = data.gallery || [];
+      let finalGallery = data.gallery || (data.mediaSrc ? [data.mediaSrc] : []); // ballena y gatos usan mediaSrc
       let finalVideos = data.videos || [];
       if (data.videoSrc && finalVideos.length === 0) finalVideos = [data.videoSrc]; 
       
@@ -2958,8 +2937,8 @@ mediaContainer.innerHTML = finalGallery.length === 0 ? '' : `<img id="gallery-im
   }
 }
 
-const keys = { left: false, right: false }; const projectiles = []; const projectileGeo = new THREE.CapsuleGeometry(0.1, 0.8, 4, 8); 
-
+const keys = { left: false, right: false }; const projectiles = []; 
+const projectileGeo = new THREE.TorusGeometry(0.3, 0.05, 4, 16); // 📡 Onda de Ping de datos
 function fireLaser() {
   if(!isGameStarted || isUIOpen || (renderer.xr.isPresenting && hitTestSourceRequested)) return; 
   hasShot = true; checkOnboarding(); playSound('laser', ship.position); 
@@ -3020,11 +2999,51 @@ document.addEventListener('keydown', (e) => {
   if(e.code === 'Space') { e.preventDefault(); isShooting = true; } 
 });
 document.addEventListener('keyup', (e) => { if(e.key === 'ArrowLeft' || e.key === 'a') keys.left = false; if(e.key === 'ArrowRight' || e.key === 'd') keys.right = false; if(e.code === 'Space') { isShooting = false; }});
+// ==========================================
+// 🔥 MUTADOR DE HUD (JUEGOS OTROS)
+// ==========================================
+const originalHUD = {
+  lives: 'SEÑAL', level: 'NIVEL', files: 'ARCHIVOS', combo: 'COMBO'
+};
 
+function morphHUD(mode) {
+  const lblLives = document.getElementById('label-lives');
+  const lblLevel = document.getElementById('label-level');
+  const lblFiles = document.getElementById('label-files');
+  const lblCombo = document.getElementById('label-combo');
+
+  if (mode === 'sintonizar') {
+    if (lblLives) lblLives.innerText = 'RUIDO';
+    if (lblLevel) lblLevel.innerText = 'FRECUENCIA';
+    if (lblFiles) lblFiles.innerText = 'AMPLITUD';
+    if (lblCombo) lblCombo.innerText = 'RESONANCIA';
+  } 
+  else if (mode === 'enrutar') {
+    if (lblLives) lblLives.innerText = 'TENSIÓN';
+    if (lblLevel) lblLevel.innerText = 'NODOS';
+    if (lblFiles) lblFiles.innerText = 'FLUJO';
+    if (lblCombo) lblCombo.innerText = 'RESISTENCIA';
+  }
+  else if (mode === 'renunciar') {
+    if (lblLives) lblLives.innerText = 'CARGA';
+    if (lblLevel) lblLevel.innerText = 'ENTROPÍA';
+    if (lblFiles) lblFiles.innerText = 'DESCARTADO';
+    if (lblCombo) lblCombo.innerText = 'AGILIDAD';
+  }
+  else if (mode === 'normal') {
+    // Restaura respetando si el usuario está en Inglés o Español
+    const lang = dict[window.currentLang];
+    if (lblLives) lblLives.innerText = lang.hudLives || originalHUD.lives;
+    if (lblLevel) lblLevel.innerText = originalHUD.level;
+    if (lblFiles) lblFiles.innerText = lang.hudFiles || originalHUD.files;
+    if (lblCombo) lblCombo.innerText = originalHUD.combo;
+  }
+}
 const raycaster = new THREE.Raycaster(); 
 let targetFov = 75; 
 window.addEventListener('click', (e) => {
-  if (isUIOpen && !e.target.closest('.modal-ui') && !e.target.closest('.control-btn') && !e.target.closest('#side-menu') && !e.target.closest('.carousel-btn')) {
+  if (window.isTuningGameActive || window.isWiringGameActive) return; // 🎮 el raycaster ignora .visible: sin esto se abrían planetas ocultos
+  if (isUIOpen && !e.target.closest('.modal-ui') && !e.target.closest('.control-btn') && !e.target.closest('#side-menu') && !e.target.closest('.carousel-btn') && !e.target.closest('#ach-panel') && !e.target.closest('#sov-ceremony')) {
     window.closeAllUIs();
     return; 
   }
@@ -3042,10 +3061,34 @@ window.addEventListener('click', (e) => {
   
 const handleProjectClick = (data) => {
     if (window.isZooming) return; 
+    
+    // 🔥 1. INTERCEPTOR DE ANOMALÍA (Juego: Sintonización)
+    if (data.id === 999) {
+      window.isZooming = true;
+      playSound('damage'); // Sonido de estática/error al entrar
+      
+      if (typeof window.startTuningGame === 'function') window.startTuningGame(data);
+      
+      setTimeout(() => { window.isZooming = false; }, 350);
+      return; // CRÍTICO: Evita que se abra el modal 2D normal
+    }
+
+    // 🔥 2. INTERCEPTOR DE OTROS "JUEGOS OTROS" (Para el futuro)
+    const techArray = data.tech && typeof data.tech === 'object' ? (data.tech.es || data.tech) : [];
+    if (techArray.includes('Juegos Otros')) {
+      // Futuros juegos (Telar, Renuncia) irán aquí
+    }
+// 🔥 2. INTERCEPTOR DE GALERÍA (Juego: Cacharreo / Telar)
+    if (data.id === 7) {
+      window.isZooming = true;
+      playSound('boss_hit'); // Sonido pesado de hardware
+      if (typeof window.startWiringGame === 'function') window.startWiringGame(data);
+      setTimeout(() => { window.isZooming = false; }, 350);
+      return; 
+    }
+    // 🌌 3. COMPORTAMIENTO NORMAL
     window.isZooming = true;
     targetFov = 25; 
-    
-    // 🔥 EL NUEVO SONIDO CORTO Y ETÉREO
     playSound('project_open'); 
     
     setTimeout(() => {
@@ -3620,6 +3663,26 @@ let secretDiscovered = false;
 let isAligned = false;
 let carouselAngleOffset = 0; 
 
+// ============================================================
+// 🎠 CARRUSEL 3D: una "ranura" por objeto del anillo
+//   0..N-1  planetas normales  |  N  planeta D.A.C.  |  N+1  anomalía (solo tras descubrirla)
+// ============================================================
+function carouselNormalCount() { return categoryPlanets.length - 1; } // la anomalía (id 999) es siempre la última
+function carouselSlots() {
+  const found = typeof secretDiscovered !== 'undefined' && secretDiscovered;
+  return carouselNormalCount() + 1 + (found ? 1 : 0);
+}
+function carouselSlotOf(obj) {
+  if (obj === planetaDAC) return carouselNormalCount();
+  if (obj && obj.userData && obj.userData.id === 999) return carouselNormalCount() + 1;
+  return categoryPlanets.indexOf(obj);
+}
+// Ajusta el ángulo para que UNA ranura quede exactamente al frente (π/2), no entre dos planetas
+function carouselSnap(angle) {
+  const step = (Math.PI * 2) / carouselSlots();
+  return Math.PI / 2 - Math.round((Math.PI / 2 - angle) / step) * step;
+}
+
 // ==========================================
 // 🔥 RED DE ENERGÍA NEURAL (REEMPLAZA LA CONSTELACIÓN)
 // ==========================================
@@ -3906,8 +3969,8 @@ function ensureSwordButton() {
   const en = window.currentLang === 'en';
   b.title = en ? 'Pulse slash (Q): dispels the active creative mode' : 'Tajo de pulso (Q): disipa el modo creativo activo';
   b.setAttribute('aria-label', b.title);
-  b.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4 9 15"/><path d="M7 11l6 6"/><path d="M9 15l-3.5 3.5"/><circle cx="4.5" cy="19.5" r="1.2"/></svg>';
-  b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); b.blur(); performSwordSlash(); });
+// 🔥 ICONO GEOMÉTRICO (Estilo Antena / Resonador)
+  b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="pointer-events:none"><g transform="rotate(45 12 12)"><path d="M12 .9l1 4.2v10.5h-2V5.1z" fill="currentColor" fill-opacity=".12"/><path d="M12 5.8v8.8" opacity=".5"/><path d="M6.8 16.3h10.4M6.8 16.3q-.1-1 .9-1.3M17.2 16.3q.1-1-.9-1.3"/><path d="M11.3 16.8h1.4v3.3h-1.4z"/><circle cx="12" cy="21.3" r=".95"/></g></svg>';  b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); b.blur(); performSwordSlash(); });
   document.body.appendChild(b);
   // brilla cuando hay algún modo creativo que se pueda disipar
   setInterval(() => b.classList.toggle('is-ready', !!(isPoeticaActive || isErraticaActive || isFriccionActive || isRetroMode)), 400);
@@ -3968,13 +4031,12 @@ const ACHIEVEMENTS = [
   { id: 'trio',         es: ['Tres máquinas', 'Activa las tres máquinas creativas.'],                 en: ['Three machines', 'Activate all three creative machines.'] },
   { id: 'retro',        es: ['Fósforo', 'Activa el modo Retro B&W.'],                                 en: ['Phosphor', 'Activate Retro B&W mode.'] },
   { id: 'painter',      es: ['Pintor del vacío', 'Pinta sobre el espacio.'],                          en: ['Painter of the void', 'Paint on empty space.'] },
-  { id: 'combo',        es: ['Ritmo', 'Logra un combo x10.'],                                         en: ['Rhythm', 'Reach a x10 combo.'] },
-  { id: 'boss',         es: ['Núcleo vencido', 'Derrota al Núcleo corrupto.'],                        en: ['Core defeated', 'Defeat the Corrupted Core.'],
-    reward: { es: 'Recompensa: Espada de pulsos', en: 'Reward: Pulse sword' } },
-  { id: 'untouched',    es: ['Intocable', 'Derrota al jefe sin perder una vida.'],                    en: ['Untouchable', 'Defeat the boss without losing a life.'] },
-  { id: 'slash',        es: ['Tajo', 'Usa la Espada de Pulsos.'],                                     en: ['Slash', 'Use the Pulse Sword.'] },
-  { id: 'dispel',       es: ['Disipación', 'Apaga un modo creativo con la espada.'],                  en: ['Dispelled', 'Turn off a creative mode with the sword.'] },
-  { id: 'hall',         es: ['Salón de la Fama', 'Registra tu puntaje.'],                             en: ['Hall of Fame', 'Register your score.'] },
+{ id: 'combo',        es: ['Ritmo', 'Logra una sincronización x10.'],                                 en: ['Rhythm', 'Reach a x10 sync.'] },
+  { id: 'boss',         es: ['Núcleo calibrado', 'Estabiliza el Núcleo Descalibrado.'],                 en: ['Core calibrated', 'Stabilize the Uncalibrated Core.'],
+    reward: { es: 'Recompensa: Emisor de Pulsos', en: 'Reward: Pulse Emitter' } },
+  { id: 'untouched',    es: ['Señal prístina', 'Calibra el núcleo sin perder integridad de red.'],      en: ['Pristine signal', 'Calibrate the core without losing network integrity.'] },
+  { id: 'slash',        es: ['Resonancia', 'Usa el Emisor de Pulsos.'],                                 en: ['Resonance', 'Use the Pulse Emitter.'] },
+  { id: 'dispel',       es: ['Disipación', 'Apaga un modo creativo con el emisor.'],                    en: ['Dispelled', 'Turn off a creative mode with the emitter.'] },  { id: 'hall',         es: ['Salón de la Fama', 'Registra tu puntaje.'],                             en: ['Hall of Fame', 'Register your score.'] },
   { id: 'twoWorlds',    es: ['Dos mundos', 'Recorre el archivo ejecutivo y el universo 3D.'],         en: ['Two worlds', 'Explore both the executive archive and the 3D universe.'] },
   { id: 'reader',       es: ['Lector atento', 'Lee tres proyectos en el archivo ejecutivo.'],         en: ['Attentive reader', 'Read three projects in the executive archive.'] },
   { id: 'polyglot',     es: ['Políglota', 'Cambia el idioma del universo.'],                          en: ['Polyglot', 'Change the universe language.'] },
@@ -4004,8 +4066,7 @@ const ACH_ICONS = {
   combo:        '<path d="M4 12v0.1M7.3 8.5v7M10.6 4.5v15M13.9 8v8M17.2 6v12M20.2 11v2"/>',
   boss:         '<path d="M12 2.5 21.5 12 12 21.5 2.5 12z" fill="currentColor" fill-opacity=".1"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/>',
   untouched:    '<path d="M12 3 19.5 6v5.5c0 4.5-3.2 8-7.5 9.5-4.3-1.5-7.5-5-7.5-9.5V6z" fill="currentColor" fill-opacity=".1"/><path d="m8.8 12 2.4 2.4 4.2-4.8"/>',
-  slash:        '<path d="M20 4 9.5 14.5"/><path d="m7.5 11.5 5 5"/><path d="M9.5 14.5 5.5 18.5"/><circle cx="4.5" cy="19.5" r="1.2"/><path d="M15.5 4.2h-3.2M19.8 8.5v3.2" opacity=".5"/>',
-  dispel:       '<path d="M12 3a9 9 0 0 1 8.4 5.9"/><path d="M20.9 13.6a9 9 0 0 1-6.6 6.9"/><path d="M9.4 20.6A9 9 0 0 1 3.3 10.4"/><circle cx="12" cy="12" r="2.3" fill="currentColor"/><path d="M12 7v1.6M12 15.4V17M7 12h1.6M15.4 12H17"/>',
+slash:        '<g transform="rotate(45 12 12)"><path d="M12 .9l1 4.2v10.5h-2V5.1z" fill="currentColor" fill-opacity=".12"/><path d="M12 5.8v8.8" opacity=".5"/><path d="M6.8 16.3h10.4M6.8 16.3q-.1-1 .9-1.3M17.2 16.3q.1-1-.9-1.3"/><path d="M11.3 16.8h1.4v3.3h-1.4z"/><circle cx="12" cy="21.3" r=".95"/></g>',  dispel:       '<path d="M12 3a9 9 0 0 1 8.4 5.9"/><path d="M20.9 13.6a9 9 0 0 1-6.6 6.9"/><path d="M9.4 20.6A9 9 0 0 1 3.3 10.4"/><circle cx="12" cy="12" r="2.3" fill="currentColor"/><path d="M12 7v1.6M12 15.4V17M7 12h1.6M15.4 12H17"/>',
   hall:         '<path d="M8 4h8v5a4 4 0 0 1-8 0z" fill="currentColor" fill-opacity=".1"/><path d="M8 6H5v1.5A3 3 0 0 0 8 10.5M16 6h3v1.5A3 3 0 0 1 16 10.5"/><path d="M12 13v4M10 17h4v3.5h-4zM8.5 20.5h7"/>',
   twoWorlds:    '<circle cx="8.5" cy="12" r="5.5"/><circle cx="15.5" cy="12" r="5.5" fill="currentColor" fill-opacity=".12"/>',
   reader:       '<path d="M3.5 5.5C6 4.5 9.5 4.5 12 6c2.5-1.5 6-1.5 8.5-.5V19c-2.5-1-6-1-8.5.5-2.5-1.5-6-1.5-8.5-.5z" fill="currentColor" fill-opacity=".08"/><path d="M12 6v13.5"/>',
@@ -4024,7 +4085,7 @@ const ACH_CATS = {
 };
 const ACH_CAT_LABEL = {
   explore: { es: 'Exploración', en: 'Exploration' }, create: { es: 'Creación', en: 'Creation' },
-  combat:  { es: 'Combate',     en: 'Combat' },      system: { es: 'Sistema',   en: 'System' }
+  combat:  { es: 'Sincronización', en: 'Sync' },     system: { es: 'Sistema',   en: 'System' } // 🔥 Pasó de "Combate" a "Sincronización"
 };
 function achIconSVG(id) {
   const inner = (ACH_ICONS[id] || ACH_ICONS.trophy).replace(/<(path|circle|rect|line|ellipse|polyline|polygon)\b/g, '<$1 pathLength="1"');
@@ -4179,7 +4240,8 @@ function unlockAchievement(id) {
   ACH.got[id] = Date.now();
   const u = readUnlocks(); u.ach = ACH.got; writeUnlocks(u);
   const en = window.currentLang === 'en';
-  queueAchievementPopup(def);
+  if (id === 'sovereignty') setTimeout(runSovereigntyCeremony, 1500); // la ceremonia reemplaza al aviso normal
+  else queueAchievementPopup(def);
   if (typeof playSound === 'function') playSound('levelup');
   if (window.trackEvent) window.trackEvent('Logro', id);
   if (id === 'cartographer') grantInvertedMode();
@@ -4276,6 +4338,8 @@ function renderAchievementsPanel() {
   const rewards = [];
   if (ACH.got.cartographer) rewards.push(`<li class="ach-reward"><span aria-hidden="true">☯</span><div><strong>${en ? 'Inverted mode' : 'Modo invertido'}</strong></div>
       <button type="button" class="ach-act" data-act="inverted">${inverted ? (en ? 'Dark mode' : 'Modo oscuro') : (en ? 'Activate' : 'Activar')}</button></li>`);
+  if (ACH.got.sovereignty) rewards.push(`<li class="ach-reward"><span class="sov-emblem" style="width:1.6rem;height:1.6rem;display:block" aria-hidden="true">${sovereignEmblemSVG(false)}</span><div><strong>${en ? 'System Badge' : 'Insignia de Sistema'}</strong>
+      <small>${en ? 'Shown in the header; a crown of pulses follows the Traveler.' : 'Se muestra en la cabecera; una corona de pulsos acompaña al Viajero.'}</small></div><span></span></li>`);
   if (window.pulseSword.unlocked) rewards.push(`<li class="ach-reward"><span aria-hidden="true">⚔</span><div><strong>${en ? 'Pulse sword' : 'Espada de pulsos'}</strong>
       <small>${en ? 'Press Q or the sword button: dispels the active creative mode.' : 'Pulsa Q o el botón de la espada: disipa el modo creativo activo.'}</small></div><span></span></li>`);
   p.innerHTML = `<div class="ach-box">
@@ -4338,18 +4402,253 @@ setInterval(() => {
   }
   if (ACH.lastLang !== window.currentLang) { ACH.lastLang = window.currentLang; updateAchievementsMenu(); updateInvertedMenu(); if (ACH.open) renderAchievementsPanel(); }
   
-// 🔥 INSIGNIA DE SOBERANÍA (100% COMPLETADO)
-  if (ACH.got['sovereignty'] && !document.getElementById('soberania-badge')) {
-    const header = document.getElementById('portfolio-header');
-    if (header) {
-      const badge = document.createElement('span');
-      badge.id = 'soberania-badge';
-      badge.innerText = window.currentLang === 'en' ? ' [ SOVEREIGNTY ]' : ' [ SOBERANÍA ]';
-      badge.style.cssText = 'color: #ff6644; font-size: 0.6rem; letter-spacing: 0.25em; margin-left: 12px; border-left: 1px solid rgba(255,255,255,0.15); padding-left: 12px;';
-      header.appendChild(badge);
-    }
-  }
+// 🔥 INSIGNIA DE SOBERANÍA (100% COMPLETADO): emblema en cabecera + corona sobre el Viajero
+  if (ACH.got['sovereignty']) { ensureSovereigntyBadge(); ensureSovereignCrown(); }
 }, 700);
+
+// ============================================================
+// ✦ INSIGNIA DE SOBERANÍA — se obtiene con TODOS los logros
+// ------------------------------------------------------------
+//  • EMBLEMA: anillo de marcas giratorio + tres arcos con los colores de las tres máquinas creativas
+//    (hueso = Poética, coral = Errática, ámbar = Fricción) alrededor de un diamante con núcleo pulsante.
+//  • CEREMONIA: pantalla completa, una sola vez, al desbloquearla (clic / Esc / 14 s para cerrar).
+//  • CABECERA: el emblema queda fijo bajo el título; al tocarlo abre el panel de logros.
+//  • CORONA DE PULSOS: tres anillos orbitales, un diamante y esquirlas flotan sobre la cabeza del Viajero,
+//    para siempre (se restaura sola en cada visita porque el logro se guarda en localStorage).
+// ============================================================
+(function injectSovereigntyStyle() {
+  if (document.getElementById('sov-style')) return;
+  const s = document.createElement('style');
+  s.id = 'sov-style';
+  s.textContent = `
+    .sov-emblem { display: block; filter: drop-shadow(0 0 6px rgba(255,102,68,0.55)); }
+    .sov-emblem svg { display: block; width: 100%; height: 100%; overflow: visible; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .sov-emblem .sv-ring  { stroke: #e7e4de; stroke-width: 1; opacity: .55; stroke-dasharray: 1.2 3.4; transform-box: fill-box; transform-origin: center; animation: svSpin 48s linear infinite; }
+    .sov-emblem .sv-arcs  { transform-box: fill-box; transform-origin: center; animation: svSpinR 36s linear infinite; }
+    .sov-emblem .sv-arc   { stroke-width: 3.4; stroke-dasharray: 30 70; }
+    .sov-emblem .sv-a1 { stroke: #e7e4de; } .sov-emblem .sv-a2 { stroke: #ff6644; } .sov-emblem .sv-a3 { stroke: #b89947; }
+    .sov-emblem .sv-dia   { stroke: #fff; stroke-width: 1.5; fill: rgba(255,102,68,0.12); }
+    .sov-emblem .sv-cross { stroke: #e7e4de; stroke-width: 1.2; opacity: .8; }
+    .sov-emblem .sv-core  { fill: #ff6644; stroke: none; transform-box: fill-box; transform-origin: center; animation: svPulse 2.8s ease-in-out infinite; }
+    .sov-emblem .sv-draw  { stroke-dasharray: 1; stroke-dashoffset: 1; animation: svDraw 1.3s .45s ease-out forwards; }
+    @keyframes svSpin  { to { transform: rotate(360deg); } }
+    @keyframes svSpinR { to { transform: rotate(-360deg); } }
+    @keyframes svPulse { 0%, 100% { transform: scale(1); opacity: .95; } 50% { transform: scale(1.55); opacity: .55; } }
+    @keyframes svDraw  { to { stroke-dashoffset: 0; } }
+
+/* Emblema integrado en la cabecera (Adaptable a PC y Móvil) */
+    #portfolio-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-start; }
+    
+    #portfolio-header .sov-badge { 
+      display: inline-flex; align-items: center; gap: 6px;
+      white-space: nowrap; pointer-events: auto; cursor: pointer; 
+      color: #ff6644; font-size: 0.6rem; font-weight: 300; letter-spacing: 0.25em; text-shadow: none;
+      padding: 3px 10px 3px 4px; border: 1px solid rgba(255,102,68,0.32); border-radius: 999px; 
+      background: rgba(8,8,12,0.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); 
+      animation: svBadgeGlow 3.4s ease-in-out infinite;
+    }
+    #portfolio-header .sov-badge:hover, #portfolio-header .sov-badge:focus-visible { border-color: rgba(255,102,68,0.7); outline: none; }
+    @keyframes svBadgeGlow { 0%, 100% { box-shadow: 0 0 0 rgba(255,102,68,0); } 50% { box-shadow: 0 0 16px rgba(255,102,68,0.35); } }
+
+    /* Ajuste específico para pantallas pequeñas (móviles) */
+    @media (max-width: 768px) {
+      #portfolio-header { 
+        flex-wrap: nowrap; /* Mantiene a DANIEL_OS y la insignia rígidamente en la misma línea */
+        gap: 6px;
+      }
+      #portfolio-header > span:not(.sov-badge) { 
+        display: none !important; /* Oculta el "// PORTAFOLIO..." en móvil para hacerle espacio a la insignia */
+      }
+      #portfolio-header .sov-badge { 
+        position: static !important; /* Anula posiciones fijas */
+        transform: scale(0.85); /* Reduce la insignia sutilmente para móvil */
+        transform-origin: left center;
+        margin: 0;
+      }
+    }
+
+    /* Ceremonia */
+    #sov-ceremony { position: fixed; inset: 0; z-index: 100060; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; cursor: pointer;
+      background: radial-gradient(ellipse at center, rgba(46,16,10,0.84) 0%, rgba(3,3,6,0.95) 72%); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 300; color: #d9d9e0; animation: svFadeIn .8s ease both; }
+    #sov-ceremony.is-out { animation: svFadeOut .5s ease both; }
+    #sov-ceremony .sov-big { position: relative; width: min(56vw, 230px); height: min(56vw, 230px); animation: svEmblemIn 1.4s cubic-bezier(.2,.9,.2,1) both; }
+    #sov-ceremony .sov-big .sov-emblem { width: 100%; height: 100%; filter: drop-shadow(0 0 22px rgba(255,102,68,0.6)); }
+    #sov-ceremony .sov-halo { position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(255,102,68,0.55); opacity: 0; pointer-events: none; animation: svHalo 3.3s ease-out infinite; }
+    #sov-ceremony .sov-c-kicker { margin: 34px 0 0; font-size: .66rem; letter-spacing: .3em; text-transform: uppercase; color: #8c8c99; animation: svRise .9s .8s ease both; }
+    #sov-ceremony h2 { margin: 10px 0 8px; font-weight: 300; font-size: clamp(1.4rem, 5.2vw, 2.3rem); letter-spacing: .55em; text-indent: .55em; text-transform: uppercase; color: #fff;
+      text-shadow: 0 0 28px rgba(255,102,68,0.5); animation: svRise .9s 1s ease both; }
+    #sov-ceremony .sov-c-sub { margin: 0; font-size: .95rem; letter-spacing: .08em; color: #c9c9d3; animation: svRise .9s 1.2s ease both; }
+    #sov-ceremony .sov-c-reward { margin: 16px 0 0; font-size: .76rem; letter-spacing: .12em; color: #9ffaff; max-width: 34em; line-height: 1.6; animation: svRise .9s 1.5s ease both; }
+    #sov-ceremony .sov-c-hint { margin: 30px 0 0; font-size: .62rem; letter-spacing: .3em; text-transform: uppercase; color: #6d6d7a; animation: svRise .9s 2.2s ease both, svBlink 2.4s 3s ease-in-out infinite; }
+    @keyframes svFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes svFadeOut { to { opacity: 0; } }
+    @keyframes svEmblemIn { from { opacity: 0; transform: scale(.55) rotate(-25deg); } to { opacity: 1; transform: none; } }
+    @keyframes svHalo  { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(2.4); opacity: 0; } }
+    @keyframes svRise  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+    @keyframes svBlink { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+      .sov-emblem *, #sov-ceremony, #sov-ceremony *, #portfolio-header .sov-badge { animation: none !important; }
+      .sov-emblem .sv-draw { stroke-dasharray: none; stroke-dashoffset: 0; }
+      #sov-ceremony .sov-halo { display: none; }
+    }
+  `;
+  document.head.appendChild(s);
+})();
+
+function sovereignEmblemSVG(draw) {
+  const d = draw ? ' sv-draw' : '';
+  return `<svg viewBox="0 0 120 120" aria-hidden="true">
+    <circle class="sv-ring" cx="60" cy="60" r="56"/>
+    <g class="sv-arcs">
+      <circle class="sv-arc sv-a1" cx="60" cy="60" r="46" pathLength="100" transform="rotate(-90 60 60)"/>
+      <circle class="sv-arc sv-a2" cx="60" cy="60" r="46" pathLength="100" transform="rotate(30 60 60)"/>
+      <circle class="sv-arc sv-a3" cx="60" cy="60" r="46" pathLength="100" transform="rotate(150 60 60)"/>
+    </g>
+    <path class="sv-dia${d}" pathLength="1" d="M60 26 94 60 60 94 26 60Z"/>
+    <path class="sv-cross${d}" pathLength="1" d="M60 12v10M60 98v10M12 60h10M98 60h10"/>
+    <circle class="sv-core" cx="60" cy="60" r="7"/>
+  </svg>`;
+}
+
+// ---------- Emblema permanente en la cabecera ----------
+function ensureSovereigntyBadge() {
+  const header = document.getElementById('portfolio-header');
+  if (!header) return;
+  const en = window.currentLang === 'en';
+  let b = document.getElementById('soberania-badge');
+  if (!b) {
+    b = document.createElement('span');
+    b.id = 'soberania-badge';
+    b.className = 'sov-badge';
+    b.setAttribute('role', 'button');
+    b.tabIndex = 0;
+    b.innerHTML = `<span class="sov-emblem" style="width:26px;height:26px">${sovereignEmblemSVG(false)}</span><span class="sov-b-label"></span>`;
+    const open = (e) => { e.preventDefault(); e.stopPropagation(); openAchievements('sovereignty'); };
+    b.addEventListener('click', open);
+    b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') open(e); });
+    // el emblema no debe iniciar arrastres ni clics sobre el universo que hay detrás
+    ['mousedown', 'mouseup', 'touchstart', 'touchend', 'pointerdown'].forEach(evt => b.addEventListener(evt, (e) => e.stopPropagation(), { passive: true }));
+    header.appendChild(b);
+  }
+  const txt = `[ ${en ? 'SOVEREIGNTY' : 'SOBERANÍA'} ]`;
+  const lbl = b.querySelector('.sov-b-label');
+  if (lbl && lbl.textContent !== txt) lbl.textContent = txt;
+  const tip = en ? 'System Badge · all achievements' : 'Insignia de Sistema · todos los logros';
+  if (b.title !== tip) { b.title = tip; b.setAttribute('aria-label', tip); }
+}
+
+// ---------- Corona de pulsos sobre el Viajero ----------
+function ensureSovereignCrown() {
+  const tg = window.travelerGroup;
+  if (!tg || window.sovereignCrown) return;
+  const glow = (hex, mult, op) => {
+    const m = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    m.color.multiplyScalar(mult); // pasa el umbral del Bloom
+    return m;
+  };
+  const group = new THREE.Group();
+  group.position.y = 2.6;
+
+  // Tres anillos finos e inclinados: hueso / coral / ámbar
+  const rings = [0xe7e4de, 0xff6644, 0xb89947].map((hex, i) => {
+    const r = new THREE.Mesh(new THREE.TorusGeometry(0.62 + i * 0.13, 0.013, 6, 64), glow(hex, 2.2, 0.85));
+    r.userData.baseTilt = Math.PI / 2 + (i - 1) * 0.38;
+    r.rotation.x = r.userData.baseTilt;
+    r.rotation.y = i * 0.7;
+    group.add(r);
+    return r;
+  });
+
+  // Diamante central (eco del Núcleo corrupto, ahora en coral)
+  const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.17, 0), makeTravelerDither(0xff6644));
+  gem.position.y = 0.04;
+  group.add(gem);
+
+  // Esquirlas en órbita
+  const shards = new THREE.Group();
+  const shardColors = [0xe7e4de, 0xff6644, 0xb89947];
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2;
+    const sh = new THREE.Mesh(new THREE.TetrahedronGeometry(0.065, 0), glow(shardColors[i % 3], 2.4, 0.95));
+    sh.position.set(Math.cos(a) * 0.98, ((i % 3) - 1) * 0.28, Math.sin(a) * 0.98);
+    shards.add(sh);
+  }
+  group.add(shards);
+
+  // Un clic en la corona cuenta como clic en el Viajero
+  group.traverse(o => { o.userData = Object.assign({}, o.userData, { name: 'viajero' }); });
+  tg.add(group);
+  window.sovereignCrown = { group, rings, gem, shards };
+}
+
+function updateSovereignCrown(t) {
+  const c = window.sovereignCrown;
+  if (!c) return;
+  c.group.position.y = 2.6 + Math.sin(t * 1.6) * 0.06;
+  c.group.rotation.y = t * 0.5;
+  c.rings.forEach((r, i) => {
+    r.rotation.x = r.userData.baseTilt + Math.sin(t * 1.2 + i * 1.7) * 0.22;
+    r.material.opacity = 0.62 + Math.sin(t * 2 + i * 1.7) * 0.25;
+  });
+  c.gem.rotation.y = t * 1.6;
+  c.gem.rotation.x = t * 0.7;
+  c.shards.rotation.y = -t * 1.15;
+}
+
+// ---------- Ceremonia de desbloqueo ----------
+function runSovereigntyCeremony() {
+  if (document.getElementById('sov-ceremony')) return;
+  const en = window.currentLang === 'en';
+  const total = ACHIEVEMENTS.length;
+  const el = document.createElement('div');
+  el.id = 'sov-ceremony';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.setAttribute('aria-label', en ? 'Sovereignty unlocked' : 'Soberanía desbloqueada');
+  el.innerHTML = `
+    <div class="sov-big"><i class="sov-halo"></i><i class="sov-halo" style="animation-delay:1.1s"></i><i class="sov-halo" style="animation-delay:2.2s"></i>
+      <span class="sov-emblem">${sovereignEmblemSVG(true)}</span></div>
+    <p class="sov-c-kicker">${en ? 'Achievement unlocked' : 'Logro desbloqueado'} · ${total} / ${total}</p>
+    <h2>${en ? 'Sovereignty' : 'Soberanía'}</h2>
+    <p class="sov-c-sub">${en ? 'You reached the maturity of the system.' : 'Alcanzaste la madurez del sistema.'}</p>
+    <p class="sov-c-reward">${en ? 'System Badge unlocked · a crown of pulses now floats above the Traveler.' : 'Insignia de Sistema desbloqueada · una corona de pulsos flota ahora sobre el Viajero.'}</p>
+    <p class="sov-c-hint">${en ? 'tap to continue' : 'toca para continuar'}</p>`;
+  document.body.appendChild(el);
+  isUIOpen = true;
+  ensureSovereigntyBadge();
+  ensureSovereignCrown();
+
+  if (typeof playSound === 'function') {
+    setTimeout(() => playSound('double_pulse'), 350);
+    setTimeout(() => playSound('pulse'), 1300);
+    setTimeout(() => playSound('levelup'), 1900);
+  }
+
+  let closed = false, autoClose = null;
+  const onKey = (e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); close(); } };
+  function close() {
+    if (closed) return; closed = true;
+    clearTimeout(autoClose);
+    document.removeEventListener('keydown', onKey, true);
+    el.classList.add('is-out');
+    setTimeout(() => {
+      el.remove();
+      isUIOpen = document.body.classList.contains('ui-active') || !!ACH.open;
+      // tres pulsos (hueso, coral, ámbar) desde el Viajero: el universo "reconoce" la insignia
+      const tg = window.travelerGroup;
+      if (tg && typeof createExplosion === 'function') {
+        const p = new THREE.Vector3(); tg.getWorldPosition(p);
+        [[0xe7e4de, 0], [0xff6644, 260], [0xb89947, 520]].forEach(([hex, delay]) => setTimeout(() => createExplosion(p.x, p.y + 1.4, p.z, 3.0, hex), delay));
+        shakeIntensity = 0.3;
+      }
+    }, 500);
+  }
+  el.addEventListener('click', (e) => { e.stopPropagation(); close(); });
+  ['touchstart', 'touchmove', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'wheel'].forEach(evt => el.addEventListener(evt, (e) => e.stopPropagation(), { passive: true }));
+  document.addEventListener('keydown', onKey, true);
+  autoClose = setTimeout(close, 14000);
+}
 
 // Eventos sueltos
 
@@ -4718,6 +5017,7 @@ function updateTraveler() {
   travelerCape.flare += (flareTarget - travelerCape.flare) * Math.min(1, dt * 10);
   updateTravelerCape(t, travelerCape.flare, erratic);
   updateSwordFX(t);
+  updateSovereignCrown(t);
 
   // ---- EL OBSERVADOR: la cabeza gira un poco hacia el ratón y la pupila se mueve más ----
   // (-PI/3 compensa el giro del cuerpo para que al reposo el visor mire a la cámara)
@@ -4789,6 +5089,7 @@ renderer.setAnimationLoop((timestamp, frame) => {
         }
       });
     }
+    if (reduceMotionMQ.matches) shakeIntensity = 0; // sin sacudidas de cámara con movimiento reducido
     if (shakeIntensity > 0) { 
       camera.position.x = (Math.random() - 0.5) * shakeIntensity; 
       camera.position.y = (Math.random() - 0.5) * shakeIntensity; 
@@ -4808,17 +5109,18 @@ renderer.setAnimationLoop((timestamp, frame) => {
   }
  
   if (isPaused && !isXR) return; 
-  
+  // 🎮 Motor de los minijuegos (Sintonización y Telar de circuitos)
+  if ((window.isWiringGameActive || window.isTuningGameActive) && window.updateMiniGames) window.updateMiniGames();
   const now = performance.now(); frames++;
-  if (now >= lastTime + 1000) { if((frames * 1000 / (now - lastTime)) < 30) lowFPSCount++; 
+  if (now >= lastTime + 1000) { if((frames * 1000 / (now - lastTime)) < 30) lowFPSCount++; else lowFPSCount = 0;
     // 🔥 ACTUALIZADOR DEL HUD DE COMBO EN TIEMPO REAL
   const comboUi = document.getElementById('combo-value');
-  if (comboUi) comboUi.innerText = 'x' + (typeof combatCombo !== 'undefined' ? combatCombo : 0);
-    else lowFPSCount = 0; if(lowFPSCount > 3 && isBloomEnabled) { isBloomEnabled = false; bloomPass.strength = 0; 
+  if (comboUi && !window.isTuningGameActive && !window.isWiringGameActive) comboUi.innerText = 'x' + (typeof combatCombo !== 'undefined' ? combatCombo : 0);
+    if(lowFPSCount > 3 && isBloomEnabled) { isBloomEnabled = false; bloomPass.strength = 0; 
       document.getElementById('menu-bloom').innerText = '✨ Efecto Neón: OFF'; 
       document.getElementById('menu-bloom').style.color = '#888'; } frames = 0; lastTime = now; }
 
-  if (isShooting && isGameStarted && !isUIOpen && !isAR) { if (now - lastShotTime > FIRE_COOLDOWN) { fireLaser(); lastShotTime = now; } }
+  if (isShooting && isGameStarted && !isUIOpen && !isAR && !window.isTuningGameActive && !window.isWiringGameActive) { if (now - lastShotTime > FIRE_COOLDOWN) { fireLaser(); lastShotTime = now; } }
 
  // LÓGICA DE ACTUALIZACIÓN AR (CORREGIDA)
 if (isAR && frame && hitTestSource) {
@@ -4941,6 +5243,98 @@ if (isAR && frame && hitTestSource) {
       // ===============================================
       // 🔥 MOTOR GEOMÉTRICO (RED INTERACTIVA) - Unificado
       // ===============================================
+      // ===============================================
+        // 🔥 REACCIONES FÍSICAS DE LAS LUNAS (Atractores)
+        // ===============================================
+        [lunaPoetica, lunaErratica, lunaFriccion].forEach(luna => {
+          if (!luna || !luna.geometry || !luna.geometry.attributes.basePosition) return;
+          
+          const pos = luna.geometry.attributes.position.array;
+          const base = luna.geometry.attributes.basePosition.array;
+          let needsUpdate = false;
+          
+          if (luna.name === "maquina_poetica") {
+            if (typeof isPoeticaActive !== 'undefined' && isPoeticaActive) {
+              // Fluye y respira orgánicamente
+              for(let i=0; i<pos.length; i+=3) {
+                pos[i] = base[i] + Math.sin(Date.now()*0.0015 + base[i+1])*0.15;
+                pos[i+1] = base[i+1] + Math.cos(Date.now()*0.0015 + base[i])*0.15;
+                pos[i+2] = base[i+2] + Math.sin(Date.now()*0.0015 + base[i+2])*0.15;
+              }
+              needsUpdate = true;
+            } else {
+              // Regresa a su forma original
+              for(let i=0; i<pos.length; i+=3) {
+                if (Math.abs(pos[i] - base[i]) > 0.01) {
+                  pos[i] += (base[i] - pos[i]) * 0.1;
+                  pos[i+1] += (base[i+1] - pos[i+1]) * 0.1;
+                  pos[i+2] += (base[i+2] - pos[i+2]) * 0.1;
+                  needsUpdate = true;
+                }
+              }
+            }
+          }
+          else if (luna.name === "maquina_erratica") {
+            if (typeof isErraticaActive !== 'undefined' && isErraticaActive) {
+              // 🔥 GLITCH EXAGERADO (Desgarro en bandas y ruido estático)
+              for(let i=0; i<pos.length; i+=3) {
+                if (Math.random() > 0.4) { 
+                  // Desgarro en bloques horizontales violentos
+                  const glitchBand = Math.sin(base[i+1] * 10 + Date.now() * 0.01) > 0 ? 1 : -1;
+                  const spread = Math.random() * 8; // Expansión masiva
+                  pos[i] = base[i] + (Math.random() > 0.7 ? glitchBand * spread : (Math.random()-0.5)*1.5);
+                  pos[i+1] = base[i+1] + (Math.random()-0.5)*1.0;
+                  pos[i+2] = base[i+2] + (Math.random() > 0.7 ? glitchBand * spread : (Math.random()-0.5)*1.5);
+                } else if (Math.random() > 0.95) {
+                  // Puntos perdidos estallando por todo el espacio (Ruido)
+                  pos[i] = (Math.random() - 0.5) * 30;
+                  pos[i+1] = (Math.random() - 0.5) * 30;
+                  pos[i+2] = (Math.random() - 0.5) * 30;
+                } else {
+                  // Temblores bruscos cerca del cubo original
+                  pos[i] = base[i] + (Math.random()-0.5)*0.5;
+                  pos[i+1] = base[i+1] + (Math.random()-0.5)*0.5;
+                  pos[i+2] = base[i+2] + (Math.random()-0.5)*0.5;
+                }
+              }
+              needsUpdate = true;
+            } else {
+              // Curación magnética (vuelven a formar el cubo perfecto)
+              for(let i=0; i<pos.length; i+=3) {
+                if (Math.abs(pos[i] - base[i]) > 0.01) {
+                  pos[i] += (base[i] - pos[i]) * 0.2;
+                  pos[i+1] += (base[i+1] - pos[i+1]) * 0.2;
+                  pos[i+2] += (base[i+2] - pos[i+2]) * 0.2;
+                  needsUpdate = true;
+                }
+              }
+            }
+          }
+          else if (luna.name === "maquina_friccion") {
+            if (typeof isFriccionActive !== 'undefined' && isFriccionActive) {
+              // Compresión pesada (simula alta gravedad)
+              for(let i=0; i<pos.length; i+=3) {
+                const dist = Math.sqrt(base[i]*base[i] + base[i+1]*base[i+1] + base[i+2]*base[i+2]);
+                const force = 1 - (0.3 * Math.sin(Date.now()*0.005 + dist)); // Pulso de densidad
+                pos[i] = base[i] * force;
+                pos[i+1] = base[i+1] * force;
+                pos[i+2] = base[i+2] * force;
+              }
+              needsUpdate = true;
+            } else {
+              for(let i=0; i<pos.length; i+=3) {
+                if (Math.abs(pos[i] - base[i]) > 0.01) {
+                  pos[i] += (base[i] - pos[i]) * 0.1;
+                  pos[i+1] += (base[i+1] - pos[i+1]) * 0.1;
+                  pos[i+2] += (base[i+2] - pos[i+2]) * 0.1;
+                  needsUpdate = true;
+                }
+              }
+            }
+          }
+          
+          if (needsUpdate) luna.geometry.attributes.position.needsUpdate = true;
+        });
       if (typeof dacNetworkGroup !== 'undefined' && dacNetworkGroup.visible) {
         try {
           raycaster.setFromCamera(mouseNDC, camera);
@@ -5001,8 +5395,8 @@ if (isAR && frame && hitTestSource) {
             }
 
             if (isFriccionActive) {
-              let distToBrush = dacBrush.position.distanceTo(new THREE.Vector3(px, py, pz));
-              if (distToBrush < 4) {
+              const fdx = px - dacBrush.position.x, fdy = py - dacBrush.position.y, fdz = pz - dacBrush.position.z; // sin crear vectores por partícula
+              if (fdx * fdx + fdy * fdy + fdz * fdz < 16) {
                 px += (px - dacBrush.position.x) * 0.05;
                 py += (py - dacBrush.position.y) * 0.05;
               }
@@ -5014,34 +5408,28 @@ if (isAR && frame && hitTestSource) {
           }
 
           // 2. CONECTAR PARTÍCULAS ENTRE SÍ
-          const connectDist = 5;
-          const revealRadius = 15.0;
-
+          // El búfer de líneas tiene tope (maxLines). Antes, una vez lleno, el doble bucle seguía comparando
+          // ~500.000 pares por cuadro sin dibujar nada, y creaba un Vector3 por partícula. Ahora todo es
+          // aritmética escalar y se sale en cuanto el búfer se llena (el resultado visible es el mismo).
+          const connectDistSq = 5 * 5;
+          const revealRadiusSq = 15.0 * 15.0;
+          const brX = dacBrush.position.x, brY = dacBrush.position.y, brZ = dacBrush.position.z;
+          dacLinks:
           for (let i = 0; i < dacParticleCount; i++) {
-            let px1 = positions[i * 3];
-            let py1 = positions[i * 3 + 1];
-            let pz1 = positions[i * 3 + 2];
-            let dist1ToMouse = dacBrush.position.distanceTo(new THREE.Vector3(px1, py1, pz1));
+            const px1 = positions[i * 3], py1 = positions[i * 3 + 1], pz1 = positions[i * 3 + 2];
+            const bdx = px1 - brX, bdy = py1 - brY, bdz = pz1 - brZ;
+            if (bdx * bdx + bdy * bdy + bdz * bdz >= revealRadiusSq) continue;
 
-            if (dist1ToMouse < revealRadius) {
-              for (let j = i + 1; j < dacParticleCount; j++) {
-                let px2 = positions[j * 3];
-                let py2 = positions[j * 3 + 1];
-                let pz2 = positions[j * 3 + 2];
-
-                let dx = px1 - px2;
-                let dy = py1 - py2;
-                let dz = pz1 - pz2;
-                let distNodes = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-                if (distNodes < connectDist && lineIndex < maxLineIndex) {
-                  linePosArray[lineIndex++] = px1;
-                  linePosArray[lineIndex++] = py1;
-                  linePosArray[lineIndex++] = pz1;
-                  linePosArray[lineIndex++] = px2;
-                  linePosArray[lineIndex++] = py2;
-                  linePosArray[lineIndex++] = pz2;
-                }
+            for (let j = i + 1; j < dacParticleCount; j++) {
+              const dx = px1 - positions[j * 3], dy = py1 - positions[j * 3 + 1], dz = pz1 - positions[j * 3 + 2];
+              if (dx * dx + dy * dy + dz * dz < connectDistSq) {
+                if (lineIndex + 6 > maxLineIndex) break dacLinks; // búfer lleno: no tiene sentido seguir
+                linePosArray[lineIndex++] = px1;
+                linePosArray[lineIndex++] = py1;
+                linePosArray[lineIndex++] = pz1;
+                linePosArray[lineIndex++] = positions[j * 3];
+                linePosArray[lineIndex++] = positions[j * 3 + 1];
+                linePosArray[lineIndex++] = positions[j * 3 + 2];
               }
             }
           }
@@ -5412,7 +5800,7 @@ if (isAR && frame && hitTestSource) {
             hasShield = false; shieldMesh.visible = false; playSound('explosion', ship.position); shakeIntensity = 0.5; createExplosion(a.position.x, a.position.y, a.position.z); scene.remove(a); asteroids.splice(i, 1); 
           } else { 
             shakeIntensity = 0.8; playSound('damage', ship.position); createExplosion(ship.position.x, ship.position.y, ship.position.z, 1.6, 0xff8888); 
-showSystemToast('IMPACTO DETECTADO. DAÑO ESTRUCTURAL.', '#fcf6f6');
+showSystemToast('> INTERFERENCIA: PÉRDIDA DE SEÑAL', '#fcf6f6');
 shipBody.material.uniforms.color.value.setHex(0xff0000); 
 setTimeout(() => shipBody.material.uniforms.color.value.setHex(0xffffff), 200);            scene.remove(a); asteroids.splice(i, 1); 
             playerLives--; updateLivesUI(); if(playerLives <= 0) triggerGameOver();
@@ -5450,7 +5838,7 @@ setTimeout(() => shipBody.material.uniforms.color.value.setHex(0xffffff), 200); 
             shipBody.material.uniforms.color.value.setHex(0xff0000); setTimeout(() => shipBody.material.uniforms.color.value.setHex(0xffffff), 200);
             playerLives--; if(typeof updateLivesUI === 'function') updateLivesUI(); if(playerLives <= 0) triggerGameOver();
 if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 5);    
-        showSystemToast('IMPACTO: POTENCIA DE ARMA REDUCIDA', '#f8f0f0');
+        showSystemToast('> RUIDO DE RED: ANCHO DE BANDA REDUCIDO', '#f8f0f0');
           }
           createExplosion(f.position.x, f.position.y, f.position.z); scene.remove(f); fighters.splice(i, 1);
           continue;
@@ -5467,7 +5855,7 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
         
         // A. Láser vs Jefe Final
         if (isBossBattle && bossEntity && laser.position.distanceTo(bossEntity.position) < 5.0) { 
-           hit = true; bossHealth -= 1; playSound('boss_hit', bossEntity.position); shakeIntensity = 0.2; 
+           hit = true; bossHealth -= 1; playSound('boss_hit', bossEntity.position); shakeIntensity = 0.2;
            if (typeof showFloatingText === 'function') showFloatingText('-1', '#ffffff', laser.position.x, laser.position.y, laser.position.z);
            bossEntity.children[0].material.uniforms.color.value.setHex(0xffffff); setTimeout(() => {if(bossEntity) bossEntity.children[0].material.uniforms.color.value.setHex(0xff0000)}, 100);
            document.getElementById('boss-hp-fill').style.width = (bossHealth / bossMaxHealth * 100) + '%'; 
@@ -5481,7 +5869,7 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
   
   // 🔥 GUARDAR PUNTAJE ANTES DE RESETEAR
   const finalScoreValue = score + bossBonus;
-  console.log("🏆 VICTORIA - Puntaje final:", finalScoreValue);
+  console.log(" VICTORIA - Puntaje final:", finalScoreValue);
   
   updateScore(bossBonus); 
   
@@ -5536,7 +5924,7 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
   document.getElementById('score-value').innerText = score;
   document.getElementById('level-value').innerText = currentLevel;
   
-  showSystemToast('🎉 ¡VICTORIA! Puntaje: ' + finalScoreValue, '#00ff00');
+  showSystemToast(' SISTEMA CALIBRADO Puntaje: ' + finalScoreValue, '#e0ede0');
   
   // Mostrar leaderboard
   setTimeout(() => {
@@ -5549,7 +5937,7 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
       isCombatActive = false;
     } catch(e) {
       console.error("Error mostrando victoria:", e);
-      showSystemToast('¡VICTORIA! Puntaje: ' + finalScoreValue, '#00ff00');
+      showSystemToast('¡VICTORIA! Puntaje: ' + finalScoreValue, '#ddf2dd');
     }
   }, 150);
 }
@@ -5588,8 +5976,8 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
               
               if (asteroids[k].userData.isBounty) {
                 playSound('levelup'); const rType = asteroids[k].userData.rewardType;
-                if (rType === 'shield') { hasShield = true; if (typeof shieldMesh !== 'undefined' && shieldMesh) shieldMesh.visible = true; if(typeof showFloatingText === 'function') showFloatingText('ESCUDO', '#00ffff', asteroids[k].position.x, asteroids[k].position.y, asteroids[k].position.z); updateScore(200); } 
-                else if (rType === 'life') { if (playerLives < 5) playerLives++; if (typeof updateLivesUI === 'function') updateLivesUI(); if(typeof showFloatingText === 'function') showFloatingText('+1 VIDA', '#ff00ff', asteroids[k].position.x, asteroids[k].position.y, asteroids[k].position.z); updateScore(200); } 
+                if (rType === 'shield') { hasShield = true; if (typeof shieldMesh !== 'undefined' && shieldMesh) shieldMesh.visible = true; if(typeof showFloatingText === 'function') showFloatingText('ESCUDO', '#cff5cf', asteroids[k].position.x, asteroids[k].position.y, asteroids[k].position.z); updateScore(200); } 
+                else if (rType === 'life') { if (playerLives < 5) playerLives++; if (typeof updateLivesUI === 'function') updateLivesUI(); if(typeof showFloatingText === 'function') showFloatingText('+1 VIDA', '#f7edf7', asteroids[k].position.x, asteroids[k].position.y, asteroids[k].position.z); updateScore(200); } 
                 else if (rType === 'points') { if(typeof showFloatingText === 'function') showFloatingText('+1500 PTS', '#ffaa00', asteroids[k].position.x, asteroids[k].position.y, asteroids[k].position.z); updateScore(1500); }
               } else {
                 if (typeof combatCombo !== 'undefined') {
@@ -5606,8 +5994,8 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
                   }
                   
                   // Avisos de mejora de arma
-                  if (combatCombo === 5) showSystemToast('ARMA ACTUALIZADA: DISPARO DOBLE', '#00ffff');
-                  if (combatCombo === 10) showSystemToast('ARMA MAXIMIZADA: DISPARO TRIPLE', '#ff00ff');
+                  if (combatCombo === 5) showSystemToast('ACTUALIZADA: PING DOBLE', '#d8f1ce');
+                  if (combatCombo === 10) showSystemToast('MAXIMIZADA: PING TRIPLE', '#bac1be');
                   
                   clearTimeout(comboTimer); 
                   comboTimer = setTimeout(() => { combatCombo = 0; }, 2000);
@@ -5721,7 +6109,8 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
         
         if (typeof secretDiscovered !== 'undefined' && !secretDiscovered) {
            planet.visible = false;
-           if (!isAligned && Math.abs(userGroup.rotation.y) > 2.6) {
+           // Constelación: dar la vuelta a la cámara. Carrusel (móvil por defecto): una vuelta completa del anillo
+           if ((!isAligned && Math.abs(userGroup.rotation.y) > 2.6) || (isAligned && window.totalRotated > Math.PI * 2)) {
              secretDiscovered = true; 
              planet.visible = true;
              playSound('boss_hit'); 
@@ -5731,9 +6120,9 @@ showSystemToast('ANOMALÍA DETECTADA A TUS ESPALDAS', '#efeaea');           }
         if (!secretDiscovered) {
            planet.userData.targetPos.set(0, 0, 80);
         } else if (isAligned) {
-           let angle = (index / categoryPlanets.length) * Math.PI * 2 + carouselAngleOffset;
-           let radius = window.innerWidth < 600 ? 20 : 22; 
-           planet.userData.targetPos.set(Math.cos(angle)*radius, Math.sin(Date.now()*0.001)*1.5, Math.sin(angle)*radius - 10);
+            const angle = (carouselSlotOf(planet) / carouselSlots()) * Math.PI * 2 + carouselAngleOffset;
+            const radius = window.innerWidth < 600 ? 20 : 22;
+            planet.userData.targetPos.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius - 10);
         } else {
            if (planet.userData.randomPos) {
              planet.userData.targetPos.copy(planet.userData.randomPos);
@@ -5753,9 +6142,8 @@ showSystemToast('ANOMALÍA DETECTADA A TUS ESPALDAS', '#efeaea');           }
       planet.rotation.x += planetSpeed; 
       planet.rotation.y += planetSpeed * 2; 
 
-      if (isAligned) {
-        let activeCount = (typeof secretDiscovered !== 'undefined' && secretDiscovered) ? categoryPlanets.length : (categoryPlanets.length - 1); 
-        let angle = (index / activeCount) * Math.PI * 2 + carouselAngleOffset;
+  if (isAligned) {
+        let angle = (index / carouselSlots()) * Math.PI * 2 + carouselAngleOffset;
         let radius = window.innerWidth < 600 ? 20 : 22; 
         planet.userData.targetPos.x = Math.cos(angle) * radius;
         planet.userData.targetPos.y = 0; // Y base del carrusel
@@ -5803,7 +6191,29 @@ showSystemToast('ANOMALÍA DETECTADA A TUS ESPALDAS', '#efeaea');           }
       }
      
     });
- updateTraveler();  
+    // 🔥 EL PLANETA D.A.C. TAMBIÉN GIRA EN EL CARRUSEL
+    // (antes su posición no se actualizaba nunca: se quedaba fijo en (40, 0, -50))
+    if (typeof planetaDAC !== 'undefined' && planetaDAC) {
+      if (planetaDAC.userData.isIsolated) {
+        if (planetaDAC.scale.x !== 1) planetaDAC.scale.setScalar(1); // dentro del núcleo siempre a tamaño completo
+      } else if (typeof draggedPlanet === 'undefined' || draggedPlanet !== planetaDAC) {
+        if (!planetaDAC.userData.homePos) planetaDAC.userData.homePos = planetaDAC.position.clone();
+        const dacTarget = new THREE.Vector3();
+        let dacScale = 1;
+        if (isAligned) {
+          const slot = carouselSlotOf(planetaDAC);
+          const angle = (slot / carouselSlots()) * Math.PI * 2 + carouselAngleOffset;
+          const radius = window.innerWidth < 600 ? 20 : 22;
+          dacTarget.set(Math.cos(angle) * radius, Math.sin(Date.now() * 0.001 + slot) * 1.5, Math.sin(angle) * radius - 10);
+          dacScale = 0.5; // sus anillos miden ~23 unidades: a escala 1 pisarían a los planetas vecinos
+        } else {
+          dacTarget.copy(planetaDAC.userData.homePos);
+        }
+        planetaDAC.position.lerp(dacTarget, 0.08);
+        planetaDAC.scale.setScalar(planetaDAC.scale.x + (dacScale - planetaDAC.scale.x) * 0.08);
+      }
+    }
+    updateTraveler();  
 if (!isAR) {
   energyWebGroup.visible = !isAligned; 
   
@@ -6080,9 +6490,9 @@ window.currentLang = sysPrefs.lang || 'es';
 const dict = {
   es: {
     startBtn: "> EXPLORAR PORTAFOLIO _",
-    skipBtn: "[ JUGAR MINIJUEGO ARCADIA ]",
+  skipBtn: "[ INICIAR EXTRACCIÓN DE DATOS ]",
     files: "ARCHIVOS",
-    hudLives: "VIDAS",
+    hudLives: "SEÑAL",
     hudFiles: "ARCHIVOS",
     menuSys: "SISTEMA",
     menuProfile: "> Perfil_Usuario",
@@ -6112,9 +6522,9 @@ const dict = {
   },
   en: {
     startBtn: "> EXPLORE PORTFOLIO _",
-    skipBtn: "[ PLAY ARCADIA MINIGAME ]",
+  skipBtn: "[ START DATA EXTRACTION ]",
     files: "FILES",
-    hudLives: "LIVES",
+    hudLives: "SIGNAL",
     hudFiles: "FILES",
     menuSys: "SYSTEM",
     menuProfile: "> User_Profile",
@@ -6144,14 +6554,8 @@ const dict = {
   }
 };
 
-document.getElementById('lang-toggle-btn')?.addEventListener('click', (e) => {
-  e.preventDefault(); e.currentTarget.blur();
-  window.currentLang = window.currentLang === 'es' ? 'en' : 'es';
-  e.currentTarget.innerText = window.currentLang === 'es' ? 'EN' : 'ES';
-  playSound('ui');
-  // 🔥 GUARDAR IDIOMA EN MEMORIA
-  sysPrefs.lang = window.currentLang;
-  localStorage.setItem('gamelab_prefs', JSON.stringify(sysPrefs));
+// Aplica el idioma activo a TODA la interfaz. Se llama al cargar y al pulsar el botón EN/ES.
+function applyLanguage() {
   const lang = dict[window.currentLang];
   if(document.getElementById('start-btn')) document.getElementById('start-btn').innerText = lang.startBtn;
   if(document.getElementById('skip-btn')) document.getElementById('skip-btn').innerText = lang.skipBtn;
@@ -6212,7 +6616,22 @@ document.getElementById('lang-toggle-btn')?.addEventListener('click', (e) => {
   if (contactTitle) contactTitle.innerText = window.currentLang === 'es' ? '> TRANSMISIÓN_ENTRANTE' : '> INCOMING_TRANSMISSION';
   const contactSubmit = document.getElementById('btn-submit-contacto');
   if (contactSubmit) contactSubmit.innerText = window.currentLang === 'es' ? 'ENVIAR PAQUETE' : 'SEND DATA PACKET';
+}
+
+document.getElementById('lang-toggle-btn')?.addEventListener('click', (e) => {
+  e.preventDefault(); e.currentTarget.blur();
+  window.currentLang = window.currentLang === 'es' ? 'en' : 'es';
+  e.currentTarget.innerText = window.currentLang === 'es' ? 'EN' : 'ES';
+  playSound('ui');
+  // 🔥 GUARDAR IDIOMA EN MEMORIA
+  sysPrefs.lang = window.currentLang;
+  localStorage.setItem('gamelab_prefs', JSON.stringify(sysPrefs));
+  applyLanguage();
 });
+// Al cargar: antes el idioma guardado NO se aplicaba (quien dejó la web en inglés veía el HTML en español,
+// y los textos de menú/inicio solo cambiaban tras pulsar el botón dos veces).
+{ const lb = document.getElementById('lang-toggle-btn'); if (lb) lb.innerText = window.currentLang === 'es' ? 'EN' : 'ES'; }
+applyLanguage();
 // 🔥 EVENTO DEL BOTÓN DE AYUDA
 document.getElementById('btn-help')?.addEventListener('click', (e) => {
   e.stopPropagation(); 
@@ -7884,3 +8303,812 @@ window.addEventListener('click', (e) => {
     setTimeout(syncAccessibilityTooltips, 50); // Retraso de 50ms para dejar que el juego cambie sus variables primero
   }
 });
+// ============================================================
+// 🔥 INTEGRACIÓN DEL NÚCLEO D.A.C. AL MENÚ LATERAL Y RUTEO 2D/3D
+// ============================================================
+function setupDacMenu() {
+  // 1. Inyectar D.A.C. en el menú HTML si no existe
+  const menuList = document.querySelector('#side-menu ul');
+  if (menuList && !document.querySelector('.menu-item[data-id="99"]')) {
+    const dacLi = document.createElement('li');
+    dacLi.innerHTML = `<a href="#" class="menu-item" data-id="99" style="color:#e7e4de;">> 99. D.A.C. // MARCO DOCTORAL</a>`;
+    
+    // Insertarlo justo antes del separador o sección "Acerca de"
+    const aboutItem = document.getElementById('menu-about');
+    if (aboutItem && aboutItem.parentElement) {
+      menuList.insertBefore(dacLi, aboutItem.parentElement);
+    } else {
+      menuList.appendChild(dacLi);
+    }
+  }
+
+  // 2. Interceptar el clic en el menú para el proyecto 99
+  document.querySelectorAll('.menu-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      const projectId = item.getAttribute('data-id');
+      if (projectId === '99') {
+        e.preventDefault();
+        e.stopPropagation();
+        const sideMenu = document.getElementById('side-menu');
+        if(sideMenu) sideMenu.classList.remove('open');
+        showDacChoiceUI(); // Lanzar la decisión 2D/3D
+      }
+    });
+  });
+}
+
+// 3. Modal Elegante de Elección D.A.C. (Diseño Pizarra/Hueso/Coral)
+function showDacChoiceUI() {
+  let ui = document.getElementById('dac-choice-ui');
+  if (!ui) {
+    ui = document.createElement('div');
+    ui.id = 'dac-choice-ui';
+    ui.className = 'modal-ui';
+    ui.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:100050; background:rgba(10,10,12,0.92); border:1px solid rgba(255,255,255,0.15); padding:35px 40px; border-radius:2px; text-align:center; color:#e7e4de; font-family:-apple-system, sans-serif; backdrop-filter:blur(15px); -webkit-backdrop-filter:blur(15px); display:flex; flex-direction:column; gap:20px; box-shadow:0 30px 60px rgba(0,0,0,0.8); min-width: 320px;';
+    
+    ui.innerHTML = `
+      <h3 style="margin:0; font-weight:300; letter-spacing:0.2em; font-size:1.15rem; color:#fff; text-transform:uppercase;" id="dac-ch-title">ACCESO D.A.C.</h3>
+      <p style="margin:0; font-size:0.75rem; color:#8a867f; letter-spacing:0.08em; text-transform:uppercase;" id="dac-ch-sub">Selecciona la vía de exploración:</p>
+      <div style="display:flex; flex-direction:column; gap:12px; margin-top:15px;">
+        <button id="btn-dac-2d" style="background:transparent; border:1px solid rgba(255,255,255,0.15); padding:14px; color:#e7e4de; cursor:pointer; font-family:inherit; font-weight:300; letter-spacing:0.12em; transition:0.3s; text-transform:uppercase; font-size:0.72rem;">📄 LEER ARCHIVO EJECUTIVO (2D)</button>
+        <button id="btn-dac-3d" style="background:transparent; border:1px solid rgba(255,255,255,0.15); padding:14px; color:#e7e4de; cursor:pointer; font-family:inherit; font-weight:300; letter-spacing:0.12em; transition:0.3s; text-transform:uppercase; font-size:0.72rem;">🌌 VISITAR PLANETA NÚCLEO (3D)</button>
+        <button id="btn-dac-close" style="background:transparent; border:none; color:#77746e; margin-top:10px; cursor:pointer; font-family:inherit; text-decoration:underline; font-size:0.7rem; letter-spacing:0.15em; transition:0.3s;">CANCELAR</button>
+      </div>
+    `;
+    document.body.appendChild(ui);
+
+    const b1 = document.getElementById('btn-dac-2d');
+    const b2 = document.getElementById('btn-dac-3d');
+    const bClose = document.getElementById('btn-dac-close');
+    
+    b1.onmouseover = () => { b1.style.background = 'rgba(255,255,255,0.06)'; b1.style.borderColor = 'rgba(255,255,255,0.4)'; };
+    b1.onmouseout = () => { b1.style.background = 'transparent'; b1.style.borderColor = 'rgba(255,255,255,0.15)'; };
+    b2.onmouseover = () => { b2.style.background = 'rgba(255,255,255,0.06)'; b2.style.borderColor = 'rgba(255,255,255,0.4)'; };
+    b2.onmouseout = () => { b2.style.background = 'transparent'; b2.style.borderColor = 'rgba(255,255,255,0.15)'; };
+    bClose.onmouseover = () => { bClose.style.color = '#e7e4de'; };
+    bClose.onmouseout = () => { bClose.style.color = '#77746e'; };
+
+    bClose.onclick = () => {
+      ui.style.display = 'none';
+      if (typeof playSound === 'function') playSound('ui');
+    };
+
+    // OPCIÓN 2D: Abre el Archivo Ejecutivo directo en la página 99
+    b1.onclick = () => {
+      ui.style.display = 'none';
+      if (typeof playSound === 'function') playSound('ui');
+      if (typeof isTerminalMode !== 'undefined' && !isTerminalMode) window.toggleTerminalMode();
+      setTimeout(() => { if (typeof openProjectFromTerminal === 'function') openProjectFromTerminal(99); }, 150);
+    };
+
+    // OPCIÓN 3D: Aísla el planeta D.A.C. y viaja a él directamente
+    b2.onclick = () => {
+      ui.style.display = 'none';
+      if (typeof playSound === 'function') playSound('project_open');
+      if (typeof isTerminalMode !== 'undefined' && isTerminalMode) window.toggleTerminalMode();
+      
+      setTimeout(() => {
+        if (typeof planetaDAC !== 'undefined' && planetaDAC) {
+          if (!planetaDAC.userData.isIsolated) planetaDAC.userData.savedPos = planetaDAC.position.clone();
+          planetaDAC.userData.isIsolated = true;
+          
+          if (typeof categoryPlanets !== 'undefined') categoryPlanets.forEach(p => p.visible = false);
+          if (typeof satelliteGroup !== 'undefined') satelliteGroup.visible = false;
+          if (typeof energyWebGroup !== 'undefined') energyWebGroup.visible = false;
+          
+          planetaDAC.position.set(0, 0, 0);
+          if (typeof userGroup !== 'undefined') {
+            userGroup.position.set(0, 0, 22);
+            userGroup.rotation.set(0, 0, 0);
+          }
+          
+          if (typeof dacNetworkGroup !== 'undefined') dacNetworkGroup.visible = true;
+          if (typeof showSystemToast === 'function') showSystemToast('> ESPACIO AISLADO: NÚCLEO DAC', '#ff6644');
+        }
+      }, 150);
+    };
+  }
+  
+  // Soporte bilingüe en tiempo real para el modal
+  const en = (typeof window.currentLang !== 'undefined' && window.currentLang === 'en');
+  document.getElementById('dac-ch-title').innerText = en ? 'D.A.C. ACCESS' : 'ACCESO D.A.C.';
+  document.getElementById('dac-ch-sub').innerText = en ? 'Select exploration path:' : 'Selecciona la vía de exploración:';
+  document.getElementById('btn-dac-2d').innerText = en ? '📄 READ EXECUTIVE ARCHIVE (2D)' : '📄 LEER ARCHIVO EJECUTIVO (2D)';
+  document.getElementById('btn-dac-3d').innerText = en ? '🌌 VISIT CORE PLANET (3D)' : '🌌 VISITAR PLANETA NÚCLEO (3D)';
+  document.getElementById('btn-dac-close').innerText = en ? 'CANCEL' : 'CANCELAR';
+  
+  ui.style.display = 'flex';
+  if (typeof playSound === 'function') playSound('project_open');
+}
+
+// Inyectar el menú 1.5 segundos después de cargar la página
+setTimeout(setupDacMenu, 1500);
+// ============================================================
+// 🔥 ATAJO DE DESARROLLADOR: TECLA "H" PARA VER CEREMONIA
+// ============================================================
+window.addEventListener('keydown', (e) => {
+  // 1. Evitamos que se active si estás escribiendo la letra "h" en el formulario de contacto
+  const tag = (e.target && e.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  
+  // 2. Si presionas H y no estás leyendo el Archivo 2D, lanzamos la ceremonia
+  if (e.key === 'h' || e.key === 'H') {
+    if (typeof isTerminalMode !== 'undefined' && isTerminalMode) return;
+    
+    if (typeof runSovereigntyCeremony === 'function') {
+      runSovereigntyCeremony();
+    }
+  }
+});
+// ============================================================
+// 🎮 JUEGOS OTROS — INFRAESTRUCTURA COMPARTIDA
+//   · Guarda y restaura EXACTAMENTE el estado del universo (visibilidad, cámara, rotación, zoom)
+//   · Botón ABORTAR + tecla ESC (antes no había forma de salir de un minijuego)
+//   · Los clics/arrastres ya no "atraviesan" hacia los planetas ocultos (ver guardas en el handler de click)
+// ============================================================
+const MG = window.MG = {
+  saved: null, ui: null, keyHandler: null, lastT: 0,
+
+  isEN() { return window.currentLang === 'en'; },
+  isTouch() { return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0); },
+  tick() {
+    const n = performance.now();
+    const d = this.lastT ? Math.min(0.05, (n - this.lastT) / 1000) : 0.016;
+    this.lastT = n;
+    return d;
+  },
+  setPointer(cx, cy) {
+    mouseNDC.x = (cx / window.innerWidth) * 2 - 1;
+    mouseNDC.y = -(cy / window.innerHeight) * 2 + 1;
+  },
+
+  _targets() {
+    const t = [];
+    if (typeof satelliteGroup !== 'undefined') t.push(satelliteGroup);
+    if (typeof energyWebGroup !== 'undefined') t.push(energyWebGroup);
+    if (typeof particlesMesh !== 'undefined') t.push(particlesMesh);
+    if (typeof planetaDAC !== 'undefined') t.push(planetaDAC);
+    if (typeof dacHitboxPlanet !== 'undefined') t.push(dacHitboxPlanet);
+    if (typeof ship !== 'undefined') t.push(ship);
+    if (window.travelerGroup) t.push(window.travelerGroup);
+    [typeof ambientWhales !== 'undefined' ? ambientWhales : null,
+     typeof guardianCats !== 'undefined' ? guardianCats : null,
+     typeof discoveredVoyagers !== 'undefined' ? discoveredVoyagers : null,
+     typeof asteroids !== 'undefined' ? asteroids : null].forEach(arr => { if (Array.isArray(arr)) arr.forEach(o => t.push(o)); });
+    categoryPlanets.forEach(p => t.push(p));
+    return t;
+  },
+
+  enter(camZ) {
+    this.lastT = 0;
+    const objs = this._targets();
+    this.saved = {
+      objs: objs.map(o => [o, o.visible]),
+      pos: userGroup.position.clone(), rot: userGroup.rotation.clone(),
+      fov: camera.fov, targetFov: targetFov, zoomed: isMobileZoomed
+    };
+    objs.forEach(o => { o.visible = false; });
+    userGroup.rotation.set(0, 0, 0);          // la vista podía estar girada: los juegos asumen cámara de frente
+    userGroup.position.set(0, 0, camZ);
+    targetFov = 75; camera.fov = 75; camera.updateProjectionMatrix();
+    isMobileZoomed = false;
+  },
+
+  exit() {
+    const s = this.saved; if (!s) return;
+    s.objs.forEach(([o, v]) => { o.visible = v; });
+    userGroup.position.copy(s.pos); userGroup.rotation.copy(s.rot);
+    camera.fov = s.fov; targetFov = s.targetFov; camera.updateProjectionMatrix();
+    isMobileZoomed = s.zoomed;
+    this.saved = null;
+    this.removeUI();
+    morphHUD('normal');
+    shakeIntensity = 0;
+  },
+
+  buildUI(hintText) {
+    this.removeUI();
+    const en = this.isEN();
+    const root = document.createElement('div');
+    root.id = 'minigame-ui';
+    root.style.cssText = 'position:fixed; inset:0; z-index:100020; pointer-events:none; color:#e7e4de; font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;';
+
+    const extra = document.createElement('div');
+    extra.style.cssText = 'position:absolute; top:78px; left:50%; transform:translateX(-50%); text-align:center; width:min(92vw,520px);';
+
+    const bottom = document.createElement('div');
+    bottom.style.cssText = 'position:absolute; bottom:calc(22px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:12px; width:min(92vw,560px);';
+
+    const hint = document.createElement('div');
+    hint.textContent = hintText;
+    hint.style.cssText = 'font-size:0.74rem; font-weight:300; letter-spacing:0.06em; line-height:1.6; text-align:center; color:#a8a49c; text-shadow:0 0 12px rgba(0,0,0,0.9);';
+
+    const btn = document.createElement('button');
+    btn.textContent = en ? '✕ ABORT  [ESC]' : '✕ ABORTAR  [ESC]';
+    btn.style.cssText = 'pointer-events:auto; background:rgba(10,10,12,0.55); border:1px solid rgba(255,255,255,0.2); color:#e7e4de; padding:9px 18px; font-family:inherit; font-size:0.7rem; font-weight:300; letter-spacing:0.2em; cursor:pointer; border-radius:0; backdrop-filter:blur(10px);';
+    btn.addEventListener('click', (e) => { e.stopPropagation(); MG.abort(); });
+    ['mousedown', 'touchstart', 'mouseup', 'touchend'].forEach(ev => btn.addEventListener(ev, (e) => e.stopPropagation()));
+
+    bottom.appendChild(hint); bottom.appendChild(btn);
+    root.appendChild(extra); root.appendChild(bottom);
+    document.body.appendChild(root);
+    this.ui = { root, extra };
+
+    this.keyHandler = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); MG.abort(); }
+    };
+    window.addEventListener('keydown', this.keyHandler, true);
+    return this.ui;
+  },
+
+  removeUI() {
+    if (this.ui && this.ui.root.parentNode) this.ui.root.parentNode.removeChild(this.ui.root);
+    this.ui = null;
+    if (this.keyHandler) { window.removeEventListener('keydown', this.keyHandler, true); this.keyHandler = null; }
+  },
+
+  abort() {
+    if (window.isTuningGameActive) window.abortTuningGame();
+    else if (window.isWiringGameActive) window.abortWiringGame();
+  },
+
+  setHUD(ids) { // ids: { 'lives-value': '...', ... }
+    for (const id in ids) { const el = document.getElementById(id); if (el) el.innerText = ids[id]; }
+  }
+};
+
+window.updateMiniGames = function() {
+  const dt = MG.tick();
+  if (window.isTuningGameActive) tgUpdate(dt);
+  if (window.isWiringGameActive) wgUpdate(dt);
+};
+
+// ==========================================
+// 🔥 JUEGO OTRO: SINTONIZACIÓN (ANOMALÍA 999 · ARCHIVO CORRUPTO)
+//   3 fases. En cada una hay que encontrar una "frecuencia" oculta con el cursor/dedo y sostenerla.
+//   Ayudas: escombros que se condensan, anillo que se cierra, tono que sube de altura, retícula con
+//   progreso y texto que se va descifrando. Mantener la sintonía es indulgente (el progreso decae, no se borra).
+// ==========================================
+window.isTuningGameActive = false;
+let tuningData = null;
+const TG = {
+  stage: 0, stages: 3, tx: 0, ty: 0, hold: 0, res: 0,
+  group: null, debris: null, dirs: null, radii: null, phase: null, ring: null,
+  tone: null, msg: '', els: {}, uiT: 0
+};
+const TG_GLYPHS = '▓▒░#%&@?01/\\';
+const _tgCol = new THREE.Color();
+
+function tgPickTarget() {
+  const aspect = window.innerWidth / window.innerHeight;
+  let x = 0, y = 0, tries = 0;
+  do {
+    x = Math.random() * 1.5 - 0.75;
+    y = Math.random() * 1.3 - 0.65;
+    tries++;
+  } while (tries < 25 && Math.hypot((x - TG.tx) * aspect, y - TG.ty) < 0.7);
+  TG.tx = x; TG.ty = y;
+}
+
+function tgToneStart() {
+  try {
+    if (!audioCtx || !isSoundEnabled) return;
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.type = 'triangle'; osc.frequency.value = 170; gain.gain.value = 0;
+    osc.connect(gain); gain.connect(audioCtx.destination); osc.start();
+    TG.tone = { osc, gain };
+  } catch (e) { TG.tone = null; }
+}
+function tgToneStop() {
+  if (!TG.tone) return;
+  try {
+    const t = audioCtx.currentTime;
+    TG.tone.gain.gain.setTargetAtTime(0, t, 0.05);
+    TG.tone.osc.stop(t + 0.3);
+  } catch (e) {}
+  TG.tone = null;
+}
+
+function tgBuildScene() {
+  TG.group = new THREE.Group();
+  scene.add(TG.group);
+
+  // Escombros de señal: se dispersan cuando estás lejos y se condensan en una órbita al sintonizar
+  const N = 150;
+  TG.dirs = new Float32Array(N * 3); TG.radii = new Float32Array(N); TG.phase = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const th = Math.random() * Math.PI * 2, z = Math.random() * 2 - 1, s = Math.sqrt(1 - z * z);
+    TG.dirs[i * 3] = s * Math.cos(th); TG.dirs[i * 3 + 1] = s * Math.sin(th); TG.dirs[i * 3 + 2] = z;
+    TG.radii[i] = 4.5 + Math.random() * 6;
+    TG.phase[i] = Math.random() * Math.PI * 2;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+  TG.debris = new THREE.Points(geo, new THREE.PointsMaterial({
+    color: 0xff3300, size: 0.16, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false
+  }));
+  TG.debris.frustumCulled = false;
+  TG.group.add(TG.debris);
+
+  TG.ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.97, 1, 96),
+    new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
+  );
+  TG.group.add(TG.ring);
+}
+
+function tgBuildUI() {
+  const en = MG.isEN();
+  const ui = MG.buildUI(en
+    ? 'Move your cursor / slide your finger to find the hidden frequency. Hold it steady to lock each phase.'
+    : 'Mueve el cursor / desliza el dedo para encontrar la frecuencia oculta. Sostenla para fijar cada fase.');
+
+  const msg = document.createElement('div');
+  msg.style.cssText = 'font-family:ui-monospace,Menlo,Consolas,monospace; font-size:1.05rem; letter-spacing:0.18em; color:#ff6a4d; text-shadow:0 0 14px rgba(255,60,20,0.35);';
+  const info = document.createElement('div');
+  info.style.cssText = 'margin-top:8px; font-size:0.7rem; font-weight:300; letter-spacing:0.22em; color:#a8a49c;';
+  ui.extra.appendChild(msg); ui.extra.appendChild(info);
+
+  // Retícula con anillo de progreso
+  const ret = document.createElement('div');
+  ret.style.cssText = 'position:absolute; left:0; top:0; width:36px; height:36px; border-radius:50%; border:1px solid rgba(255,255,255,0.5); box-sizing:border-box; display:none; will-change:transform;';
+  const prog = document.createElement('div');
+  prog.style.cssText = 'position:absolute; inset:-5px; border-radius:50%; -webkit-mask:radial-gradient(circle, transparent 20px, #000 21px); mask:radial-gradient(circle, transparent 20px, #000 21px);';
+  const dot = document.createElement('div');
+  dot.style.cssText = 'position:absolute; left:50%; top:50%; width:4px; height:4px; margin:-2px 0 0 -2px; border-radius:50%; background:#fff;';
+  ret.appendChild(prog); ret.appendChild(dot);
+  ui.root.appendChild(ret);
+
+  TG.els = { msg, info, ret, prog, dot };
+}
+
+window.startTuningGame = function(data) {
+  if (window.isTuningGameActive || window.isWiringGameActive) return;
+  const en = MG.isEN();
+  window.isTuningGameActive = true;
+  tuningData = data;
+  TG.stage = 0; TG.hold = 0; TG.res = 0; TG.uiT = 0; TG.tx = 0; TG.ty = 0;
+  TG.msg = en ? 'CORRUPTED_FILE.dat' : 'ARCHIVO_CORRUPTO.dat';
+
+  MG.enter(12); // acercar la cámara para llenar la pantalla
+
+  // Aislar el planeta secreto
+  secretPlanet.userData.isIsolated = true;
+  secretPlanet.userData.savedPos = secretPlanet.position.clone();
+  secretPlanet.visible = true;
+  secretPlanet.position.set(0, 0, 0);
+  secretPlanet.scale.set(1, 1, 1);
+  if (secretPlanet.children.length > 0) secretPlanet.children[0].visible = false; // sin etiqueta: solo el error geométrico
+
+  tgPickTarget();
+  tgBuildScene();
+  tgBuildUI();
+  tgToneStart();
+
+  morphHUD('sintonizar');
+  showSystemToast(en ? '> ENCRYPTED SIGNAL. FIND THE FREQUENCY.' : '> SEÑAL ENCRIPTADA. ENCUENTRA LA FRECUENCIA.', '#ff3300');
+};
+
+function tgAdvance() {
+  const en = MG.isEN();
+  TG.stage++; TG.hold = 0;
+  if (TG.stage >= TG.stages) { window.endTuningGame(); return; }
+  playSound('levelup');
+  shakeIntensity = 0.3;
+  showSystemToast(en
+    ? `> PHASE ${TG.stage}/${TG.stages} LOCKED. NEW FREQUENCY DETECTED.`
+    : `> FASE ${TG.stage}/${TG.stages} FIJADA. NUEVA FRECUENCIA DETECTADA.`, '#00ffff');
+  tgPickTarget();
+  TG.res = 0;
+}
+
+function tgUpdate(dt) {
+  const en = MG.isEN();
+  const aspect = window.innerWidth / window.innerHeight;
+  const hasPointer = mouseNDC.x > -1.5;
+  const d = hasPointer ? Math.hypot((mouseNDC.x - TG.tx) * aspect, mouseNDC.y - TG.ty) : 9;
+  const lockR = MG.isTouch() ? 0.24 : 0.16;
+  const target = Math.pow(Math.max(0, 1 - Math.max(0, d - lockR) / 1.0), 2);
+  const locked = d <= lockR;
+
+  TG.res += (target - TG.res) * Math.min(1, dt * 10);
+  const r = TG.res;
+
+  // Sostener: sube mientras estás dentro, decae (no se borra) si te sales un instante
+  if (locked) TG.hold = Math.min(1, TG.hold + dt / 1.2);
+  else TG.hold = Math.max(0, TG.hold - dt * 1.5);
+
+  // --- Planeta ---
+  const calm = reduceMotionMQ.matches;
+  if (r < 0.85) {
+    const jit = (1 - r) * 0.7 * (calm ? 0.2 : 1);
+    if (Math.random() < 1 - r * 0.9) secretPlanet.position.set((Math.random() - 0.5) * jit, (Math.random() - 0.5) * jit, 0);
+    secretPlanet.material.wireframe = true;
+    secretPlanet.material.color.setHex(Math.random() > 0.5 + r * 0.4 ? 0xffffff : 0xff2200);
+    if (!calm && r < 0.4 && Math.random() > 0.985 && typeof triggerSubtleGlitch === 'function') triggerSubtleGlitch();
+  } else {
+    secretPlanet.position.set(0, 0, 0);
+    secretPlanet.material.wireframe = false;
+    secretPlanet.material.color.setHex(0x00ffff).multiplyScalar(1 + TG.hold * 1.5); // brilla más al fijar → bloom
+  }
+  secretPlanet.rotation.x += dt * (0.6 + (1 - r) * 1.8);
+  secretPlanet.rotation.y += dt * (0.9 + (1 - r) * 1.8);
+
+  // --- Color de señal: rojo → cian ---
+  _tgCol.setRGB(1 - r, 0.2 + 0.8 * r, 0.8 * r);
+  TG.debris.material.color.copy(_tgCol);
+  TG.ring.material.color.copy(_tgCol);
+
+  // --- Escombros: se condensan en órbita cuando r → 1 ---
+  const t = performance.now() * 0.001;
+  const pos = TG.debris.geometry.attributes.position.array;
+  const tight = r * r;
+  const wob = (1 - r) * (calm ? 0.2 : 0.9);
+  const n = TG.radii.length;
+  for (let i = 0; i < n; i++) {
+    const rad = THREE.MathUtils.lerp(TG.radii[i], 2.9 + 0.25 * Math.sin(t * 2 + TG.phase[i]), tight);
+    pos[i * 3]     = TG.dirs[i * 3]     * rad + Math.sin(t * 3 + TG.phase[i] * 5) * wob;
+    pos[i * 3 + 1] = TG.dirs[i * 3 + 1] * rad + Math.cos(t * 2.4 + TG.phase[i] * 3) * wob;
+    pos[i * 3 + 2] = TG.dirs[i * 3 + 2] * rad;
+  }
+  TG.debris.geometry.attributes.position.needsUpdate = true;
+  TG.debris.rotation.y += dt * (0.2 + r * 0.8);
+  TG.debris.rotation.x += dt * 0.1;
+
+  // --- Anillo: se cierra alrededor del planeta ---
+  TG.ring.scale.setScalar(THREE.MathUtils.lerp(8, 3.4, r));
+  TG.ring.rotation.z += dt * 0.5;
+
+  // --- Tono: sube de altura al acercarte ---
+  if (TG.tone) {
+    try {
+      const tt = audioCtx.currentTime;
+      TG.tone.osc.frequency.setTargetAtTime(170 + r * r * 760, tt, 0.06);
+      TG.tone.gain.gain.setTargetAtTime(isSoundEnabled ? 0.008 + r * 0.05 : 0, tt, 0.08);
+    } catch (e) {}
+  }
+
+  // --- Retícula ---
+  const E = TG.els;
+  if (E.ret) {
+    if (hasPointer) {
+      const px = (mouseNDC.x + 1) / 2 * window.innerWidth, py = (1 - mouseNDC.y) / 2 * window.innerHeight;
+      E.ret.style.display = 'block';
+      E.ret.style.transform = `translate(${px - 18}px, ${py - 18}px)`;
+      const col = `rgb(${Math.round(255 * (1 - r))},${Math.round(60 + 195 * r)},${Math.round(200 * r)})`;
+      E.ret.style.borderColor = col; E.dot.style.background = col;
+      E.prog.style.background = `conic-gradient(${col} ${TG.hold * 360}deg, rgba(255,255,255,0.08) 0)`;
+    } else E.ret.style.display = 'none';
+  }
+
+  // --- Texto que se descifra + HUD ---
+  TG.uiT += dt;
+  if (TG.uiT > 0.09 && E.msg) {
+    TG.uiT = 0;
+    const shown = Math.floor(TG.msg.length * ((TG.stage + TG.hold) / TG.stages));
+    let s = '';
+    for (let i = 0; i < TG.msg.length; i++) s += i < shown ? TG.msg[i] : TG_GLYPHS[Math.floor(Math.random() * TG_GLYPHS.length)];
+    E.msg.textContent = s;
+    E.info.textContent = `${en ? 'PHASE' : 'FASE'} ${TG.stage + 1}/${TG.stages}  ·  ${en ? 'SIGNAL' : 'SEÑAL'} ${Math.round(r * 100)}%`;
+  }
+  MG.setHUD({
+    'lives-value': Math.floor(100 - r * 100) + '%',
+    'level-value': Math.floor(Math.abs(mouseNDC.x * 1000)) + ' Hz',
+    'files-value': Math.floor(Math.abs(mouseNDC.y * 1000)) + ' dB',
+    'combo-value': Math.floor(r * 100) + '%'
+  });
+
+  if (TG.hold >= 1) tgAdvance();
+}
+
+function tgTeardown() {
+  window.isTuningGameActive = false;
+  tgToneStop();
+  if (TG.group) {
+    scene.remove(TG.group);
+    TG.group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+    TG.group = null;
+  }
+  TG.debris = null; TG.ring = null; TG.els = {};
+  secretPlanet.userData.isIsolated = false;
+  if (secretPlanet.userData.savedPos) secretPlanet.position.copy(secretPlanet.userData.savedPos);
+  secretPlanet.material.wireframe = false;
+  secretPlanet.material.color.setHex(0xff0000);
+  secretPlanet.scale.set(1, 1, 1);
+  if (secretPlanet.children.length > 0) secretPlanet.children[0].visible = true;
+}
+
+window.endTuningGame = function() {
+  if (!window.isTuningGameActive) return;
+  const en = MG.isEN();
+  tgTeardown();
+  MG.exit();
+  playSound('levelup');
+  showSystemToast(en ? '✧ ARCHIVE DECRYPTED ✧' : '✧ ARCHIVO DESENCRIPTADO ✧', '#00ffff');
+  setTimeout(() => { openProjectPopup(tuningData); }, 500);
+};
+
+window.abortTuningGame = function() {
+  if (!window.isTuningGameActive) return;
+  const en = MG.isEN();
+  tgTeardown();
+  MG.exit();
+  showSystemToast(en ? '> SIGNAL LOST' : '> SEÑAL PERDIDA', '#ff3300');
+};
+
+// ==========================================
+// 🔥 JUEGO OTRO: TELAR DE CIRCUITOS (CACHARREO · GALERÍA)
+//   4 pares de nodos (PWR, DATA, CLK, GND). Cada par tiene su propio COLOR y FORMA (accesible sin color).
+//   Arrastra un cable de un nodo a su pareja. Conectar mal = cortocircuito; 3 cortocircuitos reordenan el tablero.
+//   Soltar en el vacío no penaliza. Los cables cuelgan con curva y siguen a los nodos mientras flotan.
+// ==========================================
+window.isWiringGameActive = false;
+window.wiringData = null;
+window.wiringNodes = [];
+window.maxConnections = 4;
+window.currentConnections = 0;
+
+const WG_PAIRS = [
+  { id: 'PWR',  color: 0xffb347, geo: () => new THREE.OctahedronGeometry(1.2, 0) },
+  { id: 'DATA', color: 0x00ffff, geo: () => new THREE.BoxGeometry(1.6, 1.6, 1.6) },
+  { id: 'CLK',  color: 0xff4fd8, geo: () => new THREE.TetrahedronGeometry(1.5, 0) },
+  { id: 'GND',  color: 0x7dff8a, geo: () => new THREE.IcosahedronGeometry(1.2, 0) }
+];
+const WG_SEG = 24;
+const WG = {
+  nodes: window.wiringNodes, hits: [], cables: [], fading: [], sparks: [],
+  drag: null, hover: null, shorts: 0, maxShorts: 3, state: 'idle', winT: 0, resetT: 0, t: 0, scale: 1,
+  ptr: new THREE.Vector3(), plane: new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
+};
+const _wgTmp = new THREE.Vector3();
+
+function wgBounds() {
+  const aspect = window.innerWidth / window.innerHeight;
+  const halfH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * userGroup.position.z;
+  const hh = halfH * 0.62;                       // deja aire para el HUD arriba y la pista abajo
+  const hw = Math.min(halfH * aspect * 0.8, hh * 1.9);
+  return { hw, hh };
+}
+
+function wgSample(n, hw, hh, minD) {
+  const pts = []; let d = minD, tries = 0;
+  while (pts.length < n && tries < 4000) {
+    tries++;
+    if (tries % 120 === 0) d *= 0.9;             // si no cabe, relaja la separación
+    const p = new THREE.Vector3((Math.random() * 2 - 1) * hw, (Math.random() * 2 - 1) * hh, 0);
+    if (pts.every(q => q.distanceTo(p) >= d)) pts.push(p);
+  }
+  for (let i = pts.length; i < n; i++) pts.push(new THREE.Vector3(((i % 4) - 1.5) * hw / 2, (Math.floor(i / 4) - 0.5) * hh, 0));
+  return pts;
+}
+
+function wgDisposeObj(o) {
+  scene.remove(o);
+  o.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) { if (c.material.map) c.material.map.dispose(); c.material.dispose(); } });
+}
+
+function wgClear() {
+  WG.nodes.forEach(wgDisposeObj); WG.nodes.length = 0; WG.hits.length = 0;
+  WG.cables.forEach(c => wgDisposeObj(c.line)); WG.cables.length = 0;
+  WG.fading.forEach(f => wgDisposeObj(f.line)); WG.fading.length = 0;
+  WG.sparks.forEach(wgDisposeObj); WG.sparks.length = 0;
+  if (WG.drag) { wgDisposeObj(WG.drag.line); WG.drag = null; }
+  WG.hover = null;
+}
+
+function wgNewLine(color, opacity) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array((WG_SEG + 1) * 3), 3));
+  const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity }));
+  line.frustumCulled = false;                    // los puntos cambian cada frame: que nunca se descarte
+  scene.add(line);
+  return line;
+}
+
+function wgBez(a, b, t, out) {                   // curva con "caída" tipo cable colgante
+  const sag = Math.min(a.distanceTo(b) * 0.18, 3);
+  const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2 - sag, cz = (a.z + b.z) / 2, u = 1 - t;
+  return out.set(u * u * a.x + 2 * u * t * cx + t * t * b.x, u * u * a.y + 2 * u * t * cy + t * t * b.y, u * u * a.z + 2 * u * t * cz + t * t * b.z);
+}
+function wgUpdateLine(line, a, b) {
+  const arr = line.geometry.attributes.position.array;
+  for (let i = 0; i <= WG_SEG; i++) { wgBez(a, b, i / WG_SEG, _wgTmp); arr[i * 3] = _wgTmp.x; arr[i * 3 + 1] = _wgTmp.y; arr[i * 3 + 2] = _wgTmp.z; }
+  line.geometry.attributes.position.needsUpdate = true;
+}
+
+function wgMakeNode(pair, pi, p, s) {
+  const node = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ color: pair.color, wireframe: true, transparent: true, opacity: 0.85 });
+  const body = new THREE.Mesh(pair.geo(), mat);  // solo el cuerpo gira: la etiqueta ya no orbita alrededor del nodo
+  node.add(body);
+  const label = createTextSprite(pair.id, '#' + pair.color.toString(16).padStart(6, '0'), 24);
+  label.position.set(0, -2.1, 0);
+  node.add(label);
+  const hit = new THREE.Mesh(new THREE.SphereGeometry(2.3, 8, 8), new THREE.MeshBasicMaterial({ visible: false })); // zona táctil generosa
+  hit.userData.node = node;
+  node.add(hit);
+  node.position.copy(p); node.scale.setScalar(s);
+  node.userData = { pair: pi, connected: false, base: p.clone(), phase: Math.random() * 6.28, mat, body, flash: 0, pop: 0, baseColor: new THREE.Color(pair.color) };
+  scene.add(node);
+  WG.nodes.push(node); WG.hits.push(hit);
+}
+
+function wgBuild() {
+  wgClear();
+  const b = wgBounds();
+  WG.scale = Math.max(0.55, Math.min(1, b.hw / 8));
+  const minD = Math.min(4.2, Math.sqrt((b.hw * 2 * b.hh * 2) / 8) * 0.75);
+  const pool = wgSample(WG_PAIRS.length * 2, b.hw, b.hh, minD);
+  WG_PAIRS.forEach((pair, pi) => {
+    const a = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+    pool.sort((p, q) => q.distanceTo(a) - p.distanceTo(a));            // la pareja tiende a quedar lejos (cables más interesantes)
+    const c = pool.splice(Math.floor(Math.random() * Math.ceil(pool.length / 2)), 1)[0];
+    wgMakeNode(pair, pi, a, WG.scale); wgMakeNode(pair, pi, c, WG.scale);
+  });
+  window.currentConnections = 0; window.maxConnections = WG_PAIRS.length;
+  WG.shorts = 0; WG.state = 'play';
+}
+
+function wgPick() {
+  dragRaycaster.setFromCamera(mouseNDC, camera);
+  const hits = dragRaycaster.intersectObjects(WG.hits, false);
+  return hits.length ? hits[0].object.userData.node : null;
+}
+function wgPointerWorld() {
+  dragRaycaster.setFromCamera(mouseNDC, camera);
+  dragRaycaster.ray.intersectPlane(WG.plane, WG.ptr);
+}
+
+window.wiringDown = function(cx, cy) {
+  if (WG.state !== 'play' || WG.drag) return;
+  MG.setPointer(cx, cy);
+  const node = wgPick();
+  if (!node || node.userData.connected) return;
+  WG.drag = { node, line: wgNewLine(node.userData.baseColor.getHex(), 0.95), end: node.position.clone() };
+  wgPointerWorld();
+  playSound('pulse');
+};
+
+window.wiringMove = function(cx, cy) {
+  if (!WG.drag) return;
+  MG.setPointer(cx, cy);
+  wgPointerWorld();
+  const n = wgPick();
+  WG.hover = (n && n !== WG.drag.node && !n.userData.connected) ? n : null;
+};
+
+window.wiringUp = function() {
+  const d = WG.drag; if (!d) return;
+  const n = wgPick();
+  const tgt = (n && n !== d.node && !n.userData.connected) ? n : null;
+  WG.drag = null; WG.hover = null;
+  if (!tgt) { wgDisposeObj(d.line); return; }                         // soltar en el vacío: sin penalización
+  if (tgt.userData.pair === d.node.userData.pair) wgConnect(d.node, tgt, d.line);
+  else wgShort(d.node, tgt, d.line);
+};
+
+function wgConnect(a, b, line) {
+  const color = WG_PAIRS[a.userData.pair].color;
+  line.material.opacity = 1;
+  line.material.color.setHex(color).multiplyScalar(1.6);               // supera el umbral del bloom
+  WG.cables.push({ a, b, line });
+  [a, b].forEach(n => {
+    const u = n.userData; u.connected = true; u.pop = 1;
+    u.mat.wireframe = false; u.mat.opacity = 1; u.mat.color.copy(u.baseColor).multiplyScalar(1.6);
+  });
+  window.currentConnections++;
+  playSound('levelup');
+  if (window.currentConnections >= WG_PAIRS.length) wgWin();
+}
+
+function wgShort(a, b, line) {
+  const en = MG.isEN();
+  WG.shorts++;
+  line.material.color.setHex(0xff2200);
+  WG.fading.push({ line, life: 0.4 });
+  a.userData.flash = 0.35; b.userData.flash = 0.35;
+  shakeIntensity = 0.5;
+  playSound('damage');
+  showSystemToast(en ? `> SHORT CIRCUIT ${WG.shorts}/${WG.maxShorts}` : `> CORTOCIRCUITO ${WG.shorts}/${WG.maxShorts}`, '#ff4422');
+  if (WG.shorts >= WG.maxShorts) {
+    WG.state = 'reset'; WG.resetT = 1.0;
+    setTimeout(() => showSystemToast(en ? '> OVERLOAD. REWIRING BOARD...' : '> SOBRECARGA. REORDENANDO EL TABLERO...', '#ff6644'), 450);
+  }
+}
+
+function wgWin() {
+  const en = MG.isEN();
+  WG.state = 'won'; WG.winT = 0;
+  WG.cables.forEach((c, i) => {
+    const sp = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, blending: THREE.AdditiveBlending, transparent: true }));
+    sp.userData = { cable: c, off: i * 0.18 };
+    scene.add(sp); WG.sparks.push(sp);
+  });
+  playSound('project_open');
+  showSystemToast(en ? '✧ CIRCUITS RESTORED ✧' : '✧ CIRCUITOS RESTAURADOS ✧', '#00ffff');
+}
+
+function wgUpdate(dt) {
+  WG.t += dt;
+  const calm = reduceMotionMQ.matches;
+  const amp = calm ? 0 : 0.35 * WG.scale;
+
+  WG.nodes.forEach(n => {
+    const u = n.userData;
+    n.position.set(u.base.x + Math.sin(WG.t * 0.9 + u.phase) * amp, u.base.y + Math.cos(WG.t * 0.7 + u.phase) * amp, 0);
+    if (!calm) { u.body.rotation.x += dt * 0.6; u.body.rotation.y += dt * 1.2; }
+    let sc = WG.scale;
+    if (u.pop > 0) { u.pop = Math.max(0, u.pop - dt * 3); sc *= 1 + Math.sin(u.pop * Math.PI) * 0.35; }
+    const isHover = WG.hover === n;
+    n.scale.setScalar(sc * (isHover ? 1.25 : 1));
+    if (u.flash > 0) { u.flash -= dt; u.mat.color.setHex(0xff2200); }
+    else if (!u.connected) { u.mat.color.copy(u.baseColor); if (isHover) u.mat.color.multiplyScalar(2); }
+  });
+
+  WG.cables.forEach(c => wgUpdateLine(c.line, c.a.position, c.b.position));
+
+  if (WG.drag) {
+    const d = WG.drag, hov = WG.hover;
+    d.end.lerp(hov ? hov.position : WG.ptr, Math.min(1, dt * 18));
+    wgUpdateLine(d.line, d.node.position, d.end);
+    const ok = hov && hov.userData.pair === d.node.userData.pair;
+    if (hov) d.line.material.color.setHex(ok ? WG_PAIRS[d.node.userData.pair].color : 0xff2200).multiplyScalar(1.6);
+    else d.line.material.color.copy(d.node.userData.baseColor);
+  }
+
+  for (let i = WG.fading.length - 1; i >= 0; i--) {
+    const f = WG.fading[i]; f.life -= dt;
+    f.line.material.opacity = Math.max(0, f.life / 0.4);
+    if (f.life <= 0) { wgDisposeObj(f.line); WG.fading.splice(i, 1); }
+  }
+
+  if (WG.state === 'reset') {
+    WG.resetT -= dt;
+    if (WG.resetT <= 0) wgBuild();
+  } else if (WG.state === 'won') {
+    WG.winT += dt;
+    WG.sparks.forEach(sp => {
+      const c = sp.userData.cable;
+      wgBez(c.a.position, c.b.position, ((WG.winT * 0.9) + sp.userData.off) % 1, sp.position);
+    });
+    if (WG.winT > 1.6) window.endWiringGame();
+  }
+
+  MG.setHUD({
+    'lives-value': WG.shorts + '/' + WG.maxShorts,
+    'level-value': window.currentConnections + '/' + WG_PAIRS.length,
+    'files-value': (window.currentConnections * 25) + ' Mbps',
+    'combo-value': (WG.drag ? WG.drag.node.position.distanceTo(WG.drag.end) * 0.8 : 0).toFixed(2) + ' Ω'
+  });
+}
+
+window.startWiringGame = function(data) {
+  if (window.isWiringGameActive || window.isTuningGameActive) return;
+  const en = MG.isEN();
+  window.isWiringGameActive = true;
+  window.wiringData = data;
+  MG.enter(15);
+  MG.buildUI(en
+    ? 'Drag a cable from each node to its twin (same colour and shape). 3 short circuits rewire the board.'
+    : 'Arrastra un cable desde cada nodo hasta su gemelo (mismo color y forma). 3 cortocircuitos reordenan el tablero.');
+  wgBuild();
+  morphHUD('enrutar');
+  showSystemToast(en ? '> HARDWARE FRAGMENTED. CONNECT THE TWIN NODES.' : '> HARDWARE FRAGMENTADO. CONECTA LOS NODOS GEMELOS.', '#ff6644');
+};
+
+window.endWiringGame = function() {
+  if (!window.isWiringGameActive) return;
+  window.isWiringGameActive = false; WG.state = 'idle';
+  wgClear();
+  MG.exit();
+  setTimeout(() => { openProjectPopup(window.wiringData); }, 500);
+};
+
+window.abortWiringGame = function() {
+  if (!window.isWiringGameActive) return;
+  const en = MG.isEN();
+  window.isWiringGameActive = false; WG.state = 'idle';
+  wgClear();
+  MG.exit();
+  showSystemToast(en ? '> CONNECTION ABORTED' : '> CONEXIÓN ABORTADA', '#ff6644');
+};

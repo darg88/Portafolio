@@ -125,7 +125,7 @@ export const categoryPlanetData = [
 ];
 
 export const whaleData = { 
-  id: 99, 
+  id: 98, 
   title: { es: 'LOG_WHL // BESTIARIO', en: 'LOG_WHL // BESTIARY' }, 
   desc: { es: 'Entidad "Ballena Cósmica". Un cúmulo residual de datos masivos que navega por la caché profunda.', en: 'Entity "Cosmic Whale". A residual cluster of massive data navigating the deep cache.' }, 
   longDesc: { es: 'Nuestros escáneres indican que esta entidad pacífica limpia archivos corruptos a su paso. Es un remanente de una versión antigua del sistema operativo.', en: 'Scanners indicate this peaceful entity cleans corrupt files in its wake. It is a remnant of an older OS version.' }, 
