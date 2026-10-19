@@ -2114,7 +2114,7 @@ function updatePulseFX() {
 
 function triggerScrollExploration() { 
   document.getElementById('scroll-hint')?.classList.add('hidden');
-  if (!isGameStarted || isPaused || isUIOpen || renderer.xr.isPresenting || isBossBattle || window.isTuningGameActive || window.isWiringGameActive) return; 
+  if (!isGameStarted || isPaused || isUIOpen || renderer.xr.isPresenting || isBossBattle || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return; 
   scrollSpeedBoost += 0.8; if (scrollSpeedBoost > 2.5) scrollSpeedBoost = 2.5; 
   const now = Date.now(); 
   if (now - lastSpawnTime > 400) { 
@@ -2287,7 +2287,7 @@ document.getElementById('btn-save-paint').onclick = (e) => {
  function startPointerDown(clientX, clientY) {
   // 🎮 JUEGOS OTROS: cada minijuego maneja su propio puntero
   if (window.isWiringGameActive) { window.wiringDown(clientX, clientY); return; }
-  if (window.isTuningGameActive) { window.MG.setPointer(clientX, clientY); return; }
+  if (window.isTuningGameActive || window.isHogueraActive) { window.MG.setPointer(clientX, clientY); return; }
 
   // 🔥 Si hay una luna encendida, pasamos a MODO PINTURA PERMANENTE
   if (isPoeticaActive || isErraticaActive || isFriccionActive) {
@@ -2337,7 +2337,7 @@ document.getElementById('btn-save-paint').onclick = (e) => {
 function handlePointerMove(clientX, clientY) {
   // 🎮 JUEGOS OTROS
   if (window.isWiringGameActive) { window.wiringMove(clientX, clientY); return; }
-  if (window.isTuningGameActive) { window.MG.setPointer(clientX, clientY); return; }
+  if (window.isTuningGameActive || window.isHogueraActive) { window.MG.setPointer(clientX, clientY); return; }
 
   // 🔥 Si estamos pintando, solo actualizamos el cursor, NO giramos la cámara
   if (window.isPainting) {
@@ -2402,7 +2402,7 @@ function handlePointerMove(clientX, clientY) {
 function handlePointerUp() {
   // 🎮 JUEGOS OTROS
   if (window.isWiringGameActive) { window.wiringUp(); return; }
-  if (window.isTuningGameActive) return;
+  if (window.isTuningGameActive || window.isHogueraActive) return;
 
   window.isPainting = false;
   if (draggedPlanet) {
@@ -2497,7 +2497,7 @@ document.addEventListener('touchstart', (e) => {
     touchStartTime = Date.now();
     const currentTime = Date.now();
     const tapLength = currentTime - lastTapTime;
-    if (tapLength < 300 && tapLength > 0 && !window.isTuningGameActive && !window.isWiringGameActive && !isUIOpen && !isBossBattle && !isAligned && !isDraggingPlanet) {
+    if (tapLength < 300 && tapLength > 0 && !window.isTuningGameActive && !window.isWiringGameActive && !window.isHogueraActive && !isUIOpen && !isBossBattle && !isAligned && !isDraggingPlanet) {
       isMobileZoomed = !isMobileZoomed;
       targetFov = isMobileZoomed ? 35 : 75; 
       playSound('ui');
@@ -2512,7 +2512,7 @@ document.addEventListener('touchmove', (e) => {
     if (draggedPlanet) e.preventDefault();
     handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
     let touchY = e.touches[0].clientY;
-    if (!draggedPlanet && !window.isTuningGameActive && !window.isWiringGameActive && (touchStartY - touchY > 40 || touchStartY - touchY < -40)) { 
+    if (!draggedPlanet && !window.isTuningGameActive && !window.isWiringGameActive && !window.isHogueraActive && (touchStartY - touchY > 40 || touchStartY - touchY < -40)) { 
       triggerScrollExploration(); touchStartY = touchY; 
     } 
   } 
@@ -3042,7 +3042,7 @@ function morphHUD(mode) {
 const raycaster = new THREE.Raycaster(); 
 let targetFov = 75; 
 window.addEventListener('click', (e) => {
-  if (window.isTuningGameActive || window.isWiringGameActive) return; // 🎮 el raycaster ignora .visible: sin esto se abrían planetas ocultos
+  if (window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return; // 🎮 el raycaster ignora .visible: sin esto se abrían planetas ocultos
   if (isUIOpen && !e.target.closest('.modal-ui') && !e.target.closest('.control-btn') && !e.target.closest('#side-menu') && !e.target.closest('.carousel-btn') && !e.target.closest('#ach-panel') && !e.target.closest('#sov-ceremony')) {
     window.closeAllUIs();
     return; 
@@ -3065,7 +3065,7 @@ const handleProjectClick = (data) => {
     // 🔥 1. INTERCEPTOR DE ANOMALÍA (Juego: Sintonización)
     if (data.id === 999) {
       window.isZooming = true;
-      playSound('damage'); // Sonido de estática/error al entrar
+      playSound('boss_hit'); // Cuenco grave y suave al entrar (antes: 'damage', un golpe eléctrico áspero)
       
       if (typeof window.startTuningGame === 'function') window.startTuningGame(data);
       
@@ -3104,6 +3104,8 @@ const handleProjectClick = (data) => {
   if (intersectsViajero.length > 0) {
     const clickedViajero = intersectsViajero.find(hit => hit.object.userData && hit.object.userData.name === "viajero");
     if (clickedViajero) {
+      // 🔥 Si flota LIBRE en el vacío (no anclado a un planeta): arranca La Hoguera de Datos
+      if (!window.travelerGroup.userData.anchoredPlanet && window.startHogueraGame && !window.isHogueraActive) { window.startHogueraGame(); return; }
       playSound('project_open'); // Sonido especial celestial
       
       // 🔥 MATRIZ DE PENSAMIENTOS DEL VIAJERO
@@ -3117,7 +3119,12 @@ const handleProjectClick = (data) => {
       ];
       
       // Escoge una frase al azar cada vez que haces clic
-      const fraseElegida = oraculoFrases[Math.floor(Math.random() * oraculoFrases.length)];
+      // Cada 4º clic susurra cómo llegar a su secreto
+      window._oraculoClicks = (window._oraculoClicks || 0) + 1;
+      const pistaHoguera = window.currentLang === 'en'
+        ? "Take me far from every planet, where no light reaches. Perhaps I will light a fire."
+        : "Llévame lejos de todo planeta, donde la luz no alcanza. Quizá encienda una hoguera.";
+      const fraseElegida = (window._oraculoClicks % 4 === 0) ? pistaHoguera : oraculoFrases[Math.floor(Math.random() * oraculoFrases.length)];
       
       showPoeticReflection(fraseElegida, "#aaccff");
       
@@ -4891,7 +4898,13 @@ function updateTraveler() {
                    typeof isDraggingPlanet !== 'undefined' && isDraggingPlanet;
   let flareTarget = 0, falling = false, walking = false, lean = 0;
 
-  if (dragging) {
+  if (window.isHogueraActive && window.hgPose) {
+    // ---- LA HOGUERA DE DATOS: el evento controla su pose (de espaldas a la cámara, junto al fuego) ----
+    tg.position.copy(window.hgPose.pos);
+    tg.quaternion.setFromEuler(_hgEuler.set(0, window.hgPose.yaw, 0));
+    const hb = 1 + Math.sin(t * 1.8) * 0.012;
+    tg.scale.set(1, hb, 1); tg.visible = true; flareTarget = 0.12;
+  } else if (dragging) {
     // ---- EN LA MANO DEL USUARIO ----
     st.anchoredPlanet = null;
     st.baseX = tg.position.x;
@@ -5110,17 +5123,17 @@ renderer.setAnimationLoop((timestamp, frame) => {
  
   if (isPaused && !isXR) return; 
   // 🎮 Motor de los minijuegos (Sintonización y Telar de circuitos)
-  if ((window.isWiringGameActive || window.isTuningGameActive) && window.updateMiniGames) window.updateMiniGames();
+  if ((window.isWiringGameActive || window.isTuningGameActive || window.isHogueraActive) && window.updateMiniGames) window.updateMiniGames();
   const now = performance.now(); frames++;
   if (now >= lastTime + 1000) { if((frames * 1000 / (now - lastTime)) < 30) lowFPSCount++; else lowFPSCount = 0;
     // 🔥 ACTUALIZADOR DEL HUD DE COMBO EN TIEMPO REAL
   const comboUi = document.getElementById('combo-value');
-  if (comboUi && !window.isTuningGameActive && !window.isWiringGameActive) comboUi.innerText = 'x' + (typeof combatCombo !== 'undefined' ? combatCombo : 0);
+  if (comboUi && !window.isTuningGameActive && !window.isWiringGameActive && !window.isHogueraActive) comboUi.innerText = 'x' + (typeof combatCombo !== 'undefined' ? combatCombo : 0);
     if(lowFPSCount > 3 && isBloomEnabled) { isBloomEnabled = false; bloomPass.strength = 0; 
       document.getElementById('menu-bloom').innerText = '✨ Efecto Neón: OFF'; 
       document.getElementById('menu-bloom').style.color = '#888'; } frames = 0; lastTime = now; }
 
-  if (isShooting && isGameStarted && !isUIOpen && !isAR && !window.isTuningGameActive && !window.isWiringGameActive) { if (now - lastShotTime > FIRE_COOLDOWN) { fireLaser(); lastShotTime = now; } }
+  if (isShooting && isGameStarted && !isUIOpen && !isAR && !window.isTuningGameActive && !window.isWiringGameActive && !window.isHogueraActive) { if (now - lastShotTime > FIRE_COOLDOWN) { fireLaser(); lastShotTime = now; } }
 
  // LÓGICA DE ACTUALIZACIÓN AR (CORREGIDA)
 if (isAR && frame && hitTestSource) {
@@ -8441,13 +8454,183 @@ window.addEventListener('keydown', (e) => {
   }
 });
 // ============================================================
-// 🎮 JUEGOS OTROS — INFRAESTRUCTURA COMPARTIDA
+// 🎮 JUEGOS OTROS — LENGUAJE SUBLIME
+//   Paleta apagada (hueso, ceniza, salvia, niebla, ocre, malva), partículas suaves de luz,
+//   viñeta y fundidos lentos, y un sonido de campanas de seno con eco (el mismo bus que el resto del portafolio).
+// ============================================================
+const PAL = { bone: 0xe7e4de, ash: 0x8a867f, rose: 0xc9786b, sage: 0xb9c8b0, mist: 0xa9c4e8, gold: 0xd9c28a, mauve: 0xcfa3c4 };
+const _c1 = new THREE.Color(), _c2 = new THREE.Color(), _fxc = new THREE.Color();
+const _wp = new THREE.Vector3();
+
+// ---------- Partículas: puntos de luz con caída suave (tamaño y alfa por partícula) ----------
+const GLOW_SCALE = { value: 400 };
+const GLOW_VS = `
+  attribute vec3 aCol; attribute float aSize; attribute float aAlpha;
+  uniform float uScale; varying vec3 vC; varying float vA;
+  void main() {
+    vC = aCol; vA = aAlpha;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = aSize * uScale / max(0.1, -mv.z);
+    gl_Position = projectionMatrix * mv;
+  }`;
+const GLOW_FS = `
+  uniform vec3 uTint; uniform float uOpacity; varying vec3 vC; varying float vA;
+  void main() {
+    float d = length(gl_PointCoord - vec2(0.5));
+    float a = smoothstep(0.5, 0.0, d); a *= a;
+    gl_FragColor = vec4(vC * uTint, a * vA * uOpacity);
+  }`;
+
+function mkGlowPoints(n) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  g.setAttribute('aCol', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
+  g.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(n), 1));
+  g.setAttribute('aAlpha', new THREE.BufferAttribute(new Float32Array(n), 1));
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uScale: GLOW_SCALE, uTint: { value: new THREE.Color(1, 1, 1) }, uOpacity: { value: 1 } },
+    vertexShader: GLOW_VS, fragmentShader: GLOW_FS,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  const p = new THREE.Points(g, m);
+  p.frustumCulled = false;
+  return p;
+}
+
+let _glowTex = null;
+function glowTex() {
+  if (_glowTex) return _glowTex;
+  try {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.4)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    _glowTex = new THREE.CanvasTexture(c);
+  } catch (e) { _glowTex = null; }
+  return _glowTex;
+}
+function mkHalo(hex, size, opacity) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hex, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false }));
+  s.scale.set(size, size, 1);
+  return s;
+}
+
+// Emisor de motas (ráfagas, estelas, brasas)
+function makeFX(cap) {
+  const pts = mkGlowPoints(cap);
+  const at = pts.geometry.attributes;
+  const P = at.position.array, C = at.aCol.array, S = at.aSize.array, A = at.aAlpha.array;
+  const V = new Float32Array(cap * 3), L = new Float32Array(cap), ML = new Float32Array(cap).fill(1);
+  const A0 = new Float32Array(cap), S0 = new Float32Array(cap), D = new Float32Array(cap);
+  let head = 0;
+  return {
+    pts,
+    emit(x, y, z, vx, vy, vz, life, hex, size, alpha, drag) {
+      const i = head; head = (head + 1) % cap;
+      _fxc.setHex(hex);
+      P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z;
+      V[i * 3] = vx; V[i * 3 + 1] = vy; V[i * 3 + 2] = vz;
+      C[i * 3] = _fxc.r; C[i * 3 + 1] = _fxc.g; C[i * 3 + 2] = _fxc.b;
+      L[i] = life; ML[i] = life; A0[i] = alpha; S0[i] = size; D[i] = (drag === undefined ? 0.8 : drag);
+    },
+    burst(x, y, z, count, speed, life, hex, size, alpha) {
+      for (let k = 0; k < count; k++) {
+        const th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 2 - 1), sp = speed * (0.3 + Math.random() * 0.7);
+        this.emit(x, y, z, Math.sin(ph) * Math.cos(th) * sp, Math.sin(ph) * Math.sin(th) * sp, Math.cos(ph) * sp * 0.5,
+          life * (0.6 + Math.random() * 0.4), hex, size * (0.6 + Math.random() * 0.8), alpha, 1.4);
+      }
+    },
+    update(dt) {
+      for (let i = 0; i < cap; i++) {
+        if (L[i] <= 0) continue;
+        L[i] -= dt;
+        if (L[i] <= 0) { A[i] = 0; S[i] = 0; continue; }
+        const k = 1 - L[i] / ML[i], f = Math.max(0, 1 - D[i] * dt);
+        V[i * 3] *= f; V[i * 3 + 1] *= f; V[i * 3 + 2] *= f;
+        P[i * 3] += V[i * 3] * dt; P[i * 3 + 1] += V[i * 3 + 1] * dt; P[i * 3 + 2] += V[i * 3 + 2] * dt;
+        A[i] = A0[i] * Math.min(1, k * 10) * (1 - k);
+        S[i] = S0[i] * (1 - 0.4 * k);
+      }
+      at.position.needsUpdate = true; at.aCol.needsUpdate = true; at.aSize.needsUpdate = true; at.aAlpha.needsUpdate = true;
+    },
+    dispose() { pts.geometry.dispose(); pts.material.dispose(); }
+  };
+}
+
+// Polvo a la deriva: el fondo "respira"
+function makeDust(n, hw, hh) {
+  const pts = mkGlowPoints(n);
+  const at = pts.geometry.attributes;
+  const P = at.position.array, C = at.aCol.array, S = at.aSize.array;
+  const base = new Float32Array(n * 3), ph = new Float32Array(n * 2);
+  const cols = [PAL.bone, PAL.ash, PAL.sage, PAL.mist];
+  for (let i = 0; i < n; i++) {
+    base[i * 3] = (Math.random() * 2 - 1) * hw; base[i * 3 + 1] = (Math.random() * 2 - 1) * hh; base[i * 3 + 2] = -5 + Math.random() * 8;
+    ph[i * 2] = Math.random() * 6.28; ph[i * 2 + 1] = Math.random() * 6.28;
+    _fxc.setHex(cols[Math.floor(Math.random() * cols.length)]);
+    C[i * 3] = _fxc.r; C[i * 3 + 1] = _fxc.g; C[i * 3 + 2] = _fxc.b;
+    S[i] = 0.10 + Math.random() * 0.26;
+  }
+  return {
+    pts,
+    update(t, calm) {
+      const A = at.aAlpha.array, amp = calm ? 0.15 : 1;
+      for (let i = 0; i < n; i++) {
+        P[i * 3]     = base[i * 3]     + Math.sin(t * 0.11 + ph[i * 2]) * 0.8 * amp;
+        P[i * 3 + 1] = base[i * 3 + 1] + Math.cos(t * 0.09 + ph[i * 2 + 1]) * 0.6 * amp;
+        P[i * 3 + 2] = base[i * 3 + 2];
+        A[i] = 0.10 + 0.22 * (0.5 + 0.5 * Math.sin(t * 0.45 + ph[i * 2] * 3));
+      }
+      at.position.needsUpdate = true; at.aAlpha.needsUpdate = true;
+    },
+    dispose() { pts.geometry.dispose(); pts.material.dispose(); }
+  };
+}
+
+// ---------- Sonido: campanas de seno + pads, por el mismo bus con eco del resto del portafolio ----------
+const MGS = {
+  NOTES: [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5],        // pentatónica de Do: nada puede sonar "mal"
+  ok() {
+    if (!isSoundEnabled) return false;
+    try { if (!audioCtx) playSound('ui'); } catch (e) {}
+    return !!(audioCtx && masterGain);
+  },
+  bell(freq, delay, dur, vol) {
+    if (!this.ok()) return;
+    const now = audioCtx.currentTime + (delay || 0);
+    [[1, 1], [2.01, 0.28], [3.0, 0.1]].forEach(([m, g]) => {
+      const o = audioCtx.createOscillator(), gn = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = freq * m;
+      gn.gain.setValueAtTime(0, now);
+      gn.gain.linearRampToValueAtTime(vol * g, now + 0.012);
+      gn.gain.exponentialRampToValueAtTime(0.0001, now + dur / m);
+      o.connect(gn); gn.connect(masterGain);
+      o.start(now); o.stop(now + dur + 0.05);
+    });
+  },
+  arpeggio(idx, step, dur, vol) { idx.forEach((n, i) => this.bell(this.NOTES[n], i * step, dur, vol)); },
+  knock() {                                                         // un golpe amortiguado, no un impacto eléctrico
+    if (!this.ok()) return;
+    const now = audioCtx.currentTime, o = audioCtx.createOscillator(), gn = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(130, now); o.frequency.exponentialRampToValueAtTime(62, now + 0.4);
+    gn.gain.setValueAtTime(0, now); gn.gain.linearRampToValueAtTime(0.11, now + 0.01); gn.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+    o.connect(gn); gn.connect(masterGain); o.start(now); o.stop(now + 0.6);
+    this.bell(466.16, 0.02, 0.9, 0.012);                            // sombra levemente disonante
+    vibrateDevice(35);
+  }
+};
+
+// ============================================================
+// 🎮 INFRAESTRUCTURA COMPARTIDA
 //   · Guarda y restaura EXACTAMENTE el estado del universo (visibilidad, cámara, rotación, zoom)
-//   · Botón ABORTAR + tecla ESC (antes no había forma de salir de un minijuego)
-//   · Los clics/arrastres ya no "atraviesan" hacia los planetas ocultos (ver guardas en el handler de click)
+//   · Botón ABORTAR + tecla ESC
+//   · Fundido de entrada con viñeta, polvo a la deriva, ondas y ráfagas de motas
 // ============================================================
 const MG = window.MG = {
-  saved: null, ui: null, keyHandler: null, lastT: 0,
+  saved: null, ui: null, keyHandler: null, lastT: 0, time: 0,
+  fx: null, dust: null, rings: [], plane: null,
 
   isEN() { return window.currentLang === 'en'; },
   isTouch() { return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0); },
@@ -8460,6 +8643,10 @@ const MG = window.MG = {
   setPointer(cx, cy) {
     mouseNDC.x = (cx / window.innerWidth) * 2 - 1;
     mouseNDC.y = -(cy / window.innerHeight) * 2 + 1;
+  },
+  pointerWorld(out) {
+    dragRaycaster.setFromCamera(mouseNDC, camera);
+    return dragRaycaster.ray.intersectPlane(this.plane, out);
   },
 
   _targets() {
@@ -8480,18 +8667,55 @@ const MG = window.MG = {
   },
 
   enter(camZ) {
-    this.lastT = 0;
+    this.lastT = 0; this.time = 0;
+    if (!this.plane) this.plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
     const objs = this._targets();
     this.saved = {
       objs: objs.map(o => [o, o.visible]),
       pos: userGroup.position.clone(), rot: userGroup.rotation.clone(),
-      fov: camera.fov, targetFov: targetFov, zoomed: isMobileZoomed
+      fov: camera.fov, targetFov: targetFov, zoomed: isMobileZoomed,
+      hud: ['lives-value', 'level-value', 'files-value', 'combo-value'].reduce((o, id) => { const el = document.getElementById(id); o[id] = el ? el.innerText : ''; return o; }, {})
     };
     objs.forEach(o => { o.visible = false; });
     userGroup.rotation.set(0, 0, 0);          // la vista podía estar girada: los juegos asumen cámara de frente
     userGroup.position.set(0, 0, camZ);
     targetFov = 75; camera.fov = 75; camera.updateProjectionMatrix();
     isMobileZoomed = false;
+
+    // Atmósfera: polvo + motas + ondas
+    const halfH = Math.tan(THREE.MathUtils.degToRad(75 / 2)) * camZ, aspect = window.innerWidth / window.innerHeight;
+    this.fx = makeFX(520); scene.add(this.fx.pts);
+    this.dust = makeDust(110, halfH * aspect * 1.15, halfH * 1.15); scene.add(this.dust.pts);
+    this.rings = [];
+    for (let i = 0; i < 8; i++) {
+      const mesh = new THREE.Mesh(
+        new THREE.RingGeometry(0.96, 1, 72),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
+      );
+      mesh.visible = false; scene.add(mesh);
+      this.rings.push({ mesh, age: 1, life: 1, s0: 1, s1: 1, op: 0 });
+    }
+  },
+
+  pulse(x, y, hex, s0, s1, life, op) {       // onda circular; si s0 > s1 la onda converge hacia adentro
+    const r = this.rings.find(q => q.age >= 1) || this.rings[0];
+    r.age = 0; r.life = life; r.s0 = s0; r.s1 = s1; r.op = op;
+    r.mesh.position.set(x, y, 0); r.mesh.material.color.setHex(hex); r.mesh.visible = true;
+  },
+
+  fxUpdate(dt) {
+    this.time += dt;
+    GLOW_SCALE.value = renderer.domElement.height * 0.5;
+    if (this.fx) this.fx.update(dt);
+    if (this.dust) this.dust.update(this.time, reduceMotionMQ.matches);
+    this.rings.forEach(r => {
+      if (r.age >= 1) return;
+      r.age += dt / r.life;
+      if (r.age >= 1) { r.mesh.visible = false; return; }
+      const e = 1 - Math.pow(1 - r.age, 2);
+      r.mesh.scale.setScalar(r.s0 + (r.s1 - r.s0) * e);
+      r.mesh.material.opacity = r.op * Math.sin(Math.PI * r.age);
+    });
   },
 
   exit() {
@@ -8500,7 +8724,12 @@ const MG = window.MG = {
     userGroup.position.copy(s.pos); userGroup.rotation.copy(s.rot);
     camera.fov = s.fov; targetFov = s.targetFov; camera.updateProjectionMatrix();
     isMobileZoomed = s.zoomed;
+    for (const id in s.hud) { const el = document.getElementById(id); if (el) el.innerText = s.hud[id]; }   // devuelve los valores reales del HUD
     this.saved = null;
+    if (this.fx) { scene.remove(this.fx.pts); this.fx.dispose(); this.fx = null; }
+    if (this.dust) { scene.remove(this.dust.pts); this.dust.dispose(); this.dust = null; }
+    this.rings.forEach(r => { scene.remove(r.mesh); r.mesh.geometry.dispose(); r.mesh.material.dispose(); });
+    this.rings = [];
     this.removeUI();
     morphHUD('normal');
     shakeIntensity = 0;
@@ -8511,27 +8740,32 @@ const MG = window.MG = {
     const en = this.isEN();
     const root = document.createElement('div');
     root.id = 'minigame-ui';
-    root.style.cssText = 'position:fixed; inset:0; z-index:100020; pointer-events:none; color:#e7e4de; font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;';
+    root.style.cssText = 'position:fixed; inset:0; z-index:100020; pointer-events:none; color:#e7e4de; opacity:0; transition:opacity 1.4s ease; ' +
+      'font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif; ' +
+      'background:radial-gradient(ellipse at center, rgba(5,5,10,0) 45%, rgba(5,5,10,0.45) 100%);';
 
     const extra = document.createElement('div');
     extra.style.cssText = 'position:absolute; top:78px; left:50%; transform:translateX(-50%); text-align:center; width:min(92vw,520px);';
 
     const bottom = document.createElement('div');
-    bottom.style.cssText = 'position:absolute; bottom:calc(22px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:12px; width:min(92vw,560px);';
+    bottom.style.cssText = 'position:absolute; bottom:calc(22px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:14px; width:min(92vw,560px);';
 
     const hint = document.createElement('div');
     hint.textContent = hintText;
-    hint.style.cssText = 'font-size:0.74rem; font-weight:300; letter-spacing:0.06em; line-height:1.6; text-align:center; color:#a8a49c; text-shadow:0 0 12px rgba(0,0,0,0.9);';
+    hint.style.cssText = 'font-size:0.74rem; font-weight:300; letter-spacing:0.05em; line-height:1.7; text-align:center; color:#8a867f; text-shadow:0 0 14px rgba(0,0,0,0.9);';
 
     const btn = document.createElement('button');
-    btn.textContent = en ? '✕ ABORT  [ESC]' : '✕ ABORTAR  [ESC]';
-    btn.style.cssText = 'pointer-events:auto; background:rgba(10,10,12,0.55); border:1px solid rgba(255,255,255,0.2); color:#e7e4de; padding:9px 18px; font-family:inherit; font-size:0.7rem; font-weight:300; letter-spacing:0.2em; cursor:pointer; border-radius:0; backdrop-filter:blur(10px);';
+    btn.textContent = en ? 'LET GO  ·  ESC' : 'SOLTAR  ·  ESC';
+    btn.style.cssText = 'pointer-events:auto; background:rgba(10,10,12,0.35); border:1px solid rgba(255,255,255,0.14); color:#a8a49c; padding:9px 20px; font-family:inherit; font-size:0.66rem; font-weight:300; letter-spacing:0.28em; cursor:pointer; border-radius:0; backdrop-filter:blur(10px); transition:color .3s, border-color .3s;';
+    btn.addEventListener('mouseenter', () => { btn.style.color = '#e7e4de'; btn.style.borderColor = 'rgba(255,255,255,0.35)'; });
+    btn.addEventListener('mouseleave', () => { btn.style.color = '#a8a49c'; btn.style.borderColor = 'rgba(255,255,255,0.14)'; });
     btn.addEventListener('click', (e) => { e.stopPropagation(); MG.abort(); });
     ['mousedown', 'touchstart', 'mouseup', 'touchend'].forEach(ev => btn.addEventListener(ev, (e) => e.stopPropagation()));
 
     bottom.appendChild(hint); bottom.appendChild(btn);
     root.appendChild(extra); root.appendChild(bottom);
     document.body.appendChild(root);
+    requestAnimationFrame(() => { root.style.opacity = '1'; });
     this.ui = { root, extra };
 
     this.keyHandler = (e) => {
@@ -8550,34 +8784,44 @@ const MG = window.MG = {
   abort() {
     if (window.isTuningGameActive) window.abortTuningGame();
     else if (window.isWiringGameActive) window.abortWiringGame();
+    else if (window.isHogueraActive) window.abortHogueraGame();
   },
 
-  setHUD(ids) { // ids: { 'lives-value': '...', ... }
+  setHUD(ids) {
     for (const id in ids) { const el = document.getElementById(id); if (el) el.innerText = ids[id]; }
   }
 };
 
 window.updateMiniGames = function() {
   const dt = MG.tick();
+  MG.fxUpdate(dt);
   if (window.isTuningGameActive) tgUpdate(dt);
   if (window.isWiringGameActive) wgUpdate(dt);
+  if (window.isHogueraActive) hgUpdate(dt);
 };
 
+function mgDispose(o) {
+  scene.remove(o);
+  o.traverse(c => {
+    if (c.geometry) c.geometry.dispose();
+    if (c.material) { if (c.material.map && c.material.map !== _glowTex) c.material.map.dispose(); c.material.dispose(); }
+  });
+}
+
 // ==========================================
-// 🔥 JUEGO OTRO: SINTONIZACIÓN (ANOMALÍA 999 · ARCHIVO CORRUPTO)
-//   3 fases. En cada una hay que encontrar una "frecuencia" oculta con el cursor/dedo y sostenerla.
-//   Ayudas: escombros que se condensan, anillo que se cierra, tono que sube de altura, retícula con
-//   progreso y texto que se va descifrando. Mantener la sintonía es indulgente (el progreso decae, no se borra).
+// 🌫 JUEGO OTRO: SINTONIZACIÓN (ANOMALÍA 999 · ARCHIVO CORRUPTO)
+//   Una señal se deshace en el ruido. Tres fases: busca dónde se aquieta y sostén el gesto.
+//   Fuera de sintonía: ruido, polvo disperso, ondas que se alejan y dos tonos que "baten".
+//   En sintonía: los tonos se funden en unísono y quinta, el polvo se reúne y las ondas regresan al centro.
 // ==========================================
 window.isTuningGameActive = false;
 let tuningData = null;
 const TG = {
-  stage: 0, stages: 3, tx: 0, ty: 0, hold: 0, res: 0,
-  group: null, debris: null, dirs: null, radii: null, phase: null, ring: null,
-  tone: null, msg: '', els: {}, uiT: 0
+  stage: 0, stages: 3, tx: 0, ty: 0, hold: 0, res: 0, finale: 0, rt: 0, trailT: 0, uiT: 0,
+  group: null, debris: null, halo: null, dirs: null, radii: null, phase: null,
+  tone: null, msg: '', els: {}
 };
-const TG_GLYPHS = '▓▒░#%&@?01/\\';
-const _tgCol = new THREE.Color();
+const TG_GLYPHS = '·∙░▒▓+×∴';
 
 function tgPickTarget() {
   const aspect = window.innerWidth / window.innerHeight;
@@ -8590,76 +8834,103 @@ function tgPickTarget() {
   TG.tx = x; TG.ty = y;
 }
 
+// Drone: dos voces casi iguales (el batido se calma al sintonizar) + quinta y octava que florecen + hiss que se apaga
 function tgToneStart() {
+  if (!MGS.ok()) return;
   try {
-    if (!audioCtx || !isSoundEnabled) return;
-    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-    osc.type = 'triangle'; osc.frequency.value = 170; gain.gain.value = 0;
-    osc.connect(gain); gain.connect(audioCtx.destination); osc.start();
-    TG.tone = { osc, gain };
+    const ctx = audioCtx, t = ctx.currentTime;
+    const out = ctx.createGain(); out.gain.setValueAtTime(0, t); out.gain.linearRampToValueAtTime(1, t + 2.0);
+    const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 300; filt.Q.value = 0.5;
+    filt.connect(out); out.connect(masterGain);
+    const mk = (f, g) => {
+      const o = ctx.createOscillator(), gn = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f; gn.gain.value = g;
+      o.connect(gn); gn.connect(filt); o.start();
+      return { o, gn };
+    };
+    const a = mk(196, 0.035), b = mk(196 * 1.03, 0.035), c = mk(294, 0), d = mk(392, 0);
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 0.6;
+    const ng = ctx.createGain(); ng.gain.value = 0;
+    src.connect(bp); bp.connect(ng); ng.connect(out); src.start();
+    TG.tone = { ctx, out, filt, a, b, c, d, src, ng };
   } catch (e) { TG.tone = null; }
 }
-function tgToneStop() {
-  if (!TG.tone) return;
+function tgToneUpdate(r) {
+  const T = TG.tone; if (!T) return;
   try {
-    const t = audioCtx.currentTime;
-    TG.tone.gain.gain.setTargetAtTime(0, t, 0.05);
-    TG.tone.osc.stop(t + 0.3);
+    const t = T.ctx.currentTime;
+    T.b.o.frequency.setTargetAtTime(196 * (1 + (1 - r) * 0.03), t, 0.1);
+    T.c.gn.gain.setTargetAtTime(r * 0.035, t, 0.15);
+    T.d.gn.gain.setTargetAtTime(r * r * 0.022, t, 0.15);
+    T.filt.frequency.setTargetAtTime(280 + r * 2400, t, 0.15);
+    T.ng.gain.setTargetAtTime((1 - r) * 0.010, t, 0.1);
+    if (!isSoundEnabled) T.out.gain.setTargetAtTime(0, t, 0.1);
   } catch (e) {}
+}
+function tgToneStop() {
+  const T = TG.tone; if (!T) return;
   TG.tone = null;
+  try {
+    const t = T.ctx.currentTime;
+    T.out.gain.cancelScheduledValues(t);
+    T.out.gain.setTargetAtTime(0, t, 0.3);
+    [T.a, T.b, T.c, T.d].forEach(v => v.o.stop(t + 1.8)); T.src.stop(t + 1.8);
+  } catch (e) {}
 }
 
 function tgBuildScene() {
   TG.group = new THREE.Group();
   scene.add(TG.group);
 
-  // Escombros de señal: se dispersan cuando estás lejos y se condensan en una órbita al sintonizar
-  const N = 150;
+  const N = 160;
   TG.dirs = new Float32Array(N * 3); TG.radii = new Float32Array(N); TG.phase = new Float32Array(N);
+  TG.debris = mkGlowPoints(N);
+  const at = TG.debris.geometry.attributes;
   for (let i = 0; i < N; i++) {
     const th = Math.random() * Math.PI * 2, z = Math.random() * 2 - 1, s = Math.sqrt(1 - z * z);
     TG.dirs[i * 3] = s * Math.cos(th); TG.dirs[i * 3 + 1] = s * Math.sin(th); TG.dirs[i * 3 + 2] = z;
     TG.radii[i] = 4.5 + Math.random() * 6;
     TG.phase[i] = Math.random() * Math.PI * 2;
+    _fxc.setHex(Math.random() > 0.5 ? PAL.bone : PAL.mist);
+    at.aCol.array[i * 3] = _fxc.r; at.aCol.array[i * 3 + 1] = _fxc.g; at.aCol.array[i * 3 + 2] = _fxc.b;
+    at.aSize.array[i] = 0.12 + Math.random() * 0.2;
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
-  TG.debris = new THREE.Points(geo, new THREE.PointsMaterial({
-    color: 0xff3300, size: 0.16, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false
-  }));
-  TG.debris.frustumCulled = false;
   TG.group.add(TG.debris);
 
-  TG.ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.97, 1, 96),
-    new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
-  );
-  TG.group.add(TG.ring);
+  TG.halo = mkHalo(PAL.rose, 9, 0.15);
+  TG.halo.position.z = -1;
+  TG.group.add(TG.halo);
 }
 
 function tgBuildUI() {
   const en = MG.isEN();
   const ui = MG.buildUI(en
-    ? 'Move your cursor / slide your finger to find the hidden frequency. Hold it steady to lock each phase.'
-    : 'Mueve el cursor / desliza el dedo para encontrar la frecuencia oculta. Sostenla para fijar cada fase.');
+    ? 'Move your cursor or finger slowly. When the signal settles, hold still.'
+    : 'Mueve el cursor o el dedo despacio. Cuando la señal se aquiete, sostén el gesto.');
 
   const msg = document.createElement('div');
-  msg.style.cssText = 'font-family:ui-monospace,Menlo,Consolas,monospace; font-size:1.05rem; letter-spacing:0.18em; color:#ff6a4d; text-shadow:0 0 14px rgba(255,60,20,0.35);';
+  msg.style.cssText = 'font-size:1rem; font-weight:300; letter-spacing:0.32em; text-shadow:0 0 18px rgba(231,228,222,0.25);';
+  const done = document.createElement('span'); done.style.color = '#e7e4de';
+  const rest = document.createElement('span'); rest.style.cssText = 'color:#8a867f; opacity:0.6;';
+  msg.appendChild(done); msg.appendChild(rest);
   const info = document.createElement('div');
-  info.style.cssText = 'margin-top:8px; font-size:0.7rem; font-weight:300; letter-spacing:0.22em; color:#a8a49c;';
+  info.style.cssText = 'margin-top:10px; font-size:0.66rem; font-weight:300; letter-spacing:0.3em; color:#8a867f;';
   ui.extra.appendChild(msg); ui.extra.appendChild(info);
 
-  // Retícula con anillo de progreso
+  // Retícula fina con anillo de progreso
   const ret = document.createElement('div');
-  ret.style.cssText = 'position:absolute; left:0; top:0; width:36px; height:36px; border-radius:50%; border:1px solid rgba(255,255,255,0.5); box-sizing:border-box; display:none; will-change:transform;';
+  ret.style.cssText = 'position:absolute; left:0; top:0; width:30px; height:30px; border-radius:50%; border:1px solid rgba(231,228,222,0.4); box-sizing:border-box; display:none; will-change:transform;';
   const prog = document.createElement('div');
-  prog.style.cssText = 'position:absolute; inset:-5px; border-radius:50%; -webkit-mask:radial-gradient(circle, transparent 20px, #000 21px); mask:radial-gradient(circle, transparent 20px, #000 21px);';
+  prog.style.cssText = 'position:absolute; inset:-5px; border-radius:50%; -webkit-mask:radial-gradient(circle, transparent 18px, #000 19px); mask:radial-gradient(circle, transparent 18px, #000 19px);';
   const dot = document.createElement('div');
-  dot.style.cssText = 'position:absolute; left:50%; top:50%; width:4px; height:4px; margin:-2px 0 0 -2px; border-radius:50%; background:#fff;';
+  dot.style.cssText = 'position:absolute; left:50%; top:50%; width:3px; height:3px; margin:-1.5px 0 0 -1.5px; border-radius:50%; background:#e7e4de;';
   ret.appendChild(prog); ret.appendChild(dot);
   ui.root.appendChild(ret);
 
-  TG.els = { msg, info, ret, prog, dot };
+  TG.els = { done, rest, info, ret, prog, dot };
 }
 
 window.startTuningGame = function(data) {
@@ -8667,18 +8938,17 @@ window.startTuningGame = function(data) {
   const en = MG.isEN();
   window.isTuningGameActive = true;
   tuningData = data;
-  TG.stage = 0; TG.hold = 0; TG.res = 0; TG.uiT = 0; TG.tx = 0; TG.ty = 0;
+  TG.stage = 0; TG.hold = 0; TG.res = 0; TG.uiT = 0; TG.rt = 0; TG.trailT = 0; TG.finale = 0; TG.tx = 0; TG.ty = 0;
   TG.msg = en ? 'CORRUPTED_FILE.dat' : 'ARCHIVO_CORRUPTO.dat';
 
-  MG.enter(12); // acercar la cámara para llenar la pantalla
+  MG.enter(12);
 
-  // Aislar el planeta secreto
   secretPlanet.userData.isIsolated = true;
   secretPlanet.userData.savedPos = secretPlanet.position.clone();
   secretPlanet.visible = true;
   secretPlanet.position.set(0, 0, 0);
   secretPlanet.scale.set(1, 1, 1);
-  if (secretPlanet.children.length > 0) secretPlanet.children[0].visible = false; // sin etiqueta: solo el error geométrico
+  if (secretPlanet.children.length > 0) secretPlanet.children[0].visible = false;
 
   tgPickTarget();
   tgBuildScene();
@@ -8686,24 +8956,57 @@ window.startTuningGame = function(data) {
   tgToneStart();
 
   morphHUD('sintonizar');
-  showSystemToast(en ? '> ENCRYPTED SIGNAL. FIND THE FREQUENCY.' : '> SEÑAL ENCRIPTADA. ENCUENTRA LA FRECUENCIA.', '#ff3300');
+  showSystemToast(en ? 'A signal dissolves into noise. Listen for where it settles.'
+                     : 'Una señal se deshace en el ruido. Escucha dónde se aquieta.', '#e7e4de');
 };
 
 function tgAdvance() {
   const en = MG.isEN();
   TG.stage++; TG.hold = 0;
-  if (TG.stage >= TG.stages) { window.endTuningGame(); return; }
-  playSound('levelup');
-  shakeIntensity = 0.3;
-  showSystemToast(en
-    ? `> PHASE ${TG.stage}/${TG.stages} LOCKED. NEW FREQUENCY DETECTED.`
-    : `> FASE ${TG.stage}/${TG.stages} FIJADA. NUEVA FRECUENCIA DETECTADA.`, '#00ffff');
+  MG.fx.burst(0, 0, 0, 70, 4, 2.2, PAL.mist, 0.26, 0.8);
+  MG.pulse(0, 0, PAL.bone, 2.8, 12, 1.8, 0.4);
+  if (TG.stage >= TG.stages) { tgStartFinale(); return; }
+  MGS.arpeggio([TG.stage - 1, TG.stage + 1], 0.16, 2.2, 0.05);
+  shakeIntensity = 0.2;
+  showSystemToast(en ? 'Something settles. Another frequency breathes further away.'
+                     : 'Algo se aquieta. Otra frecuencia respira más lejos.', '#e7e4de');
   tgPickTarget();
   TG.res = 0;
 }
 
+function tgStartFinale() {
+  TG.finale = 1.8;
+  MG.fx.burst(0, 0, 0, 150, 5.5, 3.0, PAL.bone, 0.3, 0.9);
+  MG.pulse(0, 0, PAL.mist, 2.8, 20, 2.2, 0.4);
+  playSound('levelup');
+  MGS.arpeggio([0, 2, 3, 5], 0.2, 2.6, 0.045);
+  tgToneStop();
+  if (TG.els.done) { TG.els.done.textContent = TG.msg; TG.els.rest.textContent = ''; }
+  if (TG.els.ret) TG.els.ret.style.display = 'none';
+}
+
 function tgUpdate(dt) {
   const en = MG.isEN();
+  const calm = reduceMotionMQ.matches;
+  const E = TG.els;
+  const t = MG.time;
+
+  // ----- Final: la señal queda limpia -----
+  if (TG.finale > 0) {
+    TG.finale -= dt;
+    const k = 1 - Math.max(0, TG.finale) / 1.8;
+    secretPlanet.position.set(0, 0, 0);
+    secretPlanet.material.wireframe = false;
+    secretPlanet.material.color.setHex(PAL.bone).multiplyScalar(1 + k * 0.8);
+    secretPlanet.rotation.y += dt * 0.35;
+    TG.halo.material.opacity = 0.5 + 0.4 * k;
+    TG.halo.scale.set(10 + k * 8, 10 + k * 8, 1);
+    TG.halo.material.color.setHex(PAL.mist);
+    TG.debris.material.uniforms.uOpacity.value = 1 - k;
+    if (TG.finale <= 0) window.endTuningGame();
+    return;
+  }
+
   const aspect = window.innerWidth / window.innerHeight;
   const hasPointer = mouseNDC.x > -1.5;
   const d = hasPointer ? Math.hypot((mouseNDC.x - TG.tx) * aspect, mouseNDC.y - TG.ty) : 9;
@@ -8714,82 +9017,93 @@ function tgUpdate(dt) {
   TG.res += (target - TG.res) * Math.min(1, dt * 10);
   const r = TG.res;
 
-  // Sostener: sube mientras estás dentro, decae (no se borra) si te sales un instante
   if (locked) TG.hold = Math.min(1, TG.hold + dt / 1.2);
   else TG.hold = Math.max(0, TG.hold - dt * 1.5);
 
-  // --- Planeta ---
-  const calm = reduceMotionMQ.matches;
+  _c1.setHex(PAL.rose); _c2.setHex(PAL.mist);
+  _c1.lerp(_c2, r);                                   // rosa apagado → niebla clara
+  const hexNow = _c1.getHex();
+
+  // --- Planeta: respira en vez de temblar ---
   if (r < 0.85) {
-    const jit = (1 - r) * 0.7 * (calm ? 0.2 : 1);
-    if (Math.random() < 1 - r * 0.9) secretPlanet.position.set((Math.random() - 0.5) * jit, (Math.random() - 0.5) * jit, 0);
+    const wob = (1 - r) * 0.28 * (calm ? 0.2 : 1);
+    secretPlanet.position.set(Math.sin(t * 7.3) * wob + (Math.random() - 0.5) * wob * 0.5,
+                              Math.cos(t * 6.1) * wob + (Math.random() - 0.5) * wob * 0.5, 0);
     secretPlanet.material.wireframe = true;
-    secretPlanet.material.color.setHex(Math.random() > 0.5 + r * 0.4 ? 0xffffff : 0xff2200);
-    if (!calm && r < 0.4 && Math.random() > 0.985 && typeof triggerSubtleGlitch === 'function') triggerSubtleGlitch();
+    secretPlanet.material.color.copy(_c1);
+    if (!calm && Math.random() < 0.015 * (1 - r)) {   // un parpadeo ocasional de ceniza
+      secretPlanet.material.color.setHex(PAL.ash);
+      if (r < 0.4 && Math.random() > 0.7 && typeof triggerSubtleGlitch === 'function') triggerSubtleGlitch();
+    }
   } else {
     secretPlanet.position.set(0, 0, 0);
     secretPlanet.material.wireframe = false;
-    secretPlanet.material.color.setHex(0x00ffff).multiplyScalar(1 + TG.hold * 1.5); // brilla más al fijar → bloom
+    secretPlanet.material.color.copy(_c1).multiplyScalar(1 + TG.hold * 0.8);
   }
-  secretPlanet.rotation.x += dt * (0.6 + (1 - r) * 1.8);
-  secretPlanet.rotation.y += dt * (0.9 + (1 - r) * 1.8);
+  secretPlanet.rotation.x += dt * (0.35 + (1 - r) * 1.2);
+  secretPlanet.rotation.y += dt * (0.5 + (1 - r) * 1.2);
 
-  // --- Color de señal: rojo → cian ---
-  _tgCol.setRGB(1 - r, 0.2 + 0.8 * r, 0.8 * r);
-  TG.debris.material.color.copy(_tgCol);
-  TG.ring.material.color.copy(_tgCol);
+  // --- Halo ---
+  TG.halo.material.color.copy(_c1);
+  TG.halo.material.opacity = 0.12 + r * 0.33 + TG.hold * 0.25;
+  const hs = 8 + r * 2 + Math.sin(t * 1.6) * 0.3;
+  TG.halo.scale.set(hs, hs, 1);
 
-  // --- Escombros: se condensan en órbita cuando r → 1 ---
-  const t = performance.now() * 0.001;
-  const pos = TG.debris.geometry.attributes.position.array;
-  const tight = r * r;
-  const wob = (1 - r) * (calm ? 0.2 : 0.9);
-  const n = TG.radii.length;
+  // --- Polvo de señal: se reúne en órbita al sintonizar ---
+  const at = TG.debris.geometry.attributes, pos = at.position.array, al = at.aAlpha.array;
+  const tight = r * r, wob2 = (1 - r) * (calm ? 0.2 : 0.9), n = TG.radii.length;
   for (let i = 0; i < n; i++) {
     const rad = THREE.MathUtils.lerp(TG.radii[i], 2.9 + 0.25 * Math.sin(t * 2 + TG.phase[i]), tight);
-    pos[i * 3]     = TG.dirs[i * 3]     * rad + Math.sin(t * 3 + TG.phase[i] * 5) * wob;
-    pos[i * 3 + 1] = TG.dirs[i * 3 + 1] * rad + Math.cos(t * 2.4 + TG.phase[i] * 3) * wob;
+    pos[i * 3]     = TG.dirs[i * 3]     * rad + Math.sin(t * 3 + TG.phase[i] * 5) * wob2;
+    pos[i * 3 + 1] = TG.dirs[i * 3 + 1] * rad + Math.cos(t * 2.4 + TG.phase[i] * 3) * wob2;
     pos[i * 3 + 2] = TG.dirs[i * 3 + 2] * rad;
+    al[i] = 0.35 + 0.35 * (0.5 + 0.5 * Math.sin(t * 1.6 + TG.phase[i] * 3)) + r * 0.3;
   }
-  TG.debris.geometry.attributes.position.needsUpdate = true;
-  TG.debris.rotation.y += dt * (0.2 + r * 0.8);
-  TG.debris.rotation.x += dt * 0.1;
+  at.position.needsUpdate = true; at.aAlpha.needsUpdate = true;
+  TG.debris.rotation.y += dt * (0.15 + r * 0.6);
+  TG.debris.rotation.x += dt * 0.08;
+  TG.debris.material.uniforms.uTint.value.copy(_c1);
 
-  // --- Anillo: se cierra alrededor del planeta ---
-  TG.ring.scale.setScalar(THREE.MathUtils.lerp(8, 3.4, r));
-  TG.ring.rotation.z += dt * 0.5;
-
-  // --- Tono: sube de altura al acercarte ---
-  if (TG.tone) {
-    try {
-      const tt = audioCtx.currentTime;
-      TG.tone.osc.frequency.setTargetAtTime(170 + r * r * 760, tt, 0.06);
-      TG.tone.gain.gain.setTargetAtTime(isSoundEnabled ? 0.008 + r * 0.05 : 0, tt, 0.08);
-    } catch (e) {}
+  // --- Ondas: se alejan si hay ruido, regresan al centro si hay sintonía ---
+  TG.rt += dt * (0.45 + r * 1.1) * (calm ? 0.5 : 1);
+  if (TG.rt >= 1) {
+    TG.rt = 0;
+    const inward = r > 0.55;
+    MG.pulse(0, 0, hexNow, inward ? 9 : 2.8, inward ? 2.8 : 9, 2.4, 0.16 + 0.3 * r);
   }
+
+  // --- Estela de motas tras el cursor ---
+  TG.trailT -= dt;
+  if (hasPointer && !calm && TG.trailT <= 0 && MG.pointerWorld(_wp)) {
+    TG.trailT = 0.025;
+    MG.fx.emit(_wp.x, _wp.y, 0, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5 + 0.15, 0, 1.1, hexNow, 0.2, 0.5, 1.2);
+  }
+
+  // --- Sonido ---
+  tgToneUpdate(r);
 
   // --- Retícula ---
-  const E = TG.els;
   if (E.ret) {
     if (hasPointer) {
       const px = (mouseNDC.x + 1) / 2 * window.innerWidth, py = (1 - mouseNDC.y) / 2 * window.innerHeight;
+      const col = `rgb(${Math.round(_c1.r * 255)},${Math.round(_c1.g * 255)},${Math.round(_c1.b * 255)})`;
       E.ret.style.display = 'block';
-      E.ret.style.transform = `translate(${px - 18}px, ${py - 18}px)`;
-      const col = `rgb(${Math.round(255 * (1 - r))},${Math.round(60 + 195 * r)},${Math.round(200 * r)})`;
+      E.ret.style.transform = `translate(${px - 15}px, ${py - 15}px)`;
       E.ret.style.borderColor = col; E.dot.style.background = col;
-      E.prog.style.background = `conic-gradient(${col} ${TG.hold * 360}deg, rgba(255,255,255,0.08) 0)`;
+      E.prog.style.background = `conic-gradient(${col} ${TG.hold * 360}deg, rgba(231,228,222,0.07) 0)`;
     } else E.ret.style.display = 'none';
   }
 
   // --- Texto que se descifra + HUD ---
   TG.uiT += dt;
-  if (TG.uiT > 0.09 && E.msg) {
+  if (TG.uiT > 0.1 && E.done) {
     TG.uiT = 0;
-    const shown = Math.floor(TG.msg.length * ((TG.stage + TG.hold) / TG.stages));
+    const len = TG.msg.length, shown = Math.floor(len * ((TG.stage + TG.hold) / TG.stages));
     let s = '';
-    for (let i = 0; i < TG.msg.length; i++) s += i < shown ? TG.msg[i] : TG_GLYPHS[Math.floor(Math.random() * TG_GLYPHS.length)];
-    E.msg.textContent = s;
-    E.info.textContent = `${en ? 'PHASE' : 'FASE'} ${TG.stage + 1}/${TG.stages}  ·  ${en ? 'SIGNAL' : 'SEÑAL'} ${Math.round(r * 100)}%`;
+    for (let i = shown; i < len; i++) s += TG_GLYPHS[Math.floor(Math.random() * TG_GLYPHS.length)];
+    E.done.textContent = TG.msg.slice(0, shown);
+    E.rest.textContent = s;
+    E.info.textContent = `${en ? 'PHASE' : 'FASE'} ${TG.stage + 1} / ${TG.stages}   ·   ${en ? 'SIGNAL' : 'SEÑAL'} ${Math.round(r * 100)}%`;
   }
   MG.setHUD({
     'lives-value': Math.floor(100 - r * 100) + '%',
@@ -8804,12 +9118,8 @@ function tgUpdate(dt) {
 function tgTeardown() {
   window.isTuningGameActive = false;
   tgToneStop();
-  if (TG.group) {
-    scene.remove(TG.group);
-    TG.group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
-    TG.group = null;
-  }
-  TG.debris = null; TG.ring = null; TG.els = {};
+  if (TG.group) { mgDispose(TG.group); TG.group = null; }
+  TG.debris = null; TG.halo = null; TG.els = {};
   secretPlanet.userData.isIsolated = false;
   if (secretPlanet.userData.savedPos) secretPlanet.position.copy(secretPlanet.userData.savedPos);
   secretPlanet.material.wireframe = false;
@@ -8823,8 +9133,7 @@ window.endTuningGame = function() {
   const en = MG.isEN();
   tgTeardown();
   MG.exit();
-  playSound('levelup');
-  showSystemToast(en ? '✧ ARCHIVE DECRYPTED ✧' : '✧ ARCHIVO DESENCRIPTADO ✧', '#00ffff');
+  showSystemToast(en ? '✧ The file becomes legible again ✧' : '✧ El archivo vuelve a ser legible ✧', '#e7e4de');
   setTimeout(() => { openProjectPopup(tuningData); }, 500);
 };
 
@@ -8833,14 +9142,15 @@ window.abortTuningGame = function() {
   const en = MG.isEN();
   tgTeardown();
   MG.exit();
-  showSystemToast(en ? '> SIGNAL LOST' : '> SEÑAL PERDIDA', '#ff3300');
+  showSystemToast(en ? 'The signal dissolves' : 'La señal se disuelve', '#e7e4de');
 };
 
 // ==========================================
-// 🔥 JUEGO OTRO: TELAR DE CIRCUITOS (CACHARREO · GALERÍA)
-//   4 pares de nodos (PWR, DATA, CLK, GND). Cada par tiene su propio COLOR y FORMA (accesible sin color).
-//   Arrastra un cable de un nodo a su pareja. Conectar mal = cortocircuito; 3 cortocircuitos reordenan el tablero.
-//   Soltar en el vacío no penaliza. Los cables cuelgan con curva y siguen a los nodos mientras flotan.
+// 🧵 JUEGO OTRO: TELAR DE CIRCUITOS (CACHARREO · GALERÍA)
+//   Cuatro pares de nodos (PWR, DATA, CLK, GND), cada uno con su color y su forma.
+//   Lleva un hilo de cada nodo hasta su gemelo. Los hilos conectados dejan fluir motas de luz.
+//   Cada acierto suma una nota de la escala pentatónica; un enredo suena a golpe amortiguado.
+//   Tres enredos deshacen el telar y se reordena (soltar en el vacío no penaliza).
 // ==========================================
 window.isWiringGameActive = false;
 window.wiringData = null;
@@ -8849,23 +9159,23 @@ window.maxConnections = 4;
 window.currentConnections = 0;
 
 const WG_PAIRS = [
-  { id: 'PWR',  color: 0xffb347, geo: () => new THREE.OctahedronGeometry(1.2, 0) },
-  { id: 'DATA', color: 0x00ffff, geo: () => new THREE.BoxGeometry(1.6, 1.6, 1.6) },
-  { id: 'CLK',  color: 0xff4fd8, geo: () => new THREE.TetrahedronGeometry(1.5, 0) },
-  { id: 'GND',  color: 0x7dff8a, geo: () => new THREE.IcosahedronGeometry(1.2, 0) }
+  { id: 'PWR',  color: PAL.gold,  geo: () => new THREE.OctahedronGeometry(1.2, 0) },
+  { id: 'DATA', color: PAL.mist,  geo: () => new THREE.BoxGeometry(1.6, 1.6, 1.6) },
+  { id: 'CLK',  color: PAL.mauve, geo: () => new THREE.TetrahedronGeometry(1.5, 0) },
+  { id: 'GND',  color: PAL.sage,  geo: () => new THREE.IcosahedronGeometry(1.2, 0) }
 ];
-const WG_SEG = 24;
+const WG_SEG = 24, WG_MOTES = 36;
 const WG = {
-  nodes: window.wiringNodes, hits: [], cables: [], fading: [], sparks: [],
-  drag: null, hover: null, shorts: 0, maxShorts: 3, state: 'idle', winT: 0, resetT: 0, t: 0, scale: 1,
-  ptr: new THREE.Vector3(), plane: new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
+  nodes: window.wiringNodes, hits: [], cables: [], fading: [],
+  drag: null, hover: null, lastHover: null, shorts: 0, maxShorts: 3, state: 'idle',
+  winT: 0, resetT: 0, t: 0, scale: 1, emberT: 0, trailT: 0, ptr: new THREE.Vector3()
 };
 const _wgTmp = new THREE.Vector3();
 
 function wgBounds() {
   const aspect = window.innerWidth / window.innerHeight;
   const halfH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * userGroup.position.z;
-  const hh = halfH * 0.62;                       // deja aire para el HUD arriba y la pista abajo
+  const hh = halfH * 0.62;
   const hw = Math.min(halfH * aspect * 0.8, hh * 1.9);
   return { hw, hh };
 }
@@ -8874,7 +9184,7 @@ function wgSample(n, hw, hh, minD) {
   const pts = []; let d = minD, tries = 0;
   while (pts.length < n && tries < 4000) {
     tries++;
-    if (tries % 120 === 0) d *= 0.9;             // si no cabe, relaja la separación
+    if (tries % 120 === 0) d *= 0.9;
     const p = new THREE.Vector3((Math.random() * 2 - 1) * hw, (Math.random() * 2 - 1) * hh, 0);
     if (pts.every(q => q.distanceTo(p) >= d)) pts.push(p);
   }
@@ -8882,30 +9192,24 @@ function wgSample(n, hw, hh, minD) {
   return pts;
 }
 
-function wgDisposeObj(o) {
-  scene.remove(o);
-  o.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) { if (c.material.map) c.material.map.dispose(); c.material.dispose(); } });
-}
-
 function wgClear() {
-  WG.nodes.forEach(wgDisposeObj); WG.nodes.length = 0; WG.hits.length = 0;
-  WG.cables.forEach(c => wgDisposeObj(c.line)); WG.cables.length = 0;
-  WG.fading.forEach(f => wgDisposeObj(f.line)); WG.fading.length = 0;
-  WG.sparks.forEach(wgDisposeObj); WG.sparks.length = 0;
-  if (WG.drag) { wgDisposeObj(WG.drag.line); WG.drag = null; }
-  WG.hover = null;
+  WG.nodes.forEach(mgDispose); WG.nodes.length = 0; WG.hits.length = 0;
+  WG.cables.forEach(c => { mgDispose(c.line); mgDispose(c.motes); }); WG.cables.length = 0;
+  WG.fading.forEach(f => mgDispose(f.line)); WG.fading.length = 0;
+  if (WG.drag) { mgDispose(WG.drag.line); WG.drag = null; }
+  WG.hover = null; WG.lastHover = null;
 }
 
-function wgNewLine(color, opacity) {
+function wgNewLine(hex, opacity) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array((WG_SEG + 1) * 3), 3));
-  const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity }));
-  line.frustumCulled = false;                    // los puntos cambian cada frame: que nunca se descarte
+  const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: hex, transparent: true, opacity }));
+  line.frustumCulled = false;
   scene.add(line);
   return line;
 }
 
-function wgBez(a, b, t, out) {                   // curva con "caída" tipo cable colgante
+function wgBez(a, b, t, out) {                   // curva con caída suave, como un hilo colgante
   const sag = Math.min(a.distanceTo(b) * 0.18, 3);
   const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2 - sag, cz = (a.z + b.z) / 2, u = 1 - t;
   return out.set(u * u * a.x + 2 * u * t * cx + t * t * b.x, u * u * a.y + 2 * u * t * cy + t * t * b.y, u * u * a.z + 2 * u * t * cz + t * t * b.z);
@@ -8918,17 +9222,20 @@ function wgUpdateLine(line, a, b) {
 
 function wgMakeNode(pair, pi, p, s) {
   const node = new THREE.Group();
-  const mat = new THREE.MeshBasicMaterial({ color: pair.color, wireframe: true, transparent: true, opacity: 0.85 });
-  const body = new THREE.Mesh(pair.geo(), mat);  // solo el cuerpo gira: la etiqueta ya no orbita alrededor del nodo
+  const geo = pair.geo();
+  const mat = new THREE.MeshBasicMaterial({ color: pair.color, wireframe: true, transparent: true, opacity: 0.8 });
+  const fillMat = new THREE.MeshBasicMaterial({ color: pair.color, transparent: true, opacity: 0.08, depthWrite: false });
+  const body = new THREE.Mesh(geo, mat);          // solo el cuerpo gira: la etiqueta no orbita
+  const fill = new THREE.Mesh(geo, fillMat); fill.scale.setScalar(0.97);
+  body.add(fill);
   node.add(body);
+  const halo = mkHalo(pair.color, 5.5, 0.2); halo.position.z = -0.4; node.add(halo);
   const label = createTextSprite(pair.id, '#' + pair.color.toString(16).padStart(6, '0'), 24);
-  label.position.set(0, -2.1, 0);
-  node.add(label);
-  const hit = new THREE.Mesh(new THREE.SphereGeometry(2.3, 8, 8), new THREE.MeshBasicMaterial({ visible: false })); // zona táctil generosa
-  hit.userData.node = node;
-  node.add(hit);
-  node.position.copy(p); node.scale.setScalar(s);
-  node.userData = { pair: pi, connected: false, base: p.clone(), phase: Math.random() * 6.28, mat, body, flash: 0, pop: 0, baseColor: new THREE.Color(pair.color) };
+  label.position.set(0, -2.1, 0); node.add(label);
+  const hit = new THREE.Mesh(new THREE.SphereGeometry(2.3, 8, 8), new THREE.MeshBasicMaterial({ visible: false }));
+  hit.userData.node = node; node.add(hit);
+  node.position.copy(p); node.scale.setScalar(0.001);
+  node.userData = { pair: pi, connected: false, base: p.clone(), phase: Math.random() * 6.28, mat, fillMat, body, halo, flash: 0, pop: 0, appear: -Math.random() * 0.4, baseColor: new THREE.Color(pair.color) };
   scene.add(node);
   WG.nodes.push(node); WG.hits.push(hit);
 }
@@ -8941,7 +9248,7 @@ function wgBuild() {
   const pool = wgSample(WG_PAIRS.length * 2, b.hw, b.hh, minD);
   WG_PAIRS.forEach((pair, pi) => {
     const a = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
-    pool.sort((p, q) => q.distanceTo(a) - p.distanceTo(a));            // la pareja tiende a quedar lejos (cables más interesantes)
+    pool.sort((p, q) => q.distanceTo(a) - p.distanceTo(a));
     const c = pool.splice(Math.floor(Math.random() * Math.ceil(pool.length / 2)), 1)[0];
     wgMakeNode(pair, pi, a, WG.scale); wgMakeNode(pair, pi, c, WG.scale);
   });
@@ -8954,19 +9261,17 @@ function wgPick() {
   const hits = dragRaycaster.intersectObjects(WG.hits, false);
   return hits.length ? hits[0].object.userData.node : null;
 }
-function wgPointerWorld() {
-  dragRaycaster.setFromCamera(mouseNDC, camera);
-  dragRaycaster.ray.intersectPlane(WG.plane, WG.ptr);
-}
+function wgPointerWorld() { MG.pointerWorld(WG.ptr); }
 
 window.wiringDown = function(cx, cy) {
   if (WG.state !== 'play' || WG.drag) return;
   MG.setPointer(cx, cy);
   const node = wgPick();
-  if (!node || node.userData.connected) return;
-  WG.drag = { node, line: wgNewLine(node.userData.baseColor.getHex(), 0.95), end: node.position.clone() };
+  if (!node || node.userData.connected || node.userData.appear < 0.6) return;
+  WG.drag = { node, line: wgNewLine(node.userData.baseColor.getHex(), 0.75), end: node.position.clone() };
   wgPointerWorld();
-  playSound('pulse');
+  MGS.bell(MGS.NOTES[node.userData.pair] * 2, 0, 0.6, 0.022);
+  MG.pulse(node.position.x, node.position.y, node.userData.baseColor.getHex(), 1.4, 4.2, 0.9, 0.4);
 };
 
 window.wiringMove = function(cx, cy) {
@@ -8975,103 +9280,157 @@ window.wiringMove = function(cx, cy) {
   wgPointerWorld();
   const n = wgPick();
   WG.hover = (n && n !== WG.drag.node && !n.userData.connected) ? n : null;
+  if (WG.hover && WG.hover !== WG.lastHover) MGS.bell(1568, 0, 0.4, 0.012);
+  WG.lastHover = WG.hover;
 };
 
 window.wiringUp = function() {
   const d = WG.drag; if (!d) return;
   const n = wgPick();
   const tgt = (n && n !== d.node && !n.userData.connected) ? n : null;
-  WG.drag = null; WG.hover = null;
-  if (!tgt) { wgDisposeObj(d.line); return; }                         // soltar en el vacío: sin penalización
+  WG.drag = null; WG.hover = null; WG.lastHover = null;
+  if (!tgt) { mgDispose(d.line); return; }                 // soltar en el vacío: sin penalización
   if (tgt.userData.pair === d.node.userData.pair) wgConnect(d.node, tgt, d.line);
-  else wgShort(d.node, tgt, d.line);
+  else wgShort(d.node, tgt, d.line, d.end);
 };
 
 function wgConnect(a, b, line) {
-  const color = WG_PAIRS[a.userData.pair].color;
-  line.material.opacity = 1;
-  line.material.color.setHex(color).multiplyScalar(1.6);               // supera el umbral del bloom
-  WG.cables.push({ a, b, line });
+  const pi = a.userData.pair, hex = WG_PAIRS[pi].color;
+  line.material.opacity = 0.5;
+  line.material.color.setHex(hex);
+  // hilo de motas de luz que fluye de un nodo al otro
+  const motes = mkGlowPoints(WG_MOTES);
+  const at = motes.geometry.attributes;
+  _fxc.setHex(hex);
+  for (let i = 0; i < WG_MOTES; i++) { at.aCol.array[i * 3] = _fxc.r; at.aCol.array[i * 3 + 1] = _fxc.g; at.aCol.array[i * 3 + 2] = _fxc.b; }
+  scene.add(motes);
+  WG.cables.push({ a, b, line, motes, flow: Math.random(), speed: 0.12 });
   [a, b].forEach(n => {
     const u = n.userData; u.connected = true; u.pop = 1;
-    u.mat.wireframe = false; u.mat.opacity = 1; u.mat.color.copy(u.baseColor).multiplyScalar(1.6);
+    u.mat.wireframe = false; u.mat.opacity = 0.95; u.mat.color.copy(u.baseColor).multiplyScalar(1.2);
+    MG.fx.burst(n.position.x, n.position.y, 0, 22, 2.4, 1.8, hex, 0.24, 0.85);
+    MG.pulse(n.position.x, n.position.y, hex, 1.2, 5.2, 1.3, 0.5);
   });
   window.currentConnections++;
-  playSound('levelup');
+  MGS.bell(MGS.NOTES[pi], 0, 2.4, 0.055);
+  MGS.bell(MGS.NOTES[pi] * 1.5, 0.09, 1.8, 0.025);
   if (window.currentConnections >= WG_PAIRS.length) wgWin();
 }
 
-function wgShort(a, b, line) {
+function wgShort(a, b, line, end) {
   const en = MG.isEN();
   WG.shorts++;
-  line.material.color.setHex(0xff2200);
-  WG.fading.push({ line, life: 0.4 });
-  a.userData.flash = 0.35; b.userData.flash = 0.35;
-  shakeIntensity = 0.5;
-  playSound('damage');
-  showSystemToast(en ? `> SHORT CIRCUIT ${WG.shorts}/${WG.maxShorts}` : `> CORTOCIRCUITO ${WG.shorts}/${WG.maxShorts}`, '#ff4422');
+  // el hilo se deshace en motas rosadas
+  for (let i = 0; i < 30; i++) {
+    wgBez(a.position, end, Math.random(), _wgTmp);
+    MG.fx.emit(_wgTmp.x, _wgTmp.y, 0, (Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 1.6 + 0.3, 0, 1.2 + Math.random() * 0.8, PAL.rose, 0.26, 0.7, 1.2);
+  }
+  line.material.color.setHex(PAL.rose);
+  WG.fading.push({ line, life: 0.45 });
+  a.userData.flash = 0.6; b.userData.flash = 0.6;
+  MG.pulse(a.position.x, a.position.y, PAL.rose, 1.2, 4.5, 1.1, 0.4);
+  MG.pulse(b.position.x, b.position.y, PAL.rose, 1.2, 4.5, 1.1, 0.4);
+  shakeIntensity = 0.25;
+  MGS.knock();
+  showSystemToast(en ? `The threads tangle (${WG.shorts}/${WG.maxShorts})` : `Los hilos se enredan (${WG.shorts}/${WG.maxShorts})`, '#e7e4de');
   if (WG.shorts >= WG.maxShorts) {
     WG.state = 'reset'; WG.resetT = 1.0;
-    setTimeout(() => showSystemToast(en ? '> OVERLOAD. REWIRING BOARD...' : '> SOBRECARGA. REORDENANDO EL TABLERO...', '#ff6644'), 450);
+    setTimeout(() => showSystemToast(en ? 'The loom unravels. Begin again.' : 'El telar se desanuda. Empieza de nuevo.', '#e7e4de'), 450);
   }
 }
 
 function wgWin() {
   const en = MG.isEN();
   WG.state = 'won'; WG.winT = 0;
-  WG.cables.forEach((c, i) => {
-    const sp = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, blending: THREE.AdditiveBlending, transparent: true }));
-    sp.userData = { cable: c, off: i * 0.18 };
-    scene.add(sp); WG.sparks.push(sp);
-  });
-  playSound('project_open');
-  showSystemToast(en ? '✧ CIRCUITS RESTORED ✧' : '✧ CIRCUITOS RESTAURADOS ✧', '#00ffff');
+  WG.cables.forEach(c => { c.speed = 0.5; });
+  WG.nodes.forEach(n => MG.fx.burst(n.position.x, n.position.y, 0, 30, 3, 2.4, WG_PAIRS[n.userData.pair].color, 0.28, 0.9));
+  MG.pulse(0, 0, PAL.bone, 2, 24, 2.2, 0.4);
+  playSound('levelup');
+  MGS.arpeggio([0, 1, 2, 3, 5], 0.16, 2.6, 0.04);
+  showSystemToast(en ? '✧ The loom breathes again ✧' : '✧ El telar vuelve a respirar ✧', '#e7e4de');
 }
 
 function wgUpdate(dt) {
   WG.t += dt;
   const calm = reduceMotionMQ.matches;
   const amp = calm ? 0 : 0.35 * WG.scale;
+  const reset = WG.state === 'reset';
 
   WG.nodes.forEach(n => {
     const u = n.userData;
+    u.appear = reset ? Math.max(0, u.appear - dt * 1.4) : Math.min(1, u.appear + dt / 0.9);
+    const ap = Math.max(0, u.appear), ease = 1 - Math.pow(1 - ap, 3);
     n.position.set(u.base.x + Math.sin(WG.t * 0.9 + u.phase) * amp, u.base.y + Math.cos(WG.t * 0.7 + u.phase) * amp, 0);
-    if (!calm) { u.body.rotation.x += dt * 0.6; u.body.rotation.y += dt * 1.2; }
-    let sc = WG.scale;
+    if (!calm) { u.body.rotation.x += dt * 0.5; u.body.rotation.y += dt * 1.0; }
+    let sc = WG.scale * ease;
     if (u.pop > 0) { u.pop = Math.max(0, u.pop - dt * 3); sc *= 1 + Math.sin(u.pop * Math.PI) * 0.35; }
     const isHover = WG.hover === n;
-    n.scale.setScalar(sc * (isHover ? 1.25 : 1));
-    if (u.flash > 0) { u.flash -= dt; u.mat.color.setHex(0xff2200); }
-    else if (!u.connected) { u.mat.color.copy(u.baseColor); if (isHover) u.mat.color.multiplyScalar(2); }
+    n.scale.setScalar(Math.max(0.001, sc * (isHover ? 1.2 : 1)));
+
+    if (u.flash > 0) {
+      u.flash -= dt;
+      u.mat.color.copy(u.baseColor).lerp(_c2.setHex(PAL.rose), Math.min(1, u.flash / 0.6));
+    } else if (!u.connected) {
+      u.mat.color.copy(u.baseColor);
+      if (isHover) u.mat.color.multiplyScalar(1.5);
+    }
+    u.halo.material.opacity = (u.connected ? 0.38 + 0.12 * Math.sin(WG.t * 2 + u.phase) : (isHover ? 0.42 : 0.2)) * ease;
+    u.fillMat.opacity = u.connected ? 0.32 : 0.08;
   });
 
-  WG.cables.forEach(c => wgUpdateLine(c.line, c.a.position, c.b.position));
+  // Hilos conectados + motas que fluyen
+  WG.cables.forEach(c => {
+    wgUpdateLine(c.line, c.a.position, c.b.position);
+    c.flow = (c.flow + dt * c.speed) % 1;
+    const at = c.motes.geometry.attributes, P = at.position.array, S = at.aSize.array, A = at.aAlpha.array;
+    for (let i = 0; i < WG_MOTES; i++) {
+      const tt = (i / WG_MOTES + c.flow) % 1;
+      wgBez(c.a.position, c.b.position, tt, _wgTmp);
+      P[i * 3] = _wgTmp.x; P[i * 3 + 1] = _wgTmp.y; P[i * 3 + 2] = _wgTmp.z;
+      S[i] = 0.18 + 0.12 * Math.sin(Math.PI * tt);
+      A[i] = 0.85 * Math.sin(Math.PI * tt);
+    }
+    at.position.needsUpdate = true; at.aSize.needsUpdate = true; at.aAlpha.needsUpdate = true;
+    const fade = reset ? Math.max(0, WG.resetT) : 1;
+    c.motes.material.uniforms.uOpacity.value = fade; c.line.material.opacity = 0.5 * fade;
+  });
 
+  // Hilo en mano: sigue al cursor y deja una estela
   if (WG.drag) {
     const d = WG.drag, hov = WG.hover;
     d.end.lerp(hov ? hov.position : WG.ptr, Math.min(1, dt * 18));
     wgUpdateLine(d.line, d.node.position, d.end);
     const ok = hov && hov.userData.pair === d.node.userData.pair;
-    if (hov) d.line.material.color.setHex(ok ? WG_PAIRS[d.node.userData.pair].color : 0xff2200).multiplyScalar(1.6);
+    if (hov) d.line.material.color.setHex(ok ? WG_PAIRS[d.node.userData.pair].color : PAL.rose);
     else d.line.material.color.copy(d.node.userData.baseColor);
+    WG.trailT -= dt;
+    if (!calm && WG.trailT <= 0) {
+      WG.trailT = 0.03;
+      MG.fx.emit(d.end.x, d.end.y, 0, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5 + 0.2, 0, 1.0, d.node.userData.baseColor.getHex(), 0.2, 0.55, 1.3);
+    }
   }
 
   for (let i = WG.fading.length - 1; i >= 0; i--) {
     const f = WG.fading[i]; f.life -= dt;
-    f.line.material.opacity = Math.max(0, f.life / 0.4);
-    if (f.life <= 0) { wgDisposeObj(f.line); WG.fading.splice(i, 1); }
+    f.line.material.opacity = Math.max(0, f.life / 0.45) * 0.6;
+    if (f.life <= 0) { mgDispose(f.line); WG.fading.splice(i, 1); }
   }
 
-  if (WG.state === 'reset') {
+  // Brasas: cada tanto un nodo suelta una mota que sube despacio
+  WG.emberT -= dt;
+  if (!calm && WG.emberT <= 0 && WG.nodes.length && !reset) {
+    WG.emberT = 0.22;
+    const n = WG.nodes[Math.floor(Math.random() * WG.nodes.length)];
+    MG.fx.emit(n.position.x + (Math.random() - 0.5), n.position.y + (Math.random() - 0.5), 0, (Math.random() - 0.5) * 0.3, 0.35 + Math.random() * 0.3, 0,
+      2.6, WG_PAIRS[n.userData.pair].color, 0.18, n.userData.connected ? 0.7 : 0.4, 0.2);
+  }
+
+  if (reset) {
     WG.resetT -= dt;
     if (WG.resetT <= 0) wgBuild();
   } else if (WG.state === 'won') {
     WG.winT += dt;
-    WG.sparks.forEach(sp => {
-      const c = sp.userData.cable;
-      wgBez(c.a.position, c.b.position, ((WG.winT * 0.9) + sp.userData.off) % 1, sp.position);
-    });
-    if (WG.winT > 1.6) window.endWiringGame();
+    if (WG.winT > 2.1) { window.endWiringGame(); return; }
   }
 
   MG.setHUD({
@@ -9089,11 +9448,11 @@ window.startWiringGame = function(data) {
   window.wiringData = data;
   MG.enter(15);
   MG.buildUI(en
-    ? 'Drag a cable from each node to its twin (same colour and shape). 3 short circuits rewire the board.'
-    : 'Arrastra un cable desde cada nodo hasta su gemelo (mismo color y forma). 3 cortocircuitos reordenan el tablero.');
+    ? 'Draw a thread from each node to its twin — same colour, same shape. Three tangles unravel the loom.'
+    : 'Lleva un hilo de cada nodo hasta su gemelo — mismo color, misma forma. Tres enredos deshacen el telar.');
   wgBuild();
   morphHUD('enrutar');
-  showSystemToast(en ? '> HARDWARE FRAGMENTED. CONNECT THE TWIN NODES.' : '> HARDWARE FRAGMENTADO. CONECTA LOS NODOS GEMELOS.', '#ff6644');
+  showSystemToast(en ? 'Loose threads seek their twin.' : 'Hilos sueltos buscan a su gemelo.', '#e7e4de');
 };
 
 window.endWiringGame = function() {
@@ -9110,5 +9469,611 @@ window.abortWiringGame = function() {
   window.isWiringGameActive = false; WG.state = 'idle';
   wgClear();
   MG.exit();
-  showSystemToast(en ? '> CONNECTION ABORTED' : '> CONEXIÓN ABORTADA', '#ff6644');
+  showSystemToast(en ? 'The threads let go' : 'Los hilos se sueltan', '#e7e4de');
+};
+
+
+// ==========================================
+// 🔥 JUEGO OTRO: LA HOGUERA DE DATOS (EL VIAJERO · DISEÑO DE SUFICIENCIA Y RENUNCIA)
+//   Evento nómada: se activa al hacer clic en el Viajero cuando flota libre en el vacío.
+//   La cámara baja al suelo, detrás de su hombro. Frente a él, la Calavera de Silicio (monitores CRT con
+//   el tramado ditherShader y glitch rojo) irradia frío; la hoguera se apaga poco a poco.
+//   Para seguir escuchando su caja negra hay que RENUNCIAR: arrastrar tus propios puntos (SCORE, COMBO,
+//   ARCHIVOS) y lanzarlos al fuego. Cuanto más frío, más pesado se vuelve el gesto.
+// ==========================================
+window.isHogueraActive = false;
+window.hgPose = null;
+const _hgEuler = new THREE.Euler();
+const _hgV = new THREE.Vector3();
+const HG_LISTEN_SECS = 45;
+const HG = {
+  phase: 'idle', heat: 0.7, cold: 0, listen: 0, outT: 0, winT: 0, discarded: 0, files: 0,
+  subT: 0, subIdx: 0, flashV: 0, glitchT: 0, calmV: 0, emberT: 0, crackT: 0, filesNote: false,
+  group: null, ground: null, bodyMat: null, screenMat: null, fx: null, fireHalo: null, glowDisc: null,
+  coldHalo: null, eyes: [], pets: [], chips: [], els: {}, tone: null, saved: null, cam: { x: 0.7, y: 1.9, z: 8.5 },
+  fire: new THREE.Vector3(1.8, 0.9, 1.0), fireScreen: { x: 0, y: 0 }
+};
+const HG_FIRE_COLS = [0xffd08a, 0xff8a3d, 0xe0482e];
+
+// ---------- Geometría de la Calavera: monitores fusionados en dos mallas ----------
+function hgBoxData(w, h, d) {
+  const x = w / 2, y = h / 2, z = d / 2;
+  const F = [
+    [[0, 0, 1],  [[-x, -y, z], [x, -y, z], [x, y, z], [-x, y, z]]],
+    [[0, 0, -1], [[x, -y, -z], [-x, -y, -z], [-x, y, -z], [x, y, -z]]],
+    [[1, 0, 0],  [[x, -y, z], [x, -y, -z], [x, y, -z], [x, y, z]]],
+    [[-1, 0, 0], [[-x, -y, -z], [-x, -y, z], [-x, y, z], [-x, y, -z]]],
+    [[0, 1, 0],  [[-x, y, z], [x, y, z], [x, y, -z], [-x, y, -z]]],
+    [[0, -1, 0], [[-x, -y, -z], [x, -y, -z], [x, -y, z], [-x, -y, z]]]
+  ];
+  const p = [], n = [], u = [], i = []; let o = 0;
+  F.forEach(([nn, vs]) => {
+    vs.forEach((v, k) => { p.push(v[0], v[1], v[2]); n.push(nn[0], nn[1], nn[2]); u.push(k === 1 || k === 2 ? 1 : 0, k >= 2 ? 1 : 0); });
+    i.push(o, o + 1, o + 2, o, o + 2, o + 3); o += 4;
+  });
+  return { p, n, u, i };
+}
+function hgPlaneData(w, h, z) {
+  return { p: [-w / 2, -h / 2, z, w / 2, -h / 2, z, w / 2, h / 2, z, -w / 2, h / 2, z],
+           n: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], u: [0, 0, 1, 0, 1, 1, 0, 1], i: [0, 1, 2, 0, 2, 3] };
+}
+function hgPush(acc, data, cx, cy, cz, ry, rz, seed) {
+  const base = acc.p.length / 3, cY = Math.cos(ry), sY = Math.sin(ry), cZ = Math.cos(rz), sZ = Math.sin(rz);
+  const rot = (x, y, z) => { const x1 = x * cZ - y * sZ, y1 = x * sZ + y * cZ; return [x1 * cY + z * sY, y1, -x1 * sY + z * cY]; };
+  for (let k = 0; k < data.p.length; k += 3) {
+    const r = rot(data.p[k], data.p[k + 1], data.p[k + 2]); acc.p.push(r[0] + cx, r[1] + cy, r[2] + cz);
+    const m = rot(data.n[k], data.n[k + 1], data.n[k + 2]); acc.n.push(m[0], m[1], m[2]);
+    acc.s.push(seed);
+  }
+  for (let k = 0; k < data.u.length; k++) acc.u.push(data.u[k]);
+  for (let k = 0; k < data.i.length; k++) acc.i.push(data.i[k] + base);
+}
+function hgToGeo(acc) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(acc.p), 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(acc.n), 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(acc.u), 2));
+  g.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(acc.s), 1));
+  g.setIndex(new THREE.BufferAttribute(new Uint32Array(acc.i), 1));
+  return g;
+}
+
+// ¿Esta celda de la rejilla 19x15 pertenece a la calavera? (cráneo elíptico + mandíbula − ojos − nariz − dientes)
+function hgInSkull(c, r) {
+  const dx = c - 9;
+  let inside = false;
+  if (r <= 8) { const nx = dx / 9.6, ny = (r - 4.4) / 5.0; inside = nx * nx + ny * ny <= 1; }
+  else if (r <= 13) inside = Math.abs(dx) <= 5.6 - (r - 9) * 0.45;
+  if (!inside) return false;
+  const eye = (cx) => { const a = (c - cx) / 2.3, b = (r - 6.0) / 1.9; return a * a + b * b < 1; };
+  if (eye(5.6) || eye(12.4)) return false;
+  if (r >= 8 && r <= 9 && Math.abs(dx) <= (r - 7.4) * 0.75) return false;     // nariz
+  if (r === 13 && c % 2 === 0) return false;                                    // dientes
+  return true;
+}
+
+function hgBuildSkull() {
+  const cell = 2.6, cols = 19, rows = 15;
+  const body = { p: [], n: [], u: [], i: [], s: [] }, scr = { p: [], n: [], u: [], i: [], s: [] };
+  const add = (cx, cy, cz, w, h, d, ry, rz) => {
+    const seed = Math.random();
+    hgPush(body, hgBoxData(w, h, d), cx, cy, cz, ry, rz, seed);
+    hgPush(scr, hgPlaneData(w * 0.8, h * 0.78, d / 2 + 0.02), cx, cy, cz, ry, rz, seed);
+  };
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    if (!hgInSkull(c, r)) continue;
+    add((c - 9) * cell, (rows - 1 - r) * cell + cell * 0.5 + 1, (Math.random() - 0.5) * cell * 0.5,
+        cell * 0.94, cell * 0.8, cell * 0.75, (Math.random() - 0.5) * 0.22, (Math.random() - 0.5) * 0.1);
+  }
+  for (let k = 0; k < 34; k++) {                                                // chatarra caída al pie del monumento
+    const s = cell * (0.35 + Math.random() * 0.3);
+    add((Math.random() - 0.5) * cols * cell * 1.5, s * 0.4, Math.random() * cell * 5 - cell * 0.5,
+        s * 1.1, s * 0.85, s * 0.7, Math.random() * 6.28, (Math.random() - 0.5) * 0.6);
+  }
+  const sky = new THREE.Group();
+  HG.bodyMat = new THREE.ShaderMaterial({
+    uniforms: { color: { value: new THREE.Color(0x5d6368) }, lightDir: { value: new THREE.Vector3(0.45, 0.5, 0.8).normalize() } },
+    vertexShader: ditherShader.vertexShader, fragmentShader: ditherShader.fragmentShader
+  });
+  HG.screenMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uCold: { value: 0 }, uCalm: { value: 0 } },
+    vertexShader: `
+      attribute float aSeed; varying vec2 vUv; varying float vSeed;
+      void main() { vUv = uv; vSeed = aSeed; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `
+      uniform float uTime; uniform float uCold; uniform float uCalm; varying vec2 vUv; varying float vSeed;
+      float h11(float p) { p = fract(p * 0.1031); p *= p + 33.33; p *= p + p; return fract(p); }
+      float h21(vec2 p) { vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+      void main() {
+        vec2 g = floor(vUv * vec2(7.0, 5.0));                                    // píxeles gruesos
+        float tick = floor(uTime * (6.0 + uCold * 8.0) + vSeed * 40.0);
+        float n = h21(g + vec2(tick, vSeed * 13.0));
+        float scan = 0.65 + 0.35 * step(0.5, fract(vUv.y * 5.0 + uTime * 0.6 * (0.5 + uCold)));
+        vec3 col = vec3(0.18, 0.22, 0.24) * (0.35 + 0.65 * n) * scan;
+        float gl = h11(floor(uTime * (1.5 + uCold * 3.0) + vSeed * 91.0));      // la pantalla "enferma" más con el frío
+        float on = step(1.0 - (0.08 + 0.55 * uCold), gl) * (1.0 - uCalm);
+        vec3 red = vec3(0.85, 0.18, 0.12) * (0.5 + 0.8 * h21(g * 1.7 + tick));
+        col = mix(col, red, on * (0.55 + 0.45 * n));
+        col += step(0.985, n) * vec3(0.5) * (0.4 + uCold) * (1.0 - uCalm);
+        col = mix(col, vec3(0.55, 0.70, 0.80) * (0.55 + 0.35 * n), uCalm);        // al escuchar la caja negra: calma azul
+        vec2 q = floor(gl_FragCoord.xy / 2.0);
+        float th = mod(q.x + 2.0 * mod(q.y, 2.0), 4.0) / 4.0;                     // tramado 2x2
+        if (dot(col, vec3(0.33)) < th * 0.22) discard;
+        vec2 e = min(vUv, 1.0 - vUv);
+        if (min(e.x, e.y) < 0.05) discard;                                        // marco del monitor
+        gl_FragColor = vec4(col * (0.8 + 0.8 * uCold), 1.0);
+      }`
+  });
+  const bodyMesh = new THREE.Mesh(hgToGeo(body), HG.bodyMat);
+  const scrMesh = new THREE.Mesh(hgToGeo(scr), HG.screenMat);
+  bodyMesh.frustumCulled = false; scrMesh.frustumCulled = false;
+  sky.add(bodyMesh); sky.add(scrMesh);
+
+  // Halo frío detrás y ojos que laten en rojo
+  HG.coldHalo = mkHalo(0x9fc1e0, 110, 0.1); HG.coldHalo.position.set(0, 17, -4); sky.add(HG.coldHalo);
+  HG.eyes = [-1, 1].map(s => {
+    const e = mkHalo(0xd64a3a, 9, 0); e.position.set(s * 3.4 * cell, (rows - 1 - 6) * cell + cell * 0.5 + 1, 1); sky.add(e); return e;
+  });
+  sky.position.set(-16, 0, -58);
+  return sky;
+}
+
+function hgBuildGround() {
+  const pts = [], seeds = [], S = 1.5, R = 72, N = Math.floor(R / S);
+  for (let i = -N; i <= N; i++) for (let j = -N; j <= N; j++) {
+    if ((i + j) & 1) continue;                                                  // retícula en rombo = "isométrica"
+    pts.push(i * S, 0, j * S - 20); seeds.push(Math.random());
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3));
+  g.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(seeds), 1));
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uHeat: { value: 0.7 }, uCold: { value: 0 }, uScale: GLOW_SCALE, uFire: { value: HG.fire.clone() }, uCam: { value: new THREE.Vector3() } },
+    vertexShader: `
+      attribute float aSeed; uniform float uTime; uniform float uHeat; uniform float uCold; uniform float uScale;
+      uniform vec3 uFire; uniform vec3 uCam; varying float vA; varying vec3 vC;
+      void main() {
+        vec3 p = position;
+        float d0 = distance(p.xz, uCam.xz);
+        p.y += sin(p.x * 0.35 + uTime * 0.8) * cos(p.z * 0.3 + uTime * 0.6) * 0.18 * uCold * smoothstep(8.0, 60.0, d0);
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        float warm = smoothstep(14.0, 0.0, distance(p.xz, uFire.xz)) * uHeat;
+        vC = mix(vec3(0.37, 0.66, 0.42), vec3(1.0, 0.55, 0.22), warm);
+        float fade = smoothstep(95.0, 12.0, d0);
+        float tw = 0.75 + 0.25 * sin(uTime * 1.3 + aSeed * 20.0);
+        vA = (0.24 + warm * 0.6 + 0.12 * uCold) * fade * tw;
+        gl_PointSize = (0.10 + warm * 0.12) * uScale / max(0.1, -mv.z);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      varying float vA; varying vec3 vC;
+      void main() { float d = length(gl_PointCoord - vec2(0.5)); float a = smoothstep(0.5, 0.25, d); gl_FragColor = vec4(vC, a * vA); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  const pts3 = new THREE.Points(g, m); pts3.frustumCulled = false;
+  HG.ground = pts3;
+  return pts3;
+}
+
+function hgBuildFire() {
+  const f = new THREE.Group();
+  const emberMat = new THREE.ShaderMaterial({ uniforms: { color: { value: new THREE.Color(0xff7a30) }, lightDir: { value: new THREE.Vector3(0, 1, 0.3).normalize() } }, vertexShader: ditherShader.vertexShader, fragmentShader: ditherShader.fragmentShader });
+  const logMat = new THREE.ShaderMaterial({ uniforms: { color: { value: new THREE.Color(0x6b3a22) }, lightDir: { value: new THREE.Vector3(0, 1, 0.3).normalize() } }, vertexShader: ditherShader.vertexShader, fragmentShader: ditherShader.fragmentShader });
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.7, 5), emberMat); cone.position.y = 0.35; f.add(cone);
+  [0, 1.05, 2.1].forEach(a => { const l = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.14, 0.14), logMat); l.position.y = 0.09; l.rotation.y = a; f.add(l); });
+  HG.fireHalo = mkHalo(0xff8a3d, 7, 0.4); HG.fireHalo.position.y = 0.9; f.add(HG.fireHalo);
+  HG.glowDisc = new THREE.Mesh(new THREE.CircleGeometry(1, 32), new THREE.MeshBasicMaterial({ map: glowTex(), color: 0xff7a30, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }));
+  HG.glowDisc.rotation.x = -Math.PI / 2; HG.glowDisc.position.y = 0.04; f.add(HG.glowDisc);
+  f.position.set(HG.fire.x, 0, HG.fire.z);
+  return f;
+}
+
+function hgAddPets() {
+  const mk = (tpl, x, z, ry, lay) => {
+    if (!tpl) return;
+    const o = tpl.clone(); o.userData = {};
+    o.position.set(x, 0.35, z); o.rotation.set(0, ry, lay); o.visible = true;
+    o.userData.baseY = 0.35; o.userData.ph = Math.random() * 6;
+    scene.add(o); HG.pets.push(o);                                              // comparten geometría con la plantilla: NO se liberan
+  };
+  mk(chaplinModelTemplate, 3.5, 1.8, -0.6, 1.25);
+  mk(gamberModelTemplate, 0.5, 2.5, 0.9, -1.25);
+}
+
+// ---------- Sonido: el frío es un zumbido grave; el fuego, una brasa que cruje ----------
+function hgToneStart() {
+  if (!MGS.ok()) return;
+  try {
+    const ctx = audioCtx, t = ctx.currentTime;
+    const out = ctx.createGain(); out.gain.setValueAtTime(0, t); out.gain.linearRampToValueAtTime(1, t + 2.5); out.connect(masterGain);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220; lp.connect(out);
+    const mk = (f, dest) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.value = 0; o.connect(g); g.connect(dest); o.start(); return { o, g }; };
+    const c1 = mk(55, lp), c2 = mk(55 * 1.006, lp), c3 = mk(82.41, lp);          // frío: tres graves que baten
+    const w1 = mk(261.63, out), w2 = mk(392, out);                               // calor: Do y Sol muy suaves
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+    HG.tone = { ctx, out, lp, c1, c2, c3, w1, w2, noise: buf };
+  } catch (e) { HG.tone = null; }
+}
+function hgToneUpdate(heat, cold) {
+  const T = HG.tone; if (!T) return;
+  try {
+    const t = T.ctx.currentTime;
+    T.c1.g.gain.setTargetAtTime(0.02 + cold * 0.04, t, 0.3);
+    T.c2.g.gain.setTargetAtTime(0.02 + cold * 0.04, t, 0.3);
+    T.c3.g.gain.setTargetAtTime(cold * 0.03, t, 0.3);
+    T.lp.frequency.setTargetAtTime(160 + cold * 260, t, 0.3);
+    T.w1.g.gain.setTargetAtTime(heat * 0.014, t, 0.3);
+    T.w2.g.gain.setTargetAtTime(heat * heat * 0.010, t, 0.3);
+    if (!isSoundEnabled) T.out.gain.setTargetAtTime(0, t, 0.1);
+  } catch (e) {}
+}
+function hgToneStop() {
+  const T = HG.tone; if (!T) return;
+  HG.tone = null;
+  try {
+    const t = T.ctx.currentTime;
+    T.out.gain.cancelScheduledValues(t); T.out.gain.setTargetAtTime(0, t, 0.35);
+    [T.c1, T.c2, T.c3, T.w1, T.w2].forEach(v => v.o.stop(t + 2.2));
+  } catch (e) {}
+}
+function hgNoise(kind, vol, freq, dur) {                                         // crujido / soplo de brasa
+  const T = HG.tone; if (!T || !MGS.ok()) return;
+  try {
+    const ctx = T.ctx, t = ctx.currentTime, src = ctx.createBufferSource();
+    src.buffer = T.noise;
+    const f = ctx.createBiquadFilter(); f.type = kind; f.frequency.value = freq; f.Q.value = 1.1;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(masterGain);
+    src.start(t, Math.random() * 1.4); src.stop(t + dur + 0.05);
+  } catch (e) {}
+}
+
+// ---------- Ofrendas: tus propios puntos, arrastrables y lanzables ----------
+const HG_CHIP_W = 116, HG_CHIP_H = 52;
+function hgChipValue(kind) {
+  if (kind === 'score') return String(score);
+  if (kind === 'combo') return 'x' + combatCombo;
+  return HG.files + ' / 13';
+}
+function hgMakeChip(kind, label, root) {
+  const el = document.createElement('div');
+  el.style.cssText = `position:absolute; left:0; top:0; width:${HG_CHIP_W}px; height:${HG_CHIP_H}px; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; ` +
+    'border:1px solid rgba(231,228,222,0.28); background:rgba(10,10,12,0.5); backdrop-filter:blur(8px); pointer-events:auto; touch-action:none; cursor:grab; user-select:none; will-change:transform; transition:opacity .6s;';
+  const l = document.createElement('div'); l.textContent = label;
+  l.style.cssText = 'font-size:0.55rem; font-weight:300; letter-spacing:0.32em; color:#8a867f;';
+  const v = document.createElement('div');
+  v.style.cssText = 'font-size:1.05rem; font-weight:300; letter-spacing:0.12em; color:#e7e4de;';
+  el.appendChild(l); el.appendChild(v); root.appendChild(el);
+  const c = { kind, el, valEl: v, w: HG_CHIP_W, h: HG_CHIP_H, state: 'idle', pos: { x: -999, y: -999 }, slot: { x: 0, y: 0 }, target: { x: 0, y: 0 }, vel: { x: 0, y: 0 }, rot: 0, hist: [], burnT: 0, cool: 0 };
+  v.textContent = hgChipValue(kind);
+  ['mousedown', 'touchstart'].forEach(ev => el.addEventListener(ev, (e) => e.stopPropagation()));   // el juego de fondo no debe "agarrar" nada
+  el.addEventListener('pointerdown', (e) => { e.stopPropagation(); hgChipDown(c, e.clientX, e.clientY); try { el.setPointerCapture(e.pointerId); } catch (x) {} });
+  el.addEventListener('pointermove', (e) => hgChipMove(c, e.clientX, e.clientY));
+  el.addEventListener('pointerup', () => hgChipUp(c));
+  el.addEventListener('pointercancel', () => hgChipUp(c));
+  return c;
+}
+function hgChipDown(c, x, y) {
+  if (HG.phase === 'won' || (c.state !== 'idle' && c.state !== 'return')) return;
+  c.state = 'drag'; c.target.x = x; c.target.y = y; c.hist = [{ x, y, t: performance.now() }];
+  c.el.style.cursor = 'grabbing'; c.el.style.zIndex = 5;
+  MGS.bell(880, 0, 0.5, 0.012);
+}
+function hgChipMove(c, x, y) {
+  if (c.state !== 'drag') return;
+  c.target.x = x; c.target.y = y;
+  const now = performance.now();
+  c.hist.push({ x, y, t: now });
+  while (c.hist.length > 2 && now - c.hist[0].t > 110) c.hist.shift();
+}
+function hgChipUp(c) {
+  if (c.state !== 'drag') return;
+  c.el.style.cursor = 'grab'; c.el.style.zIndex = '';
+  const R = 84 * Math.min(1.3, Math.max(0.7, window.innerHeight / 800));
+  const fx = HG.fireScreen.x, fy = HG.fireScreen.y;
+  if (Math.hypot(c.pos.x - fx, c.pos.y - fy) < R * 1.1 || Math.hypot(c.target.x - fx, c.target.y - fy) < R * 0.8) { hgBurn(c); return; }   // lo soltaste sobre el fuego
+  const a = c.hist[0], b = c.hist[c.hist.length - 1], dt = Math.max(0.016, (b.t - a.t) / 1000);
+  let vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt;
+  const sp = Math.hypot(vx, vy);
+  if (sp > 1800) { vx *= 1800 / sp; vy *= 1800 / sp; }
+  if (sp < 150) { c.state = 'return'; return; }
+  c.vel.x = vx; c.vel.y = vy; c.state = 'fly';
+  MGS.bell(1318.5, 0, 0.4, 0.014);
+}
+
+function hgBurn(c) {
+  const en = MG.isEN();
+  c.state = 'burn'; c.burnT = 0;
+  let fuel = 0.16;
+  if (c.kind === 'score') {                                                      // el SCORE arde de verdad
+    const v = score; fuel += 0.14 * Math.min(1, v / 300); HG.discarded += v;
+    score = 0; const el = document.getElementById('score-value'); if (el) el.innerText = 0;
+  } else if (c.kind === 'combo') {                                               // el COMBO también
+    const v = combatCombo; fuel += 0.10 * Math.min(1, v / 10); HG.discarded += v;
+    combatCombo = 0; clearTimeout(comboTimer);
+  } else {                                                                       // los ARCHIVOS no se queman: se recuerdan
+    fuel += 0.04 * Math.min(1, HG.files / 13);
+    if (!HG.filesNote) { HG.filesNote = true; showSystemToast(en ? 'Files do not burn. They are remembered.' : 'Los archivos no se queman. Se recuerdan.', '#e7e4de'); }
+  }
+  HG.heat = Math.min(1, HG.heat + fuel);
+  if (HG.phase === 'out') hgRelight();
+  // chispas, onda y soplo
+  const f = HG.fire;
+  HG.fx.burst(f.x, f.y - 0.3, f.z, 40, 3.2, 1.6, 0xffb066, 0.26, 0.9);
+  HG.fx.burst(f.x, f.y - 0.3, f.z, 18, 2.2, 1.4, 0xe0482e, 0.3, 0.9);
+  MG.pulse(f.x, f.y, 0xff8a3d, 1.0, 6, 1.2, 0.5);
+  hgNoise('lowpass', 0.07, 900, 0.5);
+  MGS.bell(MGS.NOTES[0] / 2, 0, 2.6, 0.05);
+  MGS.bell(MGS.NOTES[3] / 2, 0.1, 2.2, 0.03);
+  vibrateDevice(25);
+}
+
+function hgFireOut() {
+  const en = MG.isEN();
+  HG.phase = 'out'; HG.outT = 3.5;
+  MGS.knock();
+  HG.fx.burst(HG.fire.x, HG.fire.y, HG.fire.z, 30, 1.2, 2.4, 0x8a867f, 0.4, 0.5);
+  showSystemToast(en ? 'The fire goes out. The cold listens.' : 'El fuego se apaga. El frío escucha.', '#e7e4de');
+}
+function hgRelight() {
+  const en = MG.isEN();
+  HG.phase = 'play'; HG.heat = Math.max(HG.heat, 0.35); HG.listen = Math.max(0, HG.listen - 0.2);
+  MGS.arpeggio([0, 2], 0.18, 2.2, 0.04);
+  showSystemToast(en ? 'A spark returns.' : 'Una chispa vuelve.', '#e7e4de');
+}
+
+function hgSub(text) {
+  const el = HG.els.sub; if (!el) return;
+  el.textContent = text; el.style.opacity = '1'; HG.subT = 6;
+}
+const HG_SUBS = {
+  es: ['…el progreso es una máquina que nunca dice basta…',
+       '…cada punto que acumulas es calor que le quitas al fuego…',
+       '…renunciar no es perder: es decidir qué merece arder…',
+       '…suficiente: un fuego pequeño, un viajero, dos animales dormidos.'],
+  en: ['…progress is a machine that never says enough…',
+       '…every point you hoard is warmth taken from the fire…',
+       '…to renounce is not to lose: it is to decide what deserves to burn…',
+       '…enough: a small fire, a traveler, two sleeping animals.']
+};
+
+function hgBuildUI() {
+  const en = MG.isEN();
+  const ui = MG.buildUI(en
+    ? 'The machine\'s cold puts your fire out. Drag your own points — SCORE, COMBO, FILES — and throw them into the flames. Renounce, to listen.'
+    : 'El frío de la máquina apaga tu fuego. Arrastra tus propios puntos —SCORE, COMBO, ARCHIVOS— y lánzalos a la hoguera. Renuncia para escuchar.');
+  const cold = document.createElement('div');
+  cold.style.cssText = 'position:absolute; inset:0; pointer-events:none; opacity:0; background:radial-gradient(ellipse at 30% 30%, rgba(120,170,220,0.22), rgba(120,170,220,0) 60%), radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(214,74,58,0.2) 100%);';
+  const flash = document.createElement('div');
+  flash.style.cssText = 'position:absolute; inset:0; pointer-events:none; opacity:0; background:rgba(214,74,58,0.16);';
+  ui.root.insertBefore(flash, ui.root.firstChild); ui.root.insertBefore(cold, ui.root.firstChild);
+
+  const title = document.createElement('div');
+  title.textContent = en ? 'LISTENING TO THE BLACK BOX' : 'ESCUCHANDO LA CAJA NEGRA';
+  title.style.cssText = 'font-size:0.66rem; font-weight:300; letter-spacing:0.34em; color:#a8a49c;';
+  const bar = document.createElement('div'); bar.style.cssText = 'margin:12px auto 0; width:min(60vw,240px); height:1px; background:rgba(231,228,222,0.15); position:relative;';
+  const fill = document.createElement('div'); fill.style.cssText = 'position:absolute; left:0; top:0; height:1px; width:0%; background:#e7e4de; box-shadow:0 0 8px rgba(231,228,222,0.6);';
+  bar.appendChild(fill); ui.extra.appendChild(title); ui.extra.appendChild(bar);
+
+  const sub = document.createElement('div');
+  sub.style.cssText = 'position:absolute; left:50%; bottom:calc(150px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); width:min(90vw,640px); text-align:center; font-size:0.95rem; font-weight:300; letter-spacing:0.12em; line-height:1.8; color:#cfd8e3; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 14px rgba(0,0,0,0.9), 1px 0 rgba(214,74,58,0.35);';
+  ui.root.appendChild(sub);
+
+  HG.chips = [hgMakeChip('score', 'SCORE', ui.root), hgMakeChip('combo', 'COMBO', ui.root), hgMakeChip('files', en ? 'FILES' : 'ARCHIVOS', ui.root)];
+  HG.els = { cold, flash, fill, sub };
+}
+
+window.startHogueraGame = function() {
+  if (window.isHogueraActive || window.isTuningGameActive || window.isWiringGameActive) return;
+  const en = MG.isEN();
+  window.isHogueraActive = true;
+  MG.enter(9);
+  const tg = window.travelerGroup;
+  HG.saved = { pos: tg.position.clone(), quat: tg.quaternion.clone(), scale: tg.scale.clone() };
+  const feet = (typeof TRAVELER_FEET !== 'undefined') ? TRAVELER_FEET : 0.6;
+  window.hgPose = { pos: new THREE.Vector3(-0.9, feet, 3.6), yaw: Math.PI - 0.25 };   // de espaldas a la cámara, mirando al Coloso
+  tg.visible = true; tg.position.copy(window.hgPose.pos);
+
+  HG.phase = 'play'; HG.heat = 0.7; HG.cold = 0; HG.listen = 0; HG.outT = 0; HG.winT = 0; HG.discarded = 0;
+  HG.subT = 0; HG.subIdx = 0; HG.flashV = 0; HG.glitchT = 0; HG.calmV = 0; HG.emberT = 0; HG.crackT = 0; HG.filesNote = false;
+  HG.files = parseInt((MG.saved && MG.saved.hud && MG.saved.hud['files-value']) || '0', 10) || 0;
+
+  if (MG.dust) MG.dust.pts.position.set(0, 5, -2);                                // el polvo flota sobre el suelo
+  HG.group = new THREE.Group();
+  HG.group.add(hgBuildGround()); HG.group.add(hgBuildSkull()); HG.group.add(hgBuildFire());
+  scene.add(HG.group);
+  HG.fx = makeFX(1100); scene.add(HG.fx.pts);
+  hgAddPets();
+  hgBuildUI();
+  hgToneStart();
+
+  morphHUD('renunciar');
+  showSystemToast(en ? 'A fire, a traveler, and a monument that gives off cold.' : 'Un fuego, un viajero y un monumento que irradia frío.', '#e7e4de');
+};
+
+function hgWin() {
+  HG.phase = 'won'; HG.winT = 0;
+  hgSub(HG_SUBS[MG.isEN() ? 'en' : 'es'][3]);
+  hgToneStop();
+  playSound('levelup');
+  MGS.arpeggio([0, 2, 3, 5, 4], 0.25, 3, 0.045);
+  HG.fx.burst(HG.fire.x, HG.fire.y, HG.fire.z, 80, 3, 3.2, 0xffd08a, 0.3, 0.9);
+}
+
+function hgUpdateChips(dt) {
+  const W = window.innerWidth, H = window.innerHeight;
+  _hgV.copy(HG.fire).project(camera);
+  HG.fireScreen.x = (_hgV.x + 1) / 2 * W; HG.fireScreen.y = (1 - _hgV.y) / 2 * H;
+  const fx = HG.fireScreen.x, fy = HG.fireScreen.y;
+  const R = 84 * Math.min(1.3, Math.max(0.7, H / 800));
+  const lag = 8 - HG.cold * 4.5;                                                  // más frío = gesto más pesado
+  const slotY = Math.max(150, H * 0.19);
+
+  HG.chips.forEach((c, i) => {
+    c.slot.x = W / 2 + (i - 1) * (c.w + 12); c.slot.y = slotY;
+    if (c.pos.x < -900) { c.pos.x = c.slot.x; c.pos.y = c.slot.y; }
+    let scale = 1, op = 1;
+    if (c.state === 'idle' || c.state === 'return') {
+      const k = 1 - Math.exp(-dt * 7);
+      c.pos.x += (c.slot.x - c.pos.x) * k; c.pos.y += (c.slot.y - c.pos.y) * k; c.rot *= 1 - k;
+      if (c.state === 'return' && Math.hypot(c.slot.x - c.pos.x, c.slot.y - c.pos.y) < 3) c.state = 'idle';
+    } else if (c.state === 'drag') {
+      const k = 1 - Math.exp(-dt * lag);
+      const px = c.pos.x;
+      c.pos.x += (c.target.x - c.pos.x) * k; c.pos.y += (c.target.y - c.pos.y) * k;
+      c.rot += (Math.max(-0.35, Math.min(0.35, (c.target.x - px) * 0.01)) - c.rot) * 0.2;
+      scale = 1.08;
+    } else if (c.state === 'fly') {
+      const dx = fx - c.pos.x, dy = fy - c.pos.y, dist = Math.hypot(dx, dy), sp = Math.hypot(c.vel.x, c.vel.y);
+      if (sp > 1) {
+        const cosA = (c.vel.x * dx + c.vel.y * dy) / (sp * dist + 1e-6);
+        if (cosA > 0.55) { const k2 = Math.min(1, dt * 3.5); c.vel.x += (dx / dist * sp - c.vel.x) * k2; c.vel.y += (dy / dist * sp - c.vel.y) * k2; }   // ayuda a apuntar
+      }
+      c.vel.y += 380 * dt;
+      const f = Math.max(0, 1 - 0.5 * dt); c.vel.x *= f; c.vel.y *= f;
+      c.pos.x += c.vel.x * dt; c.pos.y += c.vel.y * dt; c.rot += dt * 3;
+      if (dist < R) hgBurn(c);
+      else if (sp < 120 || c.pos.x < -200 || c.pos.x > W + 200 || c.pos.y < -200 || c.pos.y > H + 200) c.state = 'return';
+    }
+    if (c.state === 'burn') {
+      c.burnT += dt / 0.5;
+      const k = 1 - Math.exp(-dt * 10);
+      c.pos.x += (fx - c.pos.x) * k; c.pos.y += (fy - c.pos.y) * k;
+      scale = Math.max(0, 1 - c.burnT); op = scale; c.rot += dt * 6;
+      if (c.burnT >= 1) { c.state = 'cool'; c.cool = 6; c.el.style.pointerEvents = 'none'; }
+    } else if (c.state === 'cool') {
+      op = 0; c.cool -= dt;
+      if (c.cool <= 0) { c.valEl.textContent = hgChipValue(c.kind); c.pos.x = c.slot.x; c.pos.y = c.slot.y; c.state = 'idle'; c.el.style.pointerEvents = 'auto'; }
+    }
+    c.el.style.opacity = String(op);
+    c.el.style.transform = `translate(${c.pos.x - c.w / 2}px, ${c.pos.y - c.h / 2}px) rotate(${c.rot}rad) scale(${scale})`;
+  });
+}
+
+function hgUpdate(dt) {
+  const en = MG.isEN(), calm = reduceMotionMQ.matches, t = MG.time, E = HG.els;
+
+  // ----- Fuego, frío y escucha -----
+  if (HG.phase === 'play') {
+    HG.heat = Math.max(0, HG.heat - (0.025 + 0.03 * HG.listen) * dt);
+    HG.cold = Math.pow(1 - HG.heat, 1.2);
+    if (HG.heat > 0.12) HG.listen = Math.min(1, HG.listen + dt / HG_LISTEN_SECS);
+    const th = [0.2, 0.45, 0.7];
+    if (HG.subIdx < 3 && HG.listen >= th[HG.subIdx]) {
+      hgSub(HG_SUBS[en ? 'en' : 'es'][HG.subIdx]); MGS.bell(130.81, 0, 3, 0.05); HG.subIdx++;
+    }
+    if (HG.heat <= 0) hgFireOut();
+    else if (HG.listen >= 1) hgWin();
+  } else if (HG.phase === 'out') {
+    HG.outT -= dt; HG.cold = Math.min(1, HG.cold + dt * 0.5);
+    if (HG.outT <= 0) hgRelight();
+  } else if (HG.phase === 'won') {
+    HG.winT += dt; HG.cold = Math.max(0, HG.cold - dt * 0.6);
+    HG.heat = Math.min(1, HG.heat + dt * 0.25);
+    if (HG.winT > 3.6) { window.endHogueraGame(); return; }
+  }
+  HG.calmV += ((HG.phase === 'won' ? 1 : 0) - HG.calmV) * Math.min(1, dt * 1.5);
+
+  // ----- Cámara a ras de suelo, detrás del hombro -----
+  const sw = calm ? 0 : 1;
+  userGroup.position.set(HG.cam.x + Math.sin(t * 0.2) * 0.12 * sw, HG.cam.y + Math.sin(t * 0.3) * 0.04 * sw, HG.cam.z);
+  userGroup.rotation.set(-0.1, 0, 0);
+  if (!calm && HG.cold > 0.7 && Math.random() < dt * 0.5) shakeIntensity = Math.max(shakeIntensity, 0.08);
+
+  // ----- El Viajero -----
+  if (window.hgPose) window.hgPose.pos.y = (typeof TRAVELER_FEET !== 'undefined' ? TRAVELER_FEET : 0.6);
+
+  // ----- Llama, brasas y halo -----
+  const heat = HG.heat, f = HG.fire;
+  const nF = Math.round((heat > 0.01 ? 1 + heat * 5 : 0) * (calm ? 0.5 : 1) * Math.min(2, dt * 60));
+  for (let i = 0; i < nF; i++) {
+    const r = Math.random(), hex = r < 0.3 ? HG_FIRE_COLS[0] : (r < 0.7 ? HG_FIRE_COLS[1] : HG_FIRE_COLS[2]);
+    HG.fx.emit(f.x + (Math.random() - 0.5) * 0.5 * (0.5 + heat), f.y - 0.6 + Math.random() * 0.2, f.z + (Math.random() - 0.5) * 0.4,
+      (Math.random() - 0.5) * 0.35, 0.8 + Math.random() * 1.2 * (0.5 + heat), (Math.random() - 0.5) * 0.2,
+      0.8 + Math.random() * 0.8, hex, (0.22 + Math.random() * 0.3) * (0.6 + heat * 0.6), 0.8, 0.5);
+  }
+  if (heat <= 0.01 && Math.random() < dt * 3) HG.fx.emit(f.x, f.y - 0.6, f.z, 0, 0.3, 0, 1.2, PAL.rose, 0.16, 0.4, 0.4);   // una brasa moribunda
+  const flick = 1 + Math.sin(t * 17) * 0.06 + Math.sin(t * 9.3) * 0.05;
+  HG.fireHalo.material.opacity = (0.06 + heat * 0.5) * flick;
+  HG.fireHalo.scale.set((3 + heat * 5) * flick, (3 + heat * 5) * flick, 1);
+  HG.glowDisc.material.opacity = heat * 0.35 * flick;
+  HG.glowDisc.scale.set(4 + heat * 9, 4 + heat * 9, 1);
+
+  // ----- Frío que viaja desde la calavera -----
+  HG.emberT -= dt;
+  if (HG.emberT <= 0 && HG.cold > 0.02) {
+    HG.emberT = Math.max(0.05, 0.4 - HG.cold * 0.3);
+    HG.fx.emit(-16 + (Math.random() - 0.5) * 40, 0.2 + Math.random() * 0.8, -48, (Math.random() - 0.5) * 0.4, 0, 4 + Math.random() * 2, 8, 0x9fc1e0, 0.35, 0.35, 0.05);
+  }
+
+  // ----- Suelo y Coloso -----
+  const gu = HG.ground.material.uniforms;
+  gu.uTime.value = t; gu.uHeat.value = heat; gu.uCold.value = HG.cold; gu.uCam.value.copy(userGroup.position);
+  HG.screenMat.uniforms.uTime.value = t; HG.screenMat.uniforms.uCold.value = HG.cold; HG.screenMat.uniforms.uCalm.value = HG.calmV;
+  HG.bodyMat.uniforms.color.value.setHex(0x5d6368).multiplyScalar(0.6 + 0.9 * HG.cold);        // el Coloso se aviva cuando el fuego muere
+  HG.coldHalo.material.opacity = 0.05 + HG.cold * 0.22;
+  HG.eyes.forEach(e => { e.material.opacity = HG.cold * (0.35 + 0.25 * Math.sin(t * 3)) * (1 - HG.calmV); });
+
+  // ----- Mascotas dormidas respirando -----
+  HG.pets.forEach(p => { const b = 1 + Math.sin(t * 1.4 + p.userData.ph) * 0.02; p.scale.y = (p.userData.sy || (p.userData.sy = p.scale.y)) * b; });
+
+  // ----- Glitch rojo en pantalla: más frecuente con el frío -----
+  HG.flashV = Math.max(0, HG.flashV - dt * 3);
+  if (!calm && HG.phase !== 'won' && Math.random() < dt * (0.15 + HG.cold * 2.2)) {
+    HG.flashV = 0.4 + HG.cold * 0.6;
+    if (HG.cold > 0.5 && typeof triggerSubtleGlitch === 'function') triggerSubtleGlitch();
+  }
+
+  // ----- Crujidos del fuego -----
+  if (Math.random() < heat * dt * 9) hgNoise('bandpass', (0.02 + Math.random() * 0.03) * (0.4 + heat), 900 + Math.random() * 2600, 0.05 + Math.random() * 0.05);
+  hgToneUpdate(heat, HG.cold);
+
+  // ----- Ofrendas, interfaz y HUD ('renunciar': CARGA, ENTROPÍA, DESCARTADO, AGILIDAD) -----
+  HG.fx.update(dt);
+  hgUpdateChips(dt);
+  if (E.fill) {
+    E.fill.style.width = (HG.listen * 100).toFixed(1) + '%';
+    E.cold.style.opacity = String(Math.min(1, HG.cold * 1.1) * (1 - HG.calmV));
+    E.flash.style.opacity = String(HG.flashV * 0.5);
+    if (HG.subT > 0) { HG.subT -= dt; if (HG.subT <= 0 && HG.phase !== 'won') E.sub.style.opacity = '0'; }
+  }
+  MG.setHUD({
+    'lives-value': Math.round(heat * 100) + '%',
+    'level-value': Math.round(HG.cold * 100) + '%',
+    'files-value': HG.discarded + ' pts',
+    'combo-value': Math.round((8 - HG.cold * 4.5) / 8 * 100) + '%'
+  });
+}
+
+function hgTeardown() {
+  window.isHogueraActive = false; window.hgPose = null; HG.phase = 'idle';
+  hgToneStop();
+  HG.pets.forEach(p => scene.remove(p)); HG.pets = [];
+  if (HG.group) { mgDispose(HG.group); HG.group = null; }
+  if (HG.fx) { scene.remove(HG.fx.pts); HG.fx.dispose(); HG.fx = null; }
+  const tg = window.travelerGroup;
+  if (tg && HG.saved) { tg.position.copy(HG.saved.pos); tg.quaternion.copy(HG.saved.quat); tg.scale.copy(HG.saved.scale); }
+  HG.saved = null; HG.chips = []; HG.els = {}; HG.eyes = []; HG.ground = null; HG.bodyMat = null; HG.screenMat = null;
+}
+
+window.endHogueraGame = function() {
+  if (!window.isHogueraActive) return;
+  const en = MG.isEN();
+  hgTeardown();
+  MG.exit();
+  setTimeout(() => {
+    showPoeticReflection(en
+      ? 'Design of Sufficiency and Renunciation.\nWhat you burned does not return. What you listened to, does.'
+      : 'Diseño de Suficiencia y Renuncia.\nLo que quemaste no vuelve. Lo que escuchaste, sí.', '#aaccff');
+  }, 600);
+};
+
+window.abortHogueraGame = function() {
+  if (!window.isHogueraActive) return;
+  const en = MG.isEN();
+  hgTeardown();
+  MG.exit();
+  showSystemToast(en ? 'You leave the fire behind' : 'Dejas la hoguera atrás', '#e7e4de');
 };
