@@ -8697,15 +8697,17 @@ const MG = window.MG = {
     }
   },
 
-  pulse(x, y, hex, s0, s1, life, op) {       // onda circular; si s0 > s1 la onda converge hacia adentro
+  pulse(x, y, hex, s0, s1, life, op, groundZ) {       // onda circular; si s0 > s1 converge. Con groundZ, yace sobre el suelo (vista isométrica)
     const r = this.rings.find(q => q.age >= 1) || this.rings[0];
     r.age = 0; r.life = life; r.s0 = s0; r.s1 = s1; r.op = op;
-    r.mesh.position.set(x, y, 0); r.mesh.material.color.setHex(hex); r.mesh.visible = true;
+    if (groundZ !== undefined) { r.mesh.rotation.set(-Math.PI / 2, 0, 0); r.mesh.position.set(x, y, groundZ); }
+    else { r.mesh.rotation.set(0, 0, 0); r.mesh.position.set(x, y, 0); }
+    r.mesh.material.color.setHex(hex); r.mesh.visible = true;
   },
 
   fxUpdate(dt) {
     this.time += dt;
-    GLOW_SCALE.value = renderer.domElement.height * 0.5;
+    GLOW_SCALE.value = renderer.domElement.height * 0.5 * Math.tan(THREE.MathUtils.degToRad(37.5)) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));   // el tamaño en mundo no depende del FOV
     if (this.fx) this.fx.update(dt);
     if (this.dust) this.dust.update(this.time, reduceMotionMQ.matches);
     this.rings.forEach(r => {
@@ -9629,13 +9631,15 @@ window.hgPose = null;
 const _hgEuler = new THREE.Euler();
 const _hgV = new THREE.Vector3();
 const HG_LISTEN_SECS = 45;
-const HG_FS = 1.7;                                   // escala de llamas y halos (la cámara está lejos)
+const HG_FS = 0.9;                                   // escala de llamas (la escena es una maqueta pequeña)
+const HG_ISO = { yaw: 0.785, pitch: 0.56, dist: 88, fov: 30, target: new THREE.Vector3(-14, 5, 1) };   // cámara isométrica (casi ortográfica)
+const HG_COLOSSUS = { x: -36.8, z: 5.6, scale: 0.44, yaw: 1.4 };       // bestia de ~7 veces la altura del Viajero, con la cabeza hacia el fuego
 const HG = {
   phase: 'idle', heat: 0.7, cold: 0, coldS: 0, listen: 0, listenS: 0, outT: 0, winT: 0, discarded: 0, files: 0,
   subT: 0, subIdx: 0, flashV: 0, calmV: 0, emberT: 0, filesNote: false,
   group: null, ground: null, bodyMat: null, screenMat: null, fx: null, fireHalo: null, glowDisc: null,
   colos: null, sigil: null, stars: null, fog: null, snow: null, moon: null, eyes: [], pets: [], chips: [], els: {}, tone: null, saved: null,
-  fire: new THREE.Vector3(1.0, 0.9, 0.0), fireScreen: { x: 0, y: 0 }
+  fire: new THREE.Vector3(0.8, 0.9, 0.0), fireScreen: { x: 0, y: 0 }
 };
 const HG_FIRE_COLS = [0xffd08a, 0xff8a3d, 0xe0482e];
 
@@ -9661,9 +9665,13 @@ function hgPlaneData(w, h, z) {
   return { p: [-w / 2, -h / 2, z, w / 2, -h / 2, z, w / 2, h / 2, z, -w / 2, h / 2, z],
            n: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], u: [0, 0, 1, 0, 1, 1, 0, 1], i: [0, 1, 2, 0, 2, 3] };
 }
-function hgPush(acc, data, cx, cy, cz, ry, rz, seed) {
-  const base = acc.p.length / 3, cY = Math.cos(ry), sY = Math.sin(ry), cZ = Math.cos(rz), sZ = Math.sin(rz);
-  const rot = (x, y, z) => { const x1 = x * cZ - y * sZ, y1 = x * sZ + y * cZ; return [x1 * cY + z * sY, y1, -x1 * sY + z * cY]; };
+function hgPush(acc, data, cx, cy, cz, ry, rz, seed, rx) {
+  const base = acc.p.length / 3, cY = Math.cos(ry), sY = Math.sin(ry), cZ = Math.cos(rz), sZ = Math.sin(rz), cX = Math.cos(rx || 0), sX = Math.sin(rx || 0);
+  const rot = (x, y, z) => {                                                   // primero inclinación (X), luego Z, luego giro (Y)
+    const y0 = y * cX - z * sX, z0 = y * sX + z * cX;
+    const x1 = x * cZ - y0 * sZ, y1 = x * sZ + y0 * cZ;
+    return [x1 * cY + z0 * sY, y1, -x1 * sY + z0 * cY];
+  };
   for (let k = 0; k < data.p.length; k += 3) {
     const r = rot(data.p[k], data.p[k + 1], data.p[k + 2]); acc.p.push(r[0] + cx, r[1] + cy, r[2] + cz);
     const m = rot(data.n[k], data.n[k + 1], data.n[k + 2]); acc.n.push(m[0], m[1], m[2]);
@@ -9682,25 +9690,58 @@ function hgToGeo(acc) {
   return g;
 }
 
-// ---------- El Coloso: un gigante humanoide articulado, hecho de monitores CRT ----------
+// ---------- El Coloso: una bestia cuadrúpeda de piedra hecha de monitores CRT ----------
+//   Inspirada en los colosos de piedra: caparazón tallado con runas, cuatro columnas por patas, cabeza angular con
+//   collar de espinas, ojos hundidos que brillan como el fuego y una pluma de ceniza con un sello luminoso en la corona.
+//   Cada monitor mira hacia afuera de la superficie (arriba en el lomo, a los lados en los flancos).
 const HG_CS = 2.2;                                                       // tamaño de celda (un monitor)
-function hgCell(out, x, y, z, w, h, d, ry, rz) { out.push({ x, y, z, w, h, d, ry: ry || 0, rz: rz || 0 }); }
-function hgFill(out, cx, cy, cz, w, h, d, layers, miss) {                // rellena un volumen con monitores (solo capas frontales)
-  const cs = HG_CS, nx = Math.max(1, Math.round(w / cs)), ny = Math.max(1, Math.round(h / cs));
-  const cw = w / nx, ch = h / ny;
-  for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) for (let iz = 0; iz < layers; iz++) {
-    if (Math.random() < (miss === undefined ? 0.05 : miss)) continue;    // algún monitor ya no está
-    hgCell(out, cx - w / 2 + (ix + 0.5) * cw + (Math.random() - 0.5) * 0.15, cy - h / 2 + (iy + 0.5) * ch,
-      cz + d / 2 - cs * 0.5 - iz * cs * 0.8 + (Math.random() - 0.5) * 0.4,
-      cw * 0.94, ch * 0.9, cs * 0.8, (Math.random() - 0.5) * 0.12, (Math.random() - 0.5) * 0.06);
+function hgCell(out, x, y, z, w, h, d, ry, rz, rx, rune) { out.push({ x, y, z, w, h, d, ry: ry || 0, rz: rz || 0, rx: rx || 0, rune: !!rune }); }
+function hgSurf(out, x, y, z, n, w, h, d, rune) {                         // celda cuya pantalla mira hacia la normal n
+  const l = Math.hypot(n[0], n[1], n[2]) || 1, nx = n[0] / l, ny = n[1] / l, nz = n[2] / l;
+  hgCell(out, x, y, z, w, h, d, Math.atan2(nx, nz) + (Math.random() - 0.5) * 0.1, (Math.random() - 0.5) * 0.05,
+         -Math.asin(Math.max(-1, Math.min(1, ny))) + (Math.random() - 0.5) * 0.06, rune);
+}
+function hgShell(out, cx, cy, cz, w, h, d, faces, miss) {                // recubre las caras de una caja con monitores
+  const cs = HG_CS, dep = cs * 0.75, ms = miss === undefined ? 0.03 : miss;
+  const N = (a) => Math.max(1, Math.round(a / cs));
+  const nxw = N(w), nyh = N(h), nzd = N(d);
+  faces.forEach(f => {
+    if (f === '+z' || f === '-z') {
+      const s = f === '+z' ? 1 : -1;
+      for (let i = 0; i < nxw; i++) for (let j = 0; j < nyh; j++) { if (Math.random() < ms) continue;
+        hgSurf(out, cx - w / 2 + (i + 0.5) * w / nxw, cy - h / 2 + (j + 0.5) * h / nyh, cz + s * (d / 2 - dep / 2), [0, 0, s], w / nxw * 0.94, h / nyh * 0.9, dep); }
+    } else if (f === '+x' || f === '-x') {
+      const s = f === '+x' ? 1 : -1;
+      for (let i = 0; i < nzd; i++) for (let j = 0; j < nyh; j++) { if (Math.random() < ms) continue;
+        hgSurf(out, cx + s * (w / 2 - dep / 2), cy - h / 2 + (j + 0.5) * h / nyh, cz - d / 2 + (i + 0.5) * d / nzd, [s, 0, 0], d / nzd * 0.94, h / nyh * 0.9, dep); }
+    } else if (f === '+y') {
+      for (let i = 0; i < nxw; i++) for (let j = 0; j < nzd; j++) { if (Math.random() < ms) continue;
+        hgSurf(out, cx - w / 2 + (i + 0.5) * w / nxw, cy + h / 2 - dep / 2, cz - d / 2 + (j + 0.5) * d / nzd, [0, 1, 0], w / nxw * 0.94, d / nzd * 0.9, dep); }
+    }
+  });
+}
+function hgDome(out, cx, cy, cz, Rx, Ry, Rz, phiMax, runeRings) {       // caparazón: media elipsoide cubierta de monitores
+  const cs = HG_CS, avg = (Rx + Rz) / 2, nR = Math.max(3, Math.round(phiMax * avg / cs)), arc = phiMax * avg / nR;
+  for (let i = 0; i < nR; i++) {
+    const phi = (i + 0.5) / nR * phiMax, sp = Math.sin(phi), cp = Math.cos(phi);
+    const circ = 2 * Math.PI * sp * Math.sqrt((Rx * Rx + Rz * Rz) / 2), n = Math.max(1, Math.round(circ / cs));
+    for (let j = 0; j < n; j++) {
+      if (Math.random() < 0.03) continue;
+      const th = (j + (i % 2) * 0.5) / n * Math.PI * 2, x = Rx * sp * Math.cos(th), y = Ry * cp, z = Rz * sp * Math.sin(th);
+      const rune = runeRings.indexOf(i) >= 0 && (j % 5) < 3;           // franjas de runas que se encienden al escuchar
+      hgSurf(out, cx + x, cy + y, cz + z, [x / (Rx * Rx), y / (Ry * Ry), z / (Rz * Rz)], Math.max(1.2, circ / n * 0.95), arc * 0.95, cs * 0.7, rune);
+    }
   }
+}
+function hgSpike(out, x, y, z, dir, n, w, h, nrm) {                      // pila de monitores que se afina, como una espina de hueso
+  for (let k = 0; k < n; k++) { const s = 1 - k * 0.14; hgSurf(out, x + dir[0] * k * h * 0.9, y + dir[1] * k * h * 0.9, z + dir[2] * k * h * 0.9, nrm, w * s, h * s, w * s, false); }
 }
 function hgPart(cells, pivot, parentPivot) {                             // fusiona celdas en 2 mallas y devuelve un Group con su pivote
   const body = { p: [], n: [], u: [], i: [], s: [] }, scr = { p: [], n: [], u: [], i: [], s: [] };
   cells.forEach(c => {
-    const seed = Math.random(), x = c.x - pivot[0], y = c.y - pivot[1], z = c.z - pivot[2];
-    hgPush(body, hgBoxData(c.w, c.h, c.d), x, y, z, c.ry, c.rz, seed);
-    hgPush(scr, hgPlaneData(c.w * 0.8, c.h * 0.78, c.d / 2 + 0.02), x, y, z, c.ry, c.rz, seed);
+    const seed = c.rune ? 0.02 : 0.06 + Math.random() * 0.94, x = c.x - pivot[0], y = c.y - pivot[1], z = c.z - pivot[2];
+    hgPush(body, hgBoxData(c.w, c.h, c.d), x, y, z, c.ry, c.rz, seed, c.rx);
+    hgPush(scr, hgPlaneData(c.w * 0.8, c.h * 0.78, c.d / 2 + 0.02), x, y, z, c.ry, c.rz, seed, c.rx);
   });
   const g = new THREE.Group();
   const bm = new THREE.Mesh(hgToGeo(body), HG.bodyMat), sm = new THREE.Mesh(hgToGeo(scr), HG.screenMat);
@@ -9713,19 +9754,26 @@ function hgPart(cells, pivot, parentPivot) {                             // fusi
 function hgBuildColossus() {
   const cs = HG_CS;
   HG.bodyMat = new THREE.ShaderMaterial({
-    uniforms: { color: { value: new THREE.Color(0x5d6368) }, lightDir: { value: new THREE.Vector3(0.45, 0.5, 0.8).normalize() } },
+    uniforms: { color: { value: new THREE.Color(0x5c635c) }, lightDir: { value: new THREE.Vector3(0.45, 0.5, 0.8).normalize() } },
     vertexShader: ditherShader.vertexShader, fragmentShader: ditherShader.fragmentShader
   });
   HG.screenMat = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uCold: { value: 0 }, uCalm: { value: 0 } },
+    uniforms: { uTime: { value: 0 }, uCold: { value: 0 }, uCalm: { value: 0 }, uRune: { value: 0.25 } },
     vertexShader: `
       attribute float aSeed; varying vec2 vUv; varying float vSeed;
       void main() { vUv = uv; vSeed = aSeed; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `
-      uniform float uTime; uniform float uCold; uniform float uCalm; varying vec2 vUv; varying float vSeed;
+      uniform float uTime; uniform float uCold; uniform float uCalm; uniform float uRune; varying vec2 vUv; varying float vSeed;
       float h11(float p) { p = fract(p * 0.1031); p *= p + 33.33; p *= p + p; return fract(p); }
       float h21(vec2 p) { vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
       void main() {
+        vec2 e = min(vUv, 1.0 - vUv);
+        if (vSeed < 0.05) {                                                       // RUNAS: luz fija y suave que crece al escuchar
+          if (min(e.x, e.y) < 0.12) discard;
+          float p = 0.5 + 0.5 * sin(uTime * 1.3 + vUv.x * 6.0 + vUv.y * 3.0);
+          gl_FragColor = vec4(vec3(0.55, 0.78, 0.92) * (0.25 + uRune * (0.6 + 0.5 * p)), 1.0);
+          return;
+        }
         vec2 g = floor(vUv * vec2(7.0, 5.0));
         float tick = floor(uTime * (6.0 + uCold * 8.0) + vSeed * 40.0);
         float n = h21(g + vec2(tick, vSeed * 13.0));
@@ -9740,108 +9788,115 @@ function hgBuildColossus() {
         vec2 q = floor(gl_FragCoord.xy / 2.0);
         float th = mod(q.x + 2.0 * mod(q.y, 2.0), 4.0) / 4.0;
         if (dot(col, vec3(0.33)) < th * 0.22) discard;
-        vec2 e = min(vUv, 1.0 - vUv);
         if (min(e.x, e.y) < 0.05) discard;
         gl_FragColor = vec4(col * (0.8 + 0.8 * uCold), 1.0);
       }`
   });
 
-  const root = new THREE.Group();
-  const O = [0, 0, 0];
+  const root = new THREE.Group(), O = [0, 0, 0], FACES = ['+z', '-z', '+x', '-x'], RUNES = [3, 5, 7];
 
-  // BASE (inmóvil): piernas, pies, pelvis y chatarra caída a sus pies
+  // BASE (inmóvil): patas traseras, pies y chatarra caída alrededor
   const base = [];
-  [-5.5, 5.5].forEach(x => { hgFill(base, x, 13, 0, 6.6, 26, 6.6, 2, 0.04); hgFill(base, x, 1.3, 2.4, 7.8, 2.6, 11, 3, 0.0); });
-  hgFill(base, 0, 28, 0, 15, 4.4, 7, 2, 0.02);
-  for (let k = 0; k < 46; k++) {
+  [-12.5, 12.5].forEach(x => {
+    hgShell(base, x, 12, -22, 7.5, 24, 7.5, FACES, 0.03);
+    hgShell(base, x, 25, -22, 10, 3, 10, FACES.concat('+y'), 0.0);
+    hgShell(base, x, 1.2, -21, 11, 2.4, 13, FACES.concat('+y'), 0.0);
+  });
+  for (let k = 0; k < 34; k++) {
     const s = cs * (0.5 + Math.random() * 0.6);
-    hgCell(base, (Math.random() - 0.5) * 110, s * 0.4, Math.random() * 36 - 6, s * 1.1, s * 0.85, s * 0.7, Math.random() * 6.28, (Math.random() - 0.5) * 0.6);
+    hgCell(base, (Math.random() - 0.5) * 84, s * 0.4, Math.random() * 78 - 38, s * 1.1, s * 0.85, s * 0.7, Math.random() * 6.28, (Math.random() - 0.5) * 0.6, 0, false);
   }
   root.add(hgPart(base, O, O));
 
-  // TORSO (se inclina hacia el fuego): más estrecho en la cintura, hombros anchos
-  const tc = [], rows = 12, rowH = 26.4 / rows;
-  for (let i = 0; i < rows; i++) {
-    const wRow = 11 + (24 - 11) * Math.pow(i / (rows - 1), 0.8), nx = Math.max(2, Math.round(wRow / cs)), cw = wRow / nx;
-    for (let ix = 0; ix < nx; ix++) for (let iz = 0; iz < 2; iz++) {
-      if (Math.random() < 0.04) continue;
-      hgCell(tc, (ix - (nx - 1) / 2) * cw, 30 + (i + 0.5) * rowH, 4.5 - cs * 0.5 - iz * cs * 0.8 + (Math.random() - 0.5) * 0.4,
-        cw * 0.94, rowH * 0.9, cs * 0.8, (Math.random() - 0.5) * 0.12, (Math.random() - 0.5) * 0.06);
-    }
+  // CUERPO: caparazón con runas, falda de placas y espinas dorsales (respira)
+  const BODY_P = [0, 22, 0], bc = [];
+  hgDome(bc, 0, 22, -6, 18, 13, 24, 1.4, RUNES);
+  const rimX = 18 * Math.sin(1.4), rimZ = 24 * Math.sin(1.4), per = 2 * Math.PI * Math.sqrt((rimX * rimX + rimZ * rimZ) / 2), nSk = Math.round(per / cs);
+  for (let r = 0; r < 3; r++) for (let j = 0; j < nSk; j++) {
+    if (Math.random() < 0.05) continue;
+    const th = j / nSk * Math.PI * 2, x = rimX * Math.cos(th), z = -6 + rimZ * Math.sin(th);
+    hgSurf(bc, x, 24 - r * 2.0, z, [Math.cos(th) / rimX, 0, Math.sin(th) / rimZ], per / nSk * 0.95, 1.9, cs * 0.7, false);
   }
-  const torso = hgPart(tc, [0, 30, 0], O); root.add(torso);
+  for (let z = -24; z <= 8; z += 4) {
+    const yt = 22 + 13 * Math.sqrt(Math.max(0, 1 - Math.pow((z + 6) / 24, 2)));
+    hgSpike(bc, 0, yt + 1, z, [0, 1, 0.12], 3, 1.7, 2.6, [0, 0.25, 1]);
+  }
+  const body = hgPart(bc, BODY_P, O); root.add(body);
 
-  // CABEZA con dos "cuernos" de monitores, a la manera de los colosos de piedra
-  const hc = [];
-  hgFill(hc, 0, 61, 0.5, 8.8, 9, 8.8, 2, 0.0);
-  [-1, 1].forEach(s => { for (let k = 0; k < 4; k++) hgCell(hc, s * (3.4 + k * 0.7), 66.8 + k * 2.1, 0, cs * 0.8, cs * 0.9, cs * 0.8, 0, -s * (0.18 + k * 0.1)); });
-  const head = hgPart(hc, [0, 56.5, 0], [0, 30, 0]); torso.add(head);
-  HG.eyes = [-1, 1].map(s => { const e = mkHalo(0xd64a3a, 7, 0); e.position.set(s * 1.9, 5.3, 5.0); head.add(e); return e; });
-
-  // SELLO del pecho (guiño a los colosos: un punto débil que late)
-  HG.sigil = mkHalo(0xbfe6ff, 10, 0.1); HG.sigil.position.set(0, 46 - 30, 5.5); torso.add(HG.sigil);
-
-  // BRAZOS: hombro → codo → mano
-  const arms = {};
+  // PATAS DELANTERAS (articuladas en la cadera: se adelantan hacia el fuego con el frío)
+  const legs = {};
   [-1, 1].forEach(s => {
-    const uc = [];
-    hgFill(uc, s * 14.6, 46, 0, 5.3, 12, 5.3, 2, 0.03);
-    hgFill(uc, s * 14.0, 55.5, 0, 8.4, 4.4, 8.4, 2, 0.0);                    // hombrera
-    const upper = hgPart(uc, [s * 14.5, 53, 0], [0, 30, 0]); torso.add(upper);
-    const fc = [];
-    hgFill(fc, s * 15, 33, 1, 5.3, 14, 5.3, 2, 0.03);
-    hgFill(fc, s * 15, 23.5, 1.8, 7.2, 5, 6.4, 2, 0.0);                       // mano
-    for (let k = 0; k < 3; k++) hgCell(fc, s * 15 + (k - 1) * 2.2, 19.6, 3, 1.8, 3.2, 1.8, 0, 0);
-    const fore = hgPart(fc, [s * 15, 40, 0], [s * 14.5, 53, 0]); upper.add(fore);
-    arms[s] = { upper, fore };
+    const lc = [];
+    hgShell(lc, s * 12.5, 12, 9, 7.5, 24, 7.5, FACES, 0.03);
+    hgShell(lc, s * 12.5, 25, 9, 10, 3, 10, FACES.concat('+y'), 0.0);
+    hgShell(lc, s * 12.5, 1.2, 10, 11, 2.4, 13, FACES.concat('+y'), 0.0);
+    legs[s] = hgPart(lc, [s * 12.5, 24, 9], O); root.add(legs[s]);
   });
 
-  root.scale.setScalar(0.9);
-  root.position.set(-20, 0, -112);
-  root.rotation.y = 0.17;                                                      // mira hacia la hoguera
-  HG.colos = { root, torso, head, uR: arms[1].upper, fR: arms[1].fore, uL: arms[-1].upper, fL: arms[-1].fore };
+  // CABEZA: máscara angular, ceja, collar de espinas en abanico, mandíbula dentada y ojos hundidos
+  let hc = [];
+  hgShell(hc, 0, 22, 17, 9, 9, 8, ['+x', '-x', '+y'], 0.03);                    // cuello
+  hgShell(hc, 0, 21, 29, 13, 11, 11, ['+z', '+x', '-x', '+y'], 0.0);             // rostro
+  for (let i = -3; i <= 3; i++) hgSurf(hc, i * 2.1, 27.1, 35.2, [0, 0.35, 1], 2.2, 1.5, 2.6, false);   // ceja que sobresale
+  hgShell(hc, 0, 24.5, 22.5, 22, 2.2, 8, ['+y', '+z'], 0.22);                    // collar (borde irregular)
+  [-1, 1].forEach(s => hgShell(hc, s * 11.5, 23, 23, 4, 7, 6, ['+z', s > 0 ? '+x' : '-x', '+y'], 0.15));
+  for (let k = 0; k < 9; k++) {                                                  // corona de espinas
+    const a = (k - 4) * 0.32, n = 4 - Math.round(Math.abs(k - 4) * 0.5);
+    hgSpike(hc, Math.sin(a) * 5.0, 27.6 + Math.cos(a) * 0.5, 24.5, [Math.sin(a) * 0.7, Math.cos(a), 0.1], Math.max(2, n), 1.8, 2.4, [Math.sin(a) * 0.5, 0.3, 1]);
+  }
+  for (let i = -3; i <= 3; i++) hgSpike(hc, i * 1.9, 16.2, 35.0, [0, -1, 0.05], 2, 1.3, 2.0, [0, -0.1, 1]);   // dientes
+  hc = hc.filter(c => !(c.z > 33 && Math.abs(c.y - 22.4) < 1.7 && Math.abs(Math.abs(c.x) - 3.0) < 1.7));  // cuencas de los ojos
+  const head = hgPart(hc, [0, 22, 19], BODY_P); body.add(head);
+  HG.eyes = [-1, 1].map(s => { const e = mkHalo(0xffa24d, 4.5, 0); e.position.set(s * 3.0, 0.4, 16.0); head.add(e); return e; });
+  HG.sigil = mkHalo(0xbfe6ff, 6, 0.1); HG.sigil.position.set(0, 5.4, 10); head.add(HG.sigil);   // sello luminoso en la corona
+
+  root.scale.setScalar(HG_COLOSSUS.scale);
+  root.position.set(HG_COLOSSUS.x, 0, HG_COLOSSUS.z);
+  root.rotation.y = HG_COLOSSUS.yaw;
+  HG.colos = { root, body, head, legFR: legs[1], legFL: legs[-1] };
   return root;
 }
 
-// El Coloso responde despacio al frío: se inclina, baja la cabeza y extiende una mano hacia el fuego
+// La bestia responde despacio al frío: baja la cabeza hacia el fuego y adelanta una pata
 function hgAnimateColossus(t, c, calm) {
   const C = HG.colos; if (!C) return;
   const sw = calm ? 0.2 : 1;
-  C.torso.rotation.x = 0.03 + c * 0.10 + Math.sin(t * 0.35) * 0.006 * sw;
-  C.head.rotation.x = 0.16 + c * 0.2 + HG.calmV * 0.12 + Math.sin(t * 0.45) * 0.012 * sw;
-  C.head.rotation.y = 0.10 + Math.sin(t * 0.13) * 0.05 * sw;
-  C.uR.rotation.x = -(0.12 + c * 0.75) + Math.sin(t * 0.5) * 0.015 * sw; C.uR.rotation.z = 0.10;
-  C.fR.rotation.x = -(0.25 + c * 0.6) + Math.sin(t * 0.6 + 1) * 0.02 * sw;
-  C.uL.rotation.x = -(0.08 + c * 0.2) + Math.sin(t * 0.4 + 2) * 0.012 * sw; C.uL.rotation.z = -0.10;
-  C.fL.rotation.x = -(0.18 + c * 0.2);
+  C.body.scale.y = 1 + Math.sin(t * 0.5) * 0.008 * sw;
+  C.body.rotation.z = Math.sin(t * 0.21) * 0.012 * sw;
+  C.body.rotation.x = c * 0.03;
+  C.head.rotation.x = 0.06 + c * 0.24 + HG.calmV * 0.10 + Math.sin(t * 0.45) * 0.012 * sw;
+  C.head.rotation.y = Math.sin(t * 0.13) * 0.06 * sw;
+  C.legFR.rotation.x = -(0.03 + c * 0.5) + Math.sin(t * 0.6) * 0.01 * sw;
+  C.legFL.rotation.x = -(0.02 + c * 0.12);
 }
 
-// ---------- Suelo: retícula isométrica punteada que se ondula con el frío y se calienta junto al fuego ----------
+// ---------- Suelo: retícula isométrica punteada, una pequeña isla que se desvanece en el negro ----------
 function hgBuildGround() {
-  const pts = [], seeds = [], S = 2.0, R = 150, N = Math.floor(R / S);
+  const pts = [], seeds = [], S = 1.6, R = 46, N = Math.ceil(R / S), cx = HG_ISO.target.x, cz = HG_ISO.target.z;
   for (let i = -N; i <= N; i++) for (let j = -N; j <= N; j++) {
-    if ((i + j) & 1) continue;
-    pts.push(i * S, 0, j * S - 20); seeds.push(Math.random());
+    const x = cx + i * S, z = cz + j * S;
+    if (Math.hypot(x - cx, z - cz) > R) continue;
+    pts.push(x, 0, z); seeds.push(Math.random());
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3));
   g.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(seeds), 1));
   const m = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uHeat: { value: 0.7 }, uCold: { value: 0 }, uScale: GLOW_SCALE, uFire: { value: HG.fire.clone() }, uCam: { value: new THREE.Vector3() } },
+    uniforms: { uTime: { value: 0 }, uHeat: { value: 0.7 }, uCold: { value: 0 }, uScale: GLOW_SCALE, uFire: { value: HG.fire.clone() }, uCenter: { value: HG_ISO.target.clone() }, uR: { value: R } },
     vertexShader: `
-      attribute float aSeed; uniform float uTime; uniform float uHeat; uniform float uCold; uniform float uScale;
-      uniform vec3 uFire; uniform vec3 uCam; varying float vA; varying vec3 vC;
+      attribute float aSeed; uniform float uTime; uniform float uHeat; uniform float uCold; uniform float uScale; uniform float uR;
+      uniform vec3 uFire; uniform vec3 uCenter; varying float vA; varying vec3 vC;
       void main() {
         vec3 p = position;
-        float d0 = distance(p.xz, uCam.xz);
-        p.y += sin(p.x * 0.18 + uTime * 0.7) * cos(p.z * 0.15 + uTime * 0.5) * 0.5 * uCold * smoothstep(20.0, 140.0, d0);
+        float dF = distance(p.xz, uFire.xz);
+        p.y += sin(p.x * 0.45 + uTime * 0.7) * cos(p.z * 0.4 + uTime * 0.5) * 0.35 * uCold * smoothstep(8.0, 30.0, dF);
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
-        float warm = smoothstep(18.0, 0.0, distance(p.xz, uFire.xz)) * uHeat;
+        float warm = smoothstep(9.0, 0.0, dF) * uHeat;
         vC = mix(vec3(0.37, 0.66, 0.42), vec3(1.0, 0.55, 0.22), warm);
-        float fade = smoothstep(230.0, 25.0, d0);
+        float fade = smoothstep(uR, uR * 0.45, distance(p.xz, uCenter.xz));
         float tw = 0.75 + 0.25 * sin(uTime * 1.3 + aSeed * 20.0);
-        vA = (0.30 + warm * 0.6 + 0.12 * uCold) * fade * tw;
-        gl_PointSize = max(1.6 * uScale / 400.0, (0.16 + warm * 0.18) * uScale / max(0.1, -mv.z));
+        vA = (0.42 + warm * 0.55 + 0.1 * uCold) * fade * tw;
+        gl_PointSize = (0.16 + warm * 0.14) * uScale / max(0.1, -mv.z);
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: `
@@ -9854,66 +9909,47 @@ function hgBuildGround() {
   return p;
 }
 
-// ---------- Atmósfera: estrellas, luna, horizonte, bruma baja y nieve de datos ----------
+// ---------- Atmósfera: bruma baja y nieve de datos que caen dentro de la maqueta ----------
 function hgBuildSky() {
   const sky = new THREE.Group();
-  // estrellas en la bóveda frente a la cámara
-  const N = 300, st = mkGlowPoints(N), at = st.geometry.attributes;
-  const base = new Float32Array(N), ph = new Float32Array(N);
-  for (let i = 0; i < N; i++) {
-    const az = (Math.random() * 2 - 1) * 1.1, el = 0.05 + Math.random() * 1.0;
-    at.position.array[i * 3] = Math.sin(az) * Math.cos(el) * 420; at.position.array[i * 3 + 1] = Math.sin(el) * 420; at.position.array[i * 3 + 2] = -Math.cos(az) * Math.cos(el) * 420;
-    _fxc.setHex(Math.random() > 0.5 ? PAL.bone : PAL.mist);
-    at.aCol.array[i * 3] = _fxc.r; at.aCol.array[i * 3 + 1] = _fxc.g; at.aCol.array[i * 3 + 2] = _fxc.b;
-    at.aSize.array[i] = 1.2 + Math.random() * 2.0; base[i] = 0.25 + Math.random() * 0.6; ph[i] = Math.random() * 6.28;
-  }
-  HG.stars = { pts: st, base, ph };
-  sky.add(st);
-  // luna difusa tras el Coloso y bruma de horizonte
-  HG.moon = mkHalo(0xbfd2e8, 90, 0.14); HG.moon.position.set(-40, 78, -240); sky.add(HG.moon);
-  const hz = mkHalo(0x7f9bb8, 1, 0.07); hz.scale.set(900, 42, 1); hz.position.set(0, 8, -200); sky.add(hz);
-  // bruma baja: cuerpos grandes y muy tenues, a la deriva
-  const FN = 240, fg = mkGlowPoints(FN), fa = fg.geometry.attributes, fv = new Float32Array(FN), fbase = new Float32Array(FN), fph = new Float32Array(FN);
+  const FN = 140, fg = mkGlowPoints(FN), fa = fg.geometry.attributes, fv = new Float32Array(FN), fbase = new Float32Array(FN), fph = new Float32Array(FN);
   for (let i = 0; i < FN; i++) {
-    const near = i > 170;                                                       // algunas alrededor del campamento
-    fa.position.array[i * 3] = near ? (Math.random() - 0.5) * 50 : -80 + Math.random() * 140;
-    fa.position.array[i * 3 + 1] = 0.6 + Math.random() * (near ? 2 : 5);
-    fa.position.array[i * 3 + 2] = near ? -14 + Math.random() * 24 : -135 + Math.random() * 100;
+    const camp = i > 90;                                                        // unas pocas sobre el campamento, el resto al pie del Coloso
+    fa.position.array[i * 3] = camp ? -6 + Math.random() * 14 : -52 + Math.random() * 30;
+    fa.position.array[i * 3 + 1] = 0.3 + Math.random() * (camp ? 1.2 : 2.5);
+    fa.position.array[i * 3 + 2] = camp ? -5 + Math.random() * 13 : -8 + Math.random() * 28;
     _fxc.setHex(Math.random() > 0.4 ? 0x9fb4c8 : PAL.ash);
     fa.aCol.array[i * 3] = _fxc.r; fa.aCol.array[i * 3 + 1] = _fxc.g; fa.aCol.array[i * 3 + 2] = _fxc.b;
-    fa.aSize.array[i] = near ? 4 + Math.random() * 5 : 9 + Math.random() * 10;
-    fv[i] = 0.4 + Math.random() * 0.8; fbase[i] = 0.04 + Math.random() * 0.05; fph[i] = Math.random() * 6.28;
+    fa.aSize.array[i] = camp ? 2.0 + Math.random() * 2 : 3.0 + Math.random() * 3;
+    fv[i] = 0.25 + Math.random() * 0.5; fbase[i] = 0.05 + Math.random() * 0.05; fph[i] = Math.random() * 6.28;
   }
   HG.fog = { pts: fg, v: fv, base: fbase, ph: fph };
   sky.add(fg);
-  // nieve de datos: cae despacio, de arriba abajo
-  const SN = 220, sn = mkGlowPoints(SN), sa = sn.geometry.attributes, sv = new Float32Array(SN), sph = new Float32Array(SN);
+  const SN = 200, sn = mkGlowPoints(SN), sa = sn.geometry.attributes, sv = new Float32Array(SN), sph = new Float32Array(SN);
   for (let i = 0; i < SN; i++) {
-    sa.position.array[i * 3] = (Math.random() - 0.5) * 140; sa.position.array[i * 3 + 1] = Math.random() * 50; sa.position.array[i * 3 + 2] = -100 + Math.random() * 125;
+    sa.position.array[i * 3] = -50 + Math.random() * 70; sa.position.array[i * 3 + 1] = Math.random() * 30; sa.position.array[i * 3 + 2] = -28 + Math.random() * 56;
     _fxc.setHex(Math.random() > 0.5 ? PAL.bone : PAL.mist);
     sa.aCol.array[i * 3] = _fxc.r; sa.aCol.array[i * 3 + 1] = _fxc.g; sa.aCol.array[i * 3 + 2] = _fxc.b;
-    sa.aSize.array[i] = 0.5 + Math.random() * 0.6; sa.aAlpha.array[i] = 0.25 + Math.random() * 0.3;
-    sv[i] = 0.5 + Math.random() * 0.8; sph[i] = Math.random() * 6.28;
+    sa.aSize.array[i] = 0.14 + Math.random() * 0.16; sa.aAlpha.array[i] = 0.3 + Math.random() * 0.35;
+    sv[i] = 0.35 + Math.random() * 0.6; sph[i] = Math.random() * 6.28;
   }
   HG.snow = { pts: sn, v: sv, ph: sph };
   sky.add(sn);
   return sky;
 }
 function hgUpdateAtmos(dt, t, calm) {
-  const S = HG.stars, sa = S.pts.geometry.attributes.aAlpha.array;
-  for (let i = 0; i < sa.length; i++) sa[i] = S.base[i] * (0.6 + 0.4 * Math.sin(t * (0.5 + S.base[i]) + S.ph[i]));
-  S.pts.geometry.attributes.aAlpha.needsUpdate = true;
   const F = HG.fog, fp = F.pts.geometry.attributes.position.array, fal = F.pts.geometry.attributes.aAlpha.array, k = 0.7 + 0.9 * HG.coldS;
   for (let i = 0; i < F.v.length; i++) {
-    if (!calm) fp[i * 3] += F.v[i] * dt; if (fp[i * 3] > 65) fp[i * 3] = -80;
+    if (!calm) fp[i * 3] += F.v[i] * dt;
+    if (fp[i * 3] > 24) fp[i * 3] = -54;
     fal[i] = F.base[i] * k * (0.7 + 0.3 * Math.sin(t * 0.3 + F.ph[i]));
   }
   F.pts.geometry.attributes.position.needsUpdate = true; F.pts.geometry.attributes.aAlpha.needsUpdate = true;
   const N = HG.snow, np = N.pts.geometry.attributes.position.array;
   for (let i = 0; i < N.v.length; i++) {
     np[i * 3 + 1] -= N.v[i] * dt * (calm ? 0.3 : 1);
-    np[i * 3] += Math.sin(t * 0.5 + N.ph[i]) * 0.3 * dt;
-    if (np[i * 3 + 1] < 0) np[i * 3 + 1] = 50;
+    np[i * 3] += Math.sin(t * 0.5 + N.ph[i]) * 0.2 * dt;
+    if (np[i * 3 + 1] < 0) np[i * 3 + 1] = 30;
   }
   N.pts.geometry.attributes.position.needsUpdate = true;
 }
@@ -9923,7 +9959,7 @@ function hgBuildFire() {
   const mkM = (hex) => new THREE.ShaderMaterial({ uniforms: { color: { value: new THREE.Color(hex) }, lightDir: { value: new THREE.Vector3(0, 1, 0.3).normalize() } }, vertexShader: ditherShader.vertexShader, fragmentShader: ditherShader.fragmentShader });
   const cone = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.7, 5), mkM(0xff7a30)); cone.position.y = 0.35; f.add(cone);
   [0, 1.05, 2.1].forEach(a => { const l = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.14, 0.14), mkM(0x6b3a22)); l.position.y = 0.09; l.rotation.y = a; f.add(l); });
-  HG.fireHalo = mkHalo(0xff8a3d, 7, 0.4); HG.fireHalo.position.y = 0.9; f.add(HG.fireHalo);
+  HG.fireHalo = mkHalo(0xff8a3d, 3, 0.4); HG.fireHalo.position.y = 0.9; f.add(HG.fireHalo);
   HG.glowDisc = new THREE.Mesh(new THREE.CircleGeometry(1, 32), new THREE.MeshBasicMaterial({ map: glowTex(), color: 0xff7a30, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }));
   HG.glowDisc.rotation.x = -Math.PI / 2; HG.glowDisc.position.y = 0.04; f.add(HG.glowDisc);
   f.position.set(HG.fire.x, 0, HG.fire.z);
@@ -9931,15 +9967,27 @@ function hgBuildFire() {
 }
 
 function hgAddPets() {
-  const mk = (tpl, x, z, ry, lay) => {
+  // Las plantillas de los gatos son enormes respecto al Viajero: se miden y se reescalan a un tamaño pequeño (< Viajero ≈ 2.2)
+  const meshBox = (o) => {
+    const box = new THREE.Box3(); o.updateMatrixWorld(true);
+    o.traverse(c => { if (c.isMesh && c.geometry) { if (!c.geometry.boundingBox) c.geometry.computeBoundingBox(); box.union(c.geometry.boundingBox.clone().applyMatrix4(c.matrixWorld)); } });
+    return box;
+  };
+  const mk = (tpl, x, z, ry, lay, target) => {
     if (!tpl) return;
     const o = tpl.clone(); o.userData = {};
-    o.position.set(x, 0.35, z); o.rotation.set(0, ry, lay); o.visible = true;
+    o.traverse(c => { if (c.isSprite) c.visible = false; });                      // sin rótulos: a esta escala serían ruido
+    o.position.set(0, 0, 0); o.rotation.set(0, ry, lay); o.visible = true;
+    let box = meshBox(o); const size = box.getSize(new THREE.Vector3());
+    const s = target / Math.max(size.x, size.y, size.z, 1e-6);
+    o.scale.multiplyScalar(s);
+    box = meshBox(o);
+    o.position.set(x, -box.min.y + 0.02, z);                                       // apoyado en el suelo
     o.userData.ph = Math.random() * 6;
-    scene.add(o); HG.pets.push(o);                                              // comparten geometría con la plantilla: NO se liberan
+    scene.add(o); HG.pets.push(o);                                                 // comparten geometría con la plantilla: NO se liberan
   };
-  mk(chaplinModelTemplate, 3.2, 0.9, -0.6, 1.25);
-  mk(gamberModelTemplate, 0.4, 2.1, 0.9, -1.25);
+  mk(chaplinModelTemplate, 2.3, 1.0, -0.6, 1.25, 0.95);
+  mk(gamberModelTemplate, 0.2, 1.9, 0.9, -1.25, 0.8);
 }
 
 // ---------- Sonido: el frío es un zumbido grave; el fuego, una brasa que cruje ----------
@@ -10064,7 +10112,7 @@ function hgBurn(c) {
   const f = HG.fire;
   HG.fx.burst(f.x, f.y - 0.3, f.z, 40, 3.2, 1.6, 0xffb066, 0.26 * HG_FS, 0.9);
   HG.fx.burst(f.x, f.y - 0.3, f.z, 18, 2.2, 1.4, 0xe0482e, 0.3 * HG_FS, 0.9);
-  MG.pulse(f.x, f.y, 0xff8a3d, 1.0, 7, 1.2, 0.5);
+  MG.pulse(f.x, 0.05, 0xff8a3d, 0.5, 4.5, 1.2, 0.5, f.z);   // onda sobre el suelo
   hgNoise('lowpass', 0.07, 900, 0.5);
   MGS.bell(MGS.NOTES[0] / 2, 0, 2.6, 0.05);
   MGS.bell(MGS.NOTES[3] / 2, 0.1, 2.2, 0.03);
@@ -10135,23 +10183,24 @@ function hgStart() {
   if (window.isHogueraActive || window.isTuningGameActive || window.isWiringGameActive) return;
   const en = MG.isEN();
   window.isHogueraActive = true;
-  MG.enter(26);
-  camera.fov = 58; targetFov = 58; camera.updateProjectionMatrix();                // lente algo más cerrada: plano lejano, contemplativo
+  MG.enter(24);
+  camera.fov = HG_ISO.fov; targetFov = HG_ISO.fov; camera.updateProjectionMatrix();   // lente muy cerrada: casi ortográfica, como un diorama isométrico
+  userGroup.rotation.order = 'YXZ';                                                  // giro (yaw) y luego inclinación (pitch)
   const tg = window.travelerGroup;
   HG.saved = { pos: tg.position.clone(), quat: tg.quaternion.clone(), scale: tg.scale.clone() };
   const feet = (typeof TRAVELER_FEET !== 'undefined') ? TRAVELER_FEET : 0.6;
-  window.hgPose = { pos: new THREE.Vector3(-1.5, feet, 0.5), yaw: Math.PI + 0.17 };  // de espaldas a la cámara, mirando al Coloso
+  window.hgPose = { pos: new THREE.Vector3(-1.6, feet, 0.4), yaw: Math.atan2(HG_COLOSSUS.x + 1.6, HG_COLOSSUS.z - 0.4) };   // mira al Coloso
   tg.visible = true; tg.position.copy(window.hgPose.pos);
 
   HG.phase = 'play'; HG.heat = 0.7; HG.cold = 0; HG.coldS = 0; HG.listen = 0; HG.listenS = 0; HG.outT = 0; HG.winT = 0; HG.discarded = 0;
   HG.subT = 0; HG.subIdx = 0; HG.flashV = 0; HG.calmV = 0; HG.emberT = 0; HG.filesNote = false;
   HG.files = parseInt((MG.saved && MG.saved.hud && MG.saved.hud['files-value']) || '0', 10) || 0;
 
-  if (MG.dust) MG.dust.pts.position.set(0, 6, -2);
+  if (MG.dust) MG.dust.pts.position.set(HG_ISO.target.x, 6, HG_ISO.target.z);
   HG.group = new THREE.Group();
   HG.group.add(hgBuildSky()); HG.group.add(hgBuildGround()); HG.group.add(hgBuildColossus()); HG.group.add(hgBuildFire());
   scene.add(HG.group);
-  HG.fx = makeFX(1100); scene.add(HG.fx.pts);
+  HG.fx = makeFX(1600); scene.add(HG.fx.pts);
   hgAddPets();
   hgBuildUI();
   hgToneStart();
@@ -10250,11 +10299,14 @@ function hgUpdate(dt) {
   HG.coldS += (HG.cold - HG.coldS) * Math.min(1, dt * 0.9);                      // el Coloso reacciona despacio
   HG.listenS += (HG.listen - HG.listenS) * Math.min(1, dt * 0.8);
 
-  // ----- Cámara: plano lejano que se retira lentamente mientras escuchas; el final es el más amplio -----
+  // ----- Cámara isométrica: casi ortográfica; se retira y gira apenas mientras escuchas (el final es el plano más amplio) -----
   const sw = calm ? 0 : 1, L = HG.listenS, W = Math.min(1, HG.winT / 4.2) * (HG.phase === 'won' ? 1 : 0);
-  userGroup.position.set(Math.sin(t * 0.2) * 0.25 * sw, 2.6 + 3.4 * L + 2 * W + Math.sin(t * 0.3) * 0.08 * sw, 22 + 8 * L + 7 * W);
-  userGroup.rotation.set(-0.04 - 0.03 * L, 0, 0);
-  if (!calm && HG.cold > 0.7 && Math.random() < dt * 0.5) shakeIntensity = Math.max(shakeIntensity, 0.06);
+  const asp = window.innerWidth / window.innerHeight, fit = Math.max(1, 1.5 / asp);        // en vertical se aleja para que quepa toda la maqueta
+  const D = (HG_ISO.dist + 14 * L + 8 * W) * fit, psi = HG_ISO.yaw + 0.08 * L + Math.sin(t * 0.05) * 0.02 * sw, phi = HG_ISO.pitch + 0.03 * L;
+  const T = HG_ISO.target;
+  userGroup.position.set(T.x + D * Math.sin(psi) * Math.cos(phi), T.y + D * Math.sin(phi), T.z + D * Math.cos(psi) * Math.cos(phi));
+  userGroup.rotation.set(-phi, psi, 0);
+  if (!calm && HG.cold > 0.7 && Math.random() < dt * 0.5) shakeIntensity = Math.max(shakeIntensity, 0.04);
 
   // ----- Llama, brasas y halo (escalados: la cámara está lejos) -----
   const heat = HG.heat, f = HG.fire;
@@ -10268,26 +10320,34 @@ function hgUpdate(dt) {
   if (heat <= 0.01 && Math.random() < dt * 3) HG.fx.emit(f.x, f.y - 0.6, f.z, 0, 0.3, 0, 1.2, PAL.rose, 0.16 * HG_FS, 0.4, 0.4);
   const flick = 1 + Math.sin(t * 17) * 0.06 + Math.sin(t * 9.3) * 0.05;
   HG.fireHalo.material.opacity = (0.06 + heat * 0.5) * flick;
-  HG.fireHalo.scale.set((3 + heat * 5) * flick * HG_FS, (3 + heat * 5) * flick * HG_FS, 1);
+  HG.fireHalo.scale.set((1.4 + heat * 2.6) * flick, (1.4 + heat * 2.6) * flick, 1);
   HG.glowDisc.material.opacity = heat * 0.35 * flick;
-  HG.glowDisc.scale.set((4 + heat * 9) * HG_FS, (4 + heat * 9) * HG_FS, 1);
+  HG.glowDisc.scale.set(2.5 + heat * 5, 2.5 + heat * 5, 1);
 
   // ----- Frío que viaja desde el Coloso hasta el campamento -----
   HG.emberT -= dt;
   if (HG.emberT <= 0 && HG.cold > 0.02) {
-    HG.emberT = Math.max(0.05, 0.4 - HG.cold * 0.3);
-    HG.fx.emit(-20 + (Math.random() - 0.5) * 60, 0.2 + Math.random() * 0.8, -105 + Math.random() * 8, (Math.random() - 0.5) * 0.4, 0, 6 + Math.random() * 2, 15, 0x9fc1e0, 0.9, 0.35, 0.03);
+    HG.emberT = Math.max(0.06, 0.45 - HG.cold * 0.35);
+    const dx = f.x - HG_COLOSSUS.x, dz = f.z - HG_COLOSSUS.z, dl = Math.hypot(dx, dz), sp = 3;
+    HG.fx.emit(HG_COLOSSUS.x + (Math.random() - 0.5) * 22, 0.2 + Math.random() * 0.6, HG_COLOSSUS.z + (Math.random() - 0.5) * 22,
+      dx / dl * sp, 0, dz / dl * sp, 12, 0x9fc1e0, 0.32, 0.4, 0.03);
   }
 
   // ----- Suelo, cielo y Coloso -----
   const gu = HG.ground.material.uniforms;
-  gu.uTime.value = t; gu.uHeat.value = heat; gu.uCold.value = HG.coldS; gu.uCam.value.copy(userGroup.position);
+  gu.uTime.value = t; gu.uHeat.value = heat; gu.uCold.value = HG.coldS;
   HG.screenMat.uniforms.uTime.value = t; HG.screenMat.uniforms.uCold.value = HG.coldS; HG.screenMat.uniforms.uCalm.value = HG.calmV;
-  HG.bodyMat.uniforms.color.value.setHex(0x5d6368).multiplyScalar(0.6 + 0.9 * HG.coldS);
+  HG.bodyMat.uniforms.color.value.setHex(0x5c635c).multiplyScalar(0.6 + 0.9 * HG.coldS);
+  HG.screenMat.uniforms.uRune.value = 0.25 + HG.listenS * 0.75 + HG.calmV * 0.3;          // las runas se encienden al escuchar su caja negra
   hgAnimateColossus(t, HG.coldS, calm);
-  HG.eyes.forEach(e => { e.material.opacity = HG.coldS * (0.35 + 0.25 * Math.sin(t * 3)) * (1 - HG.calmV); });
+  HG.eyes.forEach(e => { e.material.opacity = (0.3 + HG.coldS * 0.45) * (0.85 + 0.15 * Math.sin(t * 3)) * (1 - HG.calmV * 0.4); });   // ojos de brasa: arden más cuando el fuego muere
+  // pluma de ceniza que el viento arrastra desde la corona (como el penacho negro del coloso)
+  if (HG.colos && !calm) {
+    _hgV.set(0, 6, 10); HG.colos.head.localToWorld(_hgV);
+    const nA = Math.round(1.2 * Math.min(2, dt * 60));
+    for (let i = 0; i < nA; i++) HG.fx.emit(_hgV.x + (Math.random() - 0.5) * 0.4, _hgV.y, _hgV.z + (Math.random() - 0.5) * 0.4, 0.6 + Math.random() * 0.8, 1.2 + Math.random() * 1.2, (Math.random() - 0.5) * 0.4, 3.5 + Math.random() * 2, 0x59616b, 0.28 + Math.random() * 0.2, 0.45, 0.3);
+  }
   HG.sigil.material.opacity = 0.10 + HG.listenS * 0.45 + 0.12 * Math.sin(t * (1.2 + HG.listenS * 2)) + HG.calmV * 0.3;   // el sello late más al escuchar
-  HG.moon.material.opacity = 0.14 + 0.03 * Math.sin(t * 0.2);
   hgUpdateAtmos(dt, t, calm);
 
   // ----- Mascotas dormidas respirando -----
@@ -10330,7 +10390,7 @@ function hgTeardown() {
   const tg = window.travelerGroup;
   if (tg && HG.saved) { tg.position.copy(HG.saved.pos); tg.quaternion.copy(HG.saved.quat); tg.scale.copy(HG.saved.scale); }
   HG.saved = null; HG.chips = []; HG.els = {}; HG.eyes = []; HG.ground = null; HG.bodyMat = null; HG.screenMat = null;
-  HG.colos = null; HG.sigil = null; HG.stars = null; HG.fog = null; HG.snow = null; HG.moon = null;
+  HG.colos = null; HG.sigil = null; HG.fog = null; HG.snow = null;
 }
 
 window.endHogueraGame = function() {
