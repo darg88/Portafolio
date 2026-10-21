@@ -167,23 +167,65 @@ async function checkXRSupport() {
     }
 }
 
+// ==========================================
+// 🛡️ SISTEMA DE SEGURIDAD AR/VR (Bloqueo previo)
+// ==========================================
+function showXRSafetyWarning(type, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;align-items:center;justify-content:center;color:#fff;font-family:-apple-system,sans-serif;text-align:center;backdrop-filter:blur(8px);';
+    const en = window.currentLang === 'en';
+    overlay.innerHTML = `
+        <div style="max-width: 420px; padding: 35px; border: 1px solid #ff6644; border-radius: 8px; background: rgba(15,10,10,0.95); box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 20px rgba(255,102,68,0.2);">
+            <h2 style="color:#ff6644; margin-top:0; letter-spacing:2px; font-weight:300;">⚠️ ${en ? 'SAFETY WARNING' : 'AVISO DE SEGURIDAD'}</h2>
+            <p style="font-size:1.05rem; line-height:1.6; font-weight:300; color:#dcdce2;">
+                ${type === 'VR' 
+                    ? (en ? 'You are entering <b>Virtual Reality</b>.<br><br>Please clear your physical area of obstacles, stay seated if possible, and ensure a safe environment before continuing.' 
+                          : 'Estás entrando a <b>Realidad Virtual</b>.<br><br>Por favor, despeja tu área física de obstáculos, permanece sentado si es posible y asegúrate de estar en un entorno seguro.') 
+                    : (en ? 'You are entering <b>Augmented Reality</b>.<br><br>Stay aware of your physical surroundings, watch your step, and move with caution.' 
+                          : 'Estás entrando a <b>Realidad Aumentada</b>.<br><br>Presta atención a tu entorno real, ten cuidado por dónde caminas y muévete con precaución.')
+                }
+            </p>
+            <button id="xr-accept-btn" style="margin-top:25px; padding:12px 24px; background:#ff6644; color:#fff; border:none; border-radius:4px; font-weight:300; letter-spacing:2px; cursor:pointer; font-size:0.9rem; width:100%; transition:0.3s;">
+                ${en ? '[ I UNDERSTAND & CONTINUE ]' : '[ ENTIENDO Y CONTINÚO ]'}
+            </button>
+            <button id="xr-cancel-btn" style="margin-top:15px; background:transparent; color:#888; border:none; cursor:pointer; font-size:0.8rem; letter-spacing:2px; text-decoration:underline;">
+                ${en ? 'CANCEL' : 'CANCELAR'}
+            </button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    document.getElementById('xr-accept-btn').onclick = () => {
+        overlay.remove();
+        if(typeof playSound === 'function') playSound('ui');
+        onConfirm();
+    };
+    document.getElementById('xr-cancel-btn').onclick = () => {
+        overlay.remove();
+        if(typeof playSound === 'function') playSound('ui');
+    };
+}
+
 // 2. Evento Botón VR
 if (customVrBtn) {
     customVrBtn.addEventListener('click', async () => {
         try {
             if (renderer.xr.isPresenting) { await renderer.xr.getSession()?.end(); return; }
-            window.isARSession = false;
-            const session = await navigator.xr.requestSession('immersive-vr', { requiredFeatures: ['local-floor'] });
-            await renderer.xr.setSession(session);
-            if (typeof playSound === 'function') playSound('levelup');
+            showXRSafetyWarning('VR', async () => {
+                try {
+                    window.isARSession = false;
+                    const session = await navigator.xr.requestSession('immersive-vr', { requiredFeatures: ['local-floor'] });
+                    await renderer.xr.setSession(session);
+                    if (typeof playSound === 'function') playSound('levelup');
+                } catch(e) { if (typeof showSystemToast === 'function') showSystemToast('❌ Error iniciando VR', '#ff0000'); }
+            });
         } catch (error) {
             if (typeof showSystemToast === 'function') showSystemToast('❌ Error iniciando VR', '#ff0000');
         }
     });
 }
 
-// 3. Evento Botón AR - CORREGIDO PARA MÁXIMA COMPATIBILIDAD
-// 3. Evento Botón AR - BLINDADO PARA ANDROID Y QUEST 3
+// 3. Evento Botón AR
 if (customArBtn) {
     customArBtn.addEventListener('click', async () => {
         try {
@@ -194,35 +236,36 @@ if (customArBtn) {
 
             if (renderer.xr.isPresenting) { await renderer.xr.getSession()?.end(); return; }
             
-            window.isARSession = true;
-            console.log(" Solicitando sesión AR nativa...");
-            
-            // 🔥 SOLUCIÓN 1: Mover TODO a optionalFeatures.
-            // Esto evita que Quest 3 y Android rechacen la sesión por tecnicismos de tracking.
-            const session = await navigator.xr.requestSession('immersive-ar', {
-                optionalFeatures: ['local-floor', 'local', 'hit-test']
+            showXRSafetyWarning('AR', async () => {
+                try {
+                    window.isARSession = true;
+                    console.log(" Solicitando sesión AR nativa...");
+                    
+                    const session = await navigator.xr.requestSession('immersive-ar', {
+                        optionalFeatures: ['local-floor', 'local', 'hit-test']
+                    });
+                    
+                    renderer.xr.setReferenceSpaceType('local-floor');
+                    await renderer.xr.setSession(session);
+                    
+                    document.documentElement.style.background = 'transparent';
+                    document.body.style.background = 'transparent';
+                    const cvs = document.getElementById('bg-canvas');
+                    if (cvs) cvs.style.background = 'transparent';
+                    
+                    renderer.setClearColor(0x000000, 0);
+                    scene.background = null;
+                    
+                    if (typeof playSound === 'function') playSound('levelup');
+                } catch (error) {
+                    console.error("Error AR detallado:", error);
+                    window.isARSession = false;
+                    if (typeof showSystemToast === 'function') showSystemToast('❌ Error AR: Permisos denegados', '#ff0000');
+                }
             });
             
-            // 🔥 SOLUCIÓN 2: Forzar el espacio de referencia correcto para Quest 3
-            renderer.xr.setReferenceSpaceType('local-floor');
-            
-            await renderer.xr.setSession(session);
-            
-            // 🔥 SOLUCIÓN 3: Limpiar fondos CSS que bloquean la cámara (Passthrough)
-            document.documentElement.style.background = 'transparent';
-            document.body.style.background = 'transparent';
-            const cvs = document.getElementById('bg-canvas');
-            if (cvs) cvs.style.background = 'transparent';
-            
-            renderer.setClearColor(0x000000, 0);
-            scene.background = null;
-            
-            if (typeof playSound === 'function') playSound('levelup');
-            
         } catch (error) {
-            console.error("Error AR detallado:", error);
             window.isARSession = false;
-            if (typeof showSystemToast === 'function') showSystemToast('❌ Error AR: Dispositivo no compatible o permisos denegados', '#ff0000');
         }
     });
 }
@@ -463,6 +506,7 @@ function playSound(type, targetPosition = null) {
     // ==========================================
     
     // --- 1. MODO EXPLORACIÓN (Estética 'Gris') ---
+    
     if(type === 'ui') { 
 
       // 🔥 INTERFAZ ULTRA-SUTIL: Un "tick" de cristal mate cortísimo
