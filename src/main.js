@@ -2287,7 +2287,7 @@ document.getElementById('btn-save-paint').onclick = (e) => {
  function startPointerDown(clientX, clientY) {
   // 🎮 JUEGOS OTROS: cada minijuego maneja su propio puntero
   if (window.isWiringGameActive) { window.wiringDown(clientX, clientY); return; }
-  if (window.isTuningGameActive || window.isHogueraActive) { window.MG.setPointer(clientX, clientY); return; }
+  if (window.isTuningGameActive || window.isHogueraActive) { window.MG.setPointer(clientX, clientY); if (window.isHogueraActive && window.hgTap) window.hgTap(clientX, clientY); return; }
 
   // 🔥 Si hay una luna encendida, pasamos a MODO PINTURA PERMANENTE
   if (isPoeticaActive || isErraticaActive || isFriccionActive) {
@@ -8768,7 +8768,7 @@ const MG = window.MG = {
     root.appendChild(extra); root.appendChild(bottom);
     document.body.appendChild(root);
     requestAnimationFrame(() => { root.style.opacity = '1'; });
-    this.ui = { root, extra };
+    this.ui = { root, extra, hint };
 
     this.keyHandler = (e) => {
       if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); MG.abort(); }
@@ -8828,20 +8828,20 @@ const REFL = {
   },
   wiring: {
     es: {
-      intro: { k: 'JUEGO OTRO  ·  CACHARREO', t: 'El telar',
-        p: ['Cacharrear es pensar con las manos: negociar con hardware abierto, residuos y E-waste, sin automatismos.',
-            'La fricción del dispositivo no es un obstáculo sino una perturbación intencional que despierta el saber-del-cuerpo.'] },
-      outro: { k: 'MÁQUINA DE FRICCIÓN', t: 'Agencia crítica',
-        p: ['Del letargo del consumidor a la reorganización activa.',
-            'Al exigir adaptación constante, el dispositivo devuelve la soberanía a quien lo toca.'] }
+      intro: { k: 'JUEGO OTRO  ·  TELAR Y QUIPU', t: 'Tejer es pensar',
+        p: ['El telar es una tecnología para producir relaciones, patrones, memoria y conocimiento: cada cruce de hilos pone en relación lo que estaba separado, y la repetición con variación hace patrón.',
+            'Dos fases, inspiradas en los tejidos jalq\'a —seres simétricos, rojos y negros, que narran la creación de mundos— y en el quipu, donde el nudo guarda la memoria y se lee con las manos.'] },
+      outro: { k: 'MÁQUINA DE FRICCIÓN  ·  SABER-DEL-CUERPO', t: 'Memoria hecha de hilo',
+        p: ['Tejer fue una de las primeras formas de programar —las tarjetas perforadas del telar de Jacquard son ancestro del computador— y mucho antes el quipu ya guardaba datos en nudos.',
+            'Un patrón no es adorno: es conocimiento que un cuerpo escribe y otro cuerpo puede leer.'] }
     },
     en: {
-      intro: { k: 'OTHER GAME  ·  CACHARREO', t: 'The loom',
-        p: ['Tinkering is thinking with the hands: negotiating with open hardware, scrap and E-waste, without automatisms.',
-            'The device\'s friction is not an obstacle but an intentional disturbance that awakens the knowing-of-the-body.'] },
-      outro: { k: 'FRICTION MACHINE', t: 'Critical agency',
-        p: ['From the lethargy of the consumer to active reorganisation.',
-            'By demanding constant adaptation, the device returns sovereignty to whoever touches it.'] }
+      intro: { k: 'OTHER GAME  ·  LOOM AND QUIPU', t: 'Weaving is thinking',
+        p: ['The loom is a technology for producing relations, patterns, memory and knowledge: every crossing of threads relates what was separate, and repetition with variation makes a pattern.',
+            'Two phases, inspired by jalq\'a textiles —symmetrical red and black beings that tell of the creation of worlds— and by the quipu, where the knot keeps memory and is read with the hands.'] },
+      outro: { k: 'FRICTION MACHINE  ·  KNOWING-OF-THE-BODY', t: 'Memory made of thread',
+        p: ['Weaving was one of the first forms of programming —the punched cards of the Jacquard loom are ancestors of the computer— and long before, the quipu already kept data in knots.',
+            'A pattern is not decoration: it is knowledge that one body writes and another body can read.'] }
     }
   },
   hoguera: {
@@ -9281,15 +9281,22 @@ window.abortTuningGame = function() {
   const en = MG.isEN();
   tgTeardown();
   MG.exit();
-  showSystemToast(en ? 'The signal dissolves' : 'La señal se disuelve', '#e7e4de');
+  setTimeout(() => { MG.reflect(MG.text('tuning', 'outro'), () => {}); }, 700);          // salir sin jugar: la reflexión llega igual
 };
 
 // ==========================================
-// 🧵 JUEGO OTRO: TELAR DE CIRCUITOS (CACHARREO · GALERÍA)
-//   Cuatro pares de nodos (PWR, DATA, CLK, GND), cada uno con su color y su forma.
-//   Lleva un hilo de cada nodo hasta su gemelo. Los hilos conectados dejan fluir motas de luz.
-//   Cada acierto suma una nota de la escala pentatónica; un enredo suena a golpe amortiguado.
-//   Tres enredos deshacen el telar y se reordena (soltar en el vacío no penaliza).
+// 🧵 JUEGO OTRO: TELAR Y QUIPU (CACHARREO · GALERÍA)
+//   El telar como tecnología para producir RELACIONES (cruzar hilos), PATRONES (repetición con variación),
+//   MEMORIA (el tejido y el nudo guardan) y CONOCIMIENTO (se leen).
+//
+//   FASE I · EL TELAR — crear mundos. Tres rondas = los tres mundos andinos (Uku Pacha, Kay Pacha, Hanan Pacha) con
+//   4 → 6 → 8 hilos. Cada hilo que conectas (nodo con su gemelo: mismo color y forma) se TEJE en una tela rojo y negro
+//   inspirada en los tejidos jalq'a: figuras simétricas (aves, cuadrúpedos, un árbol, una máscara con serpientes) que
+//   se forman de abajo hacia arriba, mundo a mundo. Tres enredos desanudan solo el mundo en curso.
+//
+//   FASE II · EL QUIPU — el nudo. Cada hilo tejido vuelve como una cuerda de su mismo color, colgando de un cordón principal.
+//   Su nudo guarda lo tejido (decenas arriba, unidades abajo, como en los quipus). Se lee con las manos: pasa el dedo
+//   o el cursor por cada cuerda y los nudos se anudan, cada uno con su nota.
 // ==========================================
 window.isWiringGameActive = false;
 window.wiringData = null;
@@ -9298,36 +9305,106 @@ window.maxConnections = 4;
 window.currentConnections = 0;
 
 const WG_PAIRS = [
-  { id: 'PWR',  color: PAL.gold,  geo: () => new THREE.OctahedronGeometry(1.2, 0) },
-  { id: 'DATA', color: PAL.mist,  geo: () => new THREE.BoxGeometry(1.6, 1.6, 1.6) },
-  { id: 'CLK',  color: PAL.mauve, geo: () => new THREE.TetrahedronGeometry(1.5, 0) },
-  { id: 'GND',  color: PAL.sage,  geo: () => new THREE.IcosahedronGeometry(1.2, 0) }
+  { id: { es: 'URDIMBRE', en: 'WARP' },     color: PAL.gold,  geo: () => new THREE.OctahedronGeometry(1.2, 0) },
+  { id: { es: 'TRAMA',    en: 'WEFT' },     color: PAL.mist,  geo: () => new THREE.BoxGeometry(1.6, 1.6, 1.6) },
+  { id: { es: 'PEINE',    en: 'COMB' },     color: PAL.mauve, geo: () => new THREE.TetrahedronGeometry(1.5, 0) },
+  { id: { es: 'LIZO',     en: 'HEDDLE' },   color: PAL.sage,  geo: () => new THREE.IcosahedronGeometry(1.2, 0) },
+  { id: { es: 'PEDAL',    en: 'TREADLE' },  color: 0xe3a98f,  geo: () => new THREE.DodecahedronGeometry(1.15, 0) },
+  { id: { es: 'NUDO',     en: 'KNOT' },     color: 0x8fd0c4,  geo: () => new THREE.ConeGeometry(1.1, 2.0, 5) },
+  { id: { es: 'ORILLO',   en: 'SELVEDGE' }, color: 0xb7a6e0,  geo: () => new THREE.CylinderGeometry(0.9, 0.9, 1.8, 6) },
+  { id: { es: 'HUSO',     en: 'SPINDLE' },  color: 0xc8d08a,  geo: () => new THREE.TorusGeometry(0.9, 0.32, 6, 12) },
+  { id: { es: 'TELAR',    en: 'LOOM' },     color: 0x9fb0bd,  geo: () => new THREE.SphereGeometry(1.1, 7, 5) }
 ];
-const WG_SEG = 24, WG_MOTES = 36;
+const WG_WORLDS = [
+  { name: 'UKU PACHA',   sub: { es: 'el mundo de abajo · lo que germina',     en: 'the world below · what germinates' } },
+  { name: 'KAY PACHA',   sub: { es: 'este mundo · lo que habitamos',          en: 'this world · what we inhabit' } },
+  { name: 'HANAN PACHA', sub: { es: 'el mundo de arriba · lo que nos mira',   en: 'the world above · what watches us' } }
+];
+const WG_COLS = 44, WG_ROWS = 72, WG_SEG = 24, WG_MOTES = 36, WG_QSEG = 40;
 const WG = {
-  nodes: window.wiringNodes, hits: [], cables: [], fading: [],
-  drag: null, hover: null, lastHover: null, shorts: 0, maxShorts: 3, state: 'idle',
-  winT: 0, resetT: 0, t: 0, scale: 1, emberT: 0, trailT: 0, ptr: new THREE.Vector3()
+  nodes: window.wiringNodes, hits: [], cables: [], fading: [], pairs: [], threads: [],
+  drag: null, hover: null, lastHover: null, shorts: 0, maxShorts: 3, state: 'idle', next: 'advance', phase: 1,
+  round: 0, rounds: [4, 6, 8], total: 18, woven: 0, roundConn: 0, pairsNow: 4,
+  resetT: 0, roundT: 0, introT: 0, winT: 0, t: 0, scale: 1, emberT: 0, trailT: 0, uiDirty: true, cloth: null, quipu: null,
+  els: {}, card: null, ptr: new THREE.Vector3(), prevPtr: new THREE.Vector3()
 };
-const _wgTmp = new THREE.Vector3();
+const _wgTmp = new THREE.Vector3(), _wgTmp2 = new THREE.Vector3();
+
+// ---------- Patrón jalq'a-like (44×72, simétrico): franjas de abajo arriba = Uku Pacha 16 · Kay Pacha 24 · Hanan Pacha 32 filas ----------
+//   0 fondo · 1 rojo · 2 rojo claro · 3 hueso · 4 punto tenue
+function wgPattern() {
+  const COLS = WG_COLS, ROWS = WG_ROWS, g = new Uint8Array(COLS * ROWS);
+  const put = (c, r, v) => { if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return; g[r * COLS + c] = v; g[r * COLS + (COLS - 1 - c)] = v; };
+  const putOne = (c, r, v) => { if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return; g[r * COLS + c] = v; };
+  const sprite = (rows, c0, r0, flip) => {
+    rows.forEach((s, j) => [...s].forEach((ch, i) => {
+      const v = ch === '#' ? 1 : ch === 'o' ? 2 : ch === 'e' ? 3 : 0; if (!v) return;
+      putOne(flip ? c0 + (s.length - 1 - i) : c0 + i, r0 + j, v);
+    }));
+  };
+  const spriteM = (rows, c0, r0) => { sprite(rows, c0, r0, false); sprite(rows, COLS - c0 - rows[0].length, r0, true); };
+  const zig = (r, amp, per, v) => { for (let c = 0; c < COLS / 2; c++) { const ph = c % per, tri = ph < per / 2 ? ph : per - ph; for (let k = 0; k < amp; k++) put(c, r + (amp - 1 - Math.min(amp - 1, Math.floor(tri * amp / (per / 2)))), v || 1); } };
+  const step = (r, v) => { for (let c = 0; c < COLS / 2; c++) { if (((c >> 1) & 1) === 0) put(c, r, v || 1); else put(c, r + 1, v || 1); } };
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS / 2; c++) if ((c % 4 === 1) && (r % 4 === 2)) put(c, r, 4);   // lattice tenue
+
+  const BIRD = ['#...........#', '##....#....##', '.###..#..###.', '..#########..', '...#######...', '....#.#.#....'];
+  const LLAMA = ['.........##...', '........####..', '.......#e####.', '.......#####..', '..########....', '.###########..', '.###########..', '.##.##..##.##.', '.#..#....#..#.'];
+  const SMALL = ['..##...', '.####e.', '#####..', '#.#.#..'];
+  const MASK = ['#....#..#....#', '##...####...##', '.##.######.##.', '..##########..', '..#e######e#..', '..##########..', '...########...', '...#.#..#.#...', '...#..##..#...', '....#....#....'];
+  const DIAM = ['..##..', '.####.', '.####.', '..##..'];
+  const CHAK = ['....oo....', '....##....', '..######..', '###oooo###', '###oooo###', '..######..', '....##....', '....oo....'];
+
+  // ===== HANAN PACHA · mundo de arriba (filas 0–31) =====
+  zig(0, 2, 4);
+  CHAK.forEach((s, j) => [...s].forEach((ch, i) => { const v = ch === '#' ? 1 : ch === 'o' ? 2 : 0; if (v) putOne(17 + i, 3 + j, v); }));
+  spriteM(BIRD, 1, 4); spriteM(BIRD, 1, 12);
+  for (let k = 0; k < 3; k++) spriteM(SMALL, 1 + k * 7, 19);
+  zig(24, 2, 4);
+  for (let k = 0; k < 3; k++) spriteM(DIAM, 2 + k * 7, 27);
+  step(31);
+
+  // ===== KAY PACHA · este mundo (filas 32–55) =====
+  for (let i = 0; i < 21; i++) {
+    const hw = 1 + Math.floor(i / 5), tooth = (i % 3 === 0) ? 2 : (i % 3 === 1 ? 1 : 0);
+    for (let k = 0; k <= hw + tooth; k++) put(21 - k, 34 + i, k <= 0 ? ((i % 2) ? 2 : 1) : (k > hw ? 2 : 1));
+  }
+  spriteM(LLAMA, 0, 34); spriteM(LLAMA, 0, 45);
+  step(55);
+
+  // ===== UKU PACHA · mundo de abajo (filas 56–71) =====
+  spriteM(MASK, 15, 58);
+  for (let r = 58; r < 70; r++) {
+    const c = 5 + Math.round(3 * Math.sin((r - 58) * 0.6));
+    for (let k = 0; k < 3; k++) put(c + k, r, k === 1 ? 2 : 1);
+    if ((r % 5) === 0) put(c + 3, r, 3);
+  }
+  for (let r = 60; r < 68; r++) { const c = 11 + Math.round(2 * Math.sin((r - 60) * 0.8 + 2)); put(c, r, 1); put(c + 1, r, 1); }
+  zig(70, 2, 4);
+  return g;
+}
+
+const WG_PAL = [[26, 12, 15], [200, 50, 43], [232, 96, 78], [236, 222, 200], [84, 26, 28]];
+const WG_STY = WG_PAL.map(c => [0.8, 1].map(k => `rgb(${(c[0] * k) | 0},${(c[1] * k) | 0},${(c[2] * k) | 0})`));   // [valor][por debajo/por encima]
+
+function wgRounds() { return (window.innerWidth / window.innerHeight < 0.8) ? [3, 4, 5] : [4, 6, 8]; }   // en vertical caben menos nodos
 
 function wgBounds() {
   const aspect = window.innerWidth / window.innerHeight;
   const halfH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * userGroup.position.z;
   const hh = halfH * 0.62;
   const hw = Math.min(halfH * aspect * 0.8, hh * 1.9);
-  return { hw, hh };
+  return { hw, hh, halfH, aspect };
 }
 
 function wgSample(n, hw, hh, minD) {
   const pts = []; let d = minD, tries = 0;
-  while (pts.length < n && tries < 4000) {
+  while (pts.length < n && tries < 6000) {
     tries++;
     if (tries % 120 === 0) d *= 0.9;
     const p = new THREE.Vector3((Math.random() * 2 - 1) * hw, (Math.random() * 2 - 1) * hh, 0);
     if (pts.every(q => q.distanceTo(p) >= d)) pts.push(p);
   }
-  for (let i = pts.length; i < n; i++) pts.push(new THREE.Vector3(((i % 4) - 1.5) * hw / 2, (Math.floor(i / 4) - 0.5) * hh, 0));
+  for (let i = pts.length; i < n; i++) pts.push(new THREE.Vector3(((i % 5) - 2) * hw / 2.5, (Math.floor(i / 5) - 1.5) * hh / 1.5, 0));
   return pts;
 }
 
@@ -9339,9 +9416,9 @@ function wgClear() {
   WG.hover = null; WG.lastHover = null;
 }
 
-function wgNewLine(hex, opacity) {
+function wgNewLine(hex, opacity, n) {
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array((WG_SEG + 1) * 3), 3));
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(((n || WG_SEG) + 1) * 3), 3));
   const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: hex, transparent: true, opacity }));
   line.frustumCulled = false;
   scene.add(line);
@@ -9359,7 +9436,110 @@ function wgUpdateLine(line, a, b) {
   line.geometry.attributes.position.needsUpdate = true;
 }
 
+// ---------- La tela: un canvas vertical (como un tejido colgado) que se teje de abajo hacia arriba ----------
+function wgHexRgb(h) { return [(h >> 16) & 255, (h >> 8) & 255, h & 255]; }
+
+// Filas del patrón (0 = arriba) que teje el hilo g: se reparten de abajo hacia arriba entre todos los hilos
+function wgThreadRows(g) {
+  const T = WG.total, a = Math.round(g * WG_ROWS / T), b = Math.round((g + 1) * WG_ROWS / T) - 1;
+  return [WG_ROWS - 1 - b, WG_ROWS - 1 - a];
+}
+
+function wgBuildCloth() {
+  const W = 640, H = 1024;
+  const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const tex = new THREE.CanvasTexture(canvas);
+  if (THREE.SRGBColorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.25, depthWrite: false });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+  mesh.position.z = -0.8;
+  scene.add(mesh);
+  WG.cloth = { canvas, ctx, tex, mat, mesh, W, H, data: [], accT: 0, op: 0.25, sc: 1, glow: 0, pat: wgPattern() };
+  wgDrawCloth(0);
+}
+
+function wgDrawCloth(t) {
+  const C = WG.cloth; if (!C) return;
+  const g = C.ctx, W = C.W, H = C.H, X0 = 56, Y0 = 80, CS = 12, pat = C.pat, glow = C.glow;
+  g.globalAlpha = 1;
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = 'rgba(8,4,6,0.72)'; g.fillRect(0, 0, W, H);
+  // bastidor: postes y vigas
+  g.fillStyle = 'rgba(231,228,222,0.22)';
+  g.fillRect(14, 20, 16, H - 40); g.fillRect(W - 30, 20, 16, H - 40);
+  g.fillRect(14, 26, W - 28, 18); g.fillRect(14, H - 44, W - 28, 18);
+  // urdimbre: hilos verticales por los que corren datos
+  for (let c = 0; c < WG_COLS; c++) {
+    const x = X0 + (c + 0.5) * CS, a = 0.16 + 0.2 * (0.5 + 0.5 * Math.sin(t * 1.5 - c * 0.35));
+    g.fillStyle = `rgba(231,228,222,${a})`; g.fillRect(x - 0.7, 48, 1.4, H - 96);
+    g.fillStyle = 'rgba(231,228,222,0.5)';
+    g.beginPath(); g.arc(x, 38, 2.2, 0, 6.2832); g.fill(); g.beginPath(); g.arc(x, H - 34, 2.2, 0, 6.2832); g.fill();
+  }
+  // regla: un tramo por hilo, en el color vivo del hilo cuando ya está tejido
+  for (let k = 0; k < WG.total; k++) {
+    const rr = wgThreadRows(k), e = C.data.find(d => d.t === k && d.removeT < 0);
+    g.fillStyle = e ? `rgb(${e.vivid[0]},${e.vivid[1]},${e.vivid[2]})` : 'rgba(231,228,222,0.14)';
+    g.fillRect(34, Y0 + rr[0] * CS + 1, 9, (rr[1] - rr[0] + 1) * CS - 2);
+  }
+  // trama tejida: sarga suave; rojo y negro, con acentos claros y hueso
+  for (let i = 0; i < C.data.length; i++) {
+    const e = C.data[i], fade = e.removeT >= 0 ? 1 - e.removeT : 1;
+    if (fade <= 0) continue;
+    g.globalAlpha = fade;
+    const upto = Math.min(WG_COLS, Math.ceil(e.p * WG_COLS - 1e-6));
+    for (let r = e.r0; r <= e.r1; r++) {
+      const y = Y0 + r * CS;
+      for (let c = 0; c < upto; c++) {
+        const v = pat[r * WG_COLS + c], over = ((c + r) & 3) !== 0 ? 1 : 0;
+        let sty = WG_STY[v][over];
+        if (glow > 0 && (v === 1 || v === 2)) {                              // el patrón pulsa al terminar
+          const br = 1 + glow * 0.28 * (0.5 + 0.5 * Math.sin(t * 3 - (r + c) * 0.35)), col = WG_PAL[v], k = over ? 1 : 0.82;
+          sty = `rgb(${Math.min(255, col[0] * br * k) | 0},${Math.min(255, col[1] * br * k) | 0},${Math.min(255, col[2] * br * k) | 0})`;
+        }
+        g.fillStyle = sty; g.fillRect(X0 + c * CS + 0.4, y + 0.4, CS - 0.8, CS - 0.8);
+      }
+    }
+    const hgt = (e.r1 - e.r0 + 1) * CS, yy = Y0 + e.r0 * CS;
+    if (upto > 0) { g.fillStyle = `rgb(${e.vivid[0]},${e.vivid[1]},${e.vivid[2]})`; g.fillRect(46, yy + 2, 8, hgt - 4); }          // orillo vivo
+    if (e.p >= 1) { g.fillStyle = `rgb(${e.vivid[0]},${e.vivid[1]},${e.vivid[2]})`; g.fillRect(W - 54, yy + 2, 8, hgt - 4); }
+    if (e.flash > 0 && upto > 0) { g.fillStyle = `rgba(255,255,255,${e.flash * 0.3})`; g.fillRect(X0, yy, upto * CS, hgt); }
+    if (e.p < 1) {                                                              // la lanzadera cruza la urdimbre
+      const sx = X0 + e.p * WG_COLS * CS;
+      g.shadowColor = '#fff0d2'; g.shadowBlur = 14;
+      g.fillStyle = 'rgba(255,240,210,0.95)'; g.fillRect(sx - 8, yy + 3, 16, hgt - 6);
+      g.shadowBlur = 0;
+    }
+  }
+  g.globalAlpha = 1;
+  C.tex.needsUpdate = true;
+}
+
+function wgUpdateCloth(dt, calm) {
+  const C = WG.cloth; if (!C) return;
+  let busy = false;
+  for (let i = C.data.length - 1; i >= 0; i--) {
+    const r = C.data[i];
+    if (r.p < 1) { r.p = Math.min(1, r.p + dt / 0.9); busy = true; }
+    if (r.flash > 0) { r.flash = Math.max(0, r.flash - dt * 1.5); busy = true; }
+    if (r.removeT >= 0) { r.removeT += dt / 0.8; busy = true; if (r.removeT >= 1) C.data.splice(i, 1); }
+  }
+  C.glow = WG.state === 'quipuWon' ? Math.min(1, WG.winT / 1.5) : 0;
+  C.accT += dt;
+  if (busy || C.glow > 0) { C.accT = 0; wgDrawCloth(WG.t); }
+  else if (!calm && C.accT > 0.12) { C.accT = 0; wgDrawCloth(WG.t); }          // brillo suave que recorre la urdimbre
+  const fill = WG.woven / Math.max(1, WG.total);
+  const tgt = WG.state === 'quipuWon' ? 0.85 : (WG.phase === 2 ? 0.3 : (WG.state === 'roundWon' || WG.state === 'leave' ? 0.75 : 0.22 + 0.32 * fill));
+  C.op += (tgt - C.op) * Math.min(1, dt * 2.5);
+  C.mat.opacity = C.op;
+  const b = wgBounds(), ch = Math.min(b.halfH * 2 * 0.92, (2 * b.halfH * b.aspect * 0.94) / 0.625);   // tejido colgado: vertical, 5:8
+  const tsc = WG.state === 'quipuWon' ? 1.04 : 1;
+  C.sc += (tsc - C.sc) * Math.min(1, dt * 1.5);
+  C.mesh.scale.set(ch * 0.625 * C.sc, ch * C.sc, 1);
+}
+
 function wgMakeNode(pair, pi, p, s) {
+  const en = MG.isEN();
   const node = new THREE.Group();
   const geo = pair.geo();
   const mat = new THREE.MeshBasicMaterial({ color: pair.color, wireframe: true, transparent: true, opacity: 0.8 });
@@ -9369,7 +9549,7 @@ function wgMakeNode(pair, pi, p, s) {
   body.add(fill);
   node.add(body);
   const halo = mkHalo(pair.color, 5.5, 0.2); halo.position.z = -0.4; node.add(halo);
-  const label = createTextSprite(pair.id, '#' + pair.color.toString(16).padStart(6, '0'), 24);
+  const label = createTextSprite(pair.id[en ? 'en' : 'es'], '#' + pair.color.toString(16).padStart(6, '0'), 24);
   label.position.set(0, -2.1, 0); node.add(label);
   const hit = new THREE.Mesh(new THREE.SphereGeometry(2.3, 8, 8), new THREE.MeshBasicMaterial({ visible: false }));
   hit.userData.node = node; node.add(hit);
@@ -9381,18 +9561,22 @@ function wgMakeNode(pair, pi, p, s) {
 
 function wgBuild() {
   wgClear();
+  const n = WG.rounds[WG.round];
+  WG.pairsNow = n;
+  const idx = WG_PAIRS.map((_, i) => i).sort(() => Math.random() - 0.5).slice(0, n);   // n tipos distintos al azar
+  WG.pairs = idx.map(i => WG_PAIRS[i]);
   const b = wgBounds();
-  WG.scale = Math.max(0.55, Math.min(1, b.hw / 8));
-  const minD = Math.min(4.2, Math.sqrt((b.hw * 2 * b.hh * 2) / 8) * 0.75);
-  const pool = wgSample(WG_PAIRS.length * 2, b.hw, b.hh, minD);
-  WG_PAIRS.forEach((pair, pi) => {
+  WG.scale = Math.max(0.5, Math.min(1, b.hw / 8)) * (n > 7 ? 0.9 : 1);
+  const minD = Math.min(4.2, Math.sqrt((b.hw * 2 * b.hh * 2) / (n * 2)) * 0.75);
+  const pool = wgSample(n * 2, b.hw, b.hh, minD);
+  WG.pairs.forEach((pair, pi) => {
     const a = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
     pool.sort((p, q) => q.distanceTo(a) - p.distanceTo(a));
     const c = pool.splice(Math.floor(Math.random() * Math.ceil(pool.length / 2)), 1)[0];
     wgMakeNode(pair, pi, a, WG.scale); wgMakeNode(pair, pi, c, WG.scale);
   });
-  window.currentConnections = 0; window.maxConnections = WG_PAIRS.length;
-  WG.shorts = 0; WG.state = 'play';
+  window.currentConnections = 0; window.maxConnections = n;
+  WG.roundConn = 0; WG.shorts = 0; WG.state = 'play'; WG.uiDirty = true;
 }
 
 function wgPick() {
@@ -9403,17 +9587,21 @@ function wgPick() {
 function wgPointerWorld() { MG.pointerWorld(WG.ptr); }
 
 window.wiringDown = function(cx, cy) {
+  if (WG.phase === 2) {                                   // quipu: un nuevo toque no debe "arrastrar" desde el toque anterior
+    MG.setPointer(cx, cy); wgPointerWorld(); WG.prevPtr.copy(WG.ptr); return;
+  }
   if (WG.state !== 'play' || WG.drag) return;
   MG.setPointer(cx, cy);
   const node = wgPick();
   if (!node || node.userData.connected || node.userData.appear < 0.6) return;
   WG.drag = { node, line: wgNewLine(node.userData.baseColor.getHex(), 0.75), end: node.position.clone() };
   wgPointerWorld();
-  MGS.bell(MGS.NOTES[node.userData.pair] * 2, 0, 0.6, 0.022);
+  MGS.bell(MGS.NOTES[node.userData.pair % 6] * 2, 0, 0.6, 0.022);
   MG.pulse(node.position.x, node.position.y, node.userData.baseColor.getHex(), 1.4, 4.2, 0.9, 0.4);
 };
 
 window.wiringMove = function(cx, cy) {
+  if (WG.phase === 2) { MG.setPointer(cx, cy); wgPointerWorld(); return; }
   if (!WG.drag) return;
   MG.setPointer(cx, cy);
   wgPointerWorld();
@@ -9424,6 +9612,7 @@ window.wiringMove = function(cx, cy) {
 };
 
 window.wiringUp = function() {
+  if (WG.phase === 2) return;
   const d = WG.drag; if (!d) return;
   const n = wgPick();
   const tgt = (n && n !== d.node && !n.userData.connected) ? n : null;
@@ -9434,10 +9623,9 @@ window.wiringUp = function() {
 };
 
 function wgConnect(a, b, line) {
-  const pi = a.userData.pair, hex = WG_PAIRS[pi].color;
+  const pi = a.userData.pair, hex = WG.pairs[pi].color;
   line.material.opacity = 0.5;
   line.material.color.setHex(hex);
-  // hilo de motas de luz que fluye de un nodo al otro
   const motes = mkGlowPoints(WG_MOTES);
   const at = motes.geometry.attributes;
   _fxc.setHex(hex);
@@ -9450,16 +9638,22 @@ function wgConnect(a, b, line) {
     MG.fx.burst(n.position.x, n.position.y, 0, 22, 2.4, 1.8, hex, 0.24, 0.85);
     MG.pulse(n.position.x, n.position.y, hex, 1.2, 5.2, 1.3, 0.5);
   });
-  window.currentConnections++;
-  MGS.bell(MGS.NOTES[pi], 0, 2.4, 0.055);
-  MGS.bell(MGS.NOTES[pi] * 1.5, 0.09, 1.8, 0.025);
-  if (window.currentConnections >= WG_PAIRS.length) wgWin();
+  // el hilo se teje: sus filas del patrón aparecen (de abajo hacia arriba). Lo tejido se recordará como un nudo.
+  const g = WG.woven, rr = wgThreadRows(g), vivid = wgHexRgb(hex), pat = WG.cloth.pat;
+  let red = 0; for (let r = rr[0]; r <= rr[1]; r++) for (let c = 0; c < WG_COLS; c++) { const v = pat[r * WG_COLS + c]; if (v === 1 || v === 2) red++; }
+  WG.threads[g] = { hex, vivid, v10: Math.round(red / (rr[1] - rr[0] + 1)), round: WG.round };      // 0–44: promedio de rojo por fila
+  WG.cloth.data.push({ t: g, r0: rr[0], r1: rr[1], vivid, p: 0, flash: 1, removeT: -1, round: WG.round });
+  WG.woven++; WG.roundConn++;
+  window.currentConnections = WG.roundConn; WG.uiDirty = true;
+  const note = MGS.NOTES[g % 6] * (g >= 9 ? 2 : 1);                                // la melodía sube con la tela
+  MGS.bell(note, 0, 2.4, 0.055);
+  MGS.bell(note * 1.5, 0.09, 1.8, 0.025);
+  if (WG.roundConn >= WG.pairsNow) wgRoundDone();
 }
 
 function wgShort(a, b, line, end) {
   const en = MG.isEN();
   WG.shorts++;
-  // el hilo se deshace en motas rosadas
   for (let i = 0; i < 30; i++) {
     wgBez(a.position, end, Math.random(), _wgTmp);
     MG.fx.emit(_wgTmp.x, _wgTmp.y, 0, (Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 1.6 + 0.3, 0, 1.2 + Math.random() * 0.8, PAL.rose, 0.26, 0.7, 1.2);
@@ -9473,31 +9667,213 @@ function wgShort(a, b, line, end) {
   MGS.knock();
   showSystemToast(en ? `The threads tangle (${WG.shorts}/${WG.maxShorts})` : `Los hilos se enredan (${WG.shorts}/${WG.maxShorts})`, '#e7e4de');
   if (WG.shorts >= WG.maxShorts) {
-    WG.state = 'reset'; WG.resetT = 1.0;
-    setTimeout(() => showSystemToast(en ? 'The loom unravels. Begin again.' : 'El telar se desanuda. Empieza de nuevo.', '#e7e4de'), 450);
+    // el mundo en curso se desanuda: sus filas se deshacen; los mundos anteriores quedan tejidos
+    WG.cloth.data.forEach(r => { if (r.round === WG.round && r.removeT < 0) { r.removeT = 0; WG.woven--; } });
+    WG.threads.length = WG.woven;
+    WG.roundConn = 0; WG.uiDirty = true;
+    WG.state = 'leave'; WG.next = 'reset'; WG.resetT = 1.0;
+    setTimeout(() => showSystemToast(en ? 'The world unravels. Weave it again.' : 'El mundo se desanuda. Vuelve a tejerlo.', '#e7e4de'), 450);
   }
 }
 
-function wgWin() {
-  const en = MG.isEN();
-  WG.state = 'won'; WG.winT = 0;
+function wgRoundDone() {
+  const en = MG.isEN(), last = WG.round >= WG.rounds.length - 1;
+  WG.state = 'roundWon'; WG.roundT = 0; WG.next = last ? 'phase2' : 'advance';
   WG.cables.forEach(c => { c.speed = 0.5; });
-  WG.nodes.forEach(n => MG.fx.burst(n.position.x, n.position.y, 0, 30, 3, 2.4, WG_PAIRS[n.userData.pair].color, 0.28, 0.9));
-  MG.pulse(0, 0, PAL.bone, 2, 24, 2.2, 0.4);
+  WG.nodes.forEach(n => MG.fx.burst(n.position.x, n.position.y, 0, 14, 2.6, 2.0, WG.pairs[n.userData.pair].color, 0.26, 0.85));
+  MG.pulse(0, 0, PAL.bone, 2, 18, 1.8, 0.3);
+  MGS.arpeggio(last ? [0, 2, 3, 5] : [0, 2, 3], 0.14, 2.2, 0.04);
+  showSystemToast(last ? (en ? 'The three worlds are woven' : 'Los tres mundos están tejidos')
+                       : (en ? `${WG_WORLDS[WG.round].name}: woven` : `${WG_WORLDS[WG.round].name}: tejido`), '#e7e4de');
+}
+
+// ---------- Tarjetas de fase: aparecen un momento y se desvanecen (no bloquean el juego) ----------
+function wgCard(kicker, title, text, secs) {
+  const c = WG.els.card; if (!c) return;
+  c.k.textContent = kicker; c.t.textContent = title; c.p.textContent = text;
+  c.el.style.opacity = '1'; WG.card = { t: secs };
+}
+function wgWorldCard(first) {
+  const en = MG.isEN(), w = WG_WORLDS[WG.round];
+  wgCard(`${en ? 'PHASE I · THE LOOM · WORLD' : 'FASE I · EL TELAR · MUNDO'} ${WG.round + 1} / ${WG.rounds.length}`, w.name,
+    (first ? (en ? 'Crossing threads creates relations; repeated, relations make a pattern.  ' : 'Cruzar hilos crea relaciones; repetidas, hacen patrón.  ') : '') + w.sub[en ? 'en' : 'es'], first ? 6.5 : 4);
+}
+
+function wgSyncUI() {
+  const en = MG.isEN(), E = WG.els; if (!E.round) return;
+  if (WG.phase === 1) {
+    const w = WG_WORLDS[WG.round];
+    E.kicker.textContent = en ? 'PHASE I  ·  THE LOOM' : 'FASE I  ·  EL TELAR';
+    E.round.textContent = `${w.name}   ·   ${WG.woven} / ${WG.total} ${en ? 'THREADS' : 'HILOS'}`;
+    E.fill.style.width = (WG.woven / Math.max(1, WG.total) * 100).toFixed(1) + '%';
+  } else {
+    const Q = WG.quipu;
+    E.kicker.textContent = en ? 'PHASE II  ·  THE QUIPU' : 'FASE II  ·  EL QUIPU';
+    E.round.textContent = `${Q ? Q.tiedCords : 0} / ${Q ? Q.cords.length : 0} ${en ? 'CORDS READ' : 'CUERDAS LEÍDAS'}   ·   ${Q ? Q.tiedKnots : 0} / ${Q ? Q.totalKnots : 0} ${en ? 'KNOTS' : 'NUDOS'}`;
+    E.fill.style.width = (Q && Q.totalKnots ? Q.tiedKnots / Q.totalKnots * 100 : 0).toFixed(1) + '%';
+  }
+  WG.uiDirty = false;
+}
+
+// ==========================================
+// FASE II · EL QUIPU
+//   Un cordón principal (anillo) del que cuelgan las cuerdas de los hilos tejidos, en abanico. El valor de cada hilo
+//   (promedio de rojo por fila, 0–44) se anuda como en un quipu: DECENAS = nudos simples más cerca del cordón principal;
+//   UNIDADES = un nudo largo cerca del extremo libre (más vueltas = nudo más largo).
+// ==========================================
+function wgCircleLine(r, hex, opacity) {
+  const n = 64, line = wgNewLine(hex, opacity, n), arr = line.geometry.attributes.position.array;
+  for (let i = 0; i <= n; i++) { const a = i / n * Math.PI * 2; arr[i * 3] = Math.cos(a) * r; arr[i * 3 + 1] = Math.sin(a) * r; arr[i * 3 + 2] = 0; }
+  line.geometry.attributes.position.needsUpdate = true;
+  return line;
+}
+
+function wgBuildQuipu() {
+  const b = wgBounds(), N = WG.threads.length;
+  const Q = { group: new THREE.Group(), cords: [], sites: [], tiedCords: 0, tiedKnots: 0, totalKnots: 0, time: 0, grow: 0,
+              ringC: new THREE.Vector3(0, b.hh * 0.45, 0), ringR: Math.max(0.8, Math.min(1.25, b.hw * 0.1)), hitR: MG.isTouch() ? 0.9 : 0.7 };
+  scene.add(Q.group);
+  // cordón principal: anillo de varias vueltas + halo
+  [0, 0.18, 0.36].forEach((d, i) => { const l = wgCircleLine(Q.ringR + d * 0.5, 0xe7e4de, 0.75 - i * 0.2); l.position.copy(Q.ringC); Q.group.add(l); scene.remove(l); });
+  const halo = mkHalo(0xe7e4de, Q.ringR * 5, 0.14); halo.position.copy(Q.ringC); Q.group.add(halo); Q.halo = halo;
+  const rx = b.hw * 1.02, yTop = b.hh * 1.05, yBot = -b.hh * 1.12;
+  for (let i = 0; i < N; i++) {
+    const th = (-150 + 300 * (i + 0.5) / N) * Math.PI / 180, dx = Math.sin(th), dy = -Math.cos(th);
+    let L = 1e9;
+    if (Math.abs(dx) > 1e-3) L = Math.min(L, ((dx > 0 ? rx : -rx) - Q.ringC.x) / dx);
+    if (Math.abs(dy) > 1e-3) L = Math.min(L, ((dy > 0 ? yTop : yBot) - Q.ringC.y) / dy);
+    L = Math.max(3.2, L * 0.93);
+    const S = new THREE.Vector3(Q.ringC.x + dx * Q.ringR, Q.ringC.y + dy * Q.ringR, 0);
+    const E = new THREE.Vector3(Q.ringC.x + dx * L, Q.ringC.y + dy * L - 0.04 * L * Math.abs(dx), 0);
+    const Cc = new THREE.Vector3((S.x + E.x) / 2, (S.y + E.y) / 2 - 0.06 * L, 0);
+    const th0 = WG.threads[i], hex = th0.hex;
+    const line = wgNewLine(hex, 0.45, WG_QSEG); Q.group.add(line); scene.remove(line);
+    const twist = mkGlowPoints(30), ta = twist.geometry.attributes;
+    _fxc.setHex(hex); for (let k = 0; k < 30; k++) { ta.aCol.array[k * 3] = _fxc.r; ta.aCol.array[k * 3 + 1] = _fxc.g; ta.aCol.array[k * 3 + 2] = _fxc.b; ta.aSize.array[k] = 0.1; }
+    Q.group.add(twist);
+    const cord = { i, hex, S, E, C: Cc, L, line, twist, sites: [], tied: 0, done: false, glow: 0, growth: 0 };
+    // nudos: decenas (simples) cerca del cordón principal; unidades (largo) cerca del extremo libre
+    let tens = Math.min(4, Math.floor(th0.v10 / 10)), unit = th0.v10 % 10;
+    if (tens === 0 && unit === 0) unit = 1;
+    for (let k = 0; k < tens; k++) cord.sites.push({ cord, k, kind: 'tens', t: 0.34 + k * 0.1, turns: 1 });
+    if (unit > 0) cord.sites.push({ cord, k: tens, kind: 'unit', t: 0.86, turns: unit });
+    cord.sites.forEach(s => {
+      s.pos = new THREE.Vector3(); s.tied = false; s.appear = 0;
+      const mat = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.95 });
+      s.knot = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), mat); s.knot.scale.setScalar(0.001); Q.group.add(s.knot);
+      s.ghost = mkHalo(hex, 1.5, 0.2); Q.group.add(s.ghost);
+      Q.sites.push(s); Q.totalKnots++;
+    });
+    Q.cords.push(cord);
+  }
+  WG.quipu = Q;
+}
+
+function wgCordPt(c, s, time, out) {                       // punto de la cuerda en s∈[0,1] (con crecimiento y vaivén)
+  const g = c.growth, Ex = c.S.x + (c.E.x - c.S.x) * g, Ey = c.S.y + (c.E.y - c.S.y) * g, Cx = c.S.x + (c.C.x - c.S.x) * g, Cy = c.S.y + (c.C.y - c.S.y) * g, u = 1 - s;
+  const x = u * u * c.S.x + 2 * u * s * Cx + s * s * Ex, y = u * u * c.S.y + 2 * u * s * Cy + s * s * Ey;
+  const tx = Ex - c.S.x, ty = Ey - c.S.y, tl = Math.hypot(tx, ty) || 1;
+  const sw = Math.sin(time * 0.9 + c.i * 0.8 + s * 5) * 0.05 * s * Math.min(c.L, 10) * (1 + c.glow * 2);
+  return out.set(x - ty / tl * sw, y + tx / tl * sw, 0);
+}
+
+function wgTie(site) {
+  const Q = WG.quipu, cord = site.cord, p = site.pos;
+  site.tied = true; site.appear = 0; cord.tied++; Q.tiedKnots++; WG.uiDirty = true;
+  MG.fx.burst(p.x, p.y, 0, 12, 1.6, 1.4, cord.hex, 0.2, 0.85);
+  MG.pulse(p.x, p.y, cord.hex, 0.5, 2.6, 0.9, 0.4);
+  const n = MGS.NOTES[(cord.i + site.k * 2) % 6];
+  if (site.kind === 'unit') MGS.bell(n * 0.5, 0, 2.8, 0.05); else MGS.bell(n, 0, 1.8, 0.04);      // el nudo largo suena grave y largo
+  if (cord.tied >= cord.sites.length) {                                                         // cuerda leída
+    cord.done = true; cord.glow = 1; Q.tiedCords++; WG.uiDirty = true;
+    MGS.arpeggio([cord.i % 6, (cord.i + 2) % 6], 0.12, 2.2, 0.03);
+    if (Q.tiedCords >= Q.cords.length) wgQuipuWin();
+  }
+}
+
+function wgQuipuWin() {
+  const en = MG.isEN(), Q = WG.quipu;
+  WG.state = 'quipuWon'; WG.winT = 0;
+  Q.cords.forEach(c => MG.fx.burst(c.E.x, c.E.y, 0, 14, 2.4, 2.4, c.hex, 0.26, 0.85));
+  MG.pulse(Q.ringC.x, Q.ringC.y, PAL.bone, 1.5, 24, 2.6, 0.4);
   playSound('levelup');
-  MGS.arpeggio([0, 1, 2, 3, 5], 0.16, 2.6, 0.04);
-  showSystemToast(en ? '✧ The loom breathes again ✧' : '✧ El telar vuelve a respirar ✧', '#e7e4de');
+  MGS.arpeggio([0, 1, 2, 3, 5, 4], 0.16, 2.8, 0.04);
+  showSystemToast(en ? '✧ What was woven is now remembered ✧' : '✧ Lo tejido ahora se recuerda ✧', '#e7e4de');
+}
+
+function wgStartQuipu() {
+  const en = MG.isEN();
+  wgClear();
+  WG.phase = 2; WG.state = 'quipuIntro'; WG.introT = 0; WG.winT = 0;
+  wgBuildQuipu();
+  if (MG.ui && MG.ui.hint) MG.ui.hint.textContent = en
+    ? 'Run your finger (or cursor) along each cord. The knot keeps what was woven — it is read with the hands.'
+    : 'Pasa el dedo (o el cursor) por cada cuerda. El nudo guarda lo tejido: se lee con las manos.';
+  wgCard(en ? 'PHASE II · THE QUIPU' : 'FASE II · EL QUIPU', en ? 'The knot' : 'El nudo',
+    en ? 'Every thread returns as a cord. The knot turns pattern into memory.' : 'Cada hilo vuelve como cuerda. El nudo convierte el patrón en memoria.', 6);
+  MGS.arpeggio([2, 0], 0.3, 3, 0.04);
+  WG.uiDirty = true;
+}
+
+function wgQuipuUpdate(dt, calm) {
+  const Q = WG.quipu; if (!Q) return;
+  Q.time += dt;
+  const t = Q.time;
+  if (WG.state === 'quipuIntro') {
+    WG.introT += dt; Q.grow = Math.min(1, WG.introT / 2.4);
+    if (WG.introT > 2.6) WG.state = 'quipu';
+  } else Q.grow = 1;
+  const ge = 1 - Math.pow(1 - Q.grow, 3);
+  Q.halo.material.opacity = 0.14 + 0.1 * Math.sin(t * 1.2) + (WG.state === 'quipuWon' ? 0.3 : 0);
+
+  // lectura: cualquier nudo que el puntero roce (el segmento entre cuadros) se anuda
+  if (WG.state === 'quipu') {
+    if (mouseNDC.x > -1.5) {
+      wgPointerWorld();
+      const a = WG.prevPtr, b = WG.ptr, abx = b.x - a.x, aby = b.y - a.y, ab2 = abx * abx + aby * aby;
+      Q.sites.forEach(s => {
+        if (s.tied) return;
+        const px = s.pos.x - a.x, py = s.pos.y - a.y, k = ab2 > 1e-9 ? Math.max(0, Math.min(1, (px * abx + py * aby) / ab2)) : 0;
+        if (Math.hypot(s.pos.x - (a.x + abx * k), s.pos.y - (a.y + aby * k)) < Q.hitR && s.cord.growth > 0.9) wgTie(s);
+      });
+      a.copy(b);
+    }
+  }
+
+  Q.cords.forEach(c => {
+    c.growth = ge; c.glow = Math.max(0, c.glow - dt * 0.8);
+    const la = c.line.geometry.attributes.position.array;
+    for (let i = 0; i <= WG_QSEG; i++) { wgCordPt(c, i / WG_QSEG, t, _wgTmp); la[i * 3] = _wgTmp.x; la[i * 3 + 1] = _wgTmp.y; la[i * 3 + 2] = 0; }
+    c.line.geometry.attributes.position.needsUpdate = true;
+    c.line.material.opacity = (c.done ? 0.85 : 0.4) + c.glow * 0.15;
+    const ta = c.twist.geometry.attributes, tp = ta.position.array, tal = ta.aAlpha.array;
+    for (let k = 0; k < 30; k++) { wgCordPt(c, (k + 0.5) / 30, t, _wgTmp); tp[k * 3] = _wgTmp.x; tp[k * 3 + 1] = _wgTmp.y; tp[k * 3 + 2] = 0; tal[k] = (0.22 + 0.2 * Math.sin(t * 2 + k * 0.7 + c.i)) * (c.done ? 1.6 : 1) * ge; }
+    ta.position.needsUpdate = true; ta.aAlpha.needsUpdate = true;
+    c.sites.forEach(s => {
+      wgCordPt(c, s.t, t, s.pos);
+      const vis = Math.max(0, Math.min(1, (c.growth - s.t) * 6));
+      if (s.tied) s.appear = Math.min(1, s.appear + dt * 3.5);
+      const e = s.tied ? 1 - Math.pow(1 - s.appear, 3) * (1 + 0.6 * (1 - s.appear)) : 0;      // aparece con un pequeño rebote
+      wgCordPt(c, Math.min(1, s.t + 0.03), t, _wgTmp); wgCordPt(c, Math.max(0, s.t - 0.03), t, _wgTmp2);
+      const ang = Math.atan2(_wgTmp.y - _wgTmp2.y, _wgTmp.x - _wgTmp2.x);
+      s.knot.position.copy(s.pos); s.knot.rotation.z = ang;
+      const len = s.kind === 'unit' ? 1 + 0.35 * s.turns : 1;                                   // nudo largo: más vueltas, más largo
+      s.knot.scale.set(Math.max(0.001, e * len), Math.max(0.001, e), Math.max(0.001, e));
+      s.ghost.position.copy(s.pos);
+      s.ghost.material.opacity = s.tied ? 0 : vis * (0.16 + 0.12 * Math.sin(t * 2 + s.cord.i * 0.7 + s.k));
+    });
+  });
 }
 
 function wgUpdate(dt) {
   WG.t += dt;
   const calm = reduceMotionMQ.matches;
-  const amp = calm ? 0 : 0.35 * WG.scale;
-  const reset = WG.state === 'reset';
+  const amp = calm ? 0 : (0.25 + 0.08 * WG.round) * WG.scale;                       // los mundos avanzados se agitan más
+  const leaving = WG.state === 'leave';
 
   WG.nodes.forEach(n => {
     const u = n.userData;
-    u.appear = reset ? Math.max(0, u.appear - dt * 1.4) : Math.min(1, u.appear + dt / 0.9);
+    u.appear = leaving ? Math.max(0, u.appear - dt * 1.4) : Math.min(1, u.appear + dt / 0.9);
     const ap = Math.max(0, u.appear), ease = 1 - Math.pow(1 - ap, 3);
     n.position.set(u.base.x + Math.sin(WG.t * 0.9 + u.phase) * amp, u.base.y + Math.cos(WG.t * 0.7 + u.phase) * amp, 0);
     if (!calm) { u.body.rotation.x += dt * 0.5; u.body.rotation.y += dt * 1.0; }
@@ -9505,7 +9881,6 @@ function wgUpdate(dt) {
     if (u.pop > 0) { u.pop = Math.max(0, u.pop - dt * 3); sc *= 1 + Math.sin(u.pop * Math.PI) * 0.35; }
     const isHover = WG.hover === n;
     n.scale.setScalar(Math.max(0.001, sc * (isHover ? 1.2 : 1)));
-
     if (u.flash > 0) {
       u.flash -= dt;
       u.mat.color.copy(u.baseColor).lerp(_c2.setHex(PAL.rose), Math.min(1, u.flash / 0.6));
@@ -9518,6 +9893,7 @@ function wgUpdate(dt) {
   });
 
   // Hilos conectados + motas que fluyen
+  const cfade = leaving ? Math.max(0, WG.resetT) : 1;
   WG.cables.forEach(c => {
     wgUpdateLine(c.line, c.a.position, c.b.position);
     c.flow = (c.flow + dt * c.speed) % 1;
@@ -9530,8 +9906,7 @@ function wgUpdate(dt) {
       A[i] = 0.85 * Math.sin(Math.PI * tt);
     }
     at.position.needsUpdate = true; at.aSize.needsUpdate = true; at.aAlpha.needsUpdate = true;
-    const fade = reset ? Math.max(0, WG.resetT) : 1;
-    c.motes.material.uniforms.uOpacity.value = fade; c.line.material.opacity = 0.5 * fade;
+    c.motes.material.uniforms.uOpacity.value = cfade; c.line.material.opacity = 0.5 * cfade;
   });
 
   // Hilo en mano: sigue al cursor y deja una estela
@@ -9540,7 +9915,7 @@ function wgUpdate(dt) {
     d.end.lerp(hov ? hov.position : WG.ptr, Math.min(1, dt * 18));
     wgUpdateLine(d.line, d.node.position, d.end);
     const ok = hov && hov.userData.pair === d.node.userData.pair;
-    if (hov) d.line.material.color.setHex(ok ? WG_PAIRS[d.node.userData.pair].color : PAL.rose);
+    if (hov) d.line.material.color.setHex(ok ? WG.pairs[d.node.userData.pair].color : PAL.rose);
     else d.line.material.color.copy(d.node.userData.baseColor);
     WG.trailT -= dt;
     if (!calm && WG.trailT <= 0) {
@@ -9557,27 +9932,46 @@ function wgUpdate(dt) {
 
   // Brasas: cada tanto un nodo suelta una mota que sube despacio
   WG.emberT -= dt;
-  if (!calm && WG.emberT <= 0 && WG.nodes.length && !reset) {
+  if (!calm && WG.emberT <= 0 && WG.nodes.length && !leaving) {
     WG.emberT = 0.22;
     const n = WG.nodes[Math.floor(Math.random() * WG.nodes.length)];
     MG.fx.emit(n.position.x + (Math.random() - 0.5), n.position.y + (Math.random() - 0.5), 0, (Math.random() - 0.5) * 0.3, 0.35 + Math.random() * 0.3, 0,
-      2.6, WG_PAIRS[n.userData.pair].color, 0.18, n.userData.connected ? 0.7 : 0.4, 0.2);
+      2.6, WG.pairs[n.userData.pair].color, 0.18, n.userData.connected ? 0.7 : 0.4, 0.2);
   }
 
-  if (reset) {
+  // Máquina de estados. Fase I: jugando → mundo completo → nodos se desvanecen → siguiente mundo (o reinicio) · Fase II: quipu
+  if (WG.state === 'roundWon') {
+    WG.roundT += dt;
+    if (WG.roundT > 1.5) { WG.state = 'leave'; WG.resetT = 1.0; }
+  } else if (WG.state === 'leave') {
     WG.resetT -= dt;
-    if (WG.resetT <= 0) wgBuild();
-  } else if (WG.state === 'won') {
+    if (WG.resetT <= 0) {
+      if (WG.next === 'advance') { WG.round++; wgBuild(); wgWorldCard(false); }
+      else if (WG.next === 'phase2') wgStartQuipu();
+      else wgBuild();
+    }
+  } else if (WG.state === 'quipuWon') {
     WG.winT += dt;
-    if (WG.winT > 2.1) { window.endWiringGame(); return; }
+    if (WG.winT > 5.2) { wgQuipuUpdate(dt, calm); wgUpdateCloth(dt, calm); window.endWiringGame(); return; }
   }
 
-  MG.setHUD({
+  if (WG.phase === 2) wgQuipuUpdate(dt, calm);
+  wgUpdateCloth(dt, calm);
+  if (WG.card) { WG.card.t -= dt; if (WG.card.t <= 0 && WG.els.card) { WG.els.card.el.style.opacity = '0'; WG.card = null; } }
+  if (WG.uiDirty) wgSyncUI();
+
+  if (WG.phase === 1) MG.setHUD({
     'lives-value': WG.shorts + '/' + WG.maxShorts,
-    'level-value': window.currentConnections + '/' + WG_PAIRS.length,
-    'files-value': (window.currentConnections * 25) + ' Mbps',
+    'level-value': WG.woven + '/' + WG.total,
+    'files-value': (WG.woven * 25) + ' Mbps',
     'combo-value': (WG.drag ? WG.drag.node.position.distanceTo(WG.drag.end) * 0.8 : 0).toFixed(2) + ' Ω'
   });
+  else { const Q = WG.quipu; MG.setHUD({
+    'lives-value': '—',
+    'level-value': (Q ? Q.tiedCords : 0) + '/' + (Q ? Q.cords.length : 0),
+    'files-value': (Q ? Q.tiedKnots : 0) + '/' + (Q ? Q.totalKnots : 0),
+    'combo-value': '—'
+  }); }
 }
 
 function wgStart(data) {
@@ -9586,12 +9980,31 @@ function wgStart(data) {
   window.isWiringGameActive = true;
   window.wiringData = data;
   MG.enter(15);
-  MG.buildUI(en
-    ? 'Draw a thread from each node to its twin — same colour, same shape. Three tangles unravel the loom.'
-    : 'Lleva un hilo de cada nodo hasta su gemelo — mismo color, misma forma. Tres enredos deshacen el telar.');
+  const ui = MG.buildUI(en
+    ? 'Draw a thread from each node to its twin — same colour, same shape. Every thread you connect is woven into the world.'
+    : 'Lleva un hilo de cada nodo hasta su gemelo — mismo color, misma forma. Cada hilo que conectas se teje en el mundo.');
+  const kicker = document.createElement('div');
+  kicker.style.cssText = 'font-size:0.66rem; font-weight:300; letter-spacing:0.34em; color:#a8a49c;';
+  const round = document.createElement('div');
+  round.style.cssText = 'margin-top:8px; font-size:0.62rem; font-weight:300; letter-spacing:0.26em; color:#8a867f;';
+  const prog = document.createElement('div'); prog.style.cssText = 'margin:12px auto 0; width:min(60vw,240px); height:1px; background:rgba(231,228,222,0.15); position:relative;';
+  const fill = document.createElement('div'); fill.style.cssText = 'position:absolute; left:0; top:0; height:1px; width:0%; background:#e7e4de; box-shadow:0 0 8px rgba(231,228,222,0.6); transition:width .6s ease;';
+  prog.appendChild(fill); ui.extra.appendChild(kicker); ui.extra.appendChild(round); ui.extra.appendChild(prog);
+  // tarjeta de fase (centro, se desvanece sola)
+  const cardEl = document.createElement('div');
+  cardEl.style.cssText = 'position:absolute; left:50%; top:24%; transform:translateX(-50%); width:min(86vw,560px); text-align:center; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 18px rgba(0,0,0,0.9);';
+  const ck = document.createElement('div'); ck.style.cssText = 'font-size:0.62rem; font-weight:300; letter-spacing:0.38em; color:#a8a49c;';
+  const ct = document.createElement('div'); ct.style.cssText = 'margin:12px 0; font-size:1.6rem; font-weight:200; letter-spacing:0.22em; color:#e7e4de;';
+  const cp = document.createElement('div'); cp.style.cssText = 'font-size:0.85rem; font-weight:300; letter-spacing:0.06em; line-height:1.9; color:#cfd0d4;';
+  cardEl.appendChild(ck); cardEl.appendChild(ct); cardEl.appendChild(cp); ui.root.appendChild(cardEl);
+  WG.els = { kicker, round, fill, card: { el: cardEl, k: ck, t: ct, p: cp } };
+
+  WG.rounds = wgRounds(); WG.total = WG.rounds.reduce((a, b) => a + b, 0);
+  WG.round = 0; WG.woven = 0; WG.roundConn = 0; WG.winT = 0; WG.phase = 1; WG.threads = []; WG.quipu = null; WG.card = null;
+  wgBuildCloth();
   wgBuild();
+  wgWorldCard(true);
   morphHUD('enrutar');
-  showSystemToast(en ? 'Loose threads seek their twin.' : 'Hilos sueltos buscan a su gemelo.', '#e7e4de');
 }
 window.startWiringGame = function(data) {
   if (MG.pending || window.isWiringGameActive || window.isTuningGameActive || window.isHogueraActive) return;
@@ -9599,23 +10012,27 @@ window.startWiringGame = function(data) {
   MG.reflect(MG.text('wiring', 'intro'), () => { MG.pending = false; wgStart(data); }, { cancelable: true, onCancel: () => { MG.pending = false; } });
 };
 
+function wgTeardown() {
+  window.isWiringGameActive = false; WG.state = 'idle'; WG.phase = 1;
+  wgClear();
+  if (WG.quipu) { mgDispose(WG.quipu.group); WG.quipu = null; }
+  if (WG.cloth) { mgDispose(WG.cloth.mesh); WG.cloth = null; }
+  WG.els = {}; WG.card = null;
+}
+
 window.endWiringGame = function() {
   if (!window.isWiringGameActive) return;
-  window.isWiringGameActive = false; WG.state = 'idle';
-  wgClear();
+  wgTeardown();
   MG.exit();
   setTimeout(() => { MG.reflect(MG.text('wiring', 'outro'), () => openProjectPopup(window.wiringData)); }, 700);
 };
 
 window.abortWiringGame = function() {
   if (!window.isWiringGameActive) return;
-  const en = MG.isEN();
-  window.isWiringGameActive = false; WG.state = 'idle';
-  wgClear();
+  wgTeardown();
   MG.exit();
-  showSystemToast(en ? 'The threads let go' : 'Los hilos se sueltan', '#e7e4de');
+  setTimeout(() => { MG.reflect(MG.text('wiring', 'outro'), () => {}); }, 700);
 };
-
 
 // ==========================================
 // 🔥 JUEGO OTRO: LA HOGUERA DE DATOS (EL VIAJERO · DISEÑO DE SUFICIENCIA Y RENUNCIA)
@@ -9637,6 +10054,7 @@ const HG_COLOSSUS = { x: -36.8, z: 5.6, scale: 0.44, yaw: 1.4 };       // bestia
 const HG = {
   phase: 'idle', heat: 0.7, cold: 0, coldS: 0, listen: 0, listenS: 0, outT: 0, winT: 0, discarded: 0, files: 0,
   subT: 0, subIdx: 0, flashV: 0, calmV: 0, emberT: 0, filesNote: false,
+  growlIn: 10, meowIn: 15, growlP: 1, growlAmp: 0, growlDur: 2, growlG: 0,
   group: null, ground: null, bodyMat: null, screenMat: null, fx: null, fireHalo: null, glowDisc: null,
   colos: null, sigil: null, stars: null, fog: null, snow: null, moon: null, eyes: [], pets: [], chips: [], els: {}, tone: null, saved: null,
   fire: new THREE.Vector3(0.8, 0.9, 0.0), fireScreen: { x: 0, y: 0 }
@@ -9860,11 +10278,11 @@ function hgBuildColossus() {
 // La bestia responde despacio al frío: baja la cabeza hacia el fuego y adelanta una pata
 function hgAnimateColossus(t, c, calm) {
   const C = HG.colos; if (!C) return;
-  const sw = calm ? 0.2 : 1;
-  C.body.scale.y = 1 + Math.sin(t * 0.5) * 0.008 * sw;
+  const sw = calm ? 0.2 : 1, g = HG.growlG || 0;
+  C.body.scale.y = 1 + Math.sin(t * 0.5) * 0.008 * sw + g * 0.012;
   C.body.rotation.z = Math.sin(t * 0.21) * 0.012 * sw;
   C.body.rotation.x = c * 0.03;
-  C.head.rotation.x = 0.06 + c * 0.24 + HG.calmV * 0.10 + Math.sin(t * 0.45) * 0.012 * sw;
+  C.head.rotation.x = 0.06 + c * 0.24 + HG.calmV * 0.10 + Math.sin(t * 0.45) * 0.012 * sw + g * 0.08;
   C.head.rotation.y = Math.sin(t * 0.13) * 0.06 * sw;
   C.legFR.rotation.x = -(0.03 + c * 0.5) + Math.sin(t * 0.6) * 0.01 * sw;
   C.legFL.rotation.x = -(0.02 + c * 0.12);
@@ -9983,7 +10401,7 @@ function hgAddPets() {
     o.scale.multiplyScalar(s);
     box = meshBox(o);
     o.position.set(x, -box.min.y + 0.02, z);                                       // apoyado en el suelo
-    o.userData.ph = Math.random() * 6;
+    o.userData.ph = Math.random() * 6; o.userData.kind = HG.pets.length;
     scene.add(o); HG.pets.push(o);                                                 // comparten geometría con la plantilla: NO se liberan
   };
   mk(chaplinModelTemplate, 2.3, 1.0, -0.6, 1.25, 0.95);
@@ -10002,7 +10420,16 @@ function hgToneStart() {
     const w1 = mk(261.63, out), w2 = mk(392, out);
     const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), ch = buf.getChannelData(0);
     for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
-    HG.tone = { ctx, out, lp, c1, c2, c3, w1, w2, noise: buf };
+    const purr = [0, 1].map(i => {
+      const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+      const lpf = ctx.createBiquadFilter(); lpf.type = 'lowpass'; lpf.frequency.value = 140 + i * 30; lpf.Q.value = 1;
+      const g = ctx.createGain(); g.gain.value = 0;
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 23 + i * 2.5;            // el pulso del ronroneo
+      const ld = ctx.createGain(); ld.gain.value = 0; lfo.connect(ld); ld.connect(g.gain);
+      src.connect(lpf); lpf.connect(g); g.connect(out); src.start(); lfo.start();
+      return { src, g, ld, lfo };
+    });
+    HG.tone = { ctx, out, lp, c1, c2, c3, w1, w2, noise: buf, purr };
   } catch (e) { HG.tone = null; }
 }
 function hgToneUpdate(heat, cold) {
@@ -10015,6 +10442,8 @@ function hgToneUpdate(heat, cold) {
     T.lp.frequency.setTargetAtTime(160 + cold * 260, t, 0.3);
     T.w1.g.gain.setTargetAtTime(heat * 0.014, t, 0.3);
     T.w2.g.gain.setTargetAtTime(heat * heat * 0.010, t, 0.3);
+    const pr = HG.phase === 'out' ? 0 : Math.min(0.4, heat * 0.4);                    // los gatos ronronean con el calor y callan sin fuego
+    T.purr.forEach(p => { p.g.gain.setTargetAtTime(pr * 0.5, t, 0.4); p.ld.gain.setTargetAtTime(pr * 0.5, t, 0.4); });
     if (!isSoundEnabled) T.out.gain.setTargetAtTime(0, t, 0.1);
   } catch (e) {}
 }
@@ -10025,6 +10454,7 @@ function hgToneStop() {
     const t = T.ctx.currentTime;
     T.out.gain.cancelScheduledValues(t); T.out.gain.setTargetAtTime(0, t, 0.35);
     [T.c1, T.c2, T.c3, T.w1, T.w2].forEach(v => v.o.stop(t + 2.2));
+    T.purr.forEach(p => { p.src.stop(t + 2.2); p.lfo.stop(t + 2.2); });
   } catch (e) {}
 }
 function hgNoise(kind, vol, freq, dur) {
@@ -10119,10 +10549,95 @@ function hgBurn(c) {
   vibrateDevice(25);
 }
 
+// ---------- Voces: el Coloso gruñe; los gatos maúllan y ronronean ----------
+//   Gruñido: una sierra grave que desciende (64→36 Hz) con un sub, modulada en amplitud a ~20 Hz (el "gruñir"), filtrada
+//   hacia lo oscuro y con ráfagas de estática de CRT. 'idle' = de vez en cuando; 'click' = al tocarlo; 'angry' = si el fuego muere;
+//   'sigh' = un largo suspiro al terminar. Cada gruñido también mueve la cabeza, enciende los ojos y suelta aliento de ceniza.
+function hgGrowl(kind) {
+  const calm = reduceMotionMQ.matches;
+  const loud = kind === 'click' ? 1 : kind === 'angry' ? 1.2 : kind === 'sigh' ? 0.5 : 0.7;
+  const dur = kind === 'click' ? 2.2 : kind === 'angry' ? 2.8 : kind === 'sigh' ? 3.2 : 1.8 + Math.random();
+  HG.growlP = 0; HG.growlAmp = loud; HG.growlDur = dur;
+  if (HG.colos && HG.fx) {
+    _hgV.set(0, 6, 10); HG.colos.head.localToWorld(_hgV);
+    HG.fx.burst(_hgV.x, _hgV.y, _hgV.z, kind === 'sigh' ? 10 : 18, 1.6, 2.0, 0x59616b, 0.32, 0.5);        // aliento de ceniza
+    if (kind === 'click' || kind === 'angry') MG.pulse(HG_COLOSSUS.x, 0.05, 0xd64a3a, 2, 16, 1.8, 0.35, HG_COLOSSUS.z);   // onda sobre el suelo
+  }
+  if (!calm && (kind === 'click' || kind === 'angry')) { shakeIntensity = Math.max(shakeIntensity, 0.1); HG.flashV = Math.max(HG.flashV, 0.5); }
+  if (!MGS.ok()) return;
+  try {
+    const ctx = audioCtx, t = ctx.currentTime, sigh = kind === 'sigh';
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0, t);
+    out.gain.linearRampToValueAtTime(0.11 * loud, t + (sigh ? 0.9 : 0.25));
+    out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 2;
+    lp.frequency.setValueAtTime(sigh ? 180 : 280, t); lp.frequency.exponentialRampToValueAtTime(100, t + dur);
+    lp.connect(out); out.connect(masterGain);
+    const f0 = sigh ? 78 : 64 + Math.random() * 12, f1 = sigh ? 44 : 36, ends = t + dur + 0.1;
+    const o1 = ctx.createOscillator(); o1.type = 'sawtooth';
+    o1.frequency.setValueAtTime(f0, t); o1.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const am = ctx.createGain(); am.gain.value = 0.6;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 17 + Math.random() * 9;
+    const lg = ctx.createGain(); lg.gain.value = sigh ? 0 : 0.45; lfo.connect(lg); lg.connect(am.gain);
+    o1.connect(am); am.connect(lp);
+    const o2 = ctx.createOscillator(); o2.type = 'sine';
+    o2.frequency.setValueAtTime(f0 / 2, t); o2.frequency.exponentialRampToValueAtTime(f1 / 2, t + dur);
+    const g2 = ctx.createGain(); g2.gain.value = 0.8; o2.connect(g2); g2.connect(lp);
+    [o1, o2, lfo].forEach(o => { o.start(t); o.stop(ends); });
+    if (loud >= 1) {                                                              // rugido: una voz más áspera por encima
+      const o3 = ctx.createOscillator(); o3.type = 'square';
+      o3.frequency.setValueAtTime(f0 * 1.8, t); o3.frequency.exponentialRampToValueAtTime(f1 * 1.6, t + dur);
+      const g3 = ctx.createGain(); g3.gain.value = 0.12; o3.connect(g3); g3.connect(lp); o3.start(t); o3.stop(ends);
+    }
+  } catch (e) {}
+  for (let i = 0; i < 5; i++) setTimeout(() => hgNoise('bandpass', 0.012 * loud, 1400 + Math.random() * 2600, 0.06), Math.random() * dur * 700);   // estática de CRT
+}
+
+function hgMeow(idx, loud) {                                                      // 0 = Chaplin (grave, largo), 1 = Gamber (agudo, corto)
+  const p = HG.pets[idx]; if (!p) return;
+  p.userData.pulse = 1;
+  if (HG.fx) HG.fx.burst(p.position.x, p.position.y + 0.6, p.position.z, 8, 0.8, 1.4, 0xffd08a, 0.18, 0.8);
+  if (!MGS.ok()) return;
+  try {
+    const ctx = audioCtx, t = ctx.currentTime, dur = idx === 0 ? 0.8 : 0.55, base = idx === 0 ? 430 : 560, v = loud ? 0.05 : 0.03;
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(base * 0.85, t);
+    o.frequency.exponentialRampToValueAtTime(base * 1.7, t + dur * 0.25);
+    o.frequency.exponentialRampToValueAtTime(base * 0.95, t + dur);
+    const vib = ctx.createOscillator(); vib.frequency.value = 6.5;
+    const vg = ctx.createGain(); vg.gain.value = 9; vib.connect(vg); vg.connect(o.frequency);
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 2.5;      // la "a" del maullido: una formante que sube y baja
+    f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(1900, t + dur * 0.3); f.frequency.exponentialRampToValueAtTime(1000, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 0.06); g.gain.setValueAtTime(v, t + dur * 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(f); f.connect(g); g.connect(masterGain);
+    [o, vib].forEach(n => { n.start(t); n.stop(t + dur + 0.05); });
+  } catch (e) {}
+}
+
+window.hgTap = function(cx, cy) {                                                 // toque en la escena: un gato maúlla, el Coloso gruñe
+  if (!window.isHogueraActive || window.isMiniIntro || !HG.colos) return;
+  const W = window.innerWidth, H = window.innerHeight;
+  let best = -1, bd = 1e9;
+  HG.pets.forEach((p, i) => {                                                     // gatos: por cercanía en pantalla (son diminutos)
+    _hgV.set(p.position.x, p.position.y + 0.4, p.position.z).project(camera);
+    const d = Math.hypot((_hgV.x + 1) / 2 * W - cx, (1 - _hgV.y) / 2 * H - cy);
+    if (d < bd) { bd = d; best = i; }
+  });
+  if (best >= 0 && bd < 42 * Math.min(1.3, Math.max(0.7, H / 800))) { hgMeow(best, true); return; }
+  if (HG.growlP < 0.5) return;                                                    // no encadenar gruñidos
+  MG.setPointer(cx, cy);
+  dragRaycaster.setFromCamera(mouseNDC, camera);
+  if (dragRaycaster.intersectObjects([HG.colos.root], true).length) hgGrowl('click');
+};
+
 function hgFireOut() {
   const en = MG.isEN();
   HG.phase = 'out'; HG.outT = 3.5;
   MGS.knock();
+  hgGrowl('angry');
+  setTimeout(() => hgMeow(0, true), 600); setTimeout(() => hgMeow(1, true), 1300);          // los gatos se inquietan
   HG.fx.burst(HG.fire.x, HG.fire.y, HG.fire.z, 30, 1.2, 2.4, 0x8a867f, 0.4 * HG_FS, 0.5);
   showSystemToast(en ? 'The fire goes out. The cold listens.' : 'El fuego se apaga. El frío escucha.', '#e7e4de');
 }
@@ -10194,6 +10709,7 @@ function hgStart() {
 
   HG.phase = 'play'; HG.heat = 0.7; HG.cold = 0; HG.coldS = 0; HG.listen = 0; HG.listenS = 0; HG.outT = 0; HG.winT = 0; HG.discarded = 0;
   HG.subT = 0; HG.subIdx = 0; HG.flashV = 0; HG.calmV = 0; HG.emberT = 0; HG.filesNote = false;
+  HG.growlIn = 7 + Math.random() * 5; HG.meowIn = 12 + Math.random() * 8; HG.growlP = 1; HG.growlAmp = 0; HG.growlG = 0;
   HG.files = parseInt((MG.saved && MG.saved.hud && MG.saved.hud['files-value']) || '0', 10) || 0;
 
   if (MG.dust) MG.dust.pts.position.set(HG_ISO.target.x, 6, HG_ISO.target.z);
@@ -10216,6 +10732,7 @@ window.startHogueraGame = function() {
 
 function hgWin() {
   HG.phase = 'won'; HG.winT = 0;
+  hgGrowl('sigh');                                                                 // el Coloso exhala: ya fue escuchado
   hgSub(HG_SUBS[MG.isEN() ? 'en' : 'es'][3]);
   hgToneStop();
   playSound('levelup');
@@ -10338,9 +10855,12 @@ function hgUpdate(dt) {
   gu.uTime.value = t; gu.uHeat.value = heat; gu.uCold.value = HG.coldS;
   HG.screenMat.uniforms.uTime.value = t; HG.screenMat.uniforms.uCold.value = HG.coldS; HG.screenMat.uniforms.uCalm.value = HG.calmV;
   HG.bodyMat.uniforms.color.value.setHex(0x5c635c).multiplyScalar(0.6 + 0.9 * HG.coldS);
-  HG.screenMat.uniforms.uRune.value = 0.25 + HG.listenS * 0.75 + HG.calmV * 0.3;          // las runas se encienden al escuchar su caja negra
+  HG.screenMat.uniforms.uRune.value = 0.25 + HG.listenS * 0.75 + HG.calmV * 0.3 + HG.growlG * 0.4;          // las runas se encienden al escuchar su caja negra
+  if (HG.growlP < 1) HG.growlP = Math.min(1, HG.growlP + dt / HG.growlDur);                  // envolvente del gruñido: ataque rápido y caída
+  HG.growlG = HG.growlAmp * Math.min(1, HG.growlP / 0.1) * (1 - HG.growlP);
+  if (HG.growlG > 0.3 && !calm) shakeIntensity = Math.max(shakeIntensity, HG.growlG * 0.05);
   hgAnimateColossus(t, HG.coldS, calm);
-  HG.eyes.forEach(e => { e.material.opacity = (0.3 + HG.coldS * 0.45) * (0.85 + 0.15 * Math.sin(t * 3)) * (1 - HG.calmV * 0.4); });   // ojos de brasa: arden más cuando el fuego muere
+  HG.eyes.forEach(e => { e.material.opacity = (0.3 + HG.coldS * 0.45 + HG.growlG * 0.5) * (0.85 + 0.15 * Math.sin(t * 3)) * (1 - HG.calmV * 0.4); });   // ojos de brasa: arden más cuando el fuego muere
   // pluma de ceniza que el viento arrastra desde la corona (como el penacho negro del coloso)
   if (HG.colos && !calm) {
     _hgV.set(0, 6, 10); HG.colos.head.localToWorld(_hgV);
@@ -10351,7 +10871,7 @@ function hgUpdate(dt) {
   hgUpdateAtmos(dt, t, calm);
 
   // ----- Mascotas dormidas respirando -----
-  HG.pets.forEach(p => { const b = 1 + Math.sin(t * 1.4 + p.userData.ph) * 0.02; p.scale.y = (p.userData.sy || (p.userData.sy = p.scale.y)) * b; });
+  HG.pets.forEach(p => { const b = 1 + Math.sin(t * 1.4 + p.userData.ph) * 0.02, pu = p.userData.pulse || 0; p.userData.pulse = Math.max(0, pu - dt * 1.6); p.scale.y = (p.userData.sy || (p.userData.sy = p.scale.y)) * b * (1 + pu * 0.1); });
 
   // ----- Glitch rojo en pantalla: más frecuente con el frío -----
   HG.flashV = Math.max(0, HG.flashV - dt * 3);
@@ -10359,6 +10879,10 @@ function hgUpdate(dt) {
     HG.flashV = 0.4 + HG.cold * 0.6;
     if (HG.cold > 0.5 && typeof triggerSubtleGlitch === 'function') triggerSubtleGlitch();
   }
+
+  // ----- Voces: el Coloso gruñe de vez en cuando (más seguido con el frío); los gatos maúllan bajito -----
+  if (HG.phase !== 'won') { HG.growlIn -= dt; if (HG.growlIn <= 0) { hgGrowl('idle'); HG.growlIn = 16 - 9 * HG.coldS + Math.random() * 10; } }
+  if (HG.phase === 'play') { HG.meowIn -= dt; if (HG.meowIn <= 0) { hgMeow(Math.random() < 0.5 ? 0 : 1, HG.heat < 0.2); HG.meowIn = (HG.heat < 0.2 ? 6 : 22) + Math.random() * 12; } }
 
   // ----- Crujidos del fuego -----
   if (Math.random() < heat * dt * 9) hgNoise('bandpass', (0.02 + Math.random() * 0.03) * (0.4 + heat), 900 + Math.random() * 2600, 0.05 + Math.random() * 0.05);
@@ -10405,5 +10929,5 @@ window.abortHogueraGame = function() {
   const en = MG.isEN();
   hgTeardown();
   MG.exit();
-  showSystemToast(en ? 'You leave the fire behind' : 'Dejas la hoguera atrás', '#e7e4de');
+  setTimeout(() => { MG.reflect(MG.text('hoguera', 'outro'), () => {}); }, 700);
 };
