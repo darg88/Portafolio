@@ -168,105 +168,173 @@ async function checkXRSupport() {
 }
 
 // ==========================================
-// 🛡️ SISTEMA DE SEGURIDAD AR/VR (Bloqueo previo)
+// ⚠️ AVISO DE SEGURIDAD AR / VR
+//   Se muestra ANTES de pedir la sesión. La sesión se solicita desde el clic del botón "Entrar" del aviso (así se conserva
+//   el gesto de usuario que exigen los navegadores). Sale con ESC o CANCELAR. Opción "no volver a mostrar en esta sesión".
 // ==========================================
-function showXRSafetyWarning(type, onConfirm) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;align-items:center;justify-content:center;color:#fff;font-family:-apple-system,sans-serif;text-align:center;backdrop-filter:blur(8px);';
-    const en = window.currentLang === 'en';
-    overlay.innerHTML = `
-        <div style="max-width: 420px; padding: 35px; border: 1px solid #ff6644; border-radius: 8px; background: rgba(15,10,10,0.95); box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 20px rgba(255,102,68,0.2);">
-            <h2 style="color:#ff6644; margin-top:0; letter-spacing:2px; font-weight:300;">⚠️ ${en ? 'SAFETY WARNING' : 'AVISO DE SEGURIDAD'}</h2>
-            <p style="font-size:1.05rem; line-height:1.6; font-weight:300; color:#dcdce2;">
-                ${type === 'VR' 
-                    ? (en ? 'You are entering <b>Virtual Reality</b>.<br><br>Please clear your physical area of obstacles, stay seated if possible, and ensure a safe environment before continuing.' 
-                          : 'Estás entrando a <b>Realidad Virtual</b>.<br><br>Por favor, despeja tu área física de obstáculos, permanece sentado si es posible y asegúrate de estar en un entorno seguro.') 
-                    : (en ? 'You are entering <b>Augmented Reality</b>.<br><br>Stay aware of your physical surroundings, watch your step, and move with caution.' 
-                          : 'Estás entrando a <b>Realidad Aumentada</b>.<br><br>Presta atención a tu entorno real, ten cuidado por dónde caminas y muévete con precaución.')
-                }
-            </p>
-            <button id="xr-accept-btn" style="margin-top:25px; padding:12px 24px; background:#ff6644; color:#fff; border:none; border-radius:4px; font-weight:300; letter-spacing:2px; cursor:pointer; font-size:0.9rem; width:100%; transition:0.3s;">
-                ${en ? '[ I UNDERSTAND & CONTINUE ]' : '[ ENTIENDO Y CONTINÚO ]'}
-            </button>
-            <button id="xr-cancel-btn" style="margin-top:15px; background:transparent; color:#888; border:none; cursor:pointer; font-size:0.8rem; letter-spacing:2px; text-decoration:underline;">
-                ${en ? 'CANCEL' : 'CANCELAR'}
-            </button>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-    
-    document.getElementById('xr-accept-btn').onclick = () => {
-        overlay.remove();
-        if(typeof playSound === 'function') playSound('ui');
-        onConfirm();
-    };
-    document.getElementById('xr-cancel-btn').onclick = () => {
-        overlay.remove();
-        if(typeof playSound === 'function') playSound('ui');
-    };
+const XR_SAFETY = {
+  ar: {
+    es: { k: 'AVISO DE SEGURIDAD  ·  REALIDAD AUMENTADA', items: [
+      'Revisa tu entorno. Despeja el espacio y evita escaleras, bordes, tráfico, agua y objetos frágiles.',
+      'No camines mirando solo la pantalla. Detente cuando necesites mirar con atención.',
+      'Sujeta el dispositivo con firmeza y mantén distancia de personas, animales y objetos.',
+      'Esta experiencia incluye destellos y efectos de glitch. Si tienes sensibilidad a la luz, o sientes mareo o fatiga visual, detente.',
+      'Haz pausas. Para salir en cualquier momento, toca de nuevo el botón AR.'] },
+    en: { k: 'SAFETY NOTICE  ·  AUGMENTED REALITY', items: [
+      'Look around you. Clear the space and avoid stairs, edges, traffic, water and fragile objects.',
+      'Do not walk while looking only at the screen. Stop when you need to look carefully.',
+      'Hold the device firmly and keep your distance from people, animals and objects.',
+      'This experience includes flashes and glitch effects. If you are sensitive to light, or feel dizzy or eye strain, stop.',
+      'Take breaks. To leave at any time, tap the AR button again.'] }
+  },
+  vr: {
+    es: { k: 'AVISO DE SEGURIDAD  ·  REALIDAD VIRTUAL', items: [
+      'Usa un área despejada y define el límite de seguridad de tu casco. Retira cables, muebles y objetos frágiles.',
+      'Si eres propenso al mareo, usa la experiencia sentado/a: el movimiento virtual puede causar náuseas.',
+      'No la uses cerca de escaleras, ventanas, mascotas o personas. Avisa a quienes estén cerca.',
+      'Esta experiencia incluye destellos y efectos de glitch. Si tienes sensibilidad a la luz, o sientes mareo, náuseas o fatiga visual, quítate el casco y descansa.',
+      'Haz pausas y respeta la edad mínima recomendada por el fabricante de tu casco. Para salir, usa el menú de tu casco.'] },
+    en: { k: 'SAFETY NOTICE  ·  VIRTUAL REALITY', items: [
+      'Use a clear area and set your headset\'s safety boundary. Remove cables, furniture and fragile objects.',
+      'If you are prone to motion sickness, use the experience seated: virtual movement can cause nausea.',
+      'Do not use it near stairs, windows, pets or people. Let those nearby know.',
+      'This experience includes flashes and glitch effects. If you are sensitive to light, or feel dizzy, nauseous or eye strain, remove the headset and rest.',
+      'Take breaks and respect the minimum age recommended by your headset\'s manufacturer. To leave, use your headset\'s menu.'] }
+  }
+};
+
+function xrBlockedByGame() {                      // no se puede entrar a AR/VR en medio de un Juego Otro
+  if (window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive || window.isMiniIntro || (window.MG && window.MG.pending)) {
+    if (typeof showSystemToast === 'function') showSystemToast(window.currentLang === 'en' ? 'Leave the game before entering AR / VR' : 'Sal del juego antes de entrar a AR / VR', '#f7f4ed');
+    return true;
+  }
+  return false;
 }
 
-// 2. Evento Botón VR
+function xrSafetyNotice(mode, onAccept) {
+  try { if (sessionStorage.getItem('xr_ack_' + mode) === '1') { onAccept(); return; } } catch (e) {}
+  const en = window.currentLang === 'en', T = XR_SAFETY[mode][en ? 'en' : 'es'];
+  const veil = document.createElement('div');
+  veil.setAttribute('role', 'dialog'); veil.setAttribute('aria-modal', 'true'); veil.setAttribute('aria-label', T.k);
+  veil.style.cssText = 'position:fixed; inset:0; z-index:100060; display:flex; align-items:center; justify-content:center; padding:20px; box-sizing:border-box; ' +
+    'opacity:0; transition:opacity .5s ease; color:#e7e4de; font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif; ' +
+    'background:radial-gradient(ellipse at center, rgba(8,8,12,0.9), rgba(3,3,6,0.96)); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); overflow:auto;';
+  const col = document.createElement('div');
+  col.style.cssText = 'max-width:min(92vw,560px); margin:auto;';
+  const kk = document.createElement('div'); kk.textContent = T.k;
+  kk.style.cssText = 'font-size:0.64rem; font-weight:300; letter-spacing:0.36em; color:#d9c28a; text-align:center; line-height:1.8;';
+  const tt = document.createElement('div'); tt.textContent = en ? 'Before you enter' : 'Antes de entrar';
+  tt.style.cssText = 'margin:14px 0 22px; font-size:1.5rem; font-weight:200; letter-spacing:0.18em; text-align:center;';
+  const list = document.createElement('div');
+  list.style.cssText = 'display:flex; flex-direction:column; gap:12px;';
+  T.items.forEach(s => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; gap:12px; font-size:0.88rem; font-weight:300; line-height:1.75; letter-spacing:0.03em; color:#cfd0d4;';
+    const dot = document.createElement('span'); dot.textContent = '—'; dot.style.cssText = 'color:#8a867f; flex:none;';
+    const tx = document.createElement('span'); tx.textContent = s;
+    row.appendChild(dot); row.appendChild(tx); list.appendChild(row);
+  });
+  const chkRow = document.createElement('label');
+  chkRow.style.cssText = 'display:flex; align-items:center; gap:10px; margin-top:22px; font-size:0.72rem; font-weight:300; letter-spacing:0.08em; color:#8a867f; cursor:pointer;';
+  const chk = document.createElement('input'); chk.type = 'checkbox';
+  const chkTx = document.createElement('span'); chkTx.textContent = en ? 'Do not show again this session' : 'No volver a mostrar en esta sesión';
+  chkRow.appendChild(chk); chkRow.appendChild(chkTx);
+  const btns = document.createElement('div');
+  btns.style.cssText = 'display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:26px;';
+  const mkBtn = (txt, primary) => {
+    const b = document.createElement('button'); b.textContent = txt;
+    b.style.cssText = 'font-family:inherit; font-size:0.68rem; font-weight:300; letter-spacing:0.26em; padding:12px 22px; cursor:pointer; border-radius:0; ' +
+      (primary ? 'background:rgba(231,228,222,0.12); border:1px solid rgba(231,228,222,0.5); color:#e7e4de;' : 'background:transparent; border:1px solid rgba(255,255,255,0.16); color:#a8a49c;');
+    return b;
+  };
+  const bOk = mkBtn(en ? 'UNDERSTOOD · ENTER' : 'ENTENDIDO · ENTRAR', true), bNo = mkBtn(en ? 'CANCEL' : 'CANCELAR', false);
+  btns.appendChild(bNo); btns.appendChild(bOk);
+  col.appendChild(kk); col.appendChild(tt); col.appendChild(list); col.appendChild(chkRow); col.appendChild(btns);
+  veil.appendChild(col); document.body.appendChild(veil);
+  requestAnimationFrame(() => { veil.style.opacity = '1'; try { bOk.focus(); } catch (e) {} });
+
+  let closed = false;
+  const close = () => {
+    if (closed) return; closed = true;
+    window.removeEventListener('keydown', onKey, true);
+    veil.style.opacity = '0'; veil.style.pointerEvents = 'none';
+    setTimeout(() => { if (veil.parentNode) veil.parentNode.removeChild(veil); }, 600);
+  };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); close(); } };
+  window.addEventListener('keydown', onKey, true);
+  bNo.addEventListener('click', (e) => { e.stopPropagation(); close(); });
+  bOk.addEventListener('click', (e) => {
+    e.stopPropagation();
+    try { if (chk.checked) sessionStorage.setItem('xr_ack_' + mode, '1'); } catch (x) {}
+    close();
+    onAccept();                                                                // requestSession se llama desde ESTE clic (gesto de usuario válido)
+  });
+  ['mousedown', 'mouseup', 'touchstart', 'touchend', 'pointerdown', 'pointerup'].forEach(ev => veil.addEventListener(ev, (e) => e.stopPropagation()));
+}
+window.xrSafetyNotice = xrSafetyNotice;
+
+// 2. Evento Botón VR (con aviso de seguridad previo)
 if (customVrBtn) {
-    customVrBtn.addEventListener('click', async () => {
+    const startVR = async () => {
         try {
-            if (renderer.xr.isPresenting) { await renderer.xr.getSession()?.end(); return; }
-            showXRSafetyWarning('VR', async () => {
-                try {
-                    window.isARSession = false;
-                    const session = await navigator.xr.requestSession('immersive-vr', { requiredFeatures: ['local-floor'] });
-                    await renderer.xr.setSession(session);
-                    if (typeof playSound === 'function') playSound('levelup');
-                } catch(e) { if (typeof showSystemToast === 'function') showSystemToast('❌ Error iniciando VR', '#ff0000'); }
-            });
+            window.isARSession = false;
+            const session = await navigator.xr.requestSession('immersive-vr', { requiredFeatures: ['local-floor'] });
+            await renderer.xr.setSession(session);
+            if (typeof playSound === 'function') playSound('levelup');
         } catch (error) {
             if (typeof showSystemToast === 'function') showSystemToast('❌ Error iniciando VR', '#ff0000');
         }
+    };
+    customVrBtn.addEventListener('click', async () => {
+        if (renderer.xr.isPresenting) { try { await renderer.xr.getSession()?.end(); } catch (e) {} return; }
+        if (xrBlockedByGame()) return;
+        xrSafetyNotice('vr', startVR);
     });
 }
 
-// 3. Evento Botón AR
+// 3. Evento Botón AR - BLINDADO PARA ANDROID Y QUEST 3 (con aviso de seguridad previo)
 if (customArBtn) {
-    customArBtn.addEventListener('click', async () => {
+    const startAR = async () => {
         try {
-            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-                if (typeof showSystemToast === 'function') showSystemToast(' AR requiere HTTPS', '#f7f4ed');
-                return;
-            }
+            window.isARSession = true;
+            console.log(" Solicitando sesión AR nativa...");
 
-            if (renderer.xr.isPresenting) { await renderer.xr.getSession()?.end(); return; }
-            
-            showXRSafetyWarning('AR', async () => {
-                try {
-                    window.isARSession = true;
-                    console.log(" Solicitando sesión AR nativa...");
-                    
-                    const session = await navigator.xr.requestSession('immersive-ar', {
-                        optionalFeatures: ['local-floor', 'local', 'hit-test']
-                    });
-                    
-                    renderer.xr.setReferenceSpaceType('local-floor');
-                    await renderer.xr.setSession(session);
-                    
-                    document.documentElement.style.background = 'transparent';
-                    document.body.style.background = 'transparent';
-                    const cvs = document.getElementById('bg-canvas');
-                    if (cvs) cvs.style.background = 'transparent';
-                    
-                    renderer.setClearColor(0x000000, 0);
-                    scene.background = null;
-                    
-                    if (typeof playSound === 'function') playSound('levelup');
-                } catch (error) {
-                    console.error("Error AR detallado:", error);
-                    window.isARSession = false;
-                    if (typeof showSystemToast === 'function') showSystemToast('❌ Error AR: Permisos denegados', '#ff0000');
-                }
+            // 🔥 SOLUCIÓN 1: Mover TODO a optionalFeatures.
+            // Esto evita que Quest 3 y Android rechacen la sesión por tecnicismos de tracking.
+            const session = await navigator.xr.requestSession('immersive-ar', {
+                optionalFeatures: ['local-floor', 'local', 'hit-test']
             });
-            
+
+            // 🔥 SOLUCIÓN 2: Forzar el espacio de referencia correcto para Quest 3
+            renderer.xr.setReferenceSpaceType('local-floor');
+
+            await renderer.xr.setSession(session);
+
+            // 🔥 SOLUCIÓN 3: Limpiar fondos CSS que bloquean la cámara (Passthrough)
+            document.documentElement.style.background = 'transparent';
+            document.body.style.background = 'transparent';
+            const cvs = document.getElementById('bg-canvas');
+            if (cvs) cvs.style.background = 'transparent';
+
+            renderer.setClearColor(0x000000, 0);
+            scene.background = null;
+
+            if (typeof playSound === 'function') playSound('levelup');
+
         } catch (error) {
+            console.error("Error AR detallado:", error);
             window.isARSession = false;
+            if (typeof showSystemToast === 'function') showSystemToast('❌ Error AR: Dispositivo no compatible o permisos denegados', '#ff0000');
         }
+    };
+    customArBtn.addEventListener('click', async () => {
+        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+            if (typeof showSystemToast === 'function') showSystemToast(' AR requiere HTTPS', '#f7f4ed');
+            return;
+        }
+        if (renderer.xr.isPresenting) { try { await renderer.xr.getSession()?.end(); } catch (e) {} return; }
+        if (xrBlockedByGame()) return;
+        xrSafetyNotice('ar', startAR);
     });
 }
 // Reticle para apuntar en AR (más visible)
@@ -506,7 +574,6 @@ function playSound(type, targetPosition = null) {
     // ==========================================
     
     // --- 1. MODO EXPLORACIÓN (Estética 'Gris') ---
-    
     if(type === 'ui') { 
 
       // 🔥 INTERFAZ ULTRA-SUTIL: Un "tick" de cristal mate cortísimo
@@ -2577,7 +2644,7 @@ document.addEventListener('touchcancel', () => {
 
 document.addEventListener('touchend', (e) => {
   handlePointerUp();
-  if (isAligned && e.changedTouches.length > 0 && !draggedPlanet && !isDraggingPlanet) {
+  if (isAligned && e.changedTouches.length > 0 && !draggedPlanet && !isDraggingPlanet && !window.isTuningGameActive && !window.isWiringGameActive && !window.isHogueraActive && !window.isMiniIntro) {   // un lanzamiento de ofrenda no debe girar el carrusel
     const touchEndX = e.changedTouches[0].clientX;
     const deltaX = touchEndX - touchStartX;
     const deltaTime = Date.now() - touchStartTime;
@@ -3149,7 +3216,9 @@ const handleProjectClick = (data) => {
     const clickedViajero = intersectsViajero.find(hit => hit.object.userData && hit.object.userData.name === "viajero");
     if (clickedViajero) {
       // 🔥 Si flota LIBRE en el vacío (no anclado a un planeta): arranca La Hoguera de Datos
-      if (!window.travelerGroup.userData.anchoredPlanet && window.startHogueraGame && !window.isHogueraActive) { window.startHogueraGame(); return; }
+      //    En el modo CARRUSEL el Viajero nunca queda libre (siempre hay un planeta a <35 u), así que allí se desbloquea con la pista del Oráculo:
+      //    tras el susurro, el siguiente toque abre la hoguera.
+      if ((!window.travelerGroup.userData.anchoredPlanet || window._hogueraReady) && window.startHogueraGame && !window.isHogueraActive) { window._hogueraReady = false; window.startHogueraGame(); return; }
       playSound('project_open'); // Sonido especial celestial
       
       // 🔥 MATRIZ DE PENSAMIENTOS DEL VIAJERO
@@ -3165,9 +3234,10 @@ const handleProjectClick = (data) => {
       // Escoge una frase al azar cada vez que haces clic
       // Cada 4º clic susurra cómo llegar a su secreto
       window._oraculoClicks = (window._oraculoClicks || 0) + 1;
-      const pistaHoguera = window.currentLang === 'en'
-        ? "Take me far from every planet, where no light reaches. Perhaps I will light a fire."
-        : "Llévame lejos de todo planeta, donde la luz no alcanza. Quizá encienda una hoguera.";
+      const pistaHoguera = isAligned
+        ? (window.currentLang === 'en' ? "Stay with me a moment. A fire burns beside me: touch me once more." : "Quédate un momento conmigo. Junto a mí arde una hoguera: tócame una vez más.")
+        : (window.currentLang === 'en' ? "Take me far from every planet, where no light reaches. Perhaps I will light a fire." : "Llévame lejos de todo planeta, donde la luz no alcanza. Quizá encienda una hoguera.");
+      if (window._oraculoClicks % 4 === 0 && isAligned) window._hogueraReady = true;
       const fraseElegida = (window._oraculoClicks % 4 === 0) ? pistaHoguera : oraculoFrases[Math.floor(Math.random() * oraculoFrases.length)];
       
       showPoeticReflection(fraseElegida, "#aaccff");
@@ -6271,7 +6341,7 @@ showSystemToast('ANOMALÍA DETECTADA A TUS ESPALDAS', '#efeaea');           }
       }
     }
     updateTraveler();  
-if (!isAR) {
+if (!isAR && !(window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive)) {   // la red de energía no debe reaparecer dentro de un Juego Otro
   energyWebGroup.visible = !isAligned; 
   
   if (!isAligned) {
@@ -10094,7 +10164,7 @@ const _hgV = new THREE.Vector3();
 const HG_LISTEN_SECS = 45;
 const HG_FS = 0.9;                                   // escala de llamas (la escena es una maqueta pequeña)
 const HG_ISO = { yaw: 0.785, pitch: 0.56, dist: 88, fov: 30, target: new THREE.Vector3(-14, 5, 1) };   // cámara isométrica (casi ortográfica)
-const HG_COLOSSUS = { x: -36.8, z: 5.6, scale: 0.44, yaw: 1.4 };       // bestia de ~7 veces la altura del Viajero, con la cabeza hacia el fuego
+const HG_COLOSSUS = { x: -36.8, z: 5.6, scale: 0.48, yaw: 1.4 };       // bestia de ~7 veces la altura del Viajero, con la cabeza hacia el fuego
 const HG = {
   phase: 'idle', heat: 0.7, cold: 0, coldS: 0, listen: 0, listenS: 0, outT: 0, winT: 0, discarded: 0, files: 0,
   subT: 0, subIdx: 0, flashV: 0, calmV: 0, emberT: 0, filesNote: false,
@@ -10156,7 +10226,7 @@ function hgToGeo(acc) {
 //   Inspirada en los colosos de piedra: caparazón tallado con runas, cuatro columnas por patas, cabeza angular con
 //   collar de espinas, ojos hundidos que brillan como el fuego y una pluma de ceniza con un sello luminoso en la corona.
 //   Cada monitor mira hacia afuera de la superficie (arriba en el lomo, a los lados en los flancos).
-const HG_CS = 2.2;                                                       // tamaño de celda (un monitor)
+const HG_CS = 3.0;                                                       // tamaño de celda (un monitor): pocos y grandes, no una masa
 function hgCell(out, x, y, z, w, h, d, ry, rz, rx, rune) { out.push({ x, y, z, w, h, d, ry: ry || 0, rz: rz || 0, rx: rx || 0, rune: !!rune }); }
 function hgSurf(out, x, y, z, n, w, h, d, rune) {                         // celda cuya pantalla mira hacia la normal n
   const l = Math.hypot(n[0], n[1], n[2]) || 1, nx = n[0] / l, ny = n[1] / l, nz = n[2] / l;
@@ -10182,13 +10252,13 @@ function hgShell(out, cx, cy, cz, w, h, d, faces, miss) {                // recu
     }
   });
 }
-function hgDome(out, cx, cy, cz, Rx, Ry, Rz, phiMax, runeRings) {       // caparazón: media elipsoide cubierta de monitores
+function hgDome(out, cx, cy, cz, Rx, Ry, Rz, phiMax, runeRings, miss) {       // caparazón: media elipsoide cubierta de monitores
   const cs = HG_CS, avg = (Rx + Rz) / 2, nR = Math.max(3, Math.round(phiMax * avg / cs)), arc = phiMax * avg / nR;
   for (let i = 0; i < nR; i++) {
     const phi = (i + 0.5) / nR * phiMax, sp = Math.sin(phi), cp = Math.cos(phi);
     const circ = 2 * Math.PI * sp * Math.sqrt((Rx * Rx + Rz * Rz) / 2), n = Math.max(1, Math.round(circ / cs));
     for (let j = 0; j < n; j++) {
-      if (Math.random() < 0.03) continue;
+      if (Math.random() < (miss === undefined ? 0.03 : miss)) continue;
       const th = (j + (i % 2) * 0.5) / n * Math.PI * 2, x = Rx * sp * Math.cos(th), y = Ry * cp, z = Rz * sp * Math.sin(th);
       const rune = runeRings.indexOf(i) >= 0 && (j % 5) < 3;           // franjas de runas que se encienden al escuchar
       hgSurf(out, cx + x, cy + y, cz + z, [x / (Rx * Rx), y / (Ry * Ry), z / (Rz * Rz)], Math.max(1.2, circ / n * 0.95), arc * 0.95, cs * 0.7, rune);
@@ -10255,33 +10325,33 @@ function hgBuildColossus() {
       }`
   });
 
-  const root = new THREE.Group(), O = [0, 0, 0], FACES = ['+z', '-z', '+x', '-x'], RUNES = [3, 5, 7];
+  const root = new THREE.Group(), O = [0, 0, 0], FACES = ['+z', '-z', '+x', '-x'], RUNES = [2, 5];
+  // Estructura esbelta y abierta: pocos monitores grandes con huecos, para que se lea como un armazón y no como una masa.
 
-  // BASE (inmóvil): patas traseras, pies y chatarra caída alrededor
+  // BASE (inmóvil): patas traseras, pies y un poco de chatarra caída
   const base = [];
-  [-12.5, 12.5].forEach(x => {
-    hgShell(base, x, 12, -22, 7.5, 24, 7.5, FACES, 0.03);
-    hgShell(base, x, 25, -22, 10, 3, 10, FACES.concat('+y'), 0.0);
-    hgShell(base, x, 1.2, -21, 11, 2.4, 13, FACES.concat('+y'), 0.0);
+  [-10.5, 10.5].forEach(x => {
+    hgShell(base, x, 10.5, -19, 6, 21, 6, FACES, 0.1);
+    hgShell(base, x, 1.5, -18, 8, 3, 10, ['+z', '+x', '-x'], 0.0);
   });
-  for (let k = 0; k < 34; k++) {
-    const s = cs * (0.5 + Math.random() * 0.6);
-    hgCell(base, (Math.random() - 0.5) * 84, s * 0.4, Math.random() * 78 - 38, s * 1.1, s * 0.85, s * 0.7, Math.random() * 6.28, (Math.random() - 0.5) * 0.6, 0, false);
+  for (let k = 0; k < 14; k++) {
+    const s = cs * (0.5 + Math.random() * 0.5);
+    hgCell(base, (Math.random() - 0.5) * 76, s * 0.4, Math.random() * 70 - 32, s * 1.1, s * 0.85, s * 0.7, Math.random() * 6.28, (Math.random() - 0.5) * 0.6, 0, false);
   }
   root.add(hgPart(base, O, O));
 
-  // CUERPO: caparazón con runas, falda de placas y espinas dorsales (respira)
-  const BODY_P = [0, 22, 0], bc = [];
-  hgDome(bc, 0, 22, -6, 18, 13, 24, 1.4, RUNES);
-  const rimX = 18 * Math.sin(1.4), rimZ = 24 * Math.sin(1.4), per = 2 * Math.PI * Math.sqrt((rimX * rimX + rimZ * rimZ) / 2), nSk = Math.round(per / cs);
-  for (let r = 0; r < 3; r++) for (let j = 0; j < nSk; j++) {
-    if (Math.random() < 0.05) continue;
+  // CUERPO: caparazón abierto con runas, un anillo irregular de falda y pocas espinas dorsales (respira)
+  const BODY_P = [0, 21, 0], bc = [];
+  hgDome(bc, 0, 21, -6, 15, 11, 20, 1.35, RUNES, 0.2);
+  const rimX = 15 * Math.sin(1.35), rimZ = 20 * Math.sin(1.35), per = 2 * Math.PI * Math.sqrt((rimX * rimX + rimZ * rimZ) / 2), nSk = Math.round(per / cs);
+  for (let j = 0; j < nSk; j++) {
+    if (Math.random() < 0.25) continue;
     const th = j / nSk * Math.PI * 2, x = rimX * Math.cos(th), z = -6 + rimZ * Math.sin(th);
-    hgSurf(bc, x, 24 - r * 2.0, z, [Math.cos(th) / rimX, 0, Math.sin(th) / rimZ], per / nSk * 0.95, 1.9, cs * 0.7, false);
+    hgSurf(bc, x, 22.5, z, [Math.cos(th) / rimX, 0, Math.sin(th) / rimZ], per / nSk * 0.95, 2.6, cs * 0.7, false);
   }
-  for (let z = -24; z <= 8; z += 4) {
-    const yt = 22 + 13 * Math.sqrt(Math.max(0, 1 - Math.pow((z + 6) / 24, 2)));
-    hgSpike(bc, 0, yt + 1, z, [0, 1, 0.12], 3, 1.7, 2.6, [0, 0.25, 1]);
+  for (let z = -22; z <= 6; z += 7) {
+    const yt = 21 + 11 * Math.sqrt(Math.max(0, 1 - Math.pow((z + 6) / 20, 2)));
+    hgSpike(bc, 0, yt + 1, z, [0, 1, 0.12], 2, 2.0, 3.0, [0, 0.25, 1]);
   }
   const body = hgPart(bc, BODY_P, O); root.add(body);
 
@@ -10289,28 +10359,26 @@ function hgBuildColossus() {
   const legs = {};
   [-1, 1].forEach(s => {
     const lc = [];
-    hgShell(lc, s * 12.5, 12, 9, 7.5, 24, 7.5, FACES, 0.03);
-    hgShell(lc, s * 12.5, 25, 9, 10, 3, 10, FACES.concat('+y'), 0.0);
-    hgShell(lc, s * 12.5, 1.2, 10, 11, 2.4, 13, FACES.concat('+y'), 0.0);
-    legs[s] = hgPart(lc, [s * 12.5, 24, 9], O); root.add(legs[s]);
+    hgShell(lc, s * 10.5, 10.5, 8, 6, 21, 6, FACES, 0.1);
+    hgShell(lc, s * 10.5, 1.5, 9, 8, 3, 10, ['+z', '+x', '-x'], 0.0);
+    legs[s] = hgPart(lc, [s * 10.5, 21, 8], O); root.add(legs[s]);
   });
 
-  // CABEZA: máscara angular, ceja, collar de espinas en abanico, mandíbula dentada y ojos hundidos
+  // CABEZA: máscara angular, ceja, collar irregular, corona de espinas, mandíbula dentada y ojos hundidos
   let hc = [];
-  hgShell(hc, 0, 22, 17, 9, 9, 8, ['+x', '-x', '+y'], 0.03);                    // cuello
-  hgShell(hc, 0, 21, 29, 13, 11, 11, ['+z', '+x', '-x', '+y'], 0.0);             // rostro
-  for (let i = -3; i <= 3; i++) hgSurf(hc, i * 2.1, 27.1, 35.2, [0, 0.35, 1], 2.2, 1.5, 2.6, false);   // ceja que sobresale
-  hgShell(hc, 0, 24.5, 22.5, 22, 2.2, 8, ['+y', '+z'], 0.22);                    // collar (borde irregular)
-  [-1, 1].forEach(s => hgShell(hc, s * 11.5, 23, 23, 4, 7, 6, ['+z', s > 0 ? '+x' : '-x', '+y'], 0.15));
-  for (let k = 0; k < 9; k++) {                                                  // corona de espinas
-    const a = (k - 4) * 0.32, n = 4 - Math.round(Math.abs(k - 4) * 0.5);
-    hgSpike(hc, Math.sin(a) * 5.0, 27.6 + Math.cos(a) * 0.5, 24.5, [Math.sin(a) * 0.7, Math.cos(a), 0.1], Math.max(2, n), 1.8, 2.4, [Math.sin(a) * 0.5, 0.3, 1]);
+  hgShell(hc, 0, 21, 14, 7, 7, 6, ['+x', '-x', '+y'], 0.1);                      // cuello
+  hgShell(hc, 0, 19.5, 24, 10, 9, 9, ['+z', '+x', '-x', '+y'], 0.0);             // rostro
+  for (let i = -2; i <= 2; i++) hgSurf(hc, i * 2.4, 24.6, 28.8, [0, 0.35, 1], 2.6, 1.8, 3.0, false);   // ceja que sobresale
+  hgShell(hc, 0, 22.8, 19, 18, 2.5, 6, ['+y', '+z'], 0.3);                       // collar (borde irregular)
+  for (let k = 0; k < 7; k++) {                                                  // corona de espinas
+    const a = (k - 3) * 0.4, n = 3 - Math.round(Math.abs(k - 3) * 0.5);
+    hgSpike(hc, Math.sin(a) * 4.2, 25 + Math.cos(a) * 0.4, 21, [Math.sin(a) * 0.7, Math.cos(a), 0.1], Math.max(2, n), 2.1, 2.8, [Math.sin(a) * 0.5, 0.3, 1]);
   }
-  for (let i = -3; i <= 3; i++) hgSpike(hc, i * 1.9, 16.2, 35.0, [0, -1, 0.05], 2, 1.3, 2.0, [0, -0.1, 1]);   // dientes
-  hc = hc.filter(c => !(c.z > 33 && Math.abs(c.y - 22.4) < 1.7 && Math.abs(Math.abs(c.x) - 3.0) < 1.7));  // cuencas de los ojos
-  const head = hgPart(hc, [0, 22, 19], BODY_P); body.add(head);
-  HG.eyes = [-1, 1].map(s => { const e = mkHalo(0xffa24d, 4.5, 0); e.position.set(s * 3.0, 0.4, 16.0); head.add(e); return e; });
-  HG.sigil = mkHalo(0xbfe6ff, 6, 0.1); HG.sigil.position.set(0, 5.4, 10); head.add(HG.sigil);   // sello luminoso en la corona
+  for (let i = -2; i <= 2; i++) hgSpike(hc, i * 2.2, 14.9, 28.6, [0, -1, 0.05], 2, 1.5, 2.4, [0, -0.1, 1]);   // dientes
+  hc = hc.filter(c => !(c.z > 27 && Math.abs(c.y - 20.3) < 2.0 && Math.abs(Math.abs(c.x) - 2.6) < 2.0));   // cuencas de los ojos
+  const head = hgPart(hc, [0, 21, 16], BODY_P); body.add(head);
+  HG.eyes = [-1, 1].map(s => { const e = mkHalo(0xffa24d, 4.5, 0); e.position.set(s * 2.6, -0.7, 12.3); head.add(e); return e; });
+  HG.sigil = mkHalo(0xbfe6ff, 6, 0.1); HG.sigil.position.set(0, 4.5, 6); head.add(HG.sigil);   // sello luminoso en la corona
 
   root.scale.setScalar(HG_COLOSSUS.scale);
   root.position.set(HG_COLOSSUS.x, 0, HG_COLOSSUS.z);
@@ -10603,7 +10671,7 @@ function hgGrowl(kind) {
   const dur = kind === 'click' ? 2.2 : kind === 'angry' ? 2.8 : kind === 'sigh' ? 3.2 : 1.8 + Math.random();
   HG.growlP = 0; HG.growlAmp = loud; HG.growlDur = dur;
   if (HG.colos && HG.fx) {
-    _hgV.set(0, 6, 10); HG.colos.head.localToWorld(_hgV);
+    _hgV.set(0, 4.5, 6); HG.colos.head.localToWorld(_hgV);
     HG.fx.burst(_hgV.x, _hgV.y, _hgV.z, kind === 'sigh' ? 10 : 18, 1.6, 2.0, 0x59616b, 0.32, 0.5);        // aliento de ceniza
     if (kind === 'click' || kind === 'angry') MG.pulse(HG_COLOSSUS.x, 0.05, 0xd64a3a, 2, 16, 1.8, 0.35, HG_COLOSSUS.z);   // onda sobre el suelo
   }
@@ -10907,7 +10975,7 @@ function hgUpdate(dt) {
   HG.eyes.forEach(e => { e.material.opacity = (0.3 + HG.coldS * 0.45 + HG.growlG * 0.5) * (0.85 + 0.15 * Math.sin(t * 3)) * (1 - HG.calmV * 0.4); });   // ojos de brasa: arden más cuando el fuego muere
   // pluma de ceniza que el viento arrastra desde la corona (como el penacho negro del coloso)
   if (HG.colos && !calm) {
-    _hgV.set(0, 6, 10); HG.colos.head.localToWorld(_hgV);
+    _hgV.set(0, 4.5, 6); HG.colos.head.localToWorld(_hgV);
     const nA = Math.round(1.2 * Math.min(2, dt * 60));
     for (let i = 0; i < nA; i++) HG.fx.emit(_hgV.x + (Math.random() - 0.5) * 0.4, _hgV.y, _hgV.z + (Math.random() - 0.5) * 0.4, 0.6 + Math.random() * 0.8, 1.2 + Math.random() * 1.2, (Math.random() - 0.5) * 0.4, 3.5 + Math.random() * 2, 0x59616b, 0.28 + Math.random() * 0.2, 0.45, 0.3);
   }
