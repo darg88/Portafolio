@@ -273,6 +273,80 @@ function xrSafetyNotice(mode, onAccept) {
 }
 window.xrSafetyNotice = xrSafetyNotice;
 
+// ---------- Salir de AR: botón en pantalla (dom-overlay, móviles) + botón 3D pegado a la cámara (gafas y móviles) ----------
+async function endXRSession() { try { const ss = renderer.xr.getSession(); if (ss) await ss.end(); } catch (e) {} }
+const arExitRoot = document.createElement('div');
+arExitRoot.id = 'ar-exit-root';
+arExitRoot.style.cssText = 'position:fixed; inset:0; pointer-events:none; display:none; background:transparent; z-index:2147483000;';
+const arExitBtn = document.createElement('button');
+arExitBtn.type = 'button'; arExitBtn.id = 'ar-exit-btn'; arExitBtn.textContent = 'SALIR AR';
+arExitBtn.style.cssText = 'position:absolute; top:calc(14px + env(safe-area-inset-top,0px)); left:14px; pointer-events:auto; padding:12px 20px; font:300 0.8rem/1 monospace; letter-spacing:0.28em; color:#e7e4de; background:rgba(10,10,12,0.72); border:1px solid rgba(231,228,222,0.5); border-radius:2px; cursor:pointer;';
+arExitBtn.addEventListener('beforexrselect', (e) => e.preventDefault());            // tocar el botón no debe colocar un modelo
+arExitBtn.addEventListener('click', (e) => { e.stopPropagation(); endXRSession(); });
+arExitRoot.appendChild(arExitBtn);
+document.body.appendChild(arExitRoot);
+
+const arExit3D = (() => {                                                        // botón flotante (sirve con el controlador, la mano o un toque en pantalla)
+  const c = document.createElement('canvas'); c.width = 320; c.height = 110;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(10,10,12,0.82)'; g.fillRect(0, 0, 320, 110);
+  g.strokeStyle = '#e7e4de'; g.lineWidth = 3; g.strokeRect(4, 4, 312, 102);
+  g.fillStyle = '#e7e4de'; g.font = '300 38px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('SALIR AR', 160, 56);
+  const tex = new THREE.CanvasTexture(c);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.069), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, toneMapped: false }));
+  m.renderOrder = 9999; m.position.set(-0.16, 0.14, -0.5); m.visible = false; m.name = 'ar-exit-3d';
+  camera.add(m);
+  return m;
+})();
+window.arTryExit = function (ctrl) {                                             // ¿el controlador/toque apuntó al botón 3D?
+  if (!window.isARSession || !renderer.xr.isPresenting || !arExit3D.visible || !ctrl) return false;
+  const rc = new THREE.Raycaster(), rot = new THREE.Matrix4();
+  rot.identity().extractRotation(ctrl.matrixWorld);
+  rc.ray.origin.setFromMatrixPosition(ctrl.matrixWorld); rc.ray.direction.set(0, 0, -1).applyMatrix4(rot);
+  camera.updateMatrixWorld(true); arExit3D.updateMatrixWorld(true);
+  if (rc.intersectObject(arExit3D, false).length) { endXRSession(); return true; }
+  return false;
+};
+
+// AR cambia muchas cosas (fondos CSS, Viajero reducido, modelos colocados, bloom…): se guardan al entrar y se restauran TODAS al salir
+let arSaved = null;
+function arSaveState() {
+  const tg = window.travelerGroup;
+  arSaved = {
+    htmlBg: document.documentElement.style.background, bodyBg: document.body.style.background,
+    cvsBg: (document.getElementById('bg-canvas') || { style: {} }).style.background,
+    bg: scene.background,
+    tg: tg ? { parent: tg.parent, pos: tg.position.clone(), scale: tg.scale.clone(), quat: tg.quaternion.clone(), vis: tg.visible,
+               anchored: tg.userData.anchoredPlanet, hadDrop: 'dropY' in tg.userData, dropY: tg.userData.dropY, vy: tg.userData.vy } : null,
+    bloom: (typeof isBloomEnabled !== 'undefined') ? isBloomEnabled : true
+  };
+}
+function arRestoreState() {
+  const S = arSaved; arSaved = null;
+  try {
+    (window.spawnedObjects || []).forEach(o => { try { o.traverse(c => { if (c.isMesh && c.material && c.material.uniforms && c.material.uniforms.color && c.userData.originalColor !== undefined) c.material.uniforms.color.value.setHex(c.userData.originalColor); }); } catch (e) {} scene.remove(o); });
+    window.spawnedObjects = [];
+  } catch (e) {}
+  try {
+    const tg = window.travelerGroup;
+    if (S && S.tg && tg) {
+      if (S.tg.parent && tg.parent !== S.tg.parent) S.tg.parent.add(tg);
+      tg.position.copy(S.tg.pos); tg.scale.copy(S.tg.scale); tg.quaternion.copy(S.tg.quat); tg.visible = S.tg.vis;
+      tg.userData.anchoredPlanet = S.tg.anchored;
+      if (S.tg.hadDrop) { tg.userData.dropY = S.tg.dropY; tg.userData.vy = S.tg.vy; } else { delete tg.userData.dropY; delete tg.userData.vy; }
+    }
+  } catch (e) {}
+  try {
+    document.documentElement.style.background = S ? S.htmlBg : ''; document.body.style.background = S ? S.bodyBg : '';
+    const cvs = document.getElementById('bg-canvas'); if (cvs) cvs.style.background = S ? S.cvsBg : '';
+    scene.background = S ? S.bg : null;
+    if (S && typeof isBloomEnabled !== 'undefined') { isBloomEnabled = S.bloom; bloomPass.strength = S.bloom ? 0.1 : 0; }
+    if (typeof lowFPSCount !== 'undefined') lowFPSCount = 0;
+    reticle.visible = false;
+  } catch (e) {}
+}
+
 // 2. Evento Botón VR (con aviso de seguridad previo)
 if (customVrBtn) {
     const startVR = async () => {
@@ -297,12 +371,15 @@ if (customArBtn) {
     const startAR = async () => {
         try {
             window.isARSession = true;
+            arSaveState();
+            arExitRoot.style.display = 'block';
             console.log(" Solicitando sesión AR nativa...");
 
             // 🔥 SOLUCIÓN 1: Mover TODO a optionalFeatures.
             // Esto evita que Quest 3 y Android rechacen la sesión por tecnicismos de tracking.
             const session = await navigator.xr.requestSession('immersive-ar', {
-                optionalFeatures: ['local-floor', 'local', 'hit-test']
+                optionalFeatures: ['local-floor', 'local', 'hit-test', 'dom-overlay'],
+                domOverlay: { root: arExitRoot }
             });
 
             // 🔥 SOLUCIÓN 2: Forzar el espacio de referencia correcto para Quest 3
@@ -324,6 +401,7 @@ if (customArBtn) {
         } catch (error) {
             console.error("Error AR detallado:", error);
             window.isARSession = false;
+            arExitRoot.style.display = 'none'; arRestoreState();
             if (typeof showSystemToast === 'function') showSystemToast('❌ Error AR: Dispositivo no compatible o permisos denegados', '#ff0000');
         }
     };
@@ -396,6 +474,7 @@ renderer.xr.addEventListener('sessionstart', () => {
     
     if (window.isARSession) {
         scene.background = null;
+        arExit3D.visible = true;
         document.body.classList.add('ar-active'); // Usa la clase CSS que creamos antes
         if (customArBtn) customArBtn.innerText = 'SALIR AR';
         if (customVrBtn) customVrBtn.style.display = 'none';
@@ -441,13 +520,12 @@ renderer.xr.addEventListener('sessionstart', () => {
 
 // Manejo del FIN de la sesión
 renderer.xr.addEventListener('sessionend', () => {
+    const wasAR = window.isARSession;
     window.isARSession = false;
+    arExit3D.visible = false; arExitRoot.style.display = 'none';
     document.body.classList.remove('ar-active');
-    // 🔥 Restaurar los fondos CSS para que la web vuelva a la normalidad
-    document.documentElement.style.background = '';
-    document.body.style.background = '';
-    const cvs = document.getElementById('bg-canvas');
-    if (cvs) cvs.style.background = '';
+    // 🔥 Restaurar TODO lo que AR cambió (fondos CSS exactos, Viajero, modelos colocados, bloom): antes se borraba y la web quedaba oscura
+    arRestoreState();
     if (currentXRSession) currentXRSession = null;
     
     if (customVrBtn) customVrBtn.innerText = 'VR';
@@ -480,8 +558,12 @@ renderer.xr.addEventListener('sessionend', () => {
     if (typeof isShooting !== 'undefined') isShooting = false;
     
     setTimeout(() => {
-        renderer.xr.isPresenting = false;
+        try { renderer.xr.isPresenting = false; } catch (e) {}                      // (si la versión de three no lo permite, no debe cortar la restauración)
         renderer.setRenderTarget(null);
+        renderer.autoClear = true;
+        renderer.setClearColor(0x000000, 0);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        try { if (typeof composer !== 'undefined') composer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); } catch (e) {}
         
         camera.fov = 75;
         camera.quaternion.identity();
@@ -2398,7 +2480,7 @@ document.getElementById('btn-save-paint').onclick = (e) => {
  function startPointerDown(clientX, clientY) {
   // 🎮 JUEGOS OTROS: cada minijuego maneja su propio puntero
   if (window.isWiringGameActive) { window.wiringDown(clientX, clientY); return; }
-  if (window.isTuningGameActive || window.isHogueraActive) { window.MG.setPointer(clientX, clientY); if (window.isHogueraActive && window.hgTap) window.hgTap(clientX, clientY); return; }
+  if (window.isTuningGameActive || window.isHogueraActive) { window.MG.setPointer(clientX, clientY); return; }   // (en la Hoguera el toque se resuelve al soltar: ver hgCamBind)
 
   // 🔥 Si hay una luna encendida, pasamos a MODO PINTURA PERMANENTE
   if (isPoeticaActive || isErraticaActive || isFriccionActive) {
@@ -3562,6 +3644,7 @@ xrController1.add(laser.clone());
 const laser2 = laser.clone();
 laser2.material = new THREE.LineBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.8 });
 xrController2.add(laser2);
+xrController2.addEventListener('select', () => { if (window.arTryExit) window.arTryExit(xrController2); });   // el segundo controlador también puede pulsar SALIR AR
 
 
 let arModelIndex = 0; 
@@ -3569,6 +3652,7 @@ window.spawnedObjects = [];
 
 xrController1.addEventListener('select', (event) => {
   if (window.isARSession) {
+    if (window.arTryExit && window.arTryExit(xrController1)) return;               // botón SALIR AR flotante
     const tempMatrix = new THREE.Matrix4();
     tempMatrix.identity().extractRotation(xrController1.matrixWorld);
     raycaster.ray.origin.setFromMatrixPosition(xrController1.matrixWorld);
@@ -3582,7 +3666,11 @@ xrController1.addEventListener('select', (event) => {
       if (window.spawnedObjects.includes(obj)) {
         // 🔥 SISTEMA DE DOBLE TOQUE PARA BORRAR
         if (obj.userData.markedForDeletion) {
-          // Segundo toque: Eliminar definitivamente
+          // Segundo toque: Eliminar definitivamente (el material es COMPARTIDO con la plantilla: se devuelve su color antes)
+          obj.traverse((child) => {
+            if (child.isMesh && child.material && child.material.uniforms && child.material.uniforms.color && child.userData.originalColor !== undefined) child.material.uniforms.color.value.setHex(child.userData.originalColor);
+          });
+          obj.userData.markedForDeletion = false;
           scene.remove(obj);
           window.spawnedObjects.splice(window.spawnedObjects.indexOf(obj), 1);
           playSound('explosion'); 
@@ -5243,7 +5331,7 @@ renderer.setAnimationLoop((timestamp, frame) => {
     // 🔥 ACTUALIZADOR DEL HUD DE COMBO EN TIEMPO REAL
   const comboUi = document.getElementById('combo-value');
   if (comboUi && !window.isTuningGameActive && !window.isWiringGameActive && !window.isHogueraActive) comboUi.innerText = 'x' + (typeof combatCombo !== 'undefined' ? combatCombo : 0);
-    if(lowFPSCount > 3 && isBloomEnabled) { isBloomEnabled = false; bloomPass.strength = 0; 
+    if(lowFPSCount > 3 && isBloomEnabled && !isXR) { isBloomEnabled = false; bloomPass.strength = 0; 
       document.getElementById('menu-bloom').innerText = '✨ Efecto Neón: OFF'; 
       document.getElementById('menu-bloom').style.color = '#888'; } frames = 0; lastTime = now; }
 
@@ -10164,11 +10252,12 @@ const _hgV = new THREE.Vector3();
 const HG_LISTEN_SECS = 45;
 const HG_FS = 0.9;                                   // escala de llamas (la escena es una maqueta pequeña)
 const HG_ISO = { yaw: 0.785, pitch: 0.56, dist: 88, fov: 30, target: new THREE.Vector3(-14, 5, 1) };   // cámara isométrica (casi ortográfica)
-const HG_COLOSSUS = { x: -36.8, z: 5.6, scale: 0.48, yaw: 1.4 };       // bestia de ~7 veces la altura del Viajero, con la cabeza hacia el fuego
+const HG_COLOSSUS = { x: -36.8, z: 5.6, scale: 0.42, yaw: 1.4 };       // serpiente emplumada de ~9 veces la altura del Viajero, con la cabeza hacia el fuego
 const HG = {
   phase: 'idle', heat: 0.7, cold: 0, coldS: 0, listen: 0, listenS: 0, outT: 0, winT: 0, discarded: 0, files: 0,
   subT: 0, subIdx: 0, flashV: 0, calmV: 0, emberT: 0, filesNote: false,
   growlIn: 10, meowIn: 15, growlP: 1, growlAmp: 0, growlDur: 2, growlG: 0,
+  idleT: 0, menaceP: 0, menaceSub: false, rattleIn: 6,
   group: null, ground: null, bodyMat: null, screenMat: null, fx: null, fireHalo: null, glowDisc: null,
   colos: null, sigil: null, stars: null, fog: null, snow: null, moon: null, eyes: [], pets: [], chips: [], els: {}, tone: null, saved: null,
   fire: new THREE.Vector3(0.8, 0.9, 0.0), fireScreen: { x: 0, y: 0 }
@@ -10222,10 +10311,10 @@ function hgToGeo(acc) {
   return g;
 }
 
-// ---------- El Coloso: una bestia cuadrúpeda de piedra hecha de monitores CRT ----------
-//   Inspirada en los colosos de piedra: caparazón tallado con runas, cuatro columnas por patas, cabeza angular con
-//   collar de espinas, ojos hundidos que brillan como el fuego y una pluma de ceniza con un sello luminoso en la corona.
-//   Cada monitor mira hacia afuera de la superficie (arriba en el lomo, a los lados en los flancos).
+// ---------- El Coloso: una serpiente emplumada hecha de monitores CRT ----------
+//   Cobra de cuello en S con capucha abierta, dos alas de plumas-monitor, medallones concéntricos en los flancos, patas de ave con garras
+//   y la cola enroscada con un cascabel. Cada parte es un conjunto de monitores fusionados (cuerpo + pantalla) con su propio pivote.
+//   Cuando el jugador no hace nada, la bestia se yergue, abre la capucha y las alas, y su voz se vuelve más grave y más larga.
 const HG_CS = 3.0;                                                       // tamaño de celda (un monitor): pocos y grandes, no una masa
 function hgCell(out, x, y, z, w, h, d, ry, rz, rx, rune) { out.push({ x, y, z, w, h, d, ry: ry || 0, rz: rz || 0, rx: rx || 0, rune: !!rune }); }
 function hgSurf(out, x, y, z, n, w, h, d, rune) {                         // celda cuya pantalla mira hacia la normal n
@@ -10283,6 +10372,141 @@ function hgPart(cells, pivot, parentPivot) {                             // fusi
   return g;
 }
 
+// Curva Catmull-Rom para el cuello y la cola, y una cadena de monitores que la recorre
+function hgCR(P, u) {
+  const n = P.length - 1, f = Math.min(n - 1e-6, Math.max(0, u * n)), i = Math.floor(f), t = f - i;
+  const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(n, i + 2)], t2 = t * t, t3 = t2 * t;
+  return [0, 1, 2].map(k => 0.5 * ((2 * p1[k]) + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3));
+}
+function hgChain(out, P, step, rad0, rad1, sides, size0, size1, runeEvery) {      // sides: F = frente/arriba, L/R = lados, A = lado alterno
+  let len = 0, prev = hgCR(P, 0);
+  for (let i = 1; i <= 40; i++) { const q = hgCR(P, i / 40); len += Math.hypot(q[0] - prev[0], q[1] - prev[1], q[2] - prev[2]); prev = q; }
+  const N = Math.max(2, Math.round(len / step));
+  for (let i = 0; i <= N; i++) {
+    const u = i / N, c = hgCR(P, u), a = hgCR(P, Math.max(0, u - 0.02)), b = hgCR(P, Math.min(1, u + 0.02));
+    let T = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]; const tl = Math.hypot(T[0], T[1], T[2]) || 1; T = [T[0] / tl, T[1] / tl, T[2] / tl];
+    const ref = Math.abs(T[1]) > 0.9 ? [0, 0, 1] : [0, 1, 0];
+    let S = [T[1] * ref[2] - T[2] * ref[1], T[2] * ref[0] - T[0] * ref[2], T[0] * ref[1] - T[1] * ref[0]];
+    const sl = Math.hypot(S[0], S[1], S[2]) || 1; S = [S[0] / sl, S[1] / sl, S[2] / sl];
+    const Fv = [S[1] * T[2] - S[2] * T[1], S[2] * T[0] - S[0] * T[2], S[0] * T[1] - S[1] * T[0]];
+    const r = rad0 + (rad1 - rad0) * u, sz = size0 + (size1 - size0) * u, rune = !!runeEvery && (i % runeEvery === 0);
+    for (let k = 0; k < sides.length; k++) {
+      let ch = sides[k]; if (ch === 'A') ch = (i % 2 === 0) ? 'L' : 'R';
+      const d = ch === 'F' ? Fv : (ch === 'L' ? [-S[0], -S[1], -S[2]] : S);
+      hgSurf(out, c[0] + d[0] * r, c[1] + d[1] * r, c[2] + d[2] * r, d, sz, Math.max(sz * 0.9, step * 1.02), sz * 0.8, rune && ch === 'F');
+    }
+  }
+  return hgCR(P, 1);
+}
+function hgFeather(out, x, y, z, dir, n, w, h, nrm) {                           // pluma: pila de monitores que se afina muy despacio
+  for (let k = 0; k < n; k++) { const f = 1 - k * 0.075; hgSurf(out, x + dir[0] * k * h * 0.95, y + dir[1] * k * h * 0.95, z + dir[2] * k * h * 0.95, nrm, w * f, h * f, w * 0.6, false); }
+}
+function hgMedallion(out, s, D, my, mz) {                                       // discos concéntricos sobre el flanco (siguen la curva del cuerpo)
+  const put = (dy, dz, w, rune) => {
+    const ny = dy / D.Ry, nz = dz / D.Rz, q = 1 - ny * ny - nz * nz; if (q < 0.04) return;
+    const x = s * D.Rx * Math.sqrt(q) * 1.03;
+    hgSurf(out, D.cx + x, my + dy, D.cz + mz + dz, [x / (D.Rx * D.Rx), (my + dy - D.cy) / (D.Ry * D.Ry), (mz + dz) / (D.Rz * D.Rz)], w, w, 1.8, rune);
+  };
+  put(0, 0, 2.8, true);
+  for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; put(Math.cos(a) * 3.3, Math.sin(a) * 3.3, 2.3, k % 2 === 0); }
+  for (let k = 0; k < 11; k++) { const a = k / 11 * Math.PI * 2 + 0.28; put(Math.cos(a) * 6.4, Math.sin(a) * 6.4, 2.1, false); }
+}
+
+// Plano de la serpiente: devuelve las partes como datos puros {cells, pivot, parent} (hgBuildColossus las convierte en mallas)
+function hgSerpentSpec() {
+  const FACES = ['+z', '-z', '+x', '-x'], RUNES = [1, 3], O = [0, 0, 0];
+  const SP = {};
+
+  // BASE (inmóvil): chatarra caída alrededor
+  const base = [];
+  for (let k = 0; k < 10; k++) {
+    const sz = HG_CS * (0.5 + Math.random() * 0.5), a = Math.random() * 6.28, r = 16 + Math.random() * 24;
+    hgCell(base, Math.cos(a) * r * 1.2, sz * 0.4, -8 + Math.sin(a) * r, sz * 1.1, sz * 0.85, sz * 0.7, Math.random() * 6.28, (Math.random() - 0.5) * 0.6, 0, false);
+  }
+  SP.base = { cells: base, pivot: O, parent: null };
+
+  // CUERPO: huevo de monitores con runas y un medallón concéntrico en cada flanco (respira)
+  const D = { cx: 0, cy: 15, cz: -6, Rx: 9.5, Ry: 9.5, Rz: 12 }, BODY_P = [0, 15, -6], MED = { y: 16, z: -5 };
+  let bc = [];
+  hgDome(bc, D.cx, D.cy, D.cz, D.Rx, D.Ry, D.Rz, 1.75, RUNES, 0.12);
+  bc = bc.filter(c => !(Math.abs(c.x) > 4.5 && Math.hypot(c.y - MED.y, c.z - MED.z) < 7.8));
+  [-1, 1].forEach(sd => hgMedallion(bc, sd, D, MED.y, MED.z));
+  [-13, -6, 1].forEach((z, i) => {                                               // plumas dorsales
+    const yt = D.cy + D.Ry * Math.sqrt(Math.max(0.05, 1 - Math.pow((z - D.cz) / D.Rz, 2)));
+    hgSpike(bc, 0, yt + 0.6, z, [0, 1, -0.5], 2 + (i === 1 ? 1 : 0), 2.0, 2.8, [0, 0.4, 1]);
+  });
+  SP.body = { cells: bc, pivot: BODY_P, parent: 'root' };
+
+  // CUELLO en S (cadena de monitores sobre una curva)
+  const NECK_P = [0, 16, 3], nc = [];
+  hgChain(nc, [[0, 16, 3], [0, 19.5, 8.5], [0, 26, 11], [0, 32.5, 10], [0, 38, 12.5], [0, 41.5, 15.5]], 3.0, 2.1, 1.7, 'FLR', 3.6, 3.0, 0);
+  SP.neck = { cells: nc, pivot: NECK_P, parent: 'root' };
+
+  // CABEZA de cobra: cráneo, hocico, cresta de plumas, cuernos, colmillos y órbitas huecas para los ojos
+  const HEAD_P = [0, 43, 16];
+  let hc = [];
+  hgShell(hc, 0, 43.5, 19.5, 6, 5, 9, ['+z', '+x', '-x', '+y'], 0.0);
+  hgShell(hc, 0, 42, 26, 4, 3, 5, ['+z', '+x', '-x', '+y'], 0.0);
+  [-1, 0, 1].forEach(i => hgSpike(hc, i * 2.2, 46.4, 17.5, [i * 0.35, 0.8, -0.55], 3, 2.0, 2.8, [0, 0.5, 1]));
+  [-1, 1].forEach(sd => hgSpike(hc, sd * 3.6, 44.5, 17, [sd * 0.9, 0.3, -0.5], 2, 1.8, 2.4, [sd, 0.3, 0.5]));
+  [-1, 1].forEach(sd => hgSpike(hc, sd * 1.5, 40.4, 27.6, [0, -1, 0.15], 2, 1.2, 2.4, [0, 0, 1]));           // colmillos superiores
+  hc = hc.filter(c => !(c.z > 20 && Math.abs(c.y - 44.4) < 1.6 && Math.abs(Math.abs(c.x) - 3) < 1.3));
+  SP.head = { cells: hc, pivot: HEAD_P, parent: 'neck' };
+
+  // MANDÍBULA (bisagra bajo el cráneo) con colmillos hacia arriba
+  const JAW_P = [0, 41, 17], jc = [];
+  hgShell(jc, 0, 40.2, 22.5, 4.2, 1.6, 9, ['+z', '-y', '+x', '-x'], 0.0);
+  [-1, 1].forEach(sd => hgSpike(jc, sd * 1.4, 41.3, 26.8, [0, 1, 0.15], 2, 1.1, 2.2, [0, 0, 1]));
+  SP.jaw = { cells: jc, pivot: JAW_P, parent: 'head' };
+
+  // CAPUCHA de cobra: abanico de monitores tras la cabeza, con un ojo-sello de runas en el centro
+  const HOOD_P = [0, 40, 13.2], hd = [], prof = [2, 3, 4, 3];
+  for (let j = 0; j < 4; j++) for (let i = -prof[j]; i <= prof[j]; i++) {
+    hgSurf(hd, i * 2.3, 38.5 + j * 2.9, 13.2 - Math.abs(i) * 0.5, [i * 0.22, 0.05, 1], 2.2, 2.7, 1.8, (j === 1 || j === 2) && Math.abs(i) <= 1 && ((i + j) % 2 === 0));
+  }
+  SP.hood = { cells: hd, pivot: HOOD_P, parent: 'head' };
+
+  // PATAS de ave: muslo, caña, pie y tres garras
+  [-1, 1].forEach(sd => {
+    const lc = [];
+    hgShell(lc, sd * 6.5, 9.5, 2, 4.2, 6, 4.2, ['+z', '+x', '-x'], 0.05);
+    hgShell(lc, sd * 6.5, 4.5, 4.5, 3.2, 5, 3.2, ['+z', '+x', '-x'], 0.05);
+    hgShell(lc, sd * 6.5, 1.2, 7, 6, 2.4, 6, ['+y', '+z'], 0.0);
+    for (let k = -1; k <= 1; k++) hgSpike(lc, sd * 6.5 + k * 2.1, 1.0, 10.4, [k * 0.2, -0.1, 1], 2, 1.5, 2.4, [0, 0.4, 1]);
+    SP['leg' + (sd > 0 ? 'R' : 'L')] = { cells: lc, pivot: [sd * 6.5, 12, 1], parent: 'root' };
+  });
+
+  // ALAS: hueso, coberteras y nueve plumas en abanico (las interiores caen, las exteriores apuntan hacia fuera y arriba)
+  [-1, 1].forEach(sd => {
+    const wc = [], SH = [sd * 7.5, 21, -3], WR = [sd * 21, 31, -5.5], LEN = [6, 7, 7, 7, 7, 6, 5];
+    for (let k = 0; k <= 3; k++) {
+      const u = k / 3;
+      hgSurf(wc, SH[0] + (WR[0] - SH[0]) * u, SH[1] + (WR[1] - SH[1]) * u, SH[2] + (WR[2] - SH[2]) * u, [0, 1, 0.25], 3.8 - u * 0.8, 3.6, 2.4, k === 1 || k === 3);
+    }
+    for (let k = 0; k < 7; k++) {
+      const u = 0.12 + 0.88 * k / 6, e = (-30 + 85 * k / 6) * Math.PI / 180;
+      const ox = SH[0] + (WR[0] - SH[0]) * u, oy = SH[1] + (WR[1] - SH[1]) * u, oz = SH[2] + (WR[2] - SH[2]) * u;
+      hgSurf(wc, ox, oy - 1.4, oz, [0, 1, 0.2], 3.8, 3.4, 2.0, false);
+      hgFeather(wc, ox, oy - 3, oz - 2.2, [sd * Math.cos(e), Math.sin(e), -0.28 - 0.12 * Math.cos(e)], LEN[k], 3.4, 3.4, [0, 1, 0.3]);
+    }
+    SP['wing' + (sd > 0 ? 'R' : 'L')] = { cells: wc, pivot: SH, parent: 'root' };
+  });
+
+  // COLA enroscada en espiral con cascabel
+  const TAIL_P = [0, 12, -16], tl = [], CX = 0, CZ = -31, tp = [[0, 12, -16], [0, 7.5, -18]];
+  for (let k = 0; k <= 13; k++) {
+    const t = k / 13, th = Math.PI / 2 + t * Math.PI * 2 * 1.3, r = 11 - 5.5 * t;
+    tp.push([CX + Math.cos(th) * r, 2.6 + 3.4 * t, CZ + Math.sin(th) * r]);
+  }
+  const tipPt = tp[tp.length - 1]; tp.push([tipPt[0] * 0.9, tipPt[1] + 3.5, tipPt[2] * 0.97 + CZ * 0.03]);
+  const tipEnd = hgChain(tl, tp, 3.2, 1.8, 1.2, 'FA', 3.7, 2.0, 0);
+  SP.tail = { cells: tl, pivot: TAIL_P, parent: 'root' };
+  const rc = [];
+  for (let k = 0; k < 3; k++) hgSurf(rc, tipEnd[0], tipEnd[1] + 1.2 + k * 1.8, tipEnd[2], [0, 0.3, 1], 1.7 - k * 0.25, 1.9, 1.5, k === 2);
+  SP.rattle = { cells: rc, pivot: [tipEnd[0], tipEnd[1], tipEnd[2]], parent: 'tail' };
+  return SP;
+}
+
 function hgBuildColossus() {
   const cs = HG_CS;
   HG.bodyMat = new THREE.ShaderMaterial({
@@ -10325,79 +10549,46 @@ function hgBuildColossus() {
       }`
   });
 
-  const root = new THREE.Group(), O = [0, 0, 0], FACES = ['+z', '-z', '+x', '-x'], RUNES = [2, 5];
-  // Estructura esbelta y abierta: pocos monitores grandes con huecos, para que se lea como un armazón y no como una masa.
-
-  // BASE (inmóvil): patas traseras, pies y un poco de chatarra caída
-  const base = [];
-  [-10.5, 10.5].forEach(x => {
-    hgShell(base, x, 10.5, -19, 6, 21, 6, FACES, 0.1);
-    hgShell(base, x, 1.5, -18, 8, 3, 10, ['+z', '+x', '-x'], 0.0);
+  const root = new THREE.Group(), SP = hgSerpentSpec(), G = { root }, P = { root: [0, 0, 0] };
+  ['base', 'body', 'neck', 'head', 'jaw', 'hood', 'legR', 'legL', 'wingR', 'wingL', 'tail', 'rattle'].forEach(k => {   // el orden garantiza que el padre exista
+    const sp = SP[k], par = sp.parent ? sp.parent : 'root';
+    G[k] = hgPart(sp.cells, sp.pivot, k === 'base' ? [0, 0, 0] : P[par]); P[k] = sp.pivot;
+    (k === 'base' ? root : G[par]).add(G[k]);
   });
-  for (let k = 0; k < 14; k++) {
-    const s = cs * (0.5 + Math.random() * 0.5);
-    hgCell(base, (Math.random() - 0.5) * 76, s * 0.4, Math.random() * 70 - 32, s * 1.1, s * 0.85, s * 0.7, Math.random() * 6.28, (Math.random() - 0.5) * 0.6, 0, false);
-  }
-  root.add(hgPart(base, O, O));
-
-  // CUERPO: caparazón abierto con runas, un anillo irregular de falda y pocas espinas dorsales (respira)
-  const BODY_P = [0, 21, 0], bc = [];
-  hgDome(bc, 0, 21, -6, 15, 11, 20, 1.35, RUNES, 0.2);
-  const rimX = 15 * Math.sin(1.35), rimZ = 20 * Math.sin(1.35), per = 2 * Math.PI * Math.sqrt((rimX * rimX + rimZ * rimZ) / 2), nSk = Math.round(per / cs);
-  for (let j = 0; j < nSk; j++) {
-    if (Math.random() < 0.25) continue;
-    const th = j / nSk * Math.PI * 2, x = rimX * Math.cos(th), z = -6 + rimZ * Math.sin(th);
-    hgSurf(bc, x, 22.5, z, [Math.cos(th) / rimX, 0, Math.sin(th) / rimZ], per / nSk * 0.95, 2.6, cs * 0.7, false);
-  }
-  for (let z = -22; z <= 6; z += 7) {
-    const yt = 21 + 11 * Math.sqrt(Math.max(0, 1 - Math.pow((z + 6) / 20, 2)));
-    hgSpike(bc, 0, yt + 1, z, [0, 1, 0.12], 2, 2.0, 3.0, [0, 0.25, 1]);
-  }
-  const body = hgPart(bc, BODY_P, O); root.add(body);
-
-  // PATAS DELANTERAS (articuladas en la cadera: se adelantan hacia el fuego con el frío)
-  const legs = {};
-  [-1, 1].forEach(s => {
-    const lc = [];
-    hgShell(lc, s * 10.5, 10.5, 8, 6, 21, 6, FACES, 0.1);
-    hgShell(lc, s * 10.5, 1.5, 9, 8, 3, 10, ['+z', '+x', '-x'], 0.0);
-    legs[s] = hgPart(lc, [s * 10.5, 21, 8], O); root.add(legs[s]);
-  });
-
-  // CABEZA: máscara angular, ceja, collar irregular, corona de espinas, mandíbula dentada y ojos hundidos
-  let hc = [];
-  hgShell(hc, 0, 21, 14, 7, 7, 6, ['+x', '-x', '+y'], 0.1);                      // cuello
-  hgShell(hc, 0, 19.5, 24, 10, 9, 9, ['+z', '+x', '-x', '+y'], 0.0);             // rostro
-  for (let i = -2; i <= 2; i++) hgSurf(hc, i * 2.4, 24.6, 28.8, [0, 0.35, 1], 2.6, 1.8, 3.0, false);   // ceja que sobresale
-  hgShell(hc, 0, 22.8, 19, 18, 2.5, 6, ['+y', '+z'], 0.3);                       // collar (borde irregular)
-  for (let k = 0; k < 7; k++) {                                                  // corona de espinas
-    const a = (k - 3) * 0.4, n = 3 - Math.round(Math.abs(k - 3) * 0.5);
-    hgSpike(hc, Math.sin(a) * 4.2, 25 + Math.cos(a) * 0.4, 21, [Math.sin(a) * 0.7, Math.cos(a), 0.1], Math.max(2, n), 2.1, 2.8, [Math.sin(a) * 0.5, 0.3, 1]);
-  }
-  for (let i = -2; i <= 2; i++) hgSpike(hc, i * 2.2, 14.9, 28.6, [0, -1, 0.05], 2, 1.5, 2.4, [0, -0.1, 1]);   // dientes
-  hc = hc.filter(c => !(c.z > 27 && Math.abs(c.y - 20.3) < 2.0 && Math.abs(Math.abs(c.x) - 2.6) < 2.0));   // cuencas de los ojos
-  const head = hgPart(hc, [0, 21, 16], BODY_P); body.add(head);
-  HG.eyes = [-1, 1].map(s => { const e = mkHalo(0xffa24d, 4.5, 0); e.position.set(s * 2.6, -0.7, 12.3); head.add(e); return e; });
-  HG.sigil = mkHalo(0xbfe6ff, 6, 0.1); HG.sigil.position.set(0, 4.5, 6); head.add(HG.sigil);   // sello luminoso en la corona
+  HG.eyes = [-1, 1].map(sd => { const e = mkHalo(0xffa24d, 4.2, 0); e.position.set(sd * 3.3, 1.2, 3.8); G.head.add(e); return e; });
+  HG.sigil = mkHalo(0xbfe6ff, 7, 0.1); HG.sigil.position.set(0, 9.8, -1.5); G.body.add(HG.sigil);   // sello luminoso sobre el lomo
 
   root.scale.setScalar(HG_COLOSSUS.scale);
   root.position.set(HG_COLOSSUS.x, 0, HG_COLOSSUS.z);
   root.rotation.y = HG_COLOSSUS.yaw;
-  HG.colos = { root, body, head, legFR: legs[1], legFL: legs[-1] };
+  HG.colos = { root, body: G.body, neck: G.neck, head: G.head, jaw: G.jaw, hood: G.hood, wingR: G.wingR, wingL: G.wingL, tail: G.tail, rattle: G.rattle, legFR: G.legR, legFL: G.legL };
   return root;
 }
 
-// La bestia responde despacio al frío: baja la cabeza hacia el fuego y adelanta una pata
+// La serpiente respira, ondula el cuello y responde despacio al frío. Con la AMENAZA (el jugador no hace nada) se yergue,
+// abre la capucha y las alas, entreabre la mandíbula y agita el cascabel.
 function hgAnimateColossus(t, c, calm) {
   const C = HG.colos; if (!C) return;
-  const sw = calm ? 0.2 : 1, g = HG.growlG || 0;
-  C.body.scale.y = 1 + Math.sin(t * 0.5) * 0.008 * sw + g * 0.012;
+  const sw = calm ? 0.2 : 1, g = HG.growlG || 0, m = HG.menaceP || 0, w = HG.calmV;
+  C.root.scale.setScalar(HG_COLOSSUS.scale * (1 + 0.05 * m));
+  C.body.scale.y = 1 + Math.sin(t * 0.5) * 0.008 * sw + g * 0.012 + m * 0.012 * Math.sin(t * 2.3) * sw;
   C.body.rotation.z = Math.sin(t * 0.21) * 0.012 * sw;
-  C.body.rotation.x = c * 0.03;
-  C.head.rotation.x = 0.06 + c * 0.24 + HG.calmV * 0.10 + Math.sin(t * 0.45) * 0.012 * sw + g * 0.08;
+  C.neck.rotation.x = -0.04 - m * 0.17 + c * 0.05 + Math.sin(t * 0.4) * 0.025 * sw;
+  C.neck.rotation.y = Math.sin(t * 0.23) * 0.10 * sw * (1 - m * 0.6) + Math.sin(t * 1.7) * 0.02 * m * sw;
+  C.neck.rotation.z = Math.sin(t * 0.31 + 1) * 0.03 * sw;
+  C.head.rotation.x = 0.06 + c * 0.20 + w * 0.10 + m * 0.24 + g * 0.10 + Math.sin(t * 0.45) * 0.012 * sw;
   C.head.rotation.y = Math.sin(t * 0.13) * 0.06 * sw;
-  C.legFR.rotation.x = -(0.03 + c * 0.5) + Math.sin(t * 0.6) * 0.01 * sw;
-  C.legFL.rotation.x = -(0.02 + c * 0.12);
+  C.jaw.rotation.x = 0.04 + g * 0.55 + m * 0.20 + (m > 0.5 ? Math.sin(t * 9) * 0.03 * m * sw : 0);
+  C.hood.scale.x = 1 + Math.sin(t * 0.6) * 0.05 * sw + m * 0.34 + g * 0.16;
+  C.hood.scale.y = 1 + m * 0.10 + g * 0.05;
+  const lift = 0.05 + Math.sin(t * 0.5) * 0.02 * sw + m * 0.5 + g * 0.22 + c * 0.1 - w * 0.08;
+  C.wingR.rotation.z = lift; C.wingL.rotation.z = -lift;
+  C.wingR.rotation.y = -m * 0.12 + Math.sin(t * 0.37) * 0.02 * sw; C.wingL.rotation.y = m * 0.12 - Math.sin(t * 0.37) * 0.02 * sw;
+  C.tail.rotation.y = Math.sin(t * 0.35) * 0.04 * sw;
+  C.rattle.rotation.z = calm ? 0 : Math.sin(t * 41) * 0.16 * m * m;
+  C.rattle.rotation.x = calm ? 0 : Math.sin(t * 37 + 1) * 0.12 * m * m;
+  C.legFR.rotation.x = -(0.03 + c * 0.3 + m * 0.10) + Math.sin(t * 0.6) * 0.01 * sw;
+  C.legFL.rotation.x = -(0.02 + c * 0.10 + m * 0.05);
 }
 
 // ---------- Suelo: retícula isométrica punteada, una pequeña isla que se desvanece en el negro ----------
@@ -10516,8 +10707,75 @@ function hgAddPets() {
     o.userData.ph = Math.random() * 6; o.userData.kind = HG.pets.length;
     scene.add(o); HG.pets.push(o);                                                 // comparten geometría con la plantilla: NO se liberan
   };
-  mk(chaplinModelTemplate, 2.3, 1.0, -0.6, 1.25, 0.95);
-  mk(gamberModelTemplate, 0.2, 1.9, 0.9, -1.25, 0.8);
+  mk(chaplinModelTemplate, 2.7, 1.2, -0.6, 1.25, 1.3);                            // un poco más grandes que antes, sin pasar la altura del Viajero
+  mk(gamberModelTemplate, 0.1, 2.4, 0.9, -1.25, 1.1);
+}
+
+// ---------- Cámara del jugador: girar alrededor de la maqueta (distancia fija) y zoom ----------
+//   Arrastrar sobre el espacio vacío gira la escena (con inercia) y la inclina un poco; la distancia NO cambia al girar.
+//   Pellizco (móvil) o rueda (escritorio) acercan y alejan dentro de un rango acotado. Flechas / +,- como alternativa de teclado.
+//   Un toque corto (sin arrastre) sigue siendo un toque: un gato maúlla o el Coloso gruñe.
+const HG_CAM = { yaw: 0, yawT: 0, yawV: 0, pit: 0, pitT: 0, zoom: 1, zoomT: 1, ptrs: new Map(), pinchD: 0, tapOK: true, moved: 0, t0: 0, bound: false, fns: null, saved: null };
+const HG_ZOOM = [0.55, 1.4], HG_PITCH = [-0.3, 0.5];
+function hgCamReset() { const C = HG_CAM; C.yaw = C.yawT = C.yawV = C.pit = C.pitT = 0; C.zoom = C.zoomT = 1; C.ptrs.clear(); C.pinchD = 0; C.tapOK = true; C.moved = 0; }
+function hgCamClampZ(z) { return Math.max(HG_ZOOM[0], Math.min(HG_ZOOM[1], z)); }
+function hgCamBind() {
+  const C = HG_CAM; if (C.bound || typeof window.addEventListener !== 'function') return;
+  const skip = (e) => !window.isHogueraActive || window.isMiniIntro || (e.target && e.target.closest && e.target.closest('button, a, input, textarea'));
+  const down = (e) => {
+    if (skip(e) || HG.chips.some(c => c.state === 'drag')) return;
+    C.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (C.ptrs.size === 1) { C.tapOK = true; C.moved = 0; C.t0 = performance.now(); C.yawV = 0; }
+    else { C.tapOK = false; const p = [...C.ptrs.values()]; C.pinchD = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); }
+  };
+  const move = (e) => {
+    const p = C.ptrs.get(e.pointerId); if (!p || !window.isHogueraActive) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+    if (C.ptrs.size >= 2) {
+      const q = [...C.ptrs.values()], d = Math.hypot(q[0].x - q[1].x, q[0].y - q[1].y);
+      if (C.pinchD > 1 && d > 1) C.zoomT = hgCamClampZ(C.zoomT * (C.pinchD / d));
+      C.pinchD = d; return;
+    }
+    C.moved += Math.abs(dx) + Math.abs(dy);
+    if (C.moved < 8) return;                                                       // todavía es un toque
+    const k = 5.2 / Math.max(320, window.innerWidth);
+    C.yawT -= dx * k * 1.1; C.pitT = Math.max(HG_PITCH[0], Math.min(HG_PITCH[1], C.pitT + dy * k * 0.5));
+    C.yawV = -dx * k * 1.1 * 40 * 0.5 + C.yawV * 0.5;
+  };
+  const up = (e) => {
+    if (!C.ptrs.has(e.pointerId)) return;
+    const was = C.ptrs.size; C.ptrs.delete(e.pointerId);
+    if (was === 1 && C.tapOK && C.moved < 8 && performance.now() - C.t0 < 500 && e.type === 'pointerup' && window.hgTap) window.hgTap(e.clientX, e.clientY);
+    if (C.ptrs.size === 0) { C.tapOK = true; C.yawV = Math.max(-2.5, Math.min(2.5, C.yawV)); if (C.moved < 8) C.yawV = 0; }
+  };
+  const wheel = (e) => { if (skip(e)) return; e.preventDefault(); C.zoomT = hgCamClampZ(C.zoomT * Math.exp(e.deltaY * 0.0012)); };
+  const key = (e) => {
+    if (!window.isHogueraActive || window.isMiniIntro) return;
+    if (e.key === 'ArrowLeft') C.yawT += 0.09; else if (e.key === 'ArrowRight') C.yawT -= 0.09;
+    else if (e.key === 'ArrowUp') C.pitT = Math.min(HG_PITCH[1], C.pitT + 0.05); else if (e.key === 'ArrowDown') C.pitT = Math.max(HG_PITCH[0], C.pitT - 0.05);
+    else if (e.key === '+' || e.key === '=') C.zoomT = hgCamClampZ(C.zoomT * 0.92); else if (e.key === '-' || e.key === '_') C.zoomT = hgCamClampZ(C.zoomT / 0.92);
+    else return;
+    e.preventDefault(); e.stopImmediatePropagation();
+  };
+  const tm = (e) => { if (window.isHogueraActive && !window.isMiniIntro && e.touches && e.touches.length >= 2) e.preventDefault(); };   // sin pellizco de página
+  const gs = (e) => { if (window.isHogueraActive) e.preventDefault(); };                  // Safari iOS: gesto de zoom de página
+  C.fns = { down, move, up, wheel, key, tm, gs };
+  window.addEventListener('pointerdown', down); window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  window.addEventListener('wheel', wheel, { passive: false }); window.addEventListener('keydown', key, true);
+  window.addEventListener('touchmove', tm, { passive: false }); window.addEventListener('gesturestart', gs, { passive: false });
+  try { C.saved = { ta: document.body.style.touchAction, ob: document.documentElement.style.overscrollBehavior }; document.body.style.touchAction = 'none'; document.documentElement.style.overscrollBehavior = 'none'; } catch (x) {}
+  C.bound = true;
+}
+function hgCamUnbind() {
+  const C = HG_CAM; if (!C.bound) return;
+  const f = C.fns;
+  window.removeEventListener('pointerdown', f.down); window.removeEventListener('pointermove', f.move);
+  window.removeEventListener('pointerup', f.up); window.removeEventListener('pointercancel', f.up);
+  window.removeEventListener('wheel', f.wheel); window.removeEventListener('keydown', f.key, true);
+  window.removeEventListener('touchmove', f.tm); window.removeEventListener('gesturestart', f.gs);
+  try { if (C.saved) { document.body.style.touchAction = C.saved.ta || ''; document.documentElement.style.overscrollBehavior = C.saved.ob || ''; } } catch (x) {}
+  C.bound = false; C.fns = null; C.ptrs.clear();
 }
 
 // ---------- Sonido: el frío es un zumbido grave; el fuego, una brasa que cruje ----------
@@ -10527,8 +10785,10 @@ function hgToneStart() {
     const ctx = audioCtx, t = ctx.currentTime;
     const out = ctx.createGain(); out.gain.setValueAtTime(0, t); out.gain.linearRampToValueAtTime(1, t + 2.5); out.connect(masterGain);
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220; lp.connect(out);
-    const mk = (f, dest) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.value = 0; o.connect(g); g.connect(dest); o.start(); return { o, g }; };
+    const mk = (f, dest, type) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type || 'sine'; o.frequency.value = f; g.gain.value = 0; o.connect(g); g.connect(dest); o.start(); return { o, g }; };
     const c1 = mk(55, lp), c2 = mk(55 * 1.006, lp), c3 = mk(82.41, lp);
+    const lp2 = ctx.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = 130; lp2.Q.value = 4; lp2.connect(out);
+    const d1 = mk(41.2, lp2, 'sawtooth'), d2 = mk(43.65, lp2, 'sawtooth');            // un semitono: batido áspero que anuncia la amenaza
     const w1 = mk(261.63, out), w2 = mk(392, out);
     const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), ch = buf.getChannelData(0);
     for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
@@ -10541,18 +10801,21 @@ function hgToneStart() {
       src.connect(lpf); lpf.connect(g); g.connect(out); src.start(); lfo.start();
       return { src, g, ld, lfo };
     });
-    HG.tone = { ctx, out, lp, c1, c2, c3, w1, w2, noise: buf, purr };
+    HG.tone = { ctx, out, lp, c1, c2, c3, d1, d2, w1, w2, noise: buf, purr };
   } catch (e) { HG.tone = null; }
 }
-function hgToneUpdate(heat, cold) {
+function hgToneUpdate(heat, cold, menace) {
   const T = HG.tone; if (!T) return;
   try {
     const t = T.ctx.currentTime;
     T.c1.g.gain.setTargetAtTime(0.02 + cold * 0.04, t, 0.3);
     T.c2.g.gain.setTargetAtTime(0.02 + cold * 0.04, t, 0.3);
     T.c3.g.gain.setTargetAtTime(cold * 0.03, t, 0.3);
-    T.lp.frequency.setTargetAtTime(160 + cold * 260, t, 0.3);
-    T.w1.g.gain.setTargetAtTime(heat * 0.014, t, 0.3);
+    const mn = menace || 0;
+    T.lp.frequency.setTargetAtTime(160 + cold * 260 + mn * 180, t, 0.3);
+    T.d1.g.gain.setTargetAtTime(mn * mn * 0.05, t, 0.6);
+    T.d2.g.gain.setTargetAtTime(mn * mn * 0.045, t, 0.6);
+    T.w1.g.gain.setTargetAtTime(heat * 0.014 * (1 - mn * 0.7), t, 0.3);
     T.w2.g.gain.setTargetAtTime(heat * heat * 0.010, t, 0.3);
     const pr = HG.phase === 'out' ? 0 : Math.min(0.4, heat * 0.4);                    // los gatos ronronean con el calor y callan sin fuego
     T.purr.forEach(p => { p.g.gain.setTargetAtTime(pr * 0.5, t, 0.4); p.ld.gain.setTargetAtTime(pr * 0.5, t, 0.4); });
@@ -10565,7 +10828,7 @@ function hgToneStop() {
   try {
     const t = T.ctx.currentTime;
     T.out.gain.cancelScheduledValues(t); T.out.gain.setTargetAtTime(0, t, 0.35);
-    [T.c1, T.c2, T.c3, T.w1, T.w2].forEach(v => v.o.stop(t + 2.2));
+    [T.c1, T.c2, T.c3, T.d1, T.d2, T.w1, T.w2].forEach(v => v.o.stop(t + 2.2));
     T.purr.forEach(p => { p.src.stop(t + 2.2); p.lfo.stop(t + 2.2); });
   } catch (e) {}
 }
@@ -10609,6 +10872,7 @@ function hgMakeChip(kind, label, root) {
 }
 function hgChipDown(c, x, y) {
   if (HG.phase === 'won' || (c.state !== 'idle' && c.state !== 'return')) return;
+  HG.idleT = 0;
   c.state = 'drag'; c.target.x = x; c.target.y = y; c.hist = [{ x, y, t: performance.now() }];
   c.el.style.cursor = 'grabbing'; c.el.style.zIndex = 5;
   MGS.bell(880, 0, 0.5, 0.012);
@@ -10637,6 +10901,7 @@ function hgChipUp(c) {
 
 function hgBurn(c) {
   const en = MG.isEN();
+  HG.idleT = 0;
   c.state = 'burn'; c.burnT = 0;
   let fuel = 0.16;
   if (c.kind === 'score') {
@@ -10667,43 +10932,70 @@ function hgBurn(c) {
 //   'sigh' = un largo suspiro al terminar. Cada gruñido también mueve la cabeza, enciende los ojos y suelta aliento de ceniza.
 function hgGrowl(kind) {
   const calm = reduceMotionMQ.matches;
-  const loud = kind === 'click' ? 1 : kind === 'angry' ? 1.2 : kind === 'sigh' ? 0.5 : 0.7;
-  const dur = kind === 'click' ? 2.2 : kind === 'angry' ? 2.8 : kind === 'sigh' ? 3.2 : 1.8 + Math.random();
+  const menace = kind === 'menace';
+  const loud = menace ? 1.5 : kind === 'click' ? 1 : kind === 'angry' ? 1.2 : kind === 'sigh' ? 0.5 : 0.7;
+  const dur = menace ? 3.6 + Math.random() * 1.4 : kind === 'click' ? 2.2 : kind === 'angry' ? 2.8 : kind === 'sigh' ? 3.2 : 1.8 + Math.random();
   HG.growlP = 0; HG.growlAmp = loud; HG.growlDur = dur;
   if (HG.colos && HG.fx) {
-    _hgV.set(0, 4.5, 6); HG.colos.head.localToWorld(_hgV);
-    HG.fx.burst(_hgV.x, _hgV.y, _hgV.z, kind === 'sigh' ? 10 : 18, 1.6, 2.0, 0x59616b, 0.32, 0.5);        // aliento de ceniza
-    if (kind === 'click' || kind === 'angry') MG.pulse(HG_COLOSSUS.x, 0.05, 0xd64a3a, 2, 16, 1.8, 0.35, HG_COLOSSUS.z);   // onda sobre el suelo
+    _hgV.set(0, -3, 10); HG.colos.head.localToWorld(_hgV);
+    HG.fx.burst(_hgV.x, _hgV.y, _hgV.z, kind === 'sigh' ? 10 : menace ? 34 : 18, menace ? 2.4 : 1.6, 2.0, menace ? 0x7a828c : 0x59616b, 0.32, 0.5);        // aliento de ceniza
+    if (kind === 'click' || kind === 'angry' || menace) MG.pulse(HG_COLOSSUS.x, 0.05, 0xd64a3a, 2, 16, 1.8, 0.35, HG_COLOSSUS.z);   // onda sobre el suelo
   }
-  if (!calm && (kind === 'click' || kind === 'angry')) { shakeIntensity = Math.max(shakeIntensity, 0.1); HG.flashV = Math.max(HG.flashV, 0.5); }
+  if (!calm && (kind === 'click' || kind === 'angry' || menace)) { shakeIntensity = Math.max(shakeIntensity, menace ? 0.16 : 0.1); HG.flashV = Math.max(HG.flashV, menace ? 0.8 : 0.5); }
+  if (menace) { hgHiss(); setTimeout(() => hgRattle(1), 500); }
   if (!MGS.ok()) return;
   try {
     const ctx = audioCtx, t = ctx.currentTime, sigh = kind === 'sigh';
     const out = ctx.createGain();
     out.gain.setValueAtTime(0, t);
-    out.gain.linearRampToValueAtTime(0.11 * loud, t + (sigh ? 0.9 : 0.25));
+    out.gain.linearRampToValueAtTime((menace ? 0.10 : 0.11) * loud, t + (sigh ? 0.9 : menace ? 0.5 : 0.25));
     out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 2;
     lp.frequency.setValueAtTime(sigh ? 180 : 280, t); lp.frequency.exponentialRampToValueAtTime(100, t + dur);
     lp.connect(out); out.connect(masterGain);
-    const f0 = sigh ? 78 : 64 + Math.random() * 12, f1 = sigh ? 44 : 36, ends = t + dur + 0.1;
+    let dst = lp;
+    if (menace) {                                                                  // saturación: la voz se vuelve áspera y dentada
+      const sh = ctx.createWaveShaper(), cv = new Float32Array(256);
+      for (let i = 0; i < 256; i++) cv[i] = Math.tanh((i / 255 * 2 - 1) * 3.4);
+      sh.curve = cv; sh.connect(lp); dst = sh;
+      lp.frequency.cancelScheduledValues(t); lp.frequency.setValueAtTime(420, t); lp.frequency.exponentialRampToValueAtTime(90, t + dur);
+    }
+    const f0 = sigh ? 78 : menace ? 50 + Math.random() * 8 : 64 + Math.random() * 12, f1 = sigh ? 44 : menace ? 22 : 36, ends = t + dur + 0.1;
     const o1 = ctx.createOscillator(); o1.type = 'sawtooth';
     o1.frequency.setValueAtTime(f0, t); o1.frequency.exponentialRampToValueAtTime(f1, t + dur);
     const am = ctx.createGain(); am.gain.value = 0.6;
-    const lfo = ctx.createOscillator(); lfo.frequency.value = 17 + Math.random() * 9;
-    const lg = ctx.createGain(); lg.gain.value = sigh ? 0 : 0.45; lfo.connect(lg); lg.connect(am.gain);
-    o1.connect(am); am.connect(lp);
+    const lfo = ctx.createOscillator(); lfo.frequency.value = menace ? 26 + Math.random() * 8 : 17 + Math.random() * 9;
+    if (menace) lfo.frequency.linearRampToValueAtTime(11, t + dur);               // el gruñido se arrastra y se vuelve más lento
+    const lg = ctx.createGain(); lg.gain.value = sigh ? 0 : menace ? 0.6 : 0.45; lfo.connect(lg); lg.connect(am.gain);
+    o1.connect(am); am.connect(dst);
     const o2 = ctx.createOscillator(); o2.type = 'sine';
     o2.frequency.setValueAtTime(f0 / 2, t); o2.frequency.exponentialRampToValueAtTime(f1 / 2, t + dur);
-    const g2 = ctx.createGain(); g2.gain.value = 0.8; o2.connect(g2); g2.connect(lp);
+    const g2 = ctx.createGain(); g2.gain.value = 0.8; o2.connect(g2); g2.connect(menace ? dst : lp);
     [o1, o2, lfo].forEach(o => { o.start(t); o.stop(ends); });
+    if (menace) {                                                                  // segunda garganta desafinada: batido que hace temblar el pecho
+      const o4 = ctx.createOscillator(); o4.type = 'sawtooth';
+      o4.frequency.setValueAtTime(f0 * 1.013, t); o4.frequency.exponentialRampToValueAtTime(f1 * 1.013, t + dur);
+      const g4 = ctx.createGain(); g4.gain.value = 0.5; o4.connect(g4); g4.connect(dst); o4.start(t); o4.stop(ends);
+    }
     if (loud >= 1) {                                                              // rugido: una voz más áspera por encima
       const o3 = ctx.createOscillator(); o3.type = 'square';
       o3.frequency.setValueAtTime(f0 * 1.8, t); o3.frequency.exponentialRampToValueAtTime(f1 * 1.6, t + dur);
-      const g3 = ctx.createGain(); g3.gain.value = 0.12; o3.connect(g3); g3.connect(lp); o3.start(t); o3.stop(ends);
+      const g3 = ctx.createGain(); g3.gain.value = 0.12; o3.connect(g3); g3.connect(dst); o3.start(t); o3.stop(ends);
     }
   } catch (e) {}
-  for (let i = 0; i < 5; i++) setTimeout(() => hgNoise('bandpass', 0.012 * loud, 1400 + Math.random() * 2600, 0.06), Math.random() * dur * 700);   // estática de CRT
+  for (let i = 0; i < (menace ? 10 : 5); i++) setTimeout(() => hgNoise('bandpass', 0.012 * loud, 1400 + Math.random() * 2600, 0.06), Math.random() * dur * 700);   // estática de CRT
+}
+// Siseo de cobra: ráfaga de aire agudo que se abre y se cierra
+function hgHiss() {
+  hgNoise('highpass', 0.045, 4200, 1.5);
+  setTimeout(() => hgNoise('bandpass', 0.035, 6800, 1.1), 120);
+}
+// Cascabel de la cola: una ráfaga de chasquidos secos que se acelera
+function hgRattle(amt) {
+  const n = Math.round(16 + 12 * amt);
+  let at = 0;
+  for (let i = 0; i < n; i++) { at += 46 - 22 * (i / n) + Math.random() * 10; setTimeout(() => hgNoise('bandpass', 0.016 + 0.014 * amt, 4300 + Math.random() * 1800, 0.028), at); }
+  if (HG.colos && HG.fx) { _hgV.set(0, 3, 0); HG.colos.rattle.localToWorld(_hgV); HG.fx.burst(_hgV.x, _hgV.y, _hgV.z, 8, 0.9, 1.2, 0x9aa3ad, 0.16, 0.5); }
 }
 
 function hgMeow(idx, loud) {                                                      // 0 = Chaplin (grave, largo), 1 = Gamber (agudo, corto)
@@ -10730,6 +11022,7 @@ function hgMeow(idx, loud) {                                                    
 
 window.hgTap = function(cx, cy) {                                                 // toque en la escena: un gato maúlla, el Coloso gruñe
   if (!window.isHogueraActive || window.isMiniIntro || !HG.colos) return;
+  HG.idleT = 0;
   const W = window.innerWidth, H = window.innerHeight;
   let best = -1, bd = 1e9;
   HG.pets.forEach((p, i) => {                                                     // gatos: por cercanía en pantalla (son diminutos)
@@ -10764,6 +11057,7 @@ function hgSub(text) {
   const el = HG.els.sub; if (!el) return;
   el.textContent = text; el.style.opacity = '1'; HG.subT = 6;
 }
+const HG_MENACE_SUB = { es: '…la inercia también es una forma de alimentar a la máquina…', en: '…inertia is also a way of feeding the machine…' };
 const HG_SUBS = {
   es: ['…el progreso es una máquina que nunca dice basta…',
        '…cada punto que acumulas es calor que le quitas al fuego…',
@@ -10778,8 +11072,8 @@ const HG_SUBS = {
 function hgBuildUI() {
   const en = MG.isEN();
   const ui = MG.buildUI(en
-    ? 'The machine\'s cold puts your fire out. Drag your own points — SCORE, COMBO, FILES — and throw them into the flames. Renounce, to listen.'
-    : 'El frío de la máquina apaga tu fuego. Arrastra tus propios puntos —SCORE, COMBO, ARCHIVOS— y lánzalos a la hoguera. Renuncia para escuchar.');
+    ? 'The machine\'s cold puts your fire out. Drag your own points — SCORE, COMBO, FILES — and throw them into the flames. Renounce, to listen. Drag empty space to turn around the scene; pinch to zoom.'
+    : 'El frío de la máquina apaga tu fuego. Arrastra tus propios puntos —SCORE, COMBO, ARCHIVOS— y lánzalos a la hoguera. Renuncia para escuchar. Arrastra el espacio vacío para girar la escena; pellizca para acercar.');
   const cold = document.createElement('div');
   cold.style.cssText = 'position:absolute; inset:0; pointer-events:none; opacity:0; background:radial-gradient(ellipse at 30% 30%, rgba(120,170,220,0.22), rgba(120,170,220,0) 60%), radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(214,74,58,0.2) 100%);';
   const flash = document.createElement('div');
@@ -10822,6 +11116,8 @@ function hgStart() {
   HG.phase = 'play'; HG.heat = 0.7; HG.cold = 0; HG.coldS = 0; HG.listen = 0; HG.listenS = 0; HG.outT = 0; HG.winT = 0; HG.discarded = 0;
   HG.subT = 0; HG.subIdx = 0; HG.flashV = 0; HG.calmV = 0; HG.emberT = 0; HG.filesNote = false;
   HG.growlIn = 7 + Math.random() * 5; HG.meowIn = 12 + Math.random() * 8; HG.growlP = 1; HG.growlAmp = 0; HG.growlG = 0;
+  HG.idleT = 0; HG.menaceP = 0; HG.menaceSub = false; HG.rattleIn = 6;
+  hgCamReset(); hgCamBind();
   HG.files = parseInt((MG.saved && MG.saved.hud && MG.saved.hud['files-value']) || '0', 10) || 0;
 
   if (MG.dust) MG.dust.pts.position.set(HG_ISO.target.x, 6, HG_ISO.target.z);
@@ -10928,10 +11224,21 @@ function hgUpdate(dt) {
   HG.coldS += (HG.cold - HG.coldS) * Math.min(1, dt * 0.9);                      // el Coloso reacciona despacio
   HG.listenS += (HG.listen - HG.listenS) * Math.min(1, dt * 0.8);
 
+  // ----- Amenaza: si el jugador no hace nada, la bestia se yergue, abre las alas y la capucha, y su voz se vuelve más grave -----
+  if (HG.phase === 'play' || HG.phase === 'out') HG.idleT += dt; else HG.idleT = 0;
+  const mT = HG.phase === 'won' ? 0 : Math.max(Math.min(1, Math.max(0, HG.idleT - 7) / 16), HG.phase === 'out' ? 0.9 : Math.max(0, HG.coldS - 0.3) * 1.1);      // el frío alto también inquieta a la bestia
+  HG.menaceP += (mT - HG.menaceP) * Math.min(1, dt * (mT > HG.menaceP ? 0.5 : 1.6));      // sube despacio; baja rápido en cuanto actúas
+  if (HG.menaceP > 0.5 && !HG.menaceSub) { HG.menaceSub = true; hgSub(HG_MENACE_SUB[en ? 'en' : 'es']); }
+  if (HG.menaceP < 0.15) HG.menaceSub = false;
+
   // ----- Cámara isométrica: casi ortográfica; se retira y gira apenas mientras escuchas (el final es el plano más amplio) -----
-  const sw = calm ? 0 : 1, L = HG.listenS, W = Math.min(1, HG.winT / 4.2) * (HG.phase === 'won' ? 1 : 0);
+  const sw = calm ? 0 : 1, L = HG.listenS, W = Math.min(1, HG.winT / 4.2) * (HG.phase === 'won' ? 1 : 0), CM = HG_CAM;
+  if (!CM.ptrs.size) { CM.yawT += CM.yawV * dt; CM.yawV *= Math.exp(-dt * 3.2); }                  // inercia al soltar
+  const kc = 1 - Math.exp(-dt * 9);
+  CM.yaw += (CM.yawT - CM.yaw) * kc; CM.pit += (CM.pitT - CM.pit) * kc; CM.zoom += (CM.zoomT - CM.zoom) * kc;
   const asp = window.innerWidth / window.innerHeight, fit = Math.max(1, 1.5 / asp);        // en vertical se aleja para que quepa toda la maqueta
-  const D = (HG_ISO.dist + 14 * L + 8 * W) * fit, psi = HG_ISO.yaw + 0.08 * L + Math.sin(t * 0.05) * 0.02 * sw, phi = HG_ISO.pitch + 0.03 * L;
+  const D = (HG_ISO.dist + 14 * L + 8 * W) * fit * CM.zoom;                                // la distancia solo cambia con el zoom, nunca al girar
+  const psi = HG_ISO.yaw + CM.yaw + 0.08 * L + Math.sin(t * 0.05) * 0.02 * sw, phi = Math.max(0.2, Math.min(1.1, HG_ISO.pitch + CM.pit + 0.03 * L));
   const T = HG_ISO.target;
   userGroup.position.set(T.x + D * Math.sin(psi) * Math.cos(phi), T.y + D * Math.sin(phi), T.z + D * Math.cos(psi) * Math.cos(phi));
   userGroup.rotation.set(-phi, psi, 0);
@@ -10965,18 +11272,19 @@ function hgUpdate(dt) {
   // ----- Suelo, cielo y Coloso -----
   const gu = HG.ground.material.uniforms;
   gu.uTime.value = t; gu.uHeat.value = heat; gu.uCold.value = HG.coldS;
-  HG.screenMat.uniforms.uTime.value = t; HG.screenMat.uniforms.uCold.value = HG.coldS; HG.screenMat.uniforms.uCalm.value = HG.calmV;
-  HG.bodyMat.uniforms.color.value.setHex(0x5c635c).multiplyScalar(0.6 + 0.9 * HG.coldS);
-  HG.screenMat.uniforms.uRune.value = 0.25 + HG.listenS * 0.75 + HG.calmV * 0.3 + HG.growlG * 0.4;          // las runas se encienden al escuchar su caja negra
+  const cm = Math.max(HG.coldS, HG.menaceP * 0.85);
+  HG.screenMat.uniforms.uTime.value = t; HG.screenMat.uniforms.uCold.value = cm; HG.screenMat.uniforms.uCalm.value = HG.calmV;
+  HG.bodyMat.uniforms.color.value.setHex(0x5c635c).multiplyScalar(0.6 + 0.9 * cm);
+  HG.screenMat.uniforms.uRune.value = 0.25 + HG.listenS * 0.75 + HG.calmV * 0.3 + HG.growlG * 0.4 + HG.menaceP * 0.25;          // las runas se encienden al escuchar su caja negra
   if (HG.growlP < 1) HG.growlP = Math.min(1, HG.growlP + dt / HG.growlDur);                  // envolvente del gruñido: ataque rápido y caída
   HG.growlG = HG.growlAmp * Math.min(1, HG.growlP / 0.1) * (1 - HG.growlP);
   if (HG.growlG > 0.3 && !calm) shakeIntensity = Math.max(shakeIntensity, HG.growlG * 0.05);
   hgAnimateColossus(t, HG.coldS, calm);
-  HG.eyes.forEach(e => { e.material.opacity = (0.3 + HG.coldS * 0.45 + HG.growlG * 0.5) * (0.85 + 0.15 * Math.sin(t * 3)) * (1 - HG.calmV * 0.4); });   // ojos de brasa: arden más cuando el fuego muere
+  HG.eyes.forEach(e => { e.material.opacity = Math.min(1, 0.3 + HG.coldS * 0.45 + HG.growlG * 0.5 + HG.menaceP * 0.45) * (0.85 + 0.15 * Math.sin(t * 3)) * (1 - HG.calmV * 0.4); if (e.material.color && e.material.color.setHex) e.material.color.setHex(HG.menaceP > 0.5 ? 0xff3a2a : 0xffa24d); });   // ojos de brasa: arden más cuando el fuego muere
   // pluma de ceniza que el viento arrastra desde la corona (como el penacho negro del coloso)
   if (HG.colos && !calm) {
-    _hgV.set(0, 4.5, 6); HG.colos.head.localToWorld(_hgV);
-    const nA = Math.round(1.2 * Math.min(2, dt * 60));
+    _hgV.set(0, 5.5, -3); HG.colos.head.localToWorld(_hgV);
+    const nA = Math.round((1.2 + HG.menaceP * 1.5) * Math.min(2, dt * 60));
     for (let i = 0; i < nA; i++) HG.fx.emit(_hgV.x + (Math.random() - 0.5) * 0.4, _hgV.y, _hgV.z + (Math.random() - 0.5) * 0.4, 0.6 + Math.random() * 0.8, 1.2 + Math.random() * 1.2, (Math.random() - 0.5) * 0.4, 3.5 + Math.random() * 2, 0x59616b, 0.28 + Math.random() * 0.2, 0.45, 0.3);
   }
   HG.sigil.material.opacity = 0.10 + HG.listenS * 0.45 + 0.12 * Math.sin(t * (1.2 + HG.listenS * 2)) + HG.calmV * 0.3;   // el sello late más al escuchar
@@ -10993,12 +11301,17 @@ function hgUpdate(dt) {
   }
 
   // ----- Voces: el Coloso gruñe de vez en cuando (más seguido con el frío); los gatos maúllan bajito -----
-  if (HG.phase !== 'won') { HG.growlIn -= dt; if (HG.growlIn <= 0) { hgGrowl('idle'); HG.growlIn = 16 - 9 * HG.coldS + Math.random() * 10; } }
+  if (HG.phase !== 'won') {
+    const mn = HG.menaceP;
+    HG.growlIn -= dt;
+    if (HG.growlIn <= 0) { hgGrowl(mn > 0.55 ? 'menace' : 'idle'); HG.growlIn = Math.max(4, 16 - 9 * HG.coldS - 8 * mn) + Math.random() * 10 * (1 - 0.6 * mn); }
+    if (mn > 0.3) { HG.rattleIn -= dt; if (HG.rattleIn <= 0) { hgRattle(mn); HG.rattleIn = 9 - 5 * mn + Math.random() * 4; } } else HG.rattleIn = Math.max(HG.rattleIn, 4);
+  }
   if (HG.phase === 'play') { HG.meowIn -= dt; if (HG.meowIn <= 0) { hgMeow(Math.random() < 0.5 ? 0 : 1, HG.heat < 0.2); HG.meowIn = (HG.heat < 0.2 ? 6 : 22) + Math.random() * 12; } }
 
   // ----- Crujidos del fuego -----
   if (Math.random() < heat * dt * 9) hgNoise('bandpass', (0.02 + Math.random() * 0.03) * (0.4 + heat), 900 + Math.random() * 2600, 0.05 + Math.random() * 0.05);
-  hgToneUpdate(heat, HG.cold);
+  hgToneUpdate(heat, HG.cold, HG.menaceP);
 
   // ----- Ofrendas, interfaz y HUD ('renunciar': CARGA, ENTROPÍA, DESCARTADO, AGILIDAD) -----
   HG.fx.update(dt);
@@ -11019,6 +11332,7 @@ function hgUpdate(dt) {
 
 function hgTeardown() {
   window.isHogueraActive = false; window.hgPose = null; HG.phase = 'idle';
+  hgCamUnbind();
   hgToneStop();
   HG.pets.forEach(p => scene.remove(p)); HG.pets = [];
   if (HG.group) { mgDispose(HG.group); HG.group = null; }
