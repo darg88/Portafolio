@@ -204,7 +204,7 @@ const XR_SAFETY = {
 };
 
 function xrBlockedByGame() {                      // no se puede entrar a AR/VR en medio de un Juego Otro
-  if (window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive || window.isMiniIntro || (window.MG && window.MG.pending)) {
+  if (window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive) || window.isMiniIntro || (window.MG && window.MG.pending)) {
     if (typeof showSystemToast === 'function') showSystemToast(window.currentLang === 'en' ? 'Leave the game before entering AR / VR' : 'Sal del juego antes de entrar a AR / VR', '#f7f4ed');
     return true;
   }
@@ -284,6 +284,12 @@ arExitBtn.style.cssText = 'position:absolute; top:calc(14px + env(safe-area-inse
 arExitBtn.addEventListener('beforexrselect', (e) => e.preventDefault());            // tocar el botón no debe colocar un modelo
 arExitBtn.addEventListener('click', (e) => { e.stopPropagation(); endXRSession(); });
 arExitRoot.appendChild(arExitBtn);
+const arQBtn = document.createElement('button');
+arQBtn.type = 'button'; arQBtn.id = 'ar-quipu-btn'; arQBtn.textContent = 'QUIPU';
+arQBtn.style.cssText = 'position:absolute; top:calc(66px + env(safe-area-inset-top,0px)); left:14px; pointer-events:auto; padding:12px 20px; font:300 0.8rem/1 monospace; letter-spacing:0.28em; color:#e7e4de; background:rgba(10,10,12,0.72); border:1px solid rgba(231,228,222,0.5); border-radius:2px; cursor:pointer;';
+arQBtn.addEventListener('beforexrselect', (e) => e.preventDefault());
+arQBtn.addEventListener('click', (e) => { e.stopPropagation(); if (window.arQuipuToggle) window.arQuipuToggle(); });
+arExitRoot.appendChild(arQBtn);
 document.body.appendChild(arExitRoot);
 
 const arExit3D = (() => {                                                        // botón flotante (sirve con el controlador, la mano o un toque en pantalla)
@@ -299,6 +305,26 @@ const arExit3D = (() => {                                                       
   camera.add(m);
   return m;
 })();
+function arBtnTexture(label) {
+  const c = document.createElement('canvas'); c.width = 320; c.height = 110;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(10,10,12,0.82)'; g.fillRect(0, 0, 320, 110);
+  g.strokeStyle = '#e7e4de'; g.lineWidth = 3; g.strokeRect(4, 4, 312, 102);
+  g.fillStyle = '#e7e4de'; g.font = '300 38px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(label, 160, 56);
+  return new THREE.CanvasTexture(c);
+}
+const arQuipu3D = (() => {                                                       // segundo botón flotante: QUIPU / MODELOS
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.069), new THREE.MeshBasicMaterial({ map: arBtnTexture('QUIPU'), transparent: true, depthTest: false, toneMapped: false }));
+  m.renderOrder = 9999; m.position.set(-0.16, 0.06, -0.5); m.visible = false; m.name = 'ar-quipu-3d';
+  camera.add(m);
+  return m;
+})();
+function arQuipuSetLabel(on) {
+  arQBtn.textContent = on ? 'MODELOS' : 'QUIPU';
+  if (arQuipu3D.material.map) arQuipu3D.material.map.dispose();
+  arQuipu3D.material.map = arBtnTexture(on ? 'MODELOS' : 'QUIPU'); arQuipu3D.material.needsUpdate = true;
+}
 window.arTryExit = function (ctrl) {                                             // ¿el controlador/toque apuntó al botón 3D?
   if (!window.isARSession || !renderer.xr.isPresenting || !arExit3D.visible || !ctrl) return false;
   const rc = new THREE.Raycaster(), rot = new THREE.Matrix4();
@@ -306,6 +332,8 @@ window.arTryExit = function (ctrl) {                                            
   rc.ray.origin.setFromMatrixPosition(ctrl.matrixWorld); rc.ray.direction.set(0, 0, -1).applyMatrix4(rot);
   camera.updateMatrixWorld(true); arExit3D.updateMatrixWorld(true);
   if (rc.intersectObject(arExit3D, false).length) { endXRSession(); return true; }
+  arQuipu3D.updateMatrixWorld(true);
+  if (arQuipu3D.visible && rc.intersectObject(arQuipu3D, false).length) { if (window.arQuipuToggle) window.arQuipuToggle(); return true; }
   return false;
 };
 
@@ -474,7 +502,7 @@ renderer.xr.addEventListener('sessionstart', () => {
     
     if (window.isARSession) {
         scene.background = null;
-        arExit3D.visible = true;
+        arExit3D.visible = true; arQuipu3D.visible = true;
         document.body.classList.add('ar-active'); // Usa la clase CSS que creamos antes
         if (customArBtn) customArBtn.innerText = 'SALIR AR';
         if (customVrBtn) customVrBtn.style.display = 'none';
@@ -522,7 +550,7 @@ renderer.xr.addEventListener('sessionstart', () => {
 renderer.xr.addEventListener('sessionend', () => {
     const wasAR = window.isARSession;
     window.isARSession = false;
-    arExit3D.visible = false; arExitRoot.style.display = 'none';
+    arExit3D.visible = false; arQuipu3D.visible = false; if (window.arQuipuStop) window.arQuipuStop(); arExitRoot.style.display = 'none';
     document.body.classList.remove('ar-active');
     // 🔥 Restaurar TODO lo que AR cambió (fondos CSS exactos, Viajero, modelos colocados, bloom): antes se borraba y la web quedaba oscura
     arRestoreState();
@@ -2307,7 +2335,7 @@ function updatePulseFX() {
 
 function triggerScrollExploration() { 
   document.getElementById('scroll-hint')?.classList.add('hidden');
-  if (!isGameStarted || isPaused || isUIOpen || renderer.xr.isPresenting || isBossBattle || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive || window.isMiniIntro) return; 
+  if (!isGameStarted || isPaused || isUIOpen || renderer.xr.isPresenting || isBossBattle || window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive) || window.isMiniIntro) return; 
   scrollSpeedBoost += 0.8; if (scrollSpeedBoost > 2.5) scrollSpeedBoost = 2.5; 
   const now = Date.now(); 
   if (now - lastSpawnTime > 400) { 
@@ -2480,7 +2508,7 @@ document.getElementById('btn-save-paint').onclick = (e) => {
  function startPointerDown(clientX, clientY) {
   // 🎮 JUEGOS OTROS: cada minijuego maneja su propio puntero
   if (window.isWiringGameActive) { window.wiringDown(clientX, clientY); return; }
-  if (window.isTuningGameActive || window.isHogueraActive) { window.MG.setPointer(clientX, clientY); return; }   // (en la Hoguera el toque se resuelve al soltar: ver hgCamBind)
+  if (window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive)) { window.MG.setPointer(clientX, clientY); return; }   // (en la Hoguera el toque se resuelve al soltar: ver hgCamBind)
 
   // 🔥 Si hay una luna encendida, pasamos a MODO PINTURA PERMANENTE
   if (isPoeticaActive || isErraticaActive || isFriccionActive) {
@@ -2530,7 +2558,7 @@ document.getElementById('btn-save-paint').onclick = (e) => {
 function handlePointerMove(clientX, clientY) {
   // 🎮 JUEGOS OTROS
   if (window.isWiringGameActive) { window.wiringMove(clientX, clientY); return; }
-  if (window.isTuningGameActive || window.isHogueraActive) { window.MG.setPointer(clientX, clientY); return; }
+  if (window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive)) { window.MG.setPointer(clientX, clientY); return; }
 
   // 🔥 Si estamos pintando, solo actualizamos el cursor, NO giramos la cámara
   if (window.isPainting) {
@@ -2595,7 +2623,7 @@ function handlePointerMove(clientX, clientY) {
 function handlePointerUp() {
   // 🎮 JUEGOS OTROS
   if (window.isWiringGameActive) { window.wiringUp(); return; }
-  if (window.isTuningGameActive || window.isHogueraActive) return;
+  if (window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive)) return;
 
   window.isPainting = false;
   if (draggedPlanet) {
@@ -2690,7 +2718,7 @@ document.addEventListener('touchstart', (e) => {
     touchStartTime = Date.now();
     const currentTime = Date.now();
     const tapLength = currentTime - lastTapTime;
-    if (tapLength < 300 && tapLength > 0 && !window.isTuningGameActive && !window.isWiringGameActive && !window.isHogueraActive && !isUIOpen && !isBossBattle && !isAligned && !isDraggingPlanet) {
+    if (tapLength < 300 && tapLength > 0 && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive) && !isUIOpen && !isBossBattle && !isAligned && !isDraggingPlanet) {
       isMobileZoomed = !isMobileZoomed;
       targetFov = isMobileZoomed ? 35 : 75; 
       playSound('ui');
@@ -2705,7 +2733,7 @@ document.addEventListener('touchmove', (e) => {
     if (draggedPlanet) e.preventDefault();
     handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
     let touchY = e.touches[0].clientY;
-    if (!draggedPlanet && !window.isTuningGameActive && !window.isWiringGameActive && !window.isHogueraActive && (touchStartY - touchY > 40 || touchStartY - touchY < -40)) { 
+    if (!draggedPlanet && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive) && (touchStartY - touchY > 40 || touchStartY - touchY < -40)) { 
       triggerScrollExploration(); touchStartY = touchY; 
     } 
   } 
@@ -2726,7 +2754,7 @@ document.addEventListener('touchcancel', () => {
 
 document.addEventListener('touchend', (e) => {
   handlePointerUp();
-  if (isAligned && e.changedTouches.length > 0 && !draggedPlanet && !isDraggingPlanet && !window.isTuningGameActive && !window.isWiringGameActive && !window.isHogueraActive && !window.isMiniIntro) {   // un lanzamiento de ofrenda no debe girar el carrusel
+  if (isAligned && e.changedTouches.length > 0 && !draggedPlanet && !isDraggingPlanet && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive) && !window.isMiniIntro) {   // un lanzamiento de ofrenda no debe girar el carrusel
     const touchEndX = e.changedTouches[0].clientX;
     const deltaX = touchEndX - touchStartX;
     const deltaTime = Date.now() - touchStartTime;
@@ -3223,6 +3251,12 @@ function morphHUD(mode) {
     if (lblFiles) lblFiles.innerText = 'DESCARTADO';
     if (lblCombo) lblCombo.innerText = 'AGILIDAD';
   }
+  else if (mode === 'resonar') {
+    if (lblLives) lblLives.innerText = 'SOLEDAD';
+    if (lblLevel) lblLevel.innerText = 'CANTO';
+    if (lblFiles) lblFiles.innerText = 'ECOS';
+    if (lblCombo) lblCombo.innerText = 'SINTONÍA';
+  }
   else if (mode === 'normal') {
     // Restaura respetando si el usuario está en Inglés o Español
     const lang = dict[window.currentLang];
@@ -3235,7 +3269,7 @@ function morphHUD(mode) {
 const raycaster = new THREE.Raycaster(); 
 let targetFov = 75; 
 window.addEventListener('click', (e) => {
-  if (window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return; // 🎮 el raycaster ignora .visible: sin esto se abrían planetas ocultos
+  if (window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive)) return; // 🎮 el raycaster ignora .visible: sin esto se abrían planetas ocultos
   if (isUIOpen && !e.target.closest('.modal-ui') && !e.target.closest('.control-btn') && !e.target.closest('#side-menu') && !e.target.closest('.carousel-btn') && !e.target.closest('#ach-panel') && !e.target.closest('#sov-ceremony')) {
     window.closeAllUIs();
     return; 
@@ -3254,6 +3288,15 @@ window.addEventListener('click', (e) => {
   
 const handleProjectClick = (data) => {
     if (window.isZooming) return; 
+
+    // 🐋 JUEGO OTRO: LA BALLENA (clic en una ballena del universo)
+    if (data === whaleData && window.startWhaleGame) {
+      window.isZooming = true;
+      playSound('boss_hit');
+      window.startWhaleGame(data);
+      setTimeout(() => { window.isZooming = false; }, 350);
+      return;
+    }
     
     // 🔥 1. INTERCEPTOR DE ANOMALÍA (Juego: Sintonización)
     if (data.id === 999) {
@@ -3300,7 +3343,8 @@ const handleProjectClick = (data) => {
       // 🔥 Si flota LIBRE en el vacío (no anclado a un planeta): arranca La Hoguera de Datos
       //    En el modo CARRUSEL el Viajero nunca queda libre (siempre hay un planeta a <35 u), así que allí se desbloquea con la pista del Oráculo:
       //    tras el susurro, el siguiente toque abre la hoguera.
-      if ((!window.travelerGroup.userData.anchoredPlanet || window._hogueraReady) && window.startHogueraGame && !window.isHogueraActive) { window._hogueraReady = false; window.startHogueraGame(); return; }
+      if (window._whaleReady && window.startWhaleGame && !window.isWhaleActive && !window.isHogueraActive) { window._whaleReady = false; window.startWhaleGame(whaleData); return; }
+      if ((!window.travelerGroup.userData.anchoredPlanet || window._hogueraReady) && window.startHogueraGame && !(window.isHogueraActive || window.isWhaleActive)) { window._hogueraReady = false; window.startHogueraGame(); return; }
       playSound('project_open'); // Sonido especial celestial
       
       // 🔥 MATRIZ DE PENSAMIENTOS DEL VIAJERO
@@ -3320,7 +3364,9 @@ const handleProjectClick = (data) => {
         ? (window.currentLang === 'en' ? "Stay with me a moment. A fire burns beside me: touch me once more." : "Quédate un momento conmigo. Junto a mí arde una hoguera: tócame una vez más.")
         : (window.currentLang === 'en' ? "Take me far from every planet, where no light reaches. Perhaps I will light a fire." : "Llévame lejos de todo planeta, donde la luz no alcanza. Quizá encienda una hoguera.");
       if (window._oraculoClicks % 4 === 0 && isAligned) window._hogueraReady = true;
-      const fraseElegida = (window._oraculoClicks % 4 === 0) ? pistaHoguera : oraculoFrases[Math.floor(Math.random() * oraculoFrases.length)];
+      const pistaBallena = window.currentLang === 'en' ? "Listen: something enormous sings beneath the silence. Touch me again and answer it." : "Escucha: bajo el silencio canta algo enorme. Tócame otra vez y respóndele.";
+      if (window._oraculoClicks % 7 === 0 && window._oraculoClicks % 4 !== 0) window._whaleReady = true;
+      const fraseElegida = (window._oraculoClicks % 4 === 0) ? pistaHoguera : (window._oraculoClicks % 7 === 0 ? pistaBallena : oraculoFrases[Math.floor(Math.random() * oraculoFrases.length)]);
       
       showPoeticReflection(fraseElegida, "#aaccff");
       
@@ -3646,6 +3692,190 @@ laser2.material = new THREE.LineBasicMaterial({ color: 0xff00ff, transparent: tr
 xrController2.add(laser2);
 xrController2.addEventListener('select', () => { if (window.arTryExit) window.arTryExit(xrController2); });   // el segundo controlador también puede pulsar SALIR AR
 
+// ==========================================
+// 🧶 QUIPU EN EL AIRE (AR)
+//   Un cordón principal en anillo rodea al usuario a la altura de la cabeza y de él cuelgan nueve cuerdas con nudos.
+//   Se leen con las manos: pasar la mano o el controlador cerca de un nudo (o rozarlo con el rayo, o con el dedo sobre la pantalla)
+//   lo anuda. Al leer todos los nudos de una cuerda, esta revela un concepto del marco teórico. Sin movimiento artificial: el
+//   usuario no se desplaza, las cuerdas están a su alcance. Se activa con el botón QUIPU dentro de la sesión AR.
+// ==========================================
+const AR_Q_DATA = [
+  { v: 12, hex: 0xe7e4de, es: ['SINTONÍA', 'Escuchar es cambiar con lo que se escucha.'], en: ['ATTUNEMENT', 'To listen is to change with what is heard.'] },
+  { v: 25, hex: 0xc9786b, es: ['GLITCH', 'El error es la materia técnica dejando ver su arquitectura.'], en: ['GLITCH', 'The error is technical matter revealing its architecture.'] },
+  { v: 7,  hex: 0xb9c8b0, es: ['FRICCIÓN', 'Lo que resiste también enseña: saber del cuerpo.'], en: ['FRICTION', 'What resists also teaches: knowing of the body.'] },
+  { v: 31, hex: 0xa9c4e8, es: ['TELAR', 'Una tecnología para producir relaciones, patrones y memoria.'], en: ['LOOM', 'A technology for producing relations, patterns and memory.'] },
+  { v: 18, hex: 0xd9c28a, es: ['QUIPU', 'El nudo guarda lo tejido y se lee con las manos.'], en: ['QUIPU', 'The knot keeps what was woven and is read with the hands.'] },
+  { v: 40, hex: 0xcfa3c4, es: ['SUFICIENCIA', 'Decidir qué merece arder.'], en: ['SUFFICIENCY', 'Deciding what deserves to burn.'] },
+  { v: 3,  hex: 0xe7e4de, es: ['ALTERIDAD', 'El otro seguirá siendo otro, y aun así se responde.'], en: ['ALTERITY', 'The other will remain other, and still we answer.'] },
+  { v: 22, hex: 0xc9786b, es: ['ANA-ARQUEOLOGÍA', 'Escuchar lo que la ruina todavía tiene que decir.'], en: ['AN-ARCHAEOLOGY', 'Listening to what the ruin still has to say.'] },
+  { v: 36, hex: 0xa9c4e8, es: ['MEMORIA', 'Lo que quemaste no vuelve. Lo que escuchaste, sí.'], en: ['MEMORY', 'What you burned does not return. What you listened to, does.'] }
+];
+const AR_Q_LEN = [0.8, 0.7, 0.95, 0.65, 0.9, 0.75, 1.0, 0.68, 0.85];
+const AR_Q = { active: false, group: null, cords: [], sites: [], done: 0, t: 0, last: 0, won: false, captions: [], hint: null, hintT: 0, winT: 0, ring: null, R: 0.75 };
+window.arQuipu = AR_Q;
+const _arP = new THREE.Vector3(), _arO = new THREE.Vector3(), _arD = new THREE.Vector3(), _arM = new THREE.Matrix4();
+
+function arQuipuLang() { return window.currentLang === 'en' ? 'en' : 'es'; }
+function arHaptic(ctrl, strength, ms) {                                      // vibración en el controlador si existe; si no, en el dispositivo
+  try {
+    const src = ctrl && ctrl.userData && ctrl.userData.src, gp = src && src.gamepad;
+    const act = gp && gp.hapticActuators && gp.hapticActuators[0];
+    if (act && act.pulse) { act.pulse(strength, ms); return; }
+    if (gp && gp.vibrationActuator && gp.vibrationActuator.playEffect) { gp.vibrationActuator.playEffect('dual-rumble', { duration: ms, strongMagnitude: strength, weakMagnitude: strength }); return; }
+  } catch (e) {}
+  vibrateDevice(ms);
+}
+function arTextSprite(title, text, w, h) {                                  // rótulo con título y texto ajustado a 2–3 líneas
+  const c = document.createElement('canvas'); c.width = 1024; c.height = Math.round(1024 * h / w);
+  const g = c.getContext('2d'), W = c.width;
+  g.clearRect(0, 0, W, c.height); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+  const draw = (str, y, px, weight, col, ls) => {
+    g.font = `${weight} ${px}px -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    if ('letterSpacing' in g) g.letterSpacing = (ls || 0) + 'px';
+    g.lineWidth = Math.max(6, px * 0.22); g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText(str, W / 2, y);
+    g.fillStyle = col; g.fillText(str, W / 2, y);
+  };
+  let y = 70;
+  if (title) { draw(title, y, 46, 300, '#bfc3cc', 10); y += 84; }
+  const words = text.split(' '), lines = []; let cur = '';
+  g.font = '300 58px -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif';
+  words.forEach(wd => { const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > W * 0.92 && cur) { lines.push(cur); cur = wd; } else cur = t; });
+  if (cur) lines.push(cur);
+  lines.forEach((ln, i) => draw(ln, y + i * 76, 58, 300, '#f3f1ec', 0));
+  const tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0, depthTest: false, toneMapped: false }));
+  sp.scale.set(w, h, 1); sp.renderOrder = 9990;
+  return sp;
+}
+function arQuipuHint(text, secs) {                                           // aviso pegado a la cámara (visible también en gafas, donde no hay DOM)
+  if (AR_Q.hint) { camera.remove(AR_Q.hint); if (AR_Q.hint.material.map) AR_Q.hint.material.map.dispose(); AR_Q.hint.material.dispose(); }
+  const sp = arTextSprite('', text, 0.5, 0.17); sp.position.set(0, -0.14, -0.55); camera.add(sp);
+  AR_Q.hint = sp; AR_Q.hintT = secs || 6;
+}
+
+function arQuipuStart() {
+  if (AR_Q.active || !window.isARSession || !renderer.xr.isPresenting) return;
+  const L = arQuipuLang();
+  camera.updateMatrixWorld(true);
+  const cp = new THREE.Vector3(); camera.getWorldPosition(cp);
+  const fw = new THREE.Vector3(0, 0, -1).transformDirection(camera.matrixWorld); fw.y = 0;
+  if (fw.lengthSq() < 1e-4) fw.set(0, 0, -1); fw.normalize();
+  const yaw = Math.atan2(-fw.x, -fw.z), y0 = cp.y - 0.02, R = AR_Q.R;
+  Object.assign(AR_Q, { active: true, done: 0, t: 0, last: performance.now(), won: false, winT: 0, captions: [], cords: [], sites: [] });
+  const grp = new THREE.Group(); grp.position.set(cp.x, 0, cp.z); AR_Q.group = grp; scene.add(grp);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(R, 0.007, 6, 96), new THREE.MeshBasicMaterial({ color: 0xe7e4de, transparent: true, opacity: 0.8, toneMapped: false }));
+  ring.rotation.x = Math.PI / 2; ring.position.y = y0; grp.add(ring); AR_Q.ring = ring;
+  AR_Q_DATA.forEach((d, i) => {
+    const a = yaw + (-120 + 240 * i / (AR_Q_DATA.length - 1)) * Math.PI / 180, sx = -Math.sin(a), sz = -Math.cos(a), len = AR_Q_LEN[i];
+    const cg = new THREE.Group(); cg.position.set(sx * R, y0 - 0.01, sz * R); grp.add(cg);
+    const mat = new THREE.MeshBasicMaterial({ color: d.hex, toneMapped: false, transparent: true, opacity: 0.85 });
+    const line = new THREE.Mesh(new THREE.CylinderGeometry(0.0045, 0.0045, len, 6), mat); line.position.y = -len / 2; cg.add(line);
+    const cord = { i, d, cg, len, mat, sites: [], tied: 0, done: false, glow: 0, dir: new THREE.Vector3(sx, 0, sz), phase: i * 1.3 };
+    const tens = Math.min(4, Math.floor(d.v / 10)), unit = d.v % 10;
+    const add = (k, kind, t, turns) => {
+      const sm = new THREE.MeshBasicMaterial({ color: d.hex, toneMapped: false });
+      const knot = new THREE.Mesh(new THREE.SphereGeometry(kind === 'unit' ? 0.011 : 0.013, 10, 8), sm);
+      knot.position.y = -t * len; knot.scale.setScalar(0.001); cg.add(knot);
+      const ghost = mkHalo(d.hex, 0.11, 0.0); ghost.position.y = -t * len; cg.add(ghost);
+      const s = { cord, k, kind, t, turns, knot, ghost, tied: false, appear: 0 };
+      cord.sites.push(s); AR_Q.sites.push(s);
+    };
+    for (let k = 0; k < tens; k++) add(k, 'tens', 0.26 + k * 0.12, 1);
+    if (unit > 0) add(tens, 'unit', 0.84, unit);
+    AR_Q.cords.push(cord);
+  });
+  arQuipuSetLabel(true);
+  arQuipuHint(L === 'en' ? 'Pass your hand or controller over the knots to read them' : 'Pasa la mano o el controlador sobre los nudos para leerlos', 7);
+  MGS.arpeggio([2, 0], 0.3, 3, 0.04);
+}
+function arQuipuStop() {
+  if (!AR_Q.active) return;
+  AR_Q.active = false;
+  if (AR_Q.group) { mgDispose(AR_Q.group); AR_Q.group = null; }
+  if (AR_Q.hint) { camera.remove(AR_Q.hint); if (AR_Q.hint.material.map) AR_Q.hint.material.map.dispose(); AR_Q.hint.material.dispose(); AR_Q.hint = null; }
+  AR_Q.cords = []; AR_Q.sites = []; AR_Q.captions = []; AR_Q.ring = null;
+  arQuipuSetLabel(false);
+}
+function arQuipuToggle() { if (AR_Q.active) arQuipuStop(); else arQuipuStart(); }
+
+function arQuipuTie(site, ctrl) {
+  const c = site.cord, L = arQuipuLang();
+  site.tied = true; site.appear = 0; c.tied++; c.glow = 1;
+  const n = MGS.NOTES[(c.i + site.k * 2) % 6];
+  if (site.kind === 'unit') MGS.bell(n * 0.5, 0, 2.8, 0.05); else MGS.bell(n, 0, 1.8, 0.04);        // el nudo largo suena grave y largo
+  arHaptic(ctrl, site.kind === 'unit' ? 0.6 : 0.35, site.kind === 'unit' ? 70 : 35);
+  if (c.tied >= c.sites.length) {                                                                    // cuerda leída: revela su concepto
+    c.done = true; AR_Q.done++;
+    MGS.arpeggio([c.i % 6, (c.i + 2) % 6], 0.12, 2.2, 0.03); arHaptic(ctrl, 0.8, 120);
+    const sp = arTextSprite(c.d[L][0], c.d[L][1], 0.46, 0.2), R = AR_Q.R * 0.78;
+    sp.position.set(c.dir.x * R, c.cg.position.y + 0.17 + (c.i % 2) * 0.07, c.dir.z * R); AR_Q.group.add(sp);
+    AR_Q.captions.push({ sp, age: 0 });
+    if (AR_Q.done >= AR_Q_DATA.length) {
+      AR_Q.won = true; AR_Q.winT = 0; playSound('levelup'); MGS.arpeggio([0, 1, 2, 3, 5, 4], 0.16, 2.8, 0.04);
+      arQuipuHint(L === 'en' ? 'What was woven is now remembered' : 'Lo tejido ahora se recuerda', 9);
+    }
+  }
+}
+function arQuipuTick() {                                                     // cada cuadro, durante la sesión AR
+  if (!AR_Q.active || !AR_Q.group) return;
+  const now = performance.now(), dt = Math.min(0.05, (now - AR_Q.last) / 1000); AR_Q.last = now; AR_Q.t += dt;
+  const t = AR_Q.t, reduce = reduceMotionMQ.matches;
+  AR_Q.group.updateMatrixWorld(true);
+
+  // punteros: los dos controladores (o el dedo sobre la pantalla, que llega como controlador con rayo mientras se toca)
+  const ptrs = [];
+  [xrController1, xrController2].forEach(ct => {
+    if (!ct.visible) return;
+    ct.updateMatrixWorld(true);
+    _arO.setFromMatrixPosition(ct.matrixWorld); _arM.identity().extractRotation(ct.matrixWorld); _arD.set(0, 0, -1).applyMatrix4(_arM).normalize();
+    ptrs.push({ ct, o: _arO.clone(), d: _arD.clone(), pressed: !!ct.userData.sel });
+  });
+  AR_Q.sites.forEach(s => {
+    if (s.tied) return;
+    s.knot.getWorldPosition(_arP);
+    for (const p of ptrs) {
+      const near = p.o.distanceTo(_arP) < 0.085;                                                      // la mano / el controlador toca el nudo
+      const v = _arP.clone().sub(p.o), along = v.dot(p.d), perp = v.sub(p.d.clone().multiplyScalar(along)).length();
+      if (near || (p.pressed && along > 0 && perp < 0.06)) { arQuipuTie(s, p.ct); break; }           // o el rayo (dedo/gatillo) roza el nudo
+    }
+  });
+
+  AR_Q.cords.forEach(c => {
+    c.glow = Math.max(0, c.glow - dt * 1.2);
+    const amp = (reduce ? 0.004 : 0.03) * (1 + c.glow * 2.5);
+    c.cg.rotation.x = Math.sin(t * 0.8 + c.phase) * amp; c.cg.rotation.z = Math.cos(t * 0.6 + c.phase * 1.3) * amp;
+    c.mat.opacity = (c.done ? 1 : 0.8) + 0 * c.glow;
+    c.sites.forEach(s => {
+      if (s.tied) s.appear = Math.min(1, s.appear + dt * 3.5);
+      const e = s.tied ? 1 - Math.pow(1 - s.appear, 3) * (1 + 0.6 * (1 - s.appear)) : 0;            // aparece con un pequeño rebote
+      const len = s.kind === 'unit' ? 1 + 0.22 * s.turns : 1;                                          // nudo largo: más vueltas, más largo
+      s.knot.scale.set(Math.max(0.001, e), Math.max(0.001, e * len), Math.max(0.001, e));
+      s.ghost.material.opacity = s.tied ? 0 : 0.22 + 0.14 * Math.sin(t * 2.2 + c.i * 0.7 + s.k);
+    });
+  });
+  AR_Q.captions.forEach((cp, idx, arr) => {                                                           // solo las 3 últimas se ven; las antiguas se desvanecen
+    cp.age += dt; const newest = idx >= arr.length - 3;
+    cp.sp.material.opacity += ((newest ? Math.min(1, cp.age * 1.2) : 0) - cp.sp.material.opacity) * Math.min(1, dt * 3);
+  });
+  if (AR_Q.won) { AR_Q.winT += dt; AR_Q.ring.material.opacity = 0.8 + 0.2 * Math.sin(AR_Q.winT * 3); AR_Q.ring.scale.setScalar(1 + 0.012 * Math.sin(AR_Q.winT * 2)); }
+  if (AR_Q.hint) {
+    AR_Q.hintT -= dt;
+    AR_Q.hint.material.opacity += ((AR_Q.hintT > 0 ? 1 : 0) - AR_Q.hint.material.opacity) * Math.min(1, dt * 3);
+    if (AR_Q.hintT < -1) { camera.remove(AR_Q.hint); if (AR_Q.hint.material.map) AR_Q.hint.material.map.dispose(); AR_Q.hint.material.dispose(); AR_Q.hint = null; }
+  }
+}
+window.arQuipuTick = arQuipuTick;
+
+// los controladores guardan su fuente (para la vibración) y si el gatillo/dedo está pulsado (para leer con el rayo)
+[xrController1, xrController2].forEach(ct => {
+  ct.addEventListener('connected', (e) => { ct.userData.src = e.data; });
+  ct.addEventListener('disconnected', () => { ct.userData.src = null; ct.userData.sel = false; });
+  ct.addEventListener('selectstart', () => { ct.userData.sel = true; });
+  ct.addEventListener('selectend', () => { ct.userData.sel = false; });
+});
+
+window.arQuipuToggle = arQuipuToggle; window.arQuipuStop = arQuipuStop;
+
 
 let arModelIndex = 0; 
 window.spawnedObjects = []; 
@@ -3653,6 +3883,7 @@ window.spawnedObjects = [];
 xrController1.addEventListener('select', (event) => {
   if (window.isARSession) {
     if (window.arTryExit && window.arTryExit(xrController1)) return;               // botón SALIR AR flotante
+    if (window.arQuipu && window.arQuipu.active) return;                            // en modo quipu el toque lee nudos, no coloca modelos
     const tempMatrix = new THREE.Matrix4();
     tempMatrix.identity().extractRotation(xrController1.matrixWorld);
     raycaster.ray.origin.setFromMatrixPosition(xrController1.matrixWorld);
@@ -5100,7 +5331,7 @@ function updateTraveler() {
                    typeof isDraggingPlanet !== 'undefined' && isDraggingPlanet;
   let flareTarget = 0, falling = false, walking = false, lean = 0;
 
-  if (window.isHogueraActive && window.hgPose) {
+  if ((window.isHogueraActive || window.isWhaleActive) && window.hgPose) {
     // ---- LA HOGUERA DE DATOS: el evento controla su pose (de espaldas a la cámara, junto al fuego) ----
     tg.position.copy(window.hgPose.pos);
     tg.quaternion.setFromEuler(_hgEuler.set(0, window.hgPose.yaw, 0));
@@ -5295,6 +5526,7 @@ renderer.setAnimationLoop((timestamp, frame) => {
   const isXR = renderer.xr.isPresenting;
   const session = isXR ? renderer.xr.getSession() : null;
   const isAR = isXR && window.isARSession; 
+  if (isAR && window.arQuipuTick) window.arQuipuTick();
 
   if (!isXR) { 
     if (window.spawnedObjects) {
@@ -5325,17 +5557,17 @@ renderer.setAnimationLoop((timestamp, frame) => {
  
   if (isPaused && !isXR) return; 
   // 🎮 Motor de los minijuegos (Sintonización y Telar de circuitos)
-  if ((window.isWiringGameActive || window.isTuningGameActive || window.isHogueraActive) && window.updateMiniGames) window.updateMiniGames();
+  if ((window.isWiringGameActive || window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive)) && window.updateMiniGames) window.updateMiniGames();
   const now = performance.now(); frames++;
   if (now >= lastTime + 1000) { if((frames * 1000 / (now - lastTime)) < 30) lowFPSCount++; else lowFPSCount = 0;
     // 🔥 ACTUALIZADOR DEL HUD DE COMBO EN TIEMPO REAL
   const comboUi = document.getElementById('combo-value');
-  if (comboUi && !window.isTuningGameActive && !window.isWiringGameActive && !window.isHogueraActive) comboUi.innerText = 'x' + (typeof combatCombo !== 'undefined' ? combatCombo : 0);
+  if (comboUi && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive)) comboUi.innerText = 'x' + (typeof combatCombo !== 'undefined' ? combatCombo : 0);
     if(lowFPSCount > 3 && isBloomEnabled && !isXR) { isBloomEnabled = false; bloomPass.strength = 0; 
       document.getElementById('menu-bloom').innerText = '✨ Efecto Neón: OFF'; 
       document.getElementById('menu-bloom').style.color = '#888'; } frames = 0; lastTime = now; }
 
-  if (isShooting && isGameStarted && !isUIOpen && !isAR && !window.isTuningGameActive && !window.isWiringGameActive && !window.isHogueraActive) { if (now - lastShotTime > FIRE_COOLDOWN) { fireLaser(); lastShotTime = now; } }
+  if (isShooting && isGameStarted && !isUIOpen && !isAR && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive)) { if (now - lastShotTime > FIRE_COOLDOWN) { fireLaser(); lastShotTime = now; } }
 
  // LÓGICA DE ACTUALIZACIÓN AR (CORREGIDA)
 if (isAR && frame && hitTestSource) {
@@ -6429,7 +6661,7 @@ showSystemToast('ANOMALÍA DETECTADA A TUS ESPALDAS', '#efeaea');           }
       }
     }
     updateTraveler();  
-if (!isAR && !(window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive)) {   // la red de energía no debe reaparecer dentro de un Juego Otro
+if (!isAR && !(window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive))) {   // la red de energía no debe reaparecer dentro de un Juego Otro
   energyWebGroup.visible = !isAligned; 
   
   if (!isAligned) {
@@ -8989,6 +9221,7 @@ const MG = window.MG = {
     if (window.isTuningGameActive) window.abortTuningGame();
     else if (window.isWiringGameActive) window.abortWiringGame();
     else if (window.isHogueraActive) window.abortHogueraGame();
+    else if (window.isWhaleActive) window.abortWhaleGame();
   },
 
   setHUD(ids) {
@@ -9002,6 +9235,7 @@ window.updateMiniGames = function() {
   if (window.isTuningGameActive) tgUpdate(dt);
   if (window.isWiringGameActive) wgUpdate(dt);
   if (window.isHogueraActive) hgUpdate(dt);
+  if (window.isWhaleActive) whUpdate(dt);
 };
 
 // ============================================================
@@ -9062,6 +9296,24 @@ const REFL = {
       outro: { k: 'AN-ARCHAEOLOGY  ·  SUFFICIENCY', t: 'Enough',
         p: ['What you burned does not return. What you listened to, does.',
             'An-archaeology does not dig to accumulate: it listens to what the ruin still has to say.'] }
+    }
+  },
+  ballena: {
+    es: {
+      intro: { k: 'JUEGO OTRO  ·  ECO Y ALTERIDAD', t: 'Un canto sin respuesta',
+        p: ['Se habló de una ballena que cantaba a 52 hercios, una frecuencia distinta a la de las demás, y se la llamó «la más solitaria del mundo». Quizá no estaba sola: estaba mal escuchada.',
+            'La empatía no es parecerse al otro ni adivinarlo: es sintonía, un acoplamiento en el que ambos cambian. Una máquina puede simular consuelo; escuchar, en cambio, exige un cuerpo que espera.'] },
+      outro: { k: 'ALTERIDAD  ·  SINTONÍA', t: 'Hacer lugar',
+        p: ['Lo que sonó entre ustedes no fue una traducción: fue un ritmo compartido. La ballena no se volvió humana, ni tú ballena.',
+            'Escuchar de verdad es aceptar que el otro seguirá siendo otro, y aun así responder.'] }
+    },
+    en: {
+      intro: { k: 'OTHER GAME  ·  ECHO AND ALTERITY', t: 'A song without an answer',
+        p: ['There was talk of a whale that sang at 52 hertz, a frequency unlike the others\', and it was called "the loneliest whale in the world". Perhaps it was not alone: it was poorly listened to.',
+            'Empathy is not resembling the other or guessing them: it is attunement, a coupling in which both change. A machine can simulate comfort; listening, instead, demands a body that waits.'] },
+      outro: { k: 'ALTERITY  ·  ATTUNEMENT', t: 'Making room',
+        p: ['What sounded between you was not a translation: it was a shared rhythm. The whale did not become human, nor you a whale.',
+            'To truly listen is to accept that the other will remain other, and still answer.'] }
     }
   }
 };
@@ -9270,7 +9522,7 @@ function tgBuildUI() {
 }
 
 function tgStart(data) {
-  if (window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
+  if (window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive)) return;
   const en = MG.isEN();
   window.isTuningGameActive = true;
   tuningData = data;
@@ -9296,7 +9548,7 @@ function tgStart(data) {
                      : 'Una señal se deshace en el ruido. Escucha dónde se aquieta.', '#e7e4de');
 }
 window.startTuningGame = function(data) {
-  if (MG.pending || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
+  if (MG.pending || window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive)) return;
   MG.pending = true;
   MG.reflect(MG.text('tuning', 'intro'), () => { MG.pending = false; tgStart(data); }, { cancelable: true, onCancel: () => { MG.pending = false; } });
 };
@@ -10177,7 +10429,7 @@ function wgUpdate(dt) {
 }
 
 function wgStart(data) {
-  if (window.isWiringGameActive || window.isTuningGameActive || window.isHogueraActive) return;
+  if (window.isWiringGameActive || window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive)) return;
   const en = MG.isEN();
   window.isWiringGameActive = true;
   window.wiringData = data;
@@ -10209,7 +10461,7 @@ function wgStart(data) {
   morphHUD('enrutar');
 }
 window.startWiringGame = function(data) {
-  if (MG.pending || window.isWiringGameActive || window.isTuningGameActive || window.isHogueraActive) return;
+  if (MG.pending || window.isWiringGameActive || window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive)) return;
   MG.pending = true;
   MG.reflect(MG.text('wiring', 'intro'), () => { MG.pending = false; wgStart(data); }, { cancelable: true, onCancel: () => { MG.pending = false; } });
 };
@@ -10357,7 +10609,7 @@ function hgDome(out, cx, cy, cz, Rx, Ry, Rz, phiMax, runeRings, miss) {       //
 function hgSpike(out, x, y, z, dir, n, w, h, nrm) {                      // pila de monitores que se afina, como una espina de hueso
   for (let k = 0; k < n; k++) { const s = 1 - k * 0.14; hgSurf(out, x + dir[0] * k * h * 0.9, y + dir[1] * k * h * 0.9, z + dir[2] * k * h * 0.9, nrm, w * s, h * s, w * s, false); }
 }
-function hgPart(cells, pivot, parentPivot) {                             // fusiona celdas en 2 mallas y devuelve un Group con su pivote
+function hgPart(cells, pivot, parentPivot, mats) {                             // fusiona celdas en 2 mallas y devuelve un Group con su pivote
   const body = { p: [], n: [], u: [], i: [], s: [] }, scr = { p: [], n: [], u: [], i: [], s: [] };
   cells.forEach(c => {
     const seed = c.rune ? 0.02 : 0.06 + Math.random() * 0.94, x = c.x - pivot[0], y = c.y - pivot[1], z = c.z - pivot[2];
@@ -10365,7 +10617,7 @@ function hgPart(cells, pivot, parentPivot) {                             // fusi
     hgPush(scr, hgPlaneData(c.w * 0.8, c.h * 0.78, c.d / 2 + 0.02), x, y, z, c.ry, c.rz, seed, c.rx);
   });
   const g = new THREE.Group();
-  const bm = new THREE.Mesh(hgToGeo(body), HG.bodyMat), sm = new THREE.Mesh(hgToGeo(scr), HG.screenMat);
+  const bm = new THREE.Mesh(hgToGeo(body), mats ? mats.body : HG.bodyMat), sm = new THREE.Mesh(hgToGeo(scr), mats ? mats.screen : HG.screenMat);
   bm.frustumCulled = false; sm.frustumCulled = false;
   g.add(bm); g.add(sm);
   g.position.set(pivot[0] - parentPivot[0], pivot[1] - parentPivot[1], pivot[2] - parentPivot[2]);
@@ -10507,13 +10759,13 @@ function hgSerpentSpec() {
   return SP;
 }
 
-function hgBuildColossus() {
-  const cs = HG_CS;
-  HG.bodyMat = new THREE.ShaderMaterial({
-    uniforms: { color: { value: new THREE.Color(0x5c635c) }, lightDir: { value: new THREE.Vector3(0.45, 0.5, 0.8).normalize() } },
+// Materiales de los monitores: carcasa con tramado y pantalla con glitch/runas (los usan el Coloso y la Ballena)
+function hgMakeMats(bodyHex) {
+  const body = new THREE.ShaderMaterial({
+    uniforms: { color: { value: new THREE.Color(bodyHex || 0x5c635c) }, lightDir: { value: new THREE.Vector3(0.45, 0.5, 0.8).normalize() } },
     vertexShader: ditherShader.vertexShader, fragmentShader: ditherShader.fragmentShader
   });
-  HG.screenMat = new THREE.ShaderMaterial({
+  const screen = new THREE.ShaderMaterial({
     uniforms: { uTime: { value: 0 }, uCold: { value: 0 }, uCalm: { value: 0 }, uRune: { value: 0.25 } },
     vertexShader: `
       attribute float aSeed; varying vec2 vUv; varying float vSeed;
@@ -10548,6 +10800,12 @@ function hgBuildColossus() {
         gl_FragColor = vec4(col * (0.8 + 0.8 * uCold), 1.0);
       }`
   });
+  return { body, screen };
+}
+
+function hgBuildColossus() {
+  const cs = HG_CS;
+  const M = hgMakeMats(); HG.bodyMat = M.body; HG.screenMat = M.screen;
 
   const root = new THREE.Group(), SP = hgSerpentSpec(), G = { root }, P = { root: [0, 0, 0] };
   ['base', 'body', 'neck', 'head', 'jaw', 'hood', 'legR', 'legL', 'wingR', 'wingL', 'tail', 'rattle'].forEach(k => {   // el orden garantiza que el padre exista
@@ -10687,7 +10945,8 @@ function hgBuildFire() {
   return f;
 }
 
-function hgAddPets() {
+function hgAddPets(L) {
+  L = L || { a: [2.7, 1.2], b: [0.1, 2.4] };
   // Las plantillas de los gatos son enormes respecto al Viajero: se miden y se reescalan a un tamaño pequeño (< Viajero ≈ 2.2)
   const meshBox = (o) => {
     const box = new THREE.Box3(); o.updateMatrixWorld(true);
@@ -10707,8 +10966,8 @@ function hgAddPets() {
     o.userData.ph = Math.random() * 6; o.userData.kind = HG.pets.length;
     scene.add(o); HG.pets.push(o);                                                 // comparten geometría con la plantilla: NO se liberan
   };
-  mk(chaplinModelTemplate, 2.7, 1.2, -0.6, 1.25, 1.3);                            // un poco más grandes que antes, sin pasar la altura del Viajero
-  mk(gamberModelTemplate, 0.1, 2.4, 0.9, -1.25, 1.1);
+  mk(chaplinModelTemplate, L.a[0], L.a[1], -0.6, 1.25, 1.3);                            // un poco más grandes que antes, sin pasar la altura del Viajero
+  mk(gamberModelTemplate, L.b[0], L.b[1], 0.9, -1.25, 1.1);
 }
 
 // ---------- Cámara del jugador: girar alrededor de la maqueta (distancia fija) y zoom ----------
@@ -10719,9 +10978,10 @@ const HG_CAM = { yaw: 0, yawT: 0, yawV: 0, pit: 0, pitT: 0, zoom: 1, zoomT: 1, p
 const HG_ZOOM = [0.55, 1.4], HG_PITCH = [-0.3, 0.5];
 function hgCamReset() { const C = HG_CAM; C.yaw = C.yawT = C.yawV = C.pit = C.pitT = 0; C.zoom = C.zoomT = 1; C.ptrs.clear(); C.pinchD = 0; C.tapOK = true; C.moved = 0; }
 function hgCamClampZ(z) { return Math.max(HG_ZOOM[0], Math.min(HG_ZOOM[1], z)); }
+function hgCamLive() { return !!(window.isHogueraActive || window.isWhaleActive); }
 function hgCamBind() {
   const C = HG_CAM; if (C.bound || typeof window.addEventListener !== 'function') return;
-  const skip = (e) => !window.isHogueraActive || window.isMiniIntro || (e.target && e.target.closest && e.target.closest('button, a, input, textarea'));
+  const skip = (e) => !hgCamLive() || window.isMiniIntro || (e.target && e.target.closest && e.target.closest('button, a, input, textarea'));
   const down = (e) => {
     if (skip(e) || HG.chips.some(c => c.state === 'drag')) return;
     C.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -10729,7 +10989,7 @@ function hgCamBind() {
     else { C.tapOK = false; const p = [...C.ptrs.values()]; C.pinchD = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); }
   };
   const move = (e) => {
-    const p = C.ptrs.get(e.pointerId); if (!p || !window.isHogueraActive) return;
+    const p = C.ptrs.get(e.pointerId); if (!p || !hgCamLive()) return;
     const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
     if (C.ptrs.size >= 2) {
       const q = [...C.ptrs.values()], d = Math.hypot(q[0].x - q[1].x, q[0].y - q[1].y);
@@ -10745,20 +11005,20 @@ function hgCamBind() {
   const up = (e) => {
     if (!C.ptrs.has(e.pointerId)) return;
     const was = C.ptrs.size; C.ptrs.delete(e.pointerId);
-    if (was === 1 && C.tapOK && C.moved < 8 && performance.now() - C.t0 < 500 && e.type === 'pointerup' && window.hgTap) window.hgTap(e.clientX, e.clientY);
+    if (was === 1 && C.tapOK && C.moved < 8 && performance.now() - C.t0 < 500 && e.type === 'pointerup') { if (window.isWhaleActive) { if (window.whTap) window.whTap(e.clientX, e.clientY); } else if (window.hgTap) window.hgTap(e.clientX, e.clientY); }
     if (C.ptrs.size === 0) { C.tapOK = true; C.yawV = Math.max(-2.5, Math.min(2.5, C.yawV)); if (C.moved < 8) C.yawV = 0; }
   };
   const wheel = (e) => { if (skip(e)) return; e.preventDefault(); C.zoomT = hgCamClampZ(C.zoomT * Math.exp(e.deltaY * 0.0012)); };
   const key = (e) => {
-    if (!window.isHogueraActive || window.isMiniIntro) return;
+    if (!hgCamLive() || window.isMiniIntro) return;
     if (e.key === 'ArrowLeft') C.yawT += 0.09; else if (e.key === 'ArrowRight') C.yawT -= 0.09;
     else if (e.key === 'ArrowUp') C.pitT = Math.min(HG_PITCH[1], C.pitT + 0.05); else if (e.key === 'ArrowDown') C.pitT = Math.max(HG_PITCH[0], C.pitT - 0.05);
     else if (e.key === '+' || e.key === '=') C.zoomT = hgCamClampZ(C.zoomT * 0.92); else if (e.key === '-' || e.key === '_') C.zoomT = hgCamClampZ(C.zoomT / 0.92);
     else return;
     e.preventDefault(); e.stopImmediatePropagation();
   };
-  const tm = (e) => { if (window.isHogueraActive && !window.isMiniIntro && e.touches && e.touches.length >= 2) e.preventDefault(); };   // sin pellizco de página
-  const gs = (e) => { if (window.isHogueraActive) e.preventDefault(); };                  // Safari iOS: gesto de zoom de página
+  const tm = (e) => { if (hgCamLive() && !window.isMiniIntro && e.touches && e.touches.length >= 2) e.preventDefault(); };   // sin pellizco de página
+  const gs = (e) => { if (hgCamLive()) e.preventDefault(); };                  // Safari iOS: gesto de zoom de página
   C.fns = { down, move, up, wheel, key, tm, gs };
   window.addEventListener('pointerdown', down); window.addEventListener('pointermove', move);
   window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
@@ -11101,7 +11361,7 @@ function hgBuildUI() {
 }
 
 function hgStart() {
-  if (window.isHogueraActive || window.isTuningGameActive || window.isWiringGameActive) return;
+  if (window.isHogueraActive || window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive) return;
   const en = MG.isEN();
   window.isHogueraActive = true;
   MG.enter(24);
@@ -11133,7 +11393,7 @@ function hgStart() {
   showSystemToast(en ? 'A fire, a traveler, and a monument that gives off cold.' : 'Un fuego, un viajero y un monumento que irradia frío.', '#e7e4de');
 }
 window.startHogueraGame = function() {
-  if (MG.pending || window.isHogueraActive || window.isTuningGameActive || window.isWiringGameActive) return;
+  if (MG.pending || window.isHogueraActive || window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive) return;
   MG.pending = true;
   MG.reflect(MG.text('hoguera', 'intro'), () => { MG.pending = false; hgStart(); }, { cancelable: true, onCancel: () => { MG.pending = false; } });
 };
@@ -11357,3 +11617,497 @@ window.abortHogueraGame = function() {
   MG.exit();
   setTimeout(() => { MG.reflect(MG.text('hoguera', 'outro'), () => {}); }, 700);
 };
+
+// ==========================================
+// 🐋 JUEGO OTRO: LA BALLENA (EMPATÍA)
+//   Una ballena-coloso de monitores canta en pulsos que recorren el agua como ondas. El jugador no la vence ni la resuelve:
+//   escucha y responde con el mismo ritmo. Si la ignora, su canto se vuelve más grave y solitario; si falla, ella espera y
+//   se adapta (más lento, más simple). En la última ronda se invierte: el jugador canta y la ballena le devuelve SU ritmo.
+//   La empatía como sintonía recíproca (acoplamiento), no como imitación ni como "ponerse en el lugar" del otro.
+// ==========================================
+window.isWhaleActive = false;
+const WH_ISO = { yaw: 0.785, pitch: 0.5, dist: 84, fov: 30, target: new THREE.Vector3(-6, 5, 0) };
+const WH_POS = { x: -21, z: -1, yaw: 1.5708, scale: 0.4, trav: { x: 12.5, z: 2.5 } };
+const WH_ROUNDS = 3;                                           // 2 rondas de eco + 1 de reciprocidad
+const WH = {
+  st: 'idle', t: 0, round: 0, att: 0, attS: 0, lone: 0, loneS: 0, fails: 0, idleT: 0, talk: 0, echoes: 0, pulsesN: 0,
+  pat: null, beats: [], notes: [], bi: 0, ct: 0, at: 0, vt: 0, ft: 0, fSil: 0, fin: 0, taps: [], lit: 0, recall: false, lastP: 0, rise: 0,
+  sing: 0, subT: 0, ok: false, q: 0, echoT: 0, echoList: [], ei: 0, finBurst: 0,
+  pulses: [], pslot: 0, group: null, ocean: null, mats: null, whale: null, eyes: [], halo: null, spec: null,
+  tone: null, els: {}, saved: null, keyFn: null, pose: null
+};
+
+// ---------- Plano de la ballena: partes como datos puros {cells, pivot, parent} ----------
+function hgWhaleSpec() {
+  const SPN = [[0, 5, -46], [0, 6.5, -36], [0, 8.5, -24], [0, 10.5, -11], [0, 11.5, 2], [0, 11, 14], [0, 9.5, 25], [0, 8, 33]];
+  const R = (u) => u < 0.62 ? 1.4 + 7.4 * Math.pow(Math.sin(Math.PI / 2 * u / 0.62), 0.9) : 8.8 - 3.6 * Math.pow((u - 0.62) / 0.38, 2);
+  const body = [], tail = [], jaw = [], SP = {};
+  // muestras repartidas por longitud de arco; el paso crece con el radio para que las celdas sean cuadradas y cubran el cuerpo
+  const S = 240, arcL = [0]; let prev = hgCR(SPN, 0);
+  for (let i = 1; i <= S; i++) { const q = hgCR(SPN, i / S); arcL.push(arcL[i - 1] + Math.hypot(q[0] - prev[0], q[1] - prev[1], q[2] - prev[2])); prev = q; }
+  const total = arcL[S], uAt = (len) => { let i = 0; while (i < S && arcL[i] < len) i++; return i / S; };
+  let pos = 0, idx = 0, blow = null; const eyes = [];
+  while (pos <= total) {
+    const u = uAt(pos), r = R(u), step = Math.max(3, r * 0.7);
+    const c = hgCR(SPN, u), a = hgCR(SPN, Math.max(0, u - 0.02)), b = hgCR(SPN, Math.min(1, u + 0.02));
+    let T = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]; const tl = Math.hypot(T[0], T[1], T[2]) || 1; T = [T[0] / tl, T[1] / tl, T[2] / tl];
+    const Sd = [T[2] * -1, 0, T[0]], sl = Math.hypot(Sd[0], Sd[1], Sd[2]) || 1, Sx = [Sd[0] / sl, Sd[1] / sl, Sd[2] / sl];
+    const Fv = [Sx[1] * T[2] - Sx[2] * T[1], Sx[2] * T[0] - Sx[0] * T[2], Sx[0] * T[1] - Sx[1] * T[0]];
+    const dst = u < 0.3 ? tail : body, n = Math.max(3, Math.round(4.54 * r / step)), arc = 4.54 * r / n;
+    for (let k = 0; k < n; k++) {
+      const an = (-130 + 260 * (k + 0.5) / n) * Math.PI / 180, d = [Fv[0] * Math.cos(an) + Sx[0] * Math.sin(an), Fv[1] * Math.cos(an) + Sx[1] * Math.sin(an), Fv[2] * Math.cos(an) + Sx[2] * Math.sin(an)];
+      const flank = Math.abs(Math.sin(an)) > 0.55 && Math.abs(Math.sin(an)) < 0.95;
+      hgSurf(dst, c[0] + d[0] * r, c[1] + d[1] * r, c[2] + d[2] * r, d, arc * 0.95, arc * 0.95, arc * 0.6, flank && idx % 3 === 0);   // luces bioluminiscentes en los flancos
+    }
+    if (u > 0.68) {                                                              // mandíbula inferior
+      const m = Math.max(2, Math.round(1.6 * r / step)), arcJ = 1.6 * r / m;
+      for (let k = 0; k < m; k++) {
+        const an = (140 + 80 * (k + 0.5) / m) * Math.PI / 180, d = [Fv[0] * Math.cos(an) + Sx[0] * Math.sin(an), Fv[1] * Math.cos(an) + Sx[1] * Math.sin(an), Fv[2] * Math.cos(an) + Sx[2] * Math.sin(an)];
+        hgSurf(jaw, c[0] + d[0] * r, c[1] + d[1] * r, c[2] + d[2] * r, d, arcJ * 0.95, arcJ * 0.95, arcJ * 0.6, false);
+      }
+    }
+    if (u > 0.78 && u < 0.86 && !blow) blow = [c[0], c[1] + Fv[1] * r, c[2]];
+    if (u > 0.86 && eyes.length === 0) [-1, 1].forEach(sd => eyes.push([c[0] + Sx[0] * r * sd * 0.98, c[1] + Sx[1] * r * 0.98 * sd - 0.3, c[2] + Sx[2] * r * sd * 0.98]));
+    pos += step; idx++;
+  }
+  SP.body = { cells: body, pivot: [0, 11, 0], parent: 'root' };
+  // cola: pedúnculo + dos lóbulos del aleta caudal
+  [-1, 1].forEach(sd => [0, -4.2].forEach(dz => hgChain(tail, [[0, 5.2, -42 + dz], [sd * 6, 5.4, -47 + dz], [sd * 13, 5.2, -53 + dz], [sd * 19, 5.2, -58 + dz]], 3.8, 0, 0, 'F', 5.6 - (dz ? 0.8 : 0), 2.8, 0)));   // dos filas: la aleta se lee como una hoja
+  SP.tail = { cells: tail, pivot: [0, 8.5, -24], parent: 'body' };
+  SP.jaw = { cells: jaw, pivot: [0, 8.5, 18], parent: 'body' };
+  [-1, 1].forEach(sd => {                                                          // aletas pectorales
+    const fc = []; [0, -3.8].forEach(dz => hgChain(fc, [[sd * 7.5, 9, 10 + dz], [sd * 13, 6.5, 6 + dz], [sd * 18.5, 3.8, 0 + dz], [sd * 22, 2, -5 + dz]], 3.8, 0, 0, 'F', 5.4 - (dz ? 0.8 : 0), 2.6, 0));
+    SP[sd > 0 ? 'finR' : 'finL'] = { cells: fc, pivot: [sd * 7.5, 9, 10], parent: 'body' };
+  });
+  SP.eyes = eyes; SP.blow = blow || [0, 19, 14];
+  return SP;
+}
+
+// ---------- Mar: retícula punteada que se ondula con los pulsos (hasta 8 ondas a la vez) ----------
+function whBuildOcean() {
+  const pts = [], seeds = [], S = 1.6, R = 48, N = Math.ceil(R / S), cx = WH_ISO.target.x, cz = WH_ISO.target.z;
+  for (let i = -N; i <= N; i++) for (let j = -N; j <= N; j++) {
+    const x = cx + i * S, z = cz + j * S;
+    if (Math.hypot(x - cx, z - cz) > R) continue;
+    pts.push(x, 0, z); seeds.push(Math.random());
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3));
+  g.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(seeds), 1));
+  const P = [], C = [];
+  for (let i = 0; i < 8; i++) { P.push(new THREE.Vector4(0, 0, -1, 0)); C.push(new THREE.Vector3(1, 1, 1)); }
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uCalm: { value: 0 }, uLone: { value: 0 }, uScale: GLOW_SCALE, uCenter: { value: WH_ISO.target.clone() }, uR: { value: R }, uP: { value: P }, uC: { value: C } },
+    vertexShader: `
+      attribute float aSeed; uniform float uTime; uniform float uCalm; uniform float uLone; uniform float uScale; uniform float uR;
+      uniform vec3 uCenter; uniform vec4 uP[8]; uniform vec3 uC[8]; varying float vA; varying vec3 vC;
+      void main() {
+        vec3 p = position; float lift = 0.0; float gl = 0.0; vec3 glow = vec3(0.0);
+        for (int i = 0; i < 8; i++) {
+          float age = uP[i].z;
+          if (age < 0.0 || age > 7.0) continue;
+          float d = distance(p.xz, uP[i].xy), r = age * 13.0, w = 2.4 + age * 0.8;
+          float k = exp(-pow((d - r) / w, 2.0)) * uP[i].w * exp(-age * 0.4);
+          lift += k * 0.9 * cos((d - r) * 1.1); gl += k; glow += uC[i] * k;
+        }
+        p.y += lift + sin(p.x * 0.35 + uTime * 0.6) * cos(p.z * 0.3 + uTime * 0.45) * 0.14;
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        vec3 base = mix(vec3(0.30, 0.52, 0.62), vec3(0.62, 0.80, 0.90), uCalm);
+        base = mix(base, vec3(0.50, 0.30, 0.34), uLone * 0.55);
+        vC = base + glow * 1.1;
+        float fade = smoothstep(uR, uR * 0.45, distance(p.xz, uCenter.xz));
+        float tw = 0.75 + 0.25 * sin(uTime * 1.3 + aSeed * 20.0);
+        vA = (0.36 + min(1.0, gl) * 0.7) * fade * tw * (1.0 - uLone * 0.35);
+        gl_PointSize = (0.16 + min(1.0, gl) * 0.32) * uScale / max(0.1, -mv.z);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      varying float vA; varying vec3 vC;
+      void main() { float d = length(gl_PointCoord - vec2(0.5)); float a = smoothstep(0.5, 0.25, d); gl_FragColor = vec4(vC, a * vA); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  const p = new THREE.Points(g, m); p.frustumCulled = false;
+  return p;
+}
+
+function whBuildWhale() {
+  const SP = hgWhaleSpec(), root = new THREE.Group(), G = { root }, P = { root: [0, 0, 0] };
+  WH.mats = hgMakeMats(0x4f6272);
+  ['body', 'tail', 'jaw', 'finR', 'finL'].forEach(k => {
+    const sp = SP[k]; G[k] = hgPart(sp.cells, sp.pivot, P[sp.parent], WH.mats); P[k] = sp.pivot; G[sp.parent].add(G[k]);
+  });
+  WH.eyes = SP.eyes.map(e => { const h = mkHalo(0xbfe6ff, 4.0, 0); h.position.set(e[0] - 0, e[1] - 11, e[2]); G.body.add(h); return h; });   // relativo al pivote del cuerpo
+  WH.blow = SP.blow;
+  root.scale.setScalar(WH_POS.scale); root.position.set(WH_POS.x, 0, WH_POS.z); root.rotation.y = WH_POS.yaw;
+  WH.whale = Object.assign(G, { root });
+  return root;
+}
+
+// ---------- Pulsos: ondas sobre el agua (de la ballena en azul pálido, del jugador en cálido) ----------
+const WH_C_WHALE = [0.55, 0.78, 1.0], WH_C_YOU = [1.0, 0.82, 0.55], WH_C_MUTE = [0.5, 0.5, 0.55];
+function whEmit(x, z, amp, col, hex) {
+  const p = WH.pulses[WH.pslot % 8] || (WH.pulses[WH.pslot % 8] = {});
+  p.x = x; p.z = z; p.age = 0; p.amp = amp; p.col = col; WH.pslot++; WH.pulsesN++;
+  MG.pulse(x, 0.05, hex, 0.6, 9 + amp * 4, 2.4, 0.3 + 0.15 * amp, z);
+}
+function whMouth(out) { out.set(0, -2, 38); WH.whale.body.localToWorld(out); return out; }          // boca (relativa al pivote del cuerpo)
+const _whM = new THREE.Vector3();
+
+// ---------- Sonido: voz de ballena (senoidal con glissando, armónicos y vibrato) + lecho de mar ----------
+function whSing(freq, dur, vol, low) {
+  if (!MGS.ok()) return;
+  try {
+    const ctx = audioCtx, t = ctx.currentTime, f = freq * (low ? 0.8 : 1);
+    const out = ctx.createGain(); out.gain.setValueAtTime(0, t); out.gain.linearRampToValueAtTime(vol, t + 0.22); out.gain.setValueAtTime(vol, t + dur * 0.55); out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = low ? 520 : 900; lp.Q.value = 0.7; lp.connect(out); out.connect(masterGain);
+    const vib = ctx.createOscillator(); vib.frequency.value = low ? 3.6 : 4.8; const vg = ctx.createGain(); vg.gain.value = f * 0.014; vib.connect(vg);
+    [[1, 1, 'sine'], [2, 0.32, 'sine'], [0.5, 0.45, 'triangle']].forEach(([m, g, type]) => {
+      const o = ctx.createOscillator(), gn = ctx.createGain(); o.type = type; gn.gain.value = g;
+      o.frequency.setValueAtTime(f * m * 0.82, t); o.frequency.exponentialRampToValueAtTime(f * m, t + dur * 0.28); o.frequency.exponentialRampToValueAtTime(f * m * (low ? 0.86 : 0.93), t + dur);
+      vg.connect(o.frequency); o.connect(gn); gn.connect(lp); o.start(t); o.stop(t + dur + 0.1);
+    });
+    vib.start(t); vib.stop(t + dur + 0.1);
+  } catch (e) {}
+}
+function whToneStart() {
+  if (!MGS.ok()) return;
+  try {
+    const ctx = audioCtx, t = ctx.currentTime;
+    const out = ctx.createGain(); out.gain.setValueAtTime(0, t); out.gain.linearRampToValueAtTime(1, t + 2.5); out.connect(masterGain);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 240; lp.connect(out);
+    const mk = (f) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.value = 0; o.connect(g); g.connect(lp); o.start(); return { o, g }; };
+    const a = mk(55), b = mk(55 * 1.008), c = mk(82.41), d = mk(110.0);
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'lowpass'; bp.frequency.value = 380; const ng = ctx.createGain(); ng.gain.value = 0.02;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.12; const lg = ctx.createGain(); lg.gain.value = 0.014; lfo.connect(lg); lg.connect(ng.gain);
+    src.connect(bp); bp.connect(ng); ng.connect(out); src.start(); lfo.start();
+    WH.tone = { ctx, out, lp, a, b, c, d, src, lfo, noise: buf };
+  } catch (e) { WH.tone = null; }
+}
+function whToneUpdate(att, lone) {
+  const T = WH.tone; if (!T) return;
+  try {
+    const t = T.ctx.currentTime;
+    T.a.g.gain.setTargetAtTime(0.025 + lone * 0.03, t, 0.5);
+    T.b.g.gain.setTargetAtTime(0.02 + lone * 0.035, t, 0.5);                       // el batido se acentúa con la soledad
+    T.b.o.frequency.setTargetAtTime(55 * (1 + 0.008 + lone * 0.012 * (1 - att)), t, 0.6);
+    T.c.g.gain.setTargetAtTime(att * 0.03, t, 0.8);                                // la quinta florece al sintonizar
+    T.d.g.gain.setTargetAtTime(att * att * 0.022, t, 0.8);
+    T.lp.frequency.setTargetAtTime(200 + att * 300, t, 0.6);
+    if (!isSoundEnabled) T.out.gain.setTargetAtTime(0, t, 0.1);
+  } catch (e) {}
+}
+function whToneStop() {
+  const T = WH.tone; if (!T) return;
+  WH.tone = null;
+  try {
+    const t = T.ctx.currentTime;
+    T.out.gain.cancelScheduledValues(t); T.out.gain.setTargetAtTime(0, t, 0.4);
+    [T.a, T.b, T.c, T.d].forEach(v => v.o.stop(t + 2.4)); T.src.stop(t + 2.4); T.lfo.stop(t + 2.4);
+  } catch (e) {}
+}
+
+// ---------- Textos y reglas ----------
+const WH_TXT = {
+  es: { listen: '…escucha…', answer: '…responde con el mismo ritmo…', ok: '…te escuchó…', retry: '…no importa. Ella espera. Escucha otra vez, más despacio…',
+        over: '…aún cantaba. Primero, escucha…', lone: '…el silencio también es una respuesta, pero no la que ella espera…', free: '…ahora canta tú. Ella escuchará…',
+        echo: '…te devuelve tu propio ritmo…', end: '…nadie estaba sola: faltaba quien escuchara.', gentle: '…te acompaña igualmente…' },
+  en: { listen: '…listen…', answer: '…answer with the same rhythm…', ok: '…she heard you…', retry: '…it does not matter. She waits. Listen again, slower…',
+        over: '…she was still singing. Listen first…', lone: '…silence is also an answer, but not the one she waits for…', free: '…now you sing. She will listen…',
+        echo: '…she gives you back your own rhythm…', end: '…no one was alone: someone to listen was missing.', gentle: '…she keeps you company all the same…' }
+};
+function whText(k) { return WH_TXT[MG.isEN() ? 'en' : 'es'][k]; }
+function whSub(text, secs) { const el = WH.els.sub; if (!el) return; el.textContent = text; el.style.opacity = '1'; WH.subT = secs || 6; }
+
+function whPattern(round, fails) {
+  const base = [[0, 0.6, 1.8], [0, 0.6, 1.2, 2.6]][round], notes = [[0, 2, 4], [1, 3, 2, 4]][round];
+  const times = base.slice(), nn = notes.slice();
+  if (fails >= 2 && times.length > 2) { times.pop(); nn.pop(); }              // tras dos intentos, la ballena simplifica su canto
+  const slow = 1 + 0.18 * Math.min(fails, 3);
+  return { times: times.map(x => x * slow), notes: nn };
+}
+// Compara el RITMO (proporciones entre pausas), no el tempo: se puede responder más rápido o más lento
+function whJudge(exp, taps) {
+  if (taps.length !== exp.length) return { ok: false, q: 0 };
+  if (exp.length < 2) return { ok: taps.length === 1, q: 1 };
+  const gaps = (a) => a.slice(1).map((v, i) => v - a[i]);
+  const ge = gaps(exp), gp = gaps(taps);
+  if (gp.some(v => v < 0.12)) return { ok: false, q: 0 };                      // doble toque accidental
+  if (ge.length === 1) { const r = gp[0] / ge[0]; return { ok: r > 0.5 && r < 2, q: Math.max(0, 1 - Math.abs(Math.log2(r)) / 0.9) }; }
+  const se = ge.reduce((a, b) => a + b, 0), sp = gp.reduce((a, b) => a + b, 0);
+  let err = 0; for (let i = 0; i < ge.length; i++) err += Math.abs(ge[i] / se - gp[i] / sp);
+  err /= ge.length;
+  const q = Math.max(0, 1 - err / 0.12);
+  return { ok: q >= 0.3 && sp > 0.4, q };
+}
+
+// ---------- Interfaz ----------
+function whDots(n, lit) {
+  const box = WH.els.dots; if (!box) return;
+  while (box.children.length < n) { const d = document.createElement('div'); d.style.cssText = 'width:9px; height:9px; border-radius:50%; border:1px solid rgba(231,228,222,0.5); box-sizing:border-box; transition:background .25s, box-shadow .25s;'; box.appendChild(d); }
+  while (box.children.length > n) box.removeChild(box.lastChild);
+  for (let i = 0; i < box.children.length; i++) { const on = i < lit; box.children[i].style.background = on ? '#e7e4de' : 'transparent'; box.children[i].style.boxShadow = on ? '0 0 10px rgba(231,228,222,0.7)' : 'none'; }
+}
+function whBuildUI() {
+  const en = MG.isEN();
+  const ui = MG.buildUI(en
+    ? 'The whale sings in pulses. Listen, then answer with the same rhythm: tap, or press Space. Drag empty space to turn around the scene; pinch to zoom.'
+    : 'La ballena canta en pulsos. Escucha y responde con el mismo ritmo: toca, o pulsa Espacio. Arrastra el espacio vacío para girar la escena; pellizca para acercar.');
+  const title = document.createElement('div');
+  title.textContent = en ? 'LISTENING TO A WHALE' : 'ESCUCHANDO A UNA BALLENA';
+  title.style.cssText = 'font-size:0.66rem; font-weight:300; letter-spacing:0.34em; color:#a8a49c;';
+  const dots = document.createElement('div'); dots.style.cssText = 'display:flex; gap:10px; justify-content:center; margin:14px auto 0; min-height:9px;';
+  const prog = document.createElement('div'); prog.style.cssText = 'margin:14px auto 0; width:min(60vw,240px); height:1px; background:rgba(231,228,222,0.15); position:relative;';
+  const fill = document.createElement('div'); fill.style.cssText = 'position:absolute; left:0; top:0; height:1px; width:0%; background:#bfe6ff; box-shadow:0 0 8px rgba(191,230,255,0.6);';
+  prog.appendChild(fill); ui.extra.appendChild(title); ui.extra.appendChild(dots); ui.extra.appendChild(prog);
+  const sub = document.createElement('div');
+  sub.style.cssText = 'position:absolute; left:50%; bottom:calc(150px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); width:min(90vw,640px); text-align:center; font-size:0.95rem; font-weight:300; letter-spacing:0.12em; line-height:1.8; color:#cfd8e3; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 14px rgba(0,0,0,0.9);';
+  ui.root.appendChild(sub);
+  const cold = document.createElement('div');
+  cold.style.cssText = 'position:absolute; inset:0; pointer-events:none; opacity:0; background:radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(120,70,90,0.28) 100%); transition:opacity .4s;';
+  ui.root.insertBefore(cold, ui.root.firstChild);
+  const bars = [['top'], ['bottom']].map(([pos]) => { const b = document.createElement('div'); b.style.cssText = `position:absolute; left:0; right:0; ${pos}:0; height:0; background:#000; pointer-events:none; transition:height 3s ease;`; ui.root.insertBefore(b, ui.root.firstChild); return b; });
+  requestAnimationFrame(() => requestAnimationFrame(() => bars.forEach(b => { b.style.height = '4.5vh'; })));
+  WH.els = { title, dots, fill, sub, cold };
+}
+
+// ---------- Inicio y fin ----------
+function whStart() {
+  if (window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
+  const en = MG.isEN();
+  window.isWhaleActive = true;
+  MG.enter(24);
+  camera.fov = WH_ISO.fov; targetFov = WH_ISO.fov; camera.updateProjectionMatrix();
+  userGroup.rotation.order = 'YXZ';
+  const tg = window.travelerGroup;
+  WH.saved = { pos: tg.position.clone(), quat: tg.quaternion.clone(), scale: tg.scale.clone() };
+  const feet = (typeof TRAVELER_FEET !== 'undefined') ? TRAVELER_FEET : 0.6, tx = WH_POS.trav.x, tz = WH_POS.trav.z;
+  window.hgPose = { pos: new THREE.Vector3(tx, feet, tz), yaw: Math.atan2(WH_POS.x - tx, WH_POS.z - tz) };   // mira a la ballena
+  tg.visible = true; tg.position.copy(window.hgPose.pos);
+
+  Object.assign(WH, { st: 'arrive', t: 0, round: 0, att: 0, attS: 0, lone: 0, loneS: 0, fails: 0, idleT: 0, talk: 0, echoes: 0, pulsesN: 0, taps: [], lit: 0, rise: 0, sing: 0, fin: 0, subT: 0, recall: false, lastP: 0, pslot: 0, pulses: [], echoList: [] });
+  if (MG.dust) MG.dust.pts.position.set(WH_ISO.target.x, 6, WH_ISO.target.z);
+  WH.group = new THREE.Group();
+  WH.ocean = whBuildOcean(); WH.group.add(WH.ocean);
+  WH.group.add(whBuildWhale());
+  WH.halo = mkHalo(0xffd9a8, 4, 0.2); WH.halo.position.set(tx, 0.8, tz); WH.group.add(WH.halo);     // el calor del Viajero: late con cada respuesta tuya
+  scene.add(WH.group);
+  hgAddPets({ a: [tx + 2.4, tz - 1.8], b: [tx + 0.4, tz + 2.2] });
+  whBuildUI();
+  whToneStart();
+  hgCamReset(); hgCamBind();
+  WH.keyFn = (e) => { if (!window.isWhaleActive || window.isMiniIntro) return; if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) whPulse(); } };
+  window.addEventListener('keydown', WH.keyFn, true);
+
+  morphHUD('resonar');
+  showSystemToast(en ? 'Something enormous sings beneath the silence.' : 'Algo enorme canta bajo el silencio.', '#e7e4de');
+}
+window.startWhaleGame = function(data) {
+  if (MG.pending || window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
+  MG.pending = true;
+  MG.reflect(MG.text('ballena', 'intro'), () => { MG.pending = false; whStart(); },
+    { cancelable: true, onCancel: () => { MG.pending = false; if (data && typeof openProjectPopup === 'function') openProjectPopup(data); } });   // al volver, la ballena conserva su ficha original
+};
+
+function whTeardown() {
+  window.isWhaleActive = false; window.hgPose = null; WH.st = 'idle';
+  hgCamUnbind(); whToneStop();
+  if (WH.keyFn) { window.removeEventListener('keydown', WH.keyFn, true); WH.keyFn = null; }
+  HG.pets.forEach(p => scene.remove(p)); HG.pets = [];
+  if (WH.group) { mgDispose(WH.group); WH.group = null; }
+  const tg = window.travelerGroup;
+  if (tg && WH.saved) { tg.position.copy(WH.saved.pos); tg.quaternion.copy(WH.saved.quat); tg.scale.copy(WH.saved.scale); }
+  WH.saved = null; WH.whale = null; WH.ocean = null; WH.mats = null; WH.eyes = []; WH.halo = null; WH.els = {}; WH.pulses = [];
+}
+window.endWhaleGame = function() {
+  if (!window.isWhaleActive) return;
+  whTeardown(); MG.exit();
+  setTimeout(() => { MG.reflect(MG.text('ballena', 'outro'), () => {}); }, 700);
+};
+window.abortWhaleGame = function() {
+  if (!window.isWhaleActive) return;
+  whTeardown(); MG.exit();
+  setTimeout(() => { MG.reflect(MG.text('ballena', 'outro'), () => {}); }, 700);
+};
+
+// ---------- Lógica: la ballena canta, tú respondes ----------
+function whBeat(noteIdx, soft) {                                               // un pulso de la ballena
+  const f = MGS.NOTES[noteIdx % MGS.NOTES.length] / 4, low = WH.recall || soft;
+  whSing(f, low ? 2.2 : 1.7, soft ? 0.05 : 0.09, WH.recall);
+  whMouth(_whM); whEmit(_whM.x, _whM.z, soft ? 0.7 : 1.0, WH_C_WHALE, 0x9fd0ff);
+  WH.sing = 1;
+  if (MG.fx) { const b = WH.blow; _hgV.set(b[0], b[1] - 11, b[2]); WH.whale.body.localToWorld(_hgV); MG.fx.burst(_hgV.x, _hgV.y, _hgV.z, 10, 1.6, 1.8, 0xbfe6ff, 0.22, 0.7); }
+  vibrateDevice(18);
+}
+function whStartCall() {
+  const P = whPattern(WH.round, WH.fails);
+  WH.pat = P; WH.beats = P.times; WH.notes = P.notes; WH.bi = 0; WH.ct = -0.9; WH.talk = 0; WH.taps = []; WH.lit = 0;
+  WH.st = 'call'; whDots(P.times.length, 0); whSub(whText('listen'), 4);
+}
+function whPulse() {                                                           // el jugador responde (toque o Espacio)
+  if (!window.isWhaleActive || window.isMiniIntro) return;
+  const now = performance.now();
+  if (now - WH.lastP < 90) return;
+  WH.lastP = now;
+  const tx = WH_POS.trav.x, tz = WH_POS.trav.z, st = WH.st;
+  if (st === 'call') {                                                          // hablar encima de ella: onda gris y un tono apagado
+    WH.talk++; whEmit(tx, tz, 0.5, WH_C_MUTE, 0x888890); MGS.bell(MGS.NOTES[0] / 2, 0, 0.8, 0.012); WH.halo.material.opacity = 0.35; return;
+  }
+  if (st === 'answer') {
+    const i = WH.taps.length; WH.taps.push(WH.at); WH.idleT = 0;
+    const n = WH.notes[Math.min(i, WH.notes.length - 1)];
+    MGS.bell(MGS.NOTES[n] * 1.0, 0, 1.8, 0.055); whEmit(tx, tz, 0.9, WH_C_YOU, 0xffd9a8); WH.lit = Math.min(WH.pat.times.length, WH.lit + 1); whDots(WH.pat.times.length, WH.lit);
+    WH.halo.material.opacity = 0.7; return;
+  }
+  if (st === 'free') {
+    const i = WH.taps.length; WH.taps.push(WH.ft); WH.fSil = 0; WH.idleT = 0;
+    MGS.bell(MGS.NOTES[(i * 2) % 6], 0, 1.8, 0.055); whEmit(tx, tz, 0.9, WH_C_YOU, 0xffd9a8); whDots(Math.max(3, WH.taps.length), WH.taps.length);
+    WH.halo.material.opacity = 0.7; return;
+  }
+  whEmit(tx, tz, 0.5, WH_C_YOU, 0xffd9a8); MGS.bell(MGS.NOTES[2], 0, 1.4, 0.03);      // fuera de turno: un pulso suave, sin consecuencias
+}
+window.whTap = function(cx, cy) { whPulse(); };
+
+function whVerdict(res) {                                                       // la ballena escucha tu respuesta
+  WH.st = 'verdict'; WH.vt = 0; WH.ok = res.ok; WH.q = res.q;
+  const en = MG.isEN();
+  if (res.ok || WH.fails >= 2) {
+    const gentle = !res.ok;                                                     // tras tres intentos, ella se acerca igualmente: no hay castigo
+    WH.att = Math.max(WH.att, [0.34, 0.68][WH.round]); WH.lone = Math.max(0, WH.lone - 0.3); WH.fails = 0; WH.echoes++;
+    whSub(gentle ? whText('gentle') : whText('ok'), 5);
+    [0, 2, 4].forEach((n, i) => whSing(MGS.NOTES[n] / 4, 3.2, 0.05, false));
+    MGS.arpeggio([2, 3, 5], 0.18, 2.2, 0.04);
+    whMouth(_whM); whEmit(_whM.x, _whM.z, 1.2, WH_C_WHALE, 0xbfe6ff); whEmit(WH_POS.trav.x, WH_POS.trav.z, 1.2, WH_C_WHALE, 0xbfe6ff);
+    WH.sing = 1; hgMeow(0, false); setTimeout(() => hgMeow(1, false), 700);
+    WH.pass = true;
+  } else {
+    WH.fails++; WH.lone = Math.min(1, WH.lone + 0.08);
+    whSub(WH.talk > 0 ? whText('over') : whText('retry'), 6);
+    WH.pass = false;
+  }
+}
+
+function whUpdate(dt) {
+  const en = MG.isEN(), calm = reduceMotionMQ.matches, t = MG.time, E = WH.els;
+  WH.t += dt; WH.sing = Math.max(0, WH.sing - dt / 1.6);
+  WH.halo.material.opacity += (0.2 + 0.3 * WH.attS - WH.halo.material.opacity) * Math.min(1, dt * 2);
+
+  // ----- Máquina de estados -----
+  switch (WH.st) {
+    case 'arrive':
+      WH.rise = Math.min(1, WH.t / 3.5);
+      if (WH.t > 4) whStartCall();
+      break;
+    case 'call': {
+      WH.ct += dt;
+      while (WH.bi < WH.beats.length && WH.ct >= WH.beats[WH.bi]) { whBeat(WH.notes[WH.bi]); WH.bi++; WH.lit = WH.bi; whDots(WH.beats.length, WH.lit); }
+      if (WH.bi >= WH.beats.length && WH.ct >= WH.beats[WH.beats.length - 1] + 1.4) {
+        WH.st = 'answer'; WH.at = 0; WH.taps = []; WH.idleT = 0; WH.lit = 0; whDots(WH.beats.length, 0); whSub(whText('answer'), 6);
+      }
+      break; }
+    case 'answer': {
+      WH.at += dt; WH.idleT += dt;
+      const last = WH.taps.length ? WH.taps[WH.taps.length - 1] : 0, since = WH.at - last;
+      if (WH.taps.length && ((WH.taps.length >= WH.beats.length && since > 0.8) || since > 3.2)) {
+        const exp = WH.beats, rel = WH.taps.map(x => x - WH.taps[0]);
+        whVerdict(whJudge(exp, rel));
+      } else if (!WH.taps.length && WH.idleT > 10) {                            // ignorada: canta otra vez, más grave y más sola
+        WH.lone = Math.min(1, WH.lone + 0.18); WH.recall = true; whSub(whText('lone'), 7); whStartCall(); WH.idleT = 0;
+      }
+      break; }
+    case 'verdict':
+      WH.vt += dt;
+      if (WH.vt > 2.6) {
+        if (WH.pass) {
+          WH.round++;
+          if (WH.round >= 2) { WH.st = 'free'; WH.ft = 0; WH.taps = []; WH.fSil = 0; WH.idleT = 0; whDots(3, 0); whSub(whText('free'), 7); }
+          else { WH.recall = false; whStartCall(); }
+        } else { WH.recall = false; whStartCall(); }
+      }
+      break;
+    case 'free': {
+      WH.ft += dt; WH.idleT += dt; WH.fSil += dt;
+      const n = WH.taps.length;
+      if ((n >= 3 && WH.fSil > 1.9) || n >= 7) {
+        const base = WH.taps[0]; WH.echoList = WH.taps.map(x => Math.min(x - base, 99));
+        for (let i = 1; i < WH.echoList.length; i++) { const g = WH.echoList[i] - WH.echoList[i - 1]; if (g > 2.2) { const cut = g - 2.2; for (let j = i; j < WH.echoList.length; j++) WH.echoList[j] -= cut; } }   // las pausas largas se acortan
+        WH.st = 'echo'; WH.echoT = -0.6; WH.ei = 0; WH.recall = false; whSub(whText('echo'), 8);
+      } else if (n < 3 && WH.idleT > 12) { WH.lone = Math.min(1, WH.lone + 0.12); whBeat(2, true); WH.idleT = 6; }
+      break; }
+    case 'echo': {
+      WH.echoT += dt;
+      while (WH.ei < WH.echoList.length && WH.echoT >= WH.echoList[WH.ei]) { whBeat([0, 2, 4, 3, 1, 5, 2][WH.ei % 7], false); WH.ei++; }
+      if (WH.ei >= WH.echoList.length && WH.echoT >= WH.echoList[WH.echoList.length - 1] + 1.8) { WH.st = 'finale'; WH.fin = 0; WH.att = 1; WH.lone = 0; WH.finBurst = 0; whSub(whText('end'), 12); }
+      break; }
+    case 'finale':
+      WH.fin += dt; WH.rise = 1 + Math.min(1, WH.fin / 5) * 0.8;
+      if (WH.fin > 0.6 && WH.finBurst < 4 && WH.fin > 0.6 + WH.finBurst * 1.2) {
+        WH.finBurst++; whMouth(_whM); whEmit(_whM.x, _whM.z, 1.4, WH_C_WHALE, 0xbfe6ff); whEmit(WH_POS.trav.x, WH_POS.trav.z, 1.4, WH_C_YOU, 0xffd9a8);
+        MGS.arpeggio([0, 2, 3, 5], 0.2, 3, 0.04); whSing(MGS.NOTES[WH.finBurst % 4] / 4, 3, 0.07, false); WH.sing = 1;
+        if (MG.fx) MG.fx.burst(WH_POS.x, 12, WH_POS.z, 40, 3, 2.6, 0xbfe6ff, 0.3, 0.9);
+      }
+      if (WH.fin > 7.5) { window.endWhaleGame(); return; }
+      break;
+  }
+  if (!window.isWhaleActive) return;
+
+  // soledad y sintonía (suavizadas)
+  if (WH.st === 'answer' || WH.st === 'free') WH.lone = Math.max(WH.lone, Math.min(1, WH.idleT / 26));
+  else if (WH.st !== 'verdict') WH.lone = Math.max(0, WH.lone - dt * 0.04);
+  WH.attS += (WH.att - WH.attS) * Math.min(1, dt * 0.9); WH.loneS += (WH.lone - WH.loneS) * Math.min(1, dt * 0.7);
+  const A = WH.attS, Ls = WH.loneS, sw = calm ? 0 : 1;
+
+  // ----- Cámara: giro libre con distancia fija + zoom (mismo manejo que la Hoguera) -----
+  const CM = HG_CAM;
+  if (!CM.ptrs.size) { CM.yawT += CM.yawV * dt; CM.yawV *= Math.exp(-dt * 3.2); }
+  const kc = 1 - Math.exp(-dt * 9);
+  CM.yaw += (CM.yawT - CM.yaw) * kc; CM.pit += (CM.pitT - CM.pit) * kc; CM.zoom += (CM.zoomT - CM.zoom) * kc;
+  const asp = window.innerWidth / window.innerHeight, fit = Math.max(1, 1.5 / asp);
+  const D = (WH_ISO.dist + 6 * A) * fit * CM.zoom;
+  const psi = WH_ISO.yaw + CM.yaw + Math.sin(t * 0.04) * 0.02 * sw, phi = Math.max(0.2, Math.min(1.1, WH_ISO.pitch + CM.pit));
+  const Tg = WH_ISO.target;
+  userGroup.position.set(Tg.x + D * Math.sin(psi) * Math.cos(phi), Tg.y + D * Math.sin(phi), Tg.z + D * Math.cos(psi) * Math.cos(phi));
+  userGroup.rotation.set(-phi, psi, 0);
+
+  // ----- Ballena: aparece desde el fondo, respira, abre la mandíbula al cantar y se acerca al sintonizar -----
+  const W = WH.whale;
+  W.root.position.set(WH_POS.x + 5 * A - 3 * Ls, -9 * (1 - Math.min(1, WH.rise)) + Math.max(0, WH.rise - 1) * 5 + Math.sin(t * 0.5) * 0.25 * sw, WH_POS.z);
+  W.root.rotation.y = WH_POS.yaw + Math.sin(t * 0.17) * 0.04 * sw;
+  W.body.scale.y = 1 + Math.sin(t * 0.55) * 0.012 * sw + WH.sing * 0.02;
+  W.body.rotation.x = -0.02 + Math.sin(t * 0.4) * 0.015 * sw - Ls * 0.05;
+  W.tail.rotation.x = Math.sin(t * 0.8) * 0.10 * sw * (1 - Ls * 0.6);
+  W.jaw.rotation.x = 0.03 + WH.sing * 0.34;
+  W.finR.rotation.z = -(0.12 + Math.sin(t * 0.7) * 0.07 * sw + A * 0.15); W.finL.rotation.z = 0.12 + Math.sin(t * 0.7 + 1) * 0.07 * sw + A * 0.15;
+  WH.eyes.forEach(e => { e.material.opacity = (0.25 + 0.5 * A + 0.6 * WH.sing) * (0.85 + 0.15 * Math.sin(t * 2.4)); });
+  const mu = WH.mats.screen.uniforms;
+  mu.uTime.value = t; mu.uCold.value = Ls * 0.9; mu.uCalm.value = A; mu.uRune.value = 0.2 + 0.7 * A + 0.5 * WH.sing;
+  WH.mats.body.uniforms.color.value.setHex(0x4f6272).multiplyScalar(0.7 + 0.7 * A + 0.3 * WH.sing);
+
+  // ----- Mar: ondas -----
+  const ou = WH.ocean.material.uniforms; ou.uTime.value = t; ou.uCalm.value = A; ou.uLone.value = Ls;
+  for (let i = 0; i < 8; i++) {
+    const p = WH.pulses[i], u = ou.uP.value[i], c = ou.uC.value[i];
+    if (p) { p.age += dt; u.set(p.x, p.z, p.age, p.amp); c.set(p.col[0], p.col[1], p.col[2]); } else u.set(0, 0, -1, 0);
+  }
+  if (MG.fx && !calm && Math.random() < dt * (3 + 6 * A)) {                       // motas bioluminiscentes que suben de la ballena
+    const wx = W.root.position.x + (Math.random() - 0.5) * 26, wz = W.root.position.z + (Math.random() - 0.5) * 7;
+    MG.fx.emit(wx, 6 + Math.random() * 8, wz, (Math.random() - 0.5) * 0.3, 0.5 + Math.random() * 0.6, (Math.random() - 0.5) * 0.3, 2.5 + Math.random() * 2, Math.random() > 0.5 ? 0xbfe6ff : 0xe7e4de, 0.2, 0.6, 0.3);
+  }
+  HG.pets.forEach(p => { const b = 1 + Math.sin(t * 1.4 + p.userData.ph) * 0.02; p.scale.y = (p.userData.sy || (p.userData.sy = p.scale.y)) * b; });
+
+  // ----- Sonido, interfaz y HUD -----
+  whToneUpdate(A, Ls);
+  if (E.fill) {
+    E.fill.style.width = (A * 100).toFixed(1) + '%';
+    E.cold.style.opacity = String(Math.min(1, Ls * 1.1) * (1 - A));
+    if (WH.subT > 0) { WH.subT -= dt; if (WH.subT <= 0 && WH.st !== 'finale') E.sub.style.opacity = '0'; }
+  }
+  MG.setHUD({
+    'lives-value': Math.round(Ls * 100) + '%',
+    'level-value': Math.min(WH_ROUNDS, WH.round + 1) + ' / ' + WH_ROUNDS,
+    'files-value': String(WH.echoes),
+    'combo-value': Math.round(A * 100) + '%'
+  });
+}
