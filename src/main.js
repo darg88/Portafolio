@@ -204,7 +204,7 @@ const XR_SAFETY = {
 };
 
 function xrBlockedByGame() {                      // no se puede entrar a AR/VR en medio de un Juego Otro
-  if (window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive) || window.isMiniIntro || (window.MG && window.MG.pending)) {
+  if (window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive)) || window.isMiniIntro || (window.MG && window.MG.pending)) {
     if (typeof showSystemToast === 'function') showSystemToast(window.currentLang === 'en' ? 'Leave the game before entering AR / VR' : 'Sal del juego antes de entrar a AR / VR', '#f7f4ed');
     return true;
   }
@@ -290,6 +290,12 @@ arQBtn.style.cssText = 'position:absolute; top:calc(66px + env(safe-area-inset-t
 arQBtn.addEventListener('beforexrselect', (e) => e.preventDefault());
 arQBtn.addEventListener('click', (e) => { e.stopPropagation(); if (window.arQuipuToggle) window.arQuipuToggle(); });
 arExitRoot.appendChild(arQBtn);
+const arTBtn = document.createElement('button');
+arTBtn.type = 'button'; arTBtn.id = 'ar-turtle-btn'; arTBtn.textContent = 'TORTUGA'; window.arTBtn = arTBtn;
+arTBtn.style.cssText = arQBtn.style.cssText; arTBtn.style.top = 'calc(118px + env(safe-area-inset-top,0px))';
+arTBtn.addEventListener('beforexrselect', (e) => e.preventDefault());
+arTBtn.addEventListener('click', (e) => { e.stopPropagation(); if (window.arTurtleToggle) window.arTurtleToggle(); });
+arExitRoot.appendChild(arTBtn);
 document.body.appendChild(arExitRoot);
 
 const arExit3D = (() => {                                                        // botón flotante (sirve con el controlador, la mano o un toque en pantalla)
@@ -320,6 +326,12 @@ const arQuipu3D = (() => {                                                      
   camera.add(m);
   return m;
 })();
+const arTurtle3D = (() => {                                                      // tercer botón flotante: TORTUGA / MODELOS
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.069), new THREE.MeshBasicMaterial({ map: arBtnTexture('TORTUGA'), transparent: true, depthTest: false, toneMapped: false }));
+  m.renderOrder = 9999; m.position.set(-0.16, -0.02, -0.5); m.visible = false; m.name = 'ar-turtle-3d';
+  camera.add(m); window.arTurtle3D = m;
+  return m;
+})();
 function arQuipuSetLabel(on) {
   arQBtn.textContent = on ? 'MODELOS' : 'QUIPU';
   if (arQuipu3D.material.map) arQuipu3D.material.map.dispose();
@@ -334,6 +346,8 @@ window.arTryExit = function (ctrl) {                                            
   if (rc.intersectObject(arExit3D, false).length) { endXRSession(); return true; }
   arQuipu3D.updateMatrixWorld(true);
   if (arQuipu3D.visible && rc.intersectObject(arQuipu3D, false).length) { if (window.arQuipuToggle) window.arQuipuToggle(); return true; }
+  arTurtle3D.updateMatrixWorld(true);
+  if (arTurtle3D.visible && rc.intersectObject(arTurtle3D, false).length) { if (window.arTurtleToggle) window.arTurtleToggle(); return true; }
   return false;
 };
 
@@ -502,7 +516,7 @@ renderer.xr.addEventListener('sessionstart', () => {
     
     if (window.isARSession) {
         scene.background = null;
-        arExit3D.visible = true; arQuipu3D.visible = true;
+        arExit3D.visible = true; arQuipu3D.visible = true; arTurtle3D.visible = true;
         document.body.classList.add('ar-active'); // Usa la clase CSS que creamos antes
         if (customArBtn) customArBtn.innerText = 'SALIR AR';
         if (customVrBtn) customVrBtn.style.display = 'none';
@@ -550,7 +564,7 @@ renderer.xr.addEventListener('sessionstart', () => {
 renderer.xr.addEventListener('sessionend', () => {
     const wasAR = window.isARSession;
     window.isARSession = false;
-    arExit3D.visible = false; arQuipu3D.visible = false; if (window.arQuipuStop) window.arQuipuStop(); arExitRoot.style.display = 'none';
+    arExit3D.visible = false; arQuipu3D.visible = false; arTurtle3D.visible = false; if (window.arQuipuStop) window.arQuipuStop(); if (window.arTurtleStop) window.arTurtleStop(); arExitRoot.style.display = 'none';
     document.body.classList.remove('ar-active');
     // 🔥 Restaurar TODO lo que AR cambió (fondos CSS exactos, Viajero, modelos colocados, bloom): antes se borraba y la web quedaba oscura
     arRestoreState();
@@ -954,7 +968,7 @@ setInterval(() => {
   if (Math.random() > 0.6) { triggerSubtleGlitch(); }
 }, 2000);
 
-const foundProjects = new Set(); const totalProjects = 13; // 8 normales + 1 ballena + 1 voyager + 2 gatos
+const foundProjects = new Set(); const totalProjects = 13; // 8 normales + 1 ballena + 1 sputnik + 2 gatos
 
 function updateProgress(id) { 
   if(!foundProjects.has(id)) { 
@@ -2335,7 +2349,7 @@ function updatePulseFX() {
 
 function triggerScrollExploration() { 
   document.getElementById('scroll-hint')?.classList.add('hidden');
-  if (!isGameStarted || isPaused || isUIOpen || renderer.xr.isPresenting || isBossBattle || window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive) || window.isMiniIntro) return; 
+  if (!isGameStarted || isPaused || isUIOpen || renderer.xr.isPresenting || isBossBattle || window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive)) || window.isMiniIntro) return; 
   scrollSpeedBoost += 0.8; if (scrollSpeedBoost > 2.5) scrollSpeedBoost = 2.5; 
   const now = Date.now(); 
   if (now - lastSpawnTime > 400) { 
@@ -2346,8 +2360,8 @@ function triggerScrollExploration() {
       const voyager = voyagerModelTemplate.clone(); voyager.position.set((Math.random() - 0.5) * 35, 40, (Math.random() - 0.5) * 20); voyager.rotation.x = Math.PI;
 voyager.userData = { 
   id: 77, 
-  title: { es: 'LOG_V0Y // SONDA', en: 'LOG_V0Y // PROBE' }, 
-  desc: { es: 'El Proyecto Spuntik fue dado de baja hace décadas.', en: 'The Voyager Project was decommissioned decades ago.' }, 
+  title: { es: 'LOG_SPUTNIK // SONDA', en: 'LOG_SPUTNIK // PROBE' }, 
+  desc: { es: 'El Proyecto Sputnik fue dado de baja hace décadas.', en: 'The Sputnik Project was decommissioned decades ago.' }, 
   longDesc: { es: 'Sus fragmentos de código siguen vagando por el vacío. Aunque su misión original fue cancelada, aún transmite un eco débil a través de los puertos de red cerrados.', en: 'Its code fragments still wander the void. Although its original mission was canceled, it still transmits a weak echo through closed network ports.' }, 
   mediaType: 'image', 
   mediaSrc: '', 
@@ -2508,7 +2522,7 @@ document.getElementById('btn-save-paint').onclick = (e) => {
  function startPointerDown(clientX, clientY) {
   // 🎮 JUEGOS OTROS: cada minijuego maneja su propio puntero
   if (window.isWiringGameActive) { window.wiringDown(clientX, clientY); return; }
-  if (window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive)) { window.MG.setPointer(clientX, clientY); return; }   // (en la Hoguera el toque se resuelve al soltar: ver hgCamBind)
+  if (window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) { window.MG.setPointer(clientX, clientY); return; }   // (en la Hoguera el toque se resuelve al soltar: ver hgCamBind)
 
   // 🔥 Si hay una luna encendida, pasamos a MODO PINTURA PERMANENTE
   if (isPoeticaActive || isErraticaActive || isFriccionActive) {
@@ -2558,7 +2572,7 @@ document.getElementById('btn-save-paint').onclick = (e) => {
 function handlePointerMove(clientX, clientY) {
   // 🎮 JUEGOS OTROS
   if (window.isWiringGameActive) { window.wiringMove(clientX, clientY); return; }
-  if (window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive)) { window.MG.setPointer(clientX, clientY); return; }
+  if (window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) { window.MG.setPointer(clientX, clientY); return; }
 
   // 🔥 Si estamos pintando, solo actualizamos el cursor, NO giramos la cámara
   if (window.isPainting) {
@@ -2623,7 +2637,7 @@ function handlePointerMove(clientX, clientY) {
 function handlePointerUp() {
   // 🎮 JUEGOS OTROS
   if (window.isWiringGameActive) { window.wiringUp(); return; }
-  if (window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive)) return;
+  if (window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) return;
 
   window.isPainting = false;
   if (draggedPlanet) {
@@ -2718,7 +2732,7 @@ document.addEventListener('touchstart', (e) => {
     touchStartTime = Date.now();
     const currentTime = Date.now();
     const tapLength = currentTime - lastTapTime;
-    if (tapLength < 300 && tapLength > 0 && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive) && !isUIOpen && !isBossBattle && !isAligned && !isDraggingPlanet) {
+    if (tapLength < 300 && tapLength > 0 && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive)) && !isUIOpen && !isBossBattle && !isAligned && !isDraggingPlanet) {
       isMobileZoomed = !isMobileZoomed;
       targetFov = isMobileZoomed ? 35 : 75; 
       playSound('ui');
@@ -2733,7 +2747,7 @@ document.addEventListener('touchmove', (e) => {
     if (draggedPlanet) e.preventDefault();
     handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
     let touchY = e.touches[0].clientY;
-    if (!draggedPlanet && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive) && (touchStartY - touchY > 40 || touchStartY - touchY < -40)) { 
+    if (!draggedPlanet && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive)) && (touchStartY - touchY > 40 || touchStartY - touchY < -40)) { 
       triggerScrollExploration(); touchStartY = touchY; 
     } 
   } 
@@ -2754,7 +2768,7 @@ document.addEventListener('touchcancel', () => {
 
 document.addEventListener('touchend', (e) => {
   handlePointerUp();
-  if (isAligned && e.changedTouches.length > 0 && !draggedPlanet && !isDraggingPlanet && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive) && !window.isMiniIntro) {   // un lanzamiento de ofrenda no debe girar el carrusel
+  if (isAligned && e.changedTouches.length > 0 && !draggedPlanet && !isDraggingPlanet && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive)) && !window.isMiniIntro) {   // un lanzamiento de ofrenda no debe girar el carrusel
     const touchEndX = e.changedTouches[0].clientX;
     const deltaX = touchEndX - touchStartX;
     const deltaTime = Date.now() - touchStartTime;
@@ -3245,6 +3259,12 @@ function morphHUD(mode) {
     if (lblFiles) lblFiles.innerText = 'FLUJO';
     if (lblCombo) lblCombo.innerText = 'RESISTENCIA';
   }
+  else if (mode === 'tejer') {
+    if (lblLives) lblLives.innerText = 'ENREDOS';
+    if (lblLevel) lblLevel.innerText = 'HILOS';
+    if (lblFiles) lblFiles.innerText = 'PASADAS';
+    if (lblCombo) lblCombo.innerText = 'PASADA';
+  }
   else if (mode === 'renunciar') {
     if (lblLives) lblLives.innerText = 'CARGA';
     if (lblLevel) lblLevel.innerText = 'ENTROPÍA';
@@ -3256,6 +3276,25 @@ function morphHUD(mode) {
     if (lblLevel) lblLevel.innerText = 'CANTO';
     if (lblFiles) lblFiles.innerText = 'ECOS';
     if (lblCombo) lblCombo.innerText = 'SINTONÍA';
+  }
+  else if (mode === 'sputnik') {
+    if (lblLives) lblLives.innerText = 'CAPÍTULO';
+    if (lblLevel) lblLevel.innerText = 'CONSERVADO';
+    if (lblFiles) lblFiles.innerText = 'LLEVAS';
+    if (lblCombo) lblCombo.innerText = 'BIP';
+  }
+  else if (mode === 'coloso') {
+    const L = window.__colHud || ['', '', '', ''];
+    if (lblLives) lblLives.innerText = L[0];
+    if (lblLevel) lblLevel.innerText = L[1];
+    if (lblFiles) lblFiles.innerText = L[2];
+    if (lblCombo) lblCombo.innerText = L[3];
+  }
+  else if (mode === 'tortuga') {
+    if (lblLives) lblLives.innerText = 'PASOS';
+    if (lblLevel) lblLevel.innerText = 'BROTES';
+    if (lblFiles) lblFiles.innerText = 'FLORES';
+    if (lblCombo) lblCombo.innerText = 'SEMILLAS';
   }
   else if (mode === 'normal') {
     // Restaura respetando si el usuario está en Inglés o Español
@@ -3269,7 +3308,7 @@ function morphHUD(mode) {
 const raycaster = new THREE.Raycaster(); 
 let targetFov = 75; 
 window.addEventListener('click', (e) => {
-  if (window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive)) return; // 🎮 el raycaster ignora .visible: sin esto se abrían planetas ocultos
+  if (window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) return; // 🎮 el raycaster ignora .visible: sin esto se abrían planetas ocultos
   if (isUIOpen && !e.target.closest('.modal-ui') && !e.target.closest('.control-btn') && !e.target.closest('#side-menu') && !e.target.closest('.carousel-btn') && !e.target.closest('#ach-panel') && !e.target.closest('#sov-ceremony')) {
     window.closeAllUIs();
     return; 
@@ -3288,6 +3327,15 @@ window.addEventListener('click', (e) => {
   
 const handleProjectClick = (data) => {
     if (window.isZooming) return; 
+
+    // 🛰️ JUEGO OTRO: SPUTNIK (clic en la pequeña nave)
+    if (data && data.isVoyager && window.startSputnikGame) {
+      window.isZooming = true;
+      playSound('boss_hit');
+      window.startSputnikGame(data);
+      setTimeout(() => { window.isZooming = false; }, 350);
+      return;
+    }
 
     // 🐋 JUEGO OTRO: LA BALLENA (clic en una ballena del universo)
     if (data === whaleData && window.startWhaleGame) {
@@ -3322,6 +3370,23 @@ const handleProjectClick = (data) => {
       setTimeout(() => { window.isZooming = false; }, 350);
       return; 
     }
+    // 🐾 JUEGOS OTROS de colosos, uno por sección (1 árbol · 2 escarabajo · 3 catarina · 4 cóndor · 5 oso · 6 medusa)
+    const COL_BY_ID = { 1: 'arbol', 2: 'escarabajo', 3: 'mariquita', 4: 'condor', 5: 'colibri', 6: 'medusa' };
+    if (data && COL_BY_ID[data.id] && window.startColossusGame) {
+      window.isZooming = true;
+      playSound('boss_hit');
+      window.startColossusGame(COL_BY_ID[data.id], data);
+      setTimeout(() => { window.isZooming = false; }, 350);
+      return;
+    }
+    // 🐢 JUEGO OTRO: LA TORTUGA-PLANETA (sección 8 · Módulo WebAR)
+    if (data.id === 8 && window.startTortugaGame) {
+      window.isZooming = true;
+      playSound('boss_hit');
+      window.startTortugaGame(data);
+      setTimeout(() => { window.isZooming = false; }, 350);
+      return;
+    }
     // 🌌 3. COMPORTAMIENTO NORMAL
     window.isZooming = true;
     targetFov = 25; 
@@ -3344,7 +3409,7 @@ const handleProjectClick = (data) => {
       //    En el modo CARRUSEL el Viajero nunca queda libre (siempre hay un planeta a <35 u), así que allí se desbloquea con la pista del Oráculo:
       //    tras el susurro, el siguiente toque abre la hoguera.
       if (window._whaleReady && window.startWhaleGame && !window.isWhaleActive && !window.isHogueraActive) { window._whaleReady = false; window.startWhaleGame(whaleData); return; }
-      if ((!window.travelerGroup.userData.anchoredPlanet || window._hogueraReady) && window.startHogueraGame && !(window.isHogueraActive || window.isWhaleActive)) { window._hogueraReady = false; window.startHogueraGame(); return; }
+      if ((!window.travelerGroup.userData.anchoredPlanet || window._hogueraReady) && window.startHogueraGame && !(window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) { window._hogueraReady = false; window.startHogueraGame(); return; }
       playSound('project_open'); // Sonido especial celestial
       
       // 🔥 MATRIZ DE PENSAMIENTOS DEL VIAJERO
@@ -3715,6 +3780,31 @@ const AR_Q = { active: false, group: null, cords: [], sites: [], done: 0, t: 0, 
 window.arQuipu = AR_Q;
 const _arP = new THREE.Vector3(), _arO = new THREE.Vector3(), _arD = new THREE.Vector3(), _arM = new THREE.Matrix4();
 
+
+// Puntos de luz con tamaño en metros: en XR el lienzo y el FOV cambian por ojo, así que se usa la proyección y la altura del framebuffer.
+const AR_FH = { value: 1080 };
+const AR_PVS = `attribute vec3 aCol; attribute float aSize; attribute float aAlpha; uniform float uFH; varying vec3 vC; varying float vA;
+  void main() { vC = aCol; vA = aAlpha; vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = clamp(aSize * uFH * 0.5 * projectionMatrix[1][1] / max(0.05, -mv.z), 1.0, 56.0); gl_Position = projectionMatrix * mv; }`;
+const AR_PFS = `uniform float uOpacity; varying vec3 vC; varying float vA;
+  void main() { float d = length(gl_PointCoord - vec2(0.5)); float a = smoothstep(0.5, 0.0, d); a *= a; gl_FragColor = vec4(vC, a * vA * uOpacity); }`;
+function arPoints(n, fn) {
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), sz = new Float32Array(n), al = new Float32Array(n), o = { x: 0, y: 0, z: 0, r: 1, g: 1, b: 1, s: 0.01, a: 1 };
+  for (let i = 0; i < n; i++) {
+    o.r = o.g = o.b = 1; o.a = 1; o.s = 0.01; fn(i, o);
+    pos[i * 3] = o.x; pos[i * 3 + 1] = o.y; pos[i * 3 + 2] = o.z; col[i * 3] = o.r; col[i * 3 + 1] = o.g; col[i * 3 + 2] = o.b; sz[i] = o.s; al[i] = o.a;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('aCol', new THREE.BufferAttribute(col, 3));
+  g.setAttribute('aSize', new THREE.BufferAttribute(sz, 1)); g.setAttribute('aAlpha', new THREE.BufferAttribute(al, 1));
+  const m = new THREE.ShaderMaterial({ uniforms: { uFH: AR_FH, uOpacity: { value: 1 } }, vertexShader: AR_PVS, fragmentShader: AR_PFS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const p = new THREE.Points(g, m); p.frustumCulled = false; return p;
+}
+function arRGB(hex) { return [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255]; }
+function arFHUpdate() {                                                      // altura real del framebuffer del ojo
+  try { const ss = renderer.xr.getSession(), bl = ss && ss.renderState && ss.renderState.baseLayer; AR_FH.value = (bl && bl.framebufferHeight) || renderer.domElement.height || 1080; } catch (e) { AR_FH.value = 1080; }
+}
+
 function arQuipuLang() { return window.currentLang === 'en' ? 'en' : 'es'; }
 function arHaptic(ctrl, strength, ms) {                                      // vibración en el controlador si existe; si no, en el dispositivo
   try {
@@ -3755,29 +3845,47 @@ function arQuipuHint(text, secs) {                                           // 
 
 function arQuipuStart() {
   if (AR_Q.active || !window.isARSession || !renderer.xr.isPresenting) return;
+  if (window.arTurtleStop) window.arTurtleStop();
   const L = arQuipuLang();
   camera.updateMatrixWorld(true);
   const cp = new THREE.Vector3(); camera.getWorldPosition(cp);
   const fw = new THREE.Vector3(0, 0, -1).transformDirection(camera.matrixWorld); fw.y = 0;
   if (fw.lengthSq() < 1e-4) fw.set(0, 0, -1); fw.normalize();
   const yaw = Math.atan2(-fw.x, -fw.z), y0 = cp.y - 0.02, R = AR_Q.R;
-  Object.assign(AR_Q, { active: true, done: 0, t: 0, last: performance.now(), won: false, winT: 0, captions: [], cords: [], sites: [] });
+  Object.assign(AR_Q, { active: true, done: 0, t: 0, last: performance.now(), won: false, winT: 0, captions: [], cords: [], sites: [], fxN: 0 });
   const grp = new THREE.Group(); grp.position.set(cp.x, 0, cp.z); AR_Q.group = grp; scene.add(grp);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(R, 0.007, 6, 96), new THREE.MeshBasicMaterial({ color: 0xe7e4de, transparent: true, opacity: 0.8, toneMapped: false }));
-  ring.rotation.x = Math.PI / 2; ring.position.y = y0; grp.add(ring); AR_Q.ring = ring;
+  // el cordón principal: dos hilos de luz que se trenzan, y un polvo que sube alrededor de quien lee
+  const ringPts = arPoints(520, (i, o) => { const a = i / 520 * 6.2832, w = (i % 2 ? 1 : -1) * 0.012 * Math.sin(a * 24); o.x = Math.cos(a) * (R + w); o.z = Math.sin(a) * (R + w); o.y = y0 + (i % 2 ? 1 : -1) * 0.008 * Math.cos(a * 24);
+    o.s = 0.007 + Math.random() * 0.006; o.a = 0.55 + Math.random() * 0.4; o.r = 0.92; o.g = 0.9; o.b = 0.84; });
+  grp.add(ringPts); AR_Q.ring = ringPts;
+  AR_Q.motes = arPoints(220, (i, o) => { const a = Math.random() * 6.2832, r = 0.25 + Math.random() * 0.95; o.x = Math.cos(a) * r; o.z = Math.sin(a) * r; o.y = y0 - 0.9 + Math.random() * 1.8;
+    o.s = 0.003 + Math.random() * 0.006; o.a = 0.15 + Math.random() * 0.35; o.r = 0.7; o.g = 0.82; o.b = 1; });
+  AR_Q.motes.userData.y0 = y0; grp.add(AR_Q.motes);
+  AR_Q.fx = { n: 200, life: new Float32Array(200), vel: new Float32Array(600), pts: null }; // chispas al atar
+  AR_Q.fx.pts = arPoints(200, (i, o) => { o.a = 0; o.s = 0.008; }); grp.add(AR_Q.fx.pts);
   AR_Q_DATA.forEach((d, i) => {
     const a = yaw + (-120 + 240 * i / (AR_Q_DATA.length - 1)) * Math.PI / 180, sx = -Math.sin(a), sz = -Math.cos(a), len = AR_Q_LEN[i];
     const cg = new THREE.Group(); cg.position.set(sx * R, y0 - 0.01, sz * R); grp.add(cg);
-    const mat = new THREE.MeshBasicMaterial({ color: d.hex, toneMapped: false, transparent: true, opacity: 0.85 });
-    const line = new THREE.Mesh(new THREE.CylinderGeometry(0.0045, 0.0045, len, 6), mat); line.position.y = -len / 2; cg.add(line);
-    const cord = { i, d, cg, len, mat, sites: [], tied: 0, done: false, glow: 0, dir: new THREE.Vector3(sx, 0, sz), phase: i * 1.3 };
+    const [cr, cgc, cb] = arRGB(d.hex);
+    const mat = new THREE.MeshBasicMaterial({ color: d.hex, toneMapped: false, transparent: true, opacity: 0.3 });             // núcleo tenue: se ve la cuerda aun sin puntos
+    const line = new THREE.Mesh(new THREE.CylinderGeometry(0.0022, 0.0022, len, 5), mat); line.position.y = -len / 2; cg.add(line);
+    const thread = arPoints(Math.round(len / 0.011), (k, o) => { const u = k / Math.round(len / 0.011), q = u * 38 + i; o.x = Math.cos(q) * 0.0045; o.z = Math.sin(q) * 0.0045; o.y = -u * len;
+      o.s = 0.0052 + 0.0025 * Math.sin(u * 40); o.a = 0.5 + 0.45 * (1 - u * 0.5); o.r = cr; o.g = cgc; o.b = cb; });                // un hilo que se enrosca, más tenue hacia la punta
+    cg.add(thread);
+    const anchor = mkHalo(d.hex, 0.05, 0.5); cg.add(anchor);
+    const cord = { i, d, cg, len, mat, thread, sites: [], tied: 0, done: false, glow: 0, dir: new THREE.Vector3(sx, 0, sz), phase: i * 1.3 };
     const tens = Math.min(4, Math.floor(d.v / 10)), unit = d.v % 10;
     const add = (k, kind, t, turns) => {
-      const sm = new THREE.MeshBasicMaterial({ color: d.hex, toneMapped: false });
-      const knot = new THREE.Mesh(new THREE.SphereGeometry(kind === 'unit' ? 0.011 : 0.013, 10, 8), sm);
-      knot.position.y = -t * len; knot.scale.setScalar(0.001); cg.add(knot);
+      const kg = new THREE.Group(); kg.position.y = -t * len; kg.scale.setScalar(0.001); cg.add(kg);
+      const core = new THREE.Mesh(new THREE.SphereGeometry(kind === 'unit' ? 0.009 : 0.011, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false })); kg.add(core);
+      const halo = mkHalo(d.hex, 0.09, 0.7); kg.add(halo);
+      let deco;
+      if (kind === 'tens') deco = arPoints(20, (j, o) => { const q = j / 20 * 6.2832; o.x = Math.cos(q) * 0.022; o.z = Math.sin(q) * 0.022; o.y = Math.sin(q * 2) * 0.004; o.s = 0.005; o.a = 0.95; o.r = cr; o.g = cgc; o.b = cb; });          // corona del nudo simple
+      else { const n = Math.min(64, 12 + turns * 7), hh = 0.012 + turns * 0.0075;
+             deco = arPoints(n, (j, o) => { const u = j / n, q = u * turns * 6.2832; o.x = Math.cos(q) * 0.016; o.z = Math.sin(q) * 0.016; o.y = (0.5 - u) * hh * 2; o.s = 0.0045; o.a = 0.95; o.r = cr; o.g = cgc; o.b = cb; }); }  // espiral del nudo largo: una vuelta por unidad
+      kg.add(deco);
       const ghost = mkHalo(d.hex, 0.11, 0.0); ghost.position.y = -t * len; cg.add(ghost);
-      const s = { cord, k, kind, t, turns, knot, ghost, tied: false, appear: 0 };
+      const s = { cord, k, kind, t, turns, knot: kg, core, halo, deco, ghost, tied: false, appear: 0 };
       cord.sites.push(s); AR_Q.sites.push(s);
     };
     for (let k = 0; k < tens; k++) add(k, 'tens', 0.26 + k * 0.12, 1);
@@ -3793,14 +3901,26 @@ function arQuipuStop() {
   AR_Q.active = false;
   if (AR_Q.group) { mgDispose(AR_Q.group); AR_Q.group = null; }
   if (AR_Q.hint) { camera.remove(AR_Q.hint); if (AR_Q.hint.material.map) AR_Q.hint.material.map.dispose(); AR_Q.hint.material.dispose(); AR_Q.hint = null; }
-  AR_Q.cords = []; AR_Q.sites = []; AR_Q.captions = []; AR_Q.ring = null;
+  AR_Q.cords = []; AR_Q.sites = []; AR_Q.captions = []; AR_Q.ring = null; AR_Q.motes = null; AR_Q.fx = null;
   arQuipuSetLabel(false);
 }
 function arQuipuToggle() { if (AR_Q.active) arQuipuStop(); else arQuipuStart(); }
 
+function arSpark(x, y, z, hex, n) {                                         // chispas de luz al atar un nudo
+  const F = AR_Q.fx; if (!F) return;
+  const A = F.pts.geometry.attributes, [r, g, b] = arRGB(hex);
+  for (let k = 0; k < n; k++) {
+    const i = F.n ? (AR_Q.fxN = (AR_Q.fxN + 1) % F.n) : 0, a = Math.random() * 6.2832, u = Math.random() * 2 - 1, s = Math.sqrt(1 - u * u), v = 0.12 + Math.random() * 0.25;
+    A.position.array[i * 3] = x; A.position.array[i * 3 + 1] = y; A.position.array[i * 3 + 2] = z;
+    F.vel[i * 3] = Math.cos(a) * s * v; F.vel[i * 3 + 1] = u * v + 0.05; F.vel[i * 3 + 2] = Math.sin(a) * s * v; F.life[i] = 1;
+    A.aCol.array[i * 3] = r; A.aCol.array[i * 3 + 1] = g; A.aCol.array[i * 3 + 2] = b; A.aSize.array[i] = 0.006 + Math.random() * 0.006;
+  }
+}
 function arQuipuTie(site, ctrl) {
   const c = site.cord, L = arQuipuLang();
   site.tied = true; site.appear = 0; c.tied++; c.glow = 1;
+  site.knot.getWorldPosition(_arP); AR_Q.group.worldToLocal(_arP);
+  arSpark(_arP.x, _arP.y, _arP.z, c.d.hex, site.kind === 'unit' ? 26 : 14);
   const n = MGS.NOTES[(c.i + site.k * 2) % 6];
   if (site.kind === 'unit') MGS.bell(n * 0.5, 0, 2.8, 0.05); else MGS.bell(n, 0, 1.8, 0.04);        // el nudo largo suena grave y largo
   arHaptic(ctrl, site.kind === 'unit' ? 0.6 : 0.35, site.kind === 'unit' ? 70 : 35);
@@ -3810,14 +3930,17 @@ function arQuipuTie(site, ctrl) {
     const sp = arTextSprite(c.d[L][0], c.d[L][1], 0.46, 0.2), R = AR_Q.R * 0.78;
     sp.position.set(c.dir.x * R, c.cg.position.y + 0.17 + (c.i % 2) * 0.07, c.dir.z * R); AR_Q.group.add(sp);
     AR_Q.captions.push({ sp, age: 0 });
+    c.sites.forEach(s => arSpark(c.cg.position.x, c.cg.position.y - s.t * c.len, c.cg.position.z, c.d.hex, 10));
     if (AR_Q.done >= AR_Q_DATA.length) {
       AR_Q.won = true; AR_Q.winT = 0; playSound('levelup'); MGS.arpeggio([0, 1, 2, 3, 5, 4], 0.16, 2.8, 0.04);
+      for (let k = 0; k < 90; k++) { const a = Math.random() * 6.2832; arSpark(Math.cos(a) * AR_Q.R, AR_Q.ring.geometry.attributes.position.array[1], Math.sin(a) * AR_Q.R, 0xe7e4de, 1); }
       arQuipuHint(L === 'en' ? 'What was woven is now remembered' : 'Lo tejido ahora se recuerda', 9);
     }
   }
 }
 function arQuipuTick() {                                                     // cada cuadro, durante la sesión AR
   if (!AR_Q.active || !AR_Q.group) return;
+  arFHUpdate();
   const now = performance.now(), dt = Math.min(0.05, (now - AR_Q.last) / 1000); AR_Q.last = now; AR_Q.t += dt;
   const t = AR_Q.t, reduce = reduceMotionMQ.matches;
   AR_Q.group.updateMatrixWorld(true);
@@ -3844,20 +3967,35 @@ function arQuipuTick() {                                                     // 
     c.glow = Math.max(0, c.glow - dt * 1.2);
     const amp = (reduce ? 0.004 : 0.03) * (1 + c.glow * 2.5);
     c.cg.rotation.x = Math.sin(t * 0.8 + c.phase) * amp; c.cg.rotation.z = Math.cos(t * 0.6 + c.phase * 1.3) * amp;
-    c.mat.opacity = (c.done ? 1 : 0.8) + 0 * c.glow;
+    c.mat.opacity = c.done ? 0.65 : 0.3 + c.glow * 0.4;
+    c.thread.material.uniforms.uOpacity.value = (c.done ? 1 : 0.75) + c.glow * 0.5;
     c.sites.forEach(s => {
       if (s.tied) s.appear = Math.min(1, s.appear + dt * 3.5);
       const e = s.tied ? 1 - Math.pow(1 - s.appear, 3) * (1 + 0.6 * (1 - s.appear)) : 0;            // aparece con un pequeño rebote
       const len = s.kind === 'unit' ? 1 + 0.22 * s.turns : 1;                                          // nudo largo: más vueltas, más largo
-      s.knot.scale.set(Math.max(0.001, e), Math.max(0.001, e * len), Math.max(0.001, e));
+      s.knot.scale.set(Math.max(0.001, e), Math.max(0.001, e * (s.kind === 'unit' ? 1 + 0.1 * s.turns : 1) * (len > 1 ? 1 : 1)), Math.max(0.001, e));
+      if (s.tied) { s.deco.rotation.y += dt * (reduce ? 0.2 : 0.9) * (s.kind === 'unit' ? -1 : 1); s.halo.material.opacity = 0.4 + 0.25 * Math.sin(t * 2 + c.i) + c.glow * 0.4; }
       s.ghost.material.opacity = s.tied ? 0 : 0.22 + 0.14 * Math.sin(t * 2.2 + c.i * 0.7 + s.k);
     });
   });
+  // polvo que asciende despacio; chispas con su gravedad invertida
+  const MA = AR_Q.motes.geometry.attributes.position.array, y0 = AR_Q.motes.userData.y0;
+  if (!reduce) for (let i = 0; i < MA.length; i += 3) { MA[i + 1] += dt * (0.015 + (i % 7) * 0.003); if (MA[i + 1] > y0 + 0.9) MA[i + 1] = y0 - 0.9; }
+  AR_Q.motes.geometry.attributes.position.needsUpdate = true;
+  const F = AR_Q.fx, FA = F.pts.geometry.attributes;
+  for (let i = 0; i < F.n; i++) {
+    if (F.life[i] <= 0) { FA.aAlpha.array[i] = 0; continue; }
+    F.life[i] -= dt * 0.9; const k = Math.max(0, F.life[i]);
+    FA.position.array[i * 3] += F.vel[i * 3] * dt; FA.position.array[i * 3 + 1] += F.vel[i * 3 + 1] * dt; FA.position.array[i * 3 + 2] += F.vel[i * 3 + 2] * dt;
+    F.vel[i * 3] *= 0.97; F.vel[i * 3 + 1] *= 0.97; F.vel[i * 3 + 2] *= 0.97; FA.aAlpha.array[i] = k;
+  }
+  FA.position.needsUpdate = FA.aAlpha.needsUpdate = FA.aSize.needsUpdate = FA.aCol.needsUpdate = true;
   AR_Q.captions.forEach((cp, idx, arr) => {                                                           // solo las 3 últimas se ven; las antiguas se desvanecen
     cp.age += dt; const newest = idx >= arr.length - 3;
     cp.sp.material.opacity += ((newest ? Math.min(1, cp.age * 1.2) : 0) - cp.sp.material.opacity) * Math.min(1, dt * 3);
   });
-  if (AR_Q.won) { AR_Q.winT += dt; AR_Q.ring.material.opacity = 0.8 + 0.2 * Math.sin(AR_Q.winT * 3); AR_Q.ring.scale.setScalar(1 + 0.012 * Math.sin(AR_Q.winT * 2)); }
+  AR_Q.ring.rotation.y += dt * 0.02 * (reduce ? 0 : 1);
+  if (AR_Q.won) { AR_Q.winT += dt; AR_Q.ring.material.uniforms.uOpacity.value = 1.1 + 0.5 * Math.sin(AR_Q.winT * 3); AR_Q.ring.scale.setScalar(1 + 0.012 * Math.sin(AR_Q.winT * 2)); if (!reduce && Math.random() < 0.3) { const a = Math.random() * 6.2832; arSpark(Math.cos(a) * AR_Q.R, AR_Q.ring.geometry.attributes.position.array[1], Math.sin(a) * AR_Q.R, 0xe7e4de, 1); } }
   if (AR_Q.hint) {
     AR_Q.hintT -= dt;
     AR_Q.hint.material.opacity += ((AR_Q.hintT > 0 ? 1 : 0) - AR_Q.hint.material.opacity) * Math.min(1, dt * 3);
@@ -3884,6 +4022,7 @@ xrController1.addEventListener('select', (event) => {
   if (window.isARSession) {
     if (window.arTryExit && window.arTryExit(xrController1)) return;               // botón SALIR AR flotante
     if (window.arQuipu && window.arQuipu.active) return;                            // en modo quipu el toque lee nudos, no coloca modelos
+    if (window.arTurtle && window.arTurtle.active) return;                          // en modo tortuga el toque siembra y riega
     const tempMatrix = new THREE.Matrix4();
     tempMatrix.identity().extractRotation(xrController1.matrixWorld);
     raycaster.ray.origin.setFromMatrixPosition(xrController1.matrixWorld);
@@ -4480,6 +4619,9 @@ const ACHIEVEMENTS = [
   { id: 'twoWorlds',    es: ['Dos mundos', 'Recorre el archivo ejecutivo y el universo 3D.'],         en: ['Two worlds', 'Explore both the executive archive and the 3D universe.'] },
   { id: 'reader',       es: ['Lector atento', 'Lee tres proyectos en el archivo ejecutivo.'],         en: ['Attentive reader', 'Read three projects in the executive archive.'] },
   { id: 'polyglot',     es: ['Políglota', 'Cambia el idioma del universo.'],                          en: ['Polyglot', 'Change the universe language.'] },
+  { id: 'colossus',     es: ['Primer coloso', 'Encuentra tu primer coloso.'],                       en: ['First colossus', 'Find your first colossus.'] },
+  { id: 'bestiary',     es: ['Bestiario de colosos', 'Encuentra los nueve colosos del universo.'],   en: ['Bestiary of colossi', 'Find all nine colossi of the universe.'],
+    reward: { es: 'Recompensa: el Bestiario completo', en: 'Reward: the complete Bestiary' } },
   { id: 'sovereignty', secret: true, es: ['Soberanía', 'Alcanza la madurez del sistema (100%).'], en: ['Sovereignty', 'Reach system maturity (100%).'], reward: { es: 'Insignia de Sistema', en: 'System Badge' } }
 ];
 const ACH = { got: Object.assign({}, readUnlocks().ach), initialLang: null, toggles: 0, open: false, lastLang: null };
@@ -4512,6 +4654,8 @@ slash:        '<g transform="rotate(45 12 12)"><path d="M12 .9l1 4.2v10.5h-2V5.1
   reader:       '<path d="M3.5 5.5C6 4.5 9.5 4.5 12 6c2.5-1.5 6-1.5 8.5-.5V19c-2.5-1-6-1-8.5.5-2.5-1.5-6-1.5-8.5-.5z" fill="currentColor" fill-opacity=".08"/><path d="M12 6v13.5"/>',
   polyglot:     '<path d="M3.5 4.5h11v8H8.5l-3 3v-3h-2z" fill="currentColor" fill-opacity=".1"/><path d="M9.5 14.5v1.5h5l3 3v-3h3v-8h-5"/>',
     sovereignty:  '<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>', // Geometría sublime apilada
+  colossus:     '<path d="M3 18c2-6 5-9 9-9s7 3 9 9z" fill="currentColor" fill-opacity=".12"/><circle cx="12" cy="6.5" r="1.8"/><path d="M9 18v-3M15 18v-3"/>',
+  bestiary:     '<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z" fill="currentColor" fill-opacity=".1"/><path d="M5 17a3 3 0 0 1 3-3h11"/><circle cx="12" cy="9" r="1.6"/><path d="M9 9h.1M15 9h.1"/>',
   secret:       '<circle cx="12" cy="12" r="9"/><path d="M9.4 9.6a2.6 2.6 0 1 1 3.6 2.4c-.8.4-1 .9-1 1.8"/><circle cx="12" cy="17" r=".9" fill="currentColor"/>',
   trophy:       '<path d="M8 4h8v5a4 4 0 0 1-8 0z" fill="currentColor" fill-opacity=".1"/><path d="M8 6H5v1.5A3 3 0 0 0 8 10.5M16 6h3v1.5A3 3 0 0 1 16 10.5"/><path d="M12 13v4M10 17h4v3.5h-4zM8.5 20.5h7"/>'
 
@@ -4521,10 +4665,12 @@ const ACH_CATS = {
   first: 'explore', cartographer: 'explore', anomaly: 'explore', core: 'explore',
   poetica: 'create', erratica: 'create', friccion: 'create', trio: 'create', retro: 'create', painter: 'create',
   combo: 'combat', boss: 'combat', untouched: 'combat', slash: 'combat', dispel: 'combat',
+  colossus: 'colossi', bestiary: 'colossi',
   hall: 'system', twoWorlds: 'system', reader: 'system', polyglot: 'system', sovereignty: 'system'
 };
 const ACH_CAT_LABEL = {
   explore: { es: 'Exploración', en: 'Exploration' }, create: { es: 'Creación', en: 'Creation' },
+  colossi: { es: 'Colosos', en: 'Colossi' },
   combat:  { es: 'Sincronización', en: 'Sync' },     system: { es: 'Sistema',   en: 'System' } // 🔥 Pasó de "Combate" a "Sincronización"
 };
 function achIconSVG(id) {
@@ -4753,6 +4899,7 @@ function buildAchievementsPanel() {
     if (e.target === p || e.target.closest('.ach-close')) { closeAchievements(); return; }
     const act = e.target.closest('[data-act]');
     if (act && act.dataset.act === 'inverted') toggleInvertedMode();
+    if (act && act.dataset.act === 'bestiary' && window.openBestiary) window.openBestiary();
   });
   // el panel no debe disparar acciones del juego (arrastre, clics sobre planetas)
   ['touchstart', 'touchmove', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'wheel'].forEach(evt => p.addEventListener(evt, (e) => e.stopPropagation(), { passive: true }));
@@ -4769,7 +4916,7 @@ function renderAchievementsPanel() {
     return `<li class="ach-item${has ? ' is-got' : ''}" data-id="${a.id}"><span class="ach-ico" aria-hidden="true">${achIconSVG(hidden ? 'secret' : a.id)}</span><div>
       <strong>${achEsc(hidden ? '???' : name)}</strong><span class="ach-desc">${achEsc(hidden ? (en ? 'A secret of the universe.' : 'Un secreto del universo.') : desc)}</span>${reward ? `<em>${achEsc(reward)}</em>` : ''}</div></li>`;
   };
-  const rows = ['explore', 'create', 'combat', 'system'].map(cat => {
+  const rows = ['explore', 'create', 'colossi', 'combat', 'system'].map(cat => {
     const items = ACHIEVEMENTS.filter(a => ACH_CATS[a.id] === cat);
     const n = items.filter(a => ACH.got[a.id]).length;
     return `<h3 class="ach-cat">${achEsc(ACH_CAT_LABEL[cat][en ? 'en' : 'es'])} <span>${n}/${items.length}</span></h3><ul>${items.map(rowHTML).join('')}</ul>`;
@@ -4780,6 +4927,9 @@ function renderAchievementsPanel() {
       <button type="button" class="ach-act" data-act="inverted">${inverted ? (en ? 'Dark mode' : 'Modo oscuro') : (en ? 'Activate' : 'Activar')}</button></li>`);
   if (ACH.got.sovereignty) rewards.push(`<li class="ach-reward"><span class="sov-emblem" style="width:1.6rem;height:1.6rem;display:block" aria-hidden="true">${sovereignEmblemSVG(false)}</span><div><strong>${en ? 'System Badge' : 'Insignia de Sistema'}</strong>
       <small>${en ? 'Shown in the header; a crown of pulses follows the Traveler.' : 'Se muestra en la cabecera; una corona de pulsos acompaña al Viajero.'}</small></div><span></span></li>`);
+  if (colossiCount() >= 1) rewards.push(`<li class="ach-reward"><span aria-hidden="true">🐾</span><div><strong>${en ? 'Bestiary of colossi' : 'Bestiario de colosos'} · ${colossiCount()}/${COLOSSI.length}</strong>
+      <small>${colossiCount() >= COLOSSI.length ? (en ? 'Complete: with the concept map.' : 'Completo: con el mapa de conceptos.') : (en ? 'Each colossus adds its entry; the concept map appears when all nine are found.' : 'Cada coloso suma su ficha; el mapa de conceptos aparece al encontrar los nueve.')}</small></div>
+      <button type="button" class="ach-act" data-act="bestiary">${en ? 'Open' : 'Abrir'}</button></li>`);
   if (window.pulseSword.unlocked) rewards.push(`<li class="ach-reward"><span aria-hidden="true">⚔</span><div><strong>${en ? 'Pulse sword' : 'Espada de pulsos'}</strong>
       <small>${en ? 'Press Q or the sword button: dispels the active creative mode.' : 'Pulsa Q o el botón de la espada: disipa el modo creativo activo.'}</small></div><span></span></li>`);
   p.innerHTML = `<div class="ach-box">
@@ -4829,6 +4979,8 @@ const ACH_CHECKS = {
   retro:        () => isRetroMode,
   painter:      () => !!window.isPainting,
   combo:        () => combatCombo >= 10,
+  colossus:     () => colossiCount() >= 1,
+  bestiary:     () => colossiCount() >= COLOSSI.length,
   boss:         () => !!window.pulseSword.unlocked,
  polyglot:     () => !!ACH.initialLang && window.currentLang !== ACH.initialLang,
   sovereignty:  () => achCount() >= ACHIEVEMENTS.length - 1
@@ -5331,7 +5483,7 @@ function updateTraveler() {
                    typeof isDraggingPlanet !== 'undefined' && isDraggingPlanet;
   let flareTarget = 0, falling = false, walking = false, lean = 0;
 
-  if ((window.isHogueraActive || window.isWhaleActive) && window.hgPose) {
+  if ((window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive)) && window.hgPose) {
     // ---- LA HOGUERA DE DATOS: el evento controla su pose (de espaldas a la cámara, junto al fuego) ----
     tg.position.copy(window.hgPose.pos);
     tg.quaternion.setFromEuler(_hgEuler.set(0, window.hgPose.yaw, 0));
@@ -5527,6 +5679,7 @@ renderer.setAnimationLoop((timestamp, frame) => {
   const session = isXR ? renderer.xr.getSession() : null;
   const isAR = isXR && window.isARSession; 
   if (isAR && window.arQuipuTick) window.arQuipuTick();
+  if (isAR && window.arTurtleTick) window.arTurtleTick();
 
   if (!isXR) { 
     if (window.spawnedObjects) {
@@ -5557,17 +5710,17 @@ renderer.setAnimationLoop((timestamp, frame) => {
  
   if (isPaused && !isXR) return; 
   // 🎮 Motor de los minijuegos (Sintonización y Telar de circuitos)
-  if ((window.isWiringGameActive || window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive)) && window.updateMiniGames) window.updateMiniGames();
+  if ((window.isWiringGameActive || window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) && window.updateMiniGames) window.updateMiniGames();
   const now = performance.now(); frames++;
   if (now >= lastTime + 1000) { if((frames * 1000 / (now - lastTime)) < 30) lowFPSCount++; else lowFPSCount = 0;
     // 🔥 ACTUALIZADOR DEL HUD DE COMBO EN TIEMPO REAL
   const comboUi = document.getElementById('combo-value');
-  if (comboUi && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive)) comboUi.innerText = 'x' + (typeof combatCombo !== 'undefined' ? combatCombo : 0);
+  if (comboUi && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) comboUi.innerText = 'x' + (typeof combatCombo !== 'undefined' ? combatCombo : 0);
     if(lowFPSCount > 3 && isBloomEnabled && !isXR) { isBloomEnabled = false; bloomPass.strength = 0; 
       document.getElementById('menu-bloom').innerText = '✨ Efecto Neón: OFF'; 
       document.getElementById('menu-bloom').style.color = '#888'; } frames = 0; lastTime = now; }
 
-  if (isShooting && isGameStarted && !isUIOpen && !isAR && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive)) { if (now - lastShotTime > FIRE_COOLDOWN) { fireLaser(); lastShotTime = now; } }
+  if (isShooting && isGameStarted && !isUIOpen && !isAR && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) { if (now - lastShotTime > FIRE_COOLDOWN) { fireLaser(); lastShotTime = now; } }
 
  // LÓGICA DE ACTUALIZACIÓN AR (CORREGIDA)
 if (isAR && frame && hitTestSource) {
@@ -6661,7 +6814,7 @@ showSystemToast('ANOMALÍA DETECTADA A TUS ESPALDAS', '#efeaea');           }
       }
     }
     updateTraveler();  
-if (!isAR && !(window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive))) {   // la red de energía no debe reaparecer dentro de un Juego Otro
+if (!isAR && !(window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive)))) {   // la red de energía no debe reaparecer dentro de un Juego Otro
   energyWebGroup.visible = !isAligned; 
   
   if (!isAligned) {
@@ -9030,18 +9183,41 @@ const MGS = {
     try { if (!audioCtx) playSound('ui'); } catch (e) {}
     return !!(audioCtx && masterGain);
   },
-  bell(freq, delay, dur, vol) {
+  _b: null,
+  bus() {                                                           // bus común: todo pasa por una sala grande y oscura (cola de ~3 s)
+    if (this._b && this._b.ctx === audioCtx) return this._b;
+    try {
+      const ctx = audioCtx, input = ctx.createGain(), wet = ctx.createGain(), conv = ctx.createConvolver();
+      const sr = ctx.sampleRate, len = Math.floor(sr * 3.2), buf = ctx.createBuffer(2, len, sr);
+      for (let c = 0; c < 2; c++) { const d = buf.getChannelData(c); let lp = 0; for (let i = 0; i < len; i++) { lp += ((Math.random() * 2 - 1) - lp) * 0.22; d[i] = lp * Math.pow(1 - i / len, 2.4) * 1.8; } }
+      conv.buffer = buf; wet.gain.value = 0.55;
+      input.connect(masterGain); input.connect(conv); conv.connect(wet); wet.connect(masterGain);
+      return (this._b = { ctx, input, wet });
+    } catch (e) { return (this._b = { ctx: audioCtx, input: masterGain, wet: null }); }
+  },
+  bell(freq, delay, dur, vol) {                                     // voz de cuerdas: dos arcos desafinados + un chelo una octava abajo, ataque suave y caída larga
     if (!this.ok()) return;
-    const now = audioCtx.currentTime + (delay || 0);
-    [[1, 1], [2.01, 0.28], [3.0, 0.1]].forEach(([m, g]) => {
-      const o = audioCtx.createOscillator(), gn = audioCtx.createGain();
-      o.type = 'sine'; o.frequency.value = freq * m;
-      gn.gain.setValueAtTime(0, now);
-      gn.gain.linearRampToValueAtTime(vol * g, now + 0.012);
-      gn.gain.exponentialRampToValueAtTime(0.0001, now + dur / m);
-      o.connect(gn); gn.connect(masterGain);
-      o.start(now); o.stop(now + dur + 0.05);
+    const ctx = audioCtx, B = this.bus(), now = ctx.currentTime + (delay || 0), atk = Math.min(0.28, 0.035 + dur * 0.05), end = now + Math.max(dur, atk + 0.2);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.5;
+    lp.frequency.setValueAtTime(Math.min(2600, freq * 1.5), now); lp.frequency.linearRampToValueAtTime(Math.min(3600, freq * 3.4), now + atk * 1.4); lp.frequency.exponentialRampToValueAtTime(Math.max(200, freq * 1.3), end);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, now); g.gain.linearRampToValueAtTime(vol * 0.85, now + atk); g.gain.exponentialRampToValueAtTime(0.0001, end);
+    lp.connect(g); g.connect(B.input);
+    let vg = null;
+    if (dur > 1.1) {                                                // vibrato lento que se abre a medida que la nota respira
+      const vib = ctx.createOscillator(); vib.frequency.value = 4.6 + Math.random() * 0.8; vg = ctx.createGain();
+      vg.gain.setValueAtTime(0, now); vg.gain.linearRampToValueAtTime(freq * 0.0045, now + Math.min(1.2, dur * 0.5)); vib.connect(vg); vib.start(now); vib.stop(end + 0.1);
+    }
+    [['sawtooth', 1, 0.0042, 0.34], ['sawtooth', 1, -0.0047, 0.34], ['triangle', 0.5, 0, 0.3], ['sine', 2, 0, 0.1]].forEach(([type, m, dt, gain]) => {
+      const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; o.frequency.value = freq * m * (1 + dt); og.gain.value = gain;
+      if (vg) vg.connect(o.frequency);
+      o.connect(og); og.connect(lp); o.start(now); o.stop(end + 0.1);
     });
+  },
+  ping(freq, delay, dur, vol) {                                     // una nota pura y lejana (el bip del Sputnik): seno con eco de sala
+    if (!this.ok()) return;
+    const ctx = audioCtx, B = this.bus(), now = ctx.currentTime + (delay || 0), o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = freq; g.gain.setValueAtTime(0.0001, now); g.gain.linearRampToValueAtTime(vol, now + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    o.connect(g); g.connect(B.input); o.start(now); o.stop(now + dur + 0.05);
   },
   arpeggio(idx, step, dur, vol) { idx.forEach((n, i) => this.bell(this.NOTES[n], i * step, dur, vol)); },
   knock() {                                                         // un golpe amortiguado, no un impacto eléctrico
@@ -9051,7 +9227,7 @@ const MGS = {
     o.frequency.setValueAtTime(130, now); o.frequency.exponentialRampToValueAtTime(62, now + 0.4);
     gn.gain.setValueAtTime(0, now); gn.gain.linearRampToValueAtTime(0.11, now + 0.01); gn.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
     o.connect(gn); gn.connect(masterGain); o.start(now); o.stop(now + 0.6);
-    this.bell(466.16, 0.02, 0.9, 0.012);                            // sombra levemente disonante
+    this.bell(233.08, 0.02, 1.6, 0.02);                             // sombra grave, levemente disonante
     vibrateDevice(35);
   }
 };
@@ -9222,6 +9398,9 @@ const MG = window.MG = {
     else if (window.isWiringGameActive) window.abortWiringGame();
     else if (window.isHogueraActive) window.abortHogueraGame();
     else if (window.isWhaleActive) window.abortWhaleGame();
+    else if (window.isSputnikActive) window.abortSputnikGame();
+    else if (window.isTortugaActive) window.abortTortugaGame();
+    else if (window.isColossusActive) window.abortColossusGame();
   },
 
   setHUD(ids) {
@@ -9236,6 +9415,9 @@ window.updateMiniGames = function() {
   if (window.isWiringGameActive) wgUpdate(dt);
   if (window.isHogueraActive) hgUpdate(dt);
   if (window.isWhaleActive) whUpdate(dt);
+  if (window.isSputnikActive) sptUpdate(dt);
+  if (window.isTortugaActive) trpUpdate(dt);
+  if (window.isColossusActive) colUpdate(dt);
 };
 
 // ============================================================
@@ -9296,6 +9478,126 @@ const REFL = {
       outro: { k: 'AN-ARCHAEOLOGY  ·  SUFFICIENCY', t: 'Enough',
         p: ['What you burned does not return. What you listened to, does.',
             'An-archaeology does not dig to accumulate: it listens to what the ruin still has to say.'] }
+    }
+  },
+  sputnik: {
+    es: {
+      intro: { k: 'JUEGO OTRO  ·  MATERIA Y MEMORIA', t: 'Un compañero de viaje',
+        p: ['Sputnik significa «compañero de viaje». Era una esfera pulida de 58 centímetros, con cuatro antenas y un transmisor que solo decía bip. Radioaficionados lo siguieron desde sus patios; duró 92 días en el cielo y se quemó al volver.',
+            'Una sonda dada de baja no es una máquina muerta: es un archivo que decide qué guarda, una voz que llega tarde y un cuerpo que se deja llevar. Encajar, transmitir, soltar.'] },
+      outro: { k: 'ANA-ARQUEOLOGÍA  ·  MEMORIA', t: 'Lo que se lleva',
+        p: ['Encajar lo roto, elegir qué enviar antes de que se apague, hablar con retraso y dejar ir: la memoria técnica no es almacenar, es cuidar con pérdida.',
+            'Una sonda dada de baja sigue diciendo algo mientras alguien se tome el tiempo de escuchar el bip.'] }
+    },
+    en: {
+      intro: { k: 'OTHER GAME  ·  MATTER AND MEMORY', t: 'A fellow traveler',
+        p: ['Sputnik means "fellow traveler". It was a polished 58-centimetre sphere with four antennae and a transmitter that only said beep. Radio amateurs followed it from their yards; it lasted 92 days in the sky and burned up on its return.',
+            'A decommissioned probe is not a dead machine: it is an archive that decides what to keep, a voice that arrives late and a body that lets itself be carried. Fit, transmit, let go.'] },
+      outro: { k: 'AN-ARCHAEOLOGY  ·  MEMORY', t: 'What is carried',
+        p: ['Fitting what is broken, choosing what to send before it goes dark, speaking with delay and letting go: technical memory is not storing, it is caring with loss.',
+            'A decommissioned probe keeps saying something as long as someone takes the time to listen to the beep.'] }
+    }
+  },
+  condor: {
+    es: {
+      intro: { k: 'JUEGO OTRO  ·  PEDAGOGÍA DEL PERMISO', t: 'Pedir permiso',
+        p: ['Un cóndor de ceniza vigila desde un risco. No se le puede perseguir: se aleja. Solo deja que te acerques cuando mira a otro lado, y solo si, mientras te mira, sabes quedarte quieto.', 'Enseñar y aprender también son umbrales: no se cruzan por empuje, se cruzan cuando el otro lo permite.'] },
+      outro: { k: 'DISEÑO DE SUFICIENCIA  ·  UMBRAL', t: 'Lo que se concede',
+        p: ['La confianza no se gana avanzando, se gana esperando bien. Una pluma de ceniza es lo que queda cuando alguien aceptó ser acompañado.', 'Una clase es un lugar donde alguien te deja acercarte a lo que sabe.'] }
+    },
+    en: {
+      intro: { k: 'OTHER GAME  ·  PEDAGOGY OF PERMISSION', t: 'Asking permission',
+        p: ['An ash condor watches from a cliff. It cannot be chased: it moves away. It lets you come near only when it looks elsewhere, and only if, while it looks at you, you can stay still.', 'Teaching and learning are thresholds too: they are not crossed by pushing, but when the other allows it.'] },
+      outro: { k: 'DESIGN OF SUFFICIENCY  ·  THRESHOLD', t: 'What is granted',
+        p: ['Trust is not earned by advancing, but by waiting well. A feather of ash is what remains when someone accepted company.', 'A class is a place where someone lets you come close to what they know.'] }
+    }
+  },
+  arbol: {
+    es: {
+      intro: { k: 'JUEGO OTRO  ·  MUTUALISMO', t: 'Una red de cuidado',
+        p: ['Un pewen —la araucaria sagrada del pueblo mapuche-pehuenche— cuyas raíces son racks de servidores alimenta sus ramas con esporas. Nadie puede encender todas a la vez: cada rama se apaga sola si no se la atiende.', 'Un laboratorio de investigación también es un ecosistema: lo que brilla, brilla porque otros alimentan lo que no se ve.'] },
+      outro: { k: 'ANA-ARQUEOLOGÍA  ·  CUIDADO', t: 'Nada brilla solo',
+        p: ['Repartir el cuidado es una forma de diseño. La red no se enciende con un gran gesto, sino con muchos pequeños y a tiempo.', 'Una investigación es una red que se mantiene viva mientras alguien la alimenta.'] }
+    },
+    en: {
+      intro: { k: 'OTHER GAME  ·  MUTUALISM', t: 'A network of care',
+        p: ['A pewen —the sacred araucaria of the Mapuche-Pehuenche people— whose roots are server racks feeds its branches with spores. Nobody can light them all at once: each branch dims on its own unless it is tended.', 'A research lab is also an ecosystem: what shines, shines because others feed what cannot be seen.'] },
+      outro: { k: 'ANA-ARCHAEOLOGY  ·  CARE', t: 'Nothing shines alone',
+        p: ['Sharing care is a form of design. The network is not lit by one grand gesture, but by many small ones, on time.', 'Research is a network that stays alive as long as someone feeds it.'] }
+    }
+  },
+  escarabajo: {
+    es: {
+      intro: { k: 'JUEGO OTRO  ·  HARDWARE COMO LENGUAJE', t: 'Cerrar el circuito',
+        p: ['Un escarabajo de componentes llega sin manual. Sus seis patas se ponen de acuerdo solo cuando alguien prueba, se equivoca y vuelve a probar hasta que aparece un compás común.', 'Construir hardware desde cero es aprender a escuchar a la materia: el error no es un fallo, es una pregunta.'] },
+      outro: { k: 'RETÓRICA PROCEDIMENTAL MATERIAL  ·  PRUEBA Y ERROR', t: 'Un compás común',
+        p: ['El argumento de un objeto no está en lo que dice, sino en lo que se puede hacer con él. Aquí, el paso es la tesis.', 'Una consola portátil es una frase escrita con cobre.'] }
+    },
+    en: {
+      intro: { k: 'OTHER GAME  ·  HARDWARE AS LANGUAGE', t: 'Closing the circuit',
+        p: ['A beetle of components arrives without a manual. Its six legs agree only when someone tries, errs, and tries again until a shared beat appears.', 'Building hardware from scratch is learning to listen to matter: error is not a failure, it is a question.'] },
+      outro: { k: 'MATERIAL PROCEDURAL RHETORIC  ·  TRIAL AND ERROR', t: 'A shared beat',
+        p: ['An object\'s argument is not in what it says but in what can be done with it. Here, the step is the thesis.', 'A portable console is a sentence written in copper.'] }
+    }
+  },
+  mariquita: {
+    es: {
+      intro: { k: 'JUEGO OTRO  ·  CURADURÍA Y EMERGENCIA', t: 'Curar sin controlar',
+        p: ['Un enjambre de fotogramas toma forma de catarina cuando recibe variedad de tonos: cada fotograma le pinta una mota. Tú invitas, pero no diriges: ella decide su rumbo y, cuando está completa, abre los élitros y se va.', 'Curar es elegir qué entra, y aceptar que lo curado ya no te pertenece.'] },
+      outro: { k: 'CO-CREACIÓN  ·  SUFICIENCIA', t: 'Dejar ir',
+        p: ['Una cinemateca guarda imágenes para que sigan vivas fuera de ella. La curaduría termina cuando la obra vuela.', 'Co-crear es dar forma junto a otros sin decidir el vuelo.'] }
+    },
+    en: {
+      intro: { k: 'OTHER GAME  ·  CURATION AND EMERGENCE', t: 'Curating without controlling',
+        p: ['A swarm of frames takes the shape of a ladybug when it receives a variety of tones: each frame paints it a spot. You invite, but you do not steer: it chooses its course and, when whole, it opens its shell and leaves.', 'To curate is to choose what comes in, and to accept that what is curated no longer belongs to you.'] },
+      outro: { k: 'CO-CREATION  ·  SUFFICIENCY', t: 'Letting go',
+        p: ['A film archive keeps images so that they stay alive outside it. Curation ends when the work flies.', 'To co-create is to shape together with others without deciding the flight.'] }
+    }
+  },
+  colibri: {
+    es: {
+      intro: { k: 'JUEGO OTRO  ·  EMPATÍA Y MEDIACIÓN', t: 'Escuchar el conflicto',
+        p: ['Un barbudito del páramo —colibrí de cresta erizada, tan pequeño en la vida real como colosal aquí— chilla entre la niebla porque tres voces a su alrededor no se oyen: la familia, el agua y la máquina. No se le vence: se escucha a cada voz, una a la vez, y mientras escuchas a una, las otras se tensan donde no miras.', 'Resolver un conflicto es repartir la atención de forma justa, y confiar en que quien es escuchado empieza a escuchar.'] },
+      outro: { k: 'GAMES FOR CHANGE  ·  ATENCIÓN EQUITATIVA', t: 'Nadie fue vencido',
+        p: ['Los juegos para el cambio no ganan contra el conflicto: lo acompañan hasta que cada parte puede descansar.', 'Un colibrí que canta bajito sobre un frailejón en flor es una regla que aprendiste a cumplir con cuidado.'] }
+    },
+    en: {
+      intro: { k: 'OTHER GAME  ·  EMPATHY AND MEDIATION', t: 'Listening to the conflict',
+        p: ['A páramo helmetcrest —a hummingbird with a bristling crest, as tiny in life as it is colossal here— shrieks in the mist because three voices around it cannot hear each other: the family, the water and the machine. He is not defeated: each voice is listened to, one at a time, and while you listen to one, the others tense where you are not looking.', 'To resolve a conflict is to share attention fairly, and to trust that whoever is heard begins to listen.'] },
+      outro: { k: 'GAMES FOR CHANGE  ·  EQUITABLE ATTENTION', t: 'No one was defeated',
+        p: ['Games for change do not win against conflict: they accompany it until each party can rest.', 'A hummingbird that sings softly on a blooming frailejón is a rule you learned to keep with care.'] }
+    }
+  },
+  medusa: {
+    es: {
+      intro: { k: 'JUEGO OTRO  ·  ESPACIO PARAMÉTRICO', t: 'Explorar un cuerpo posible',
+        p: ['Una medusa-leviatán es una función de tres perillas: frecuencia, densidad y fase. Entre las ciento veinticinco formas posibles, solo tres resuenan.', 'Trabajar con nodos y parámetros es explorar un espacio: no se busca la forma correcta, se escucha cuál se sostiene sola.'] },
+      outro: { k: 'MATERIA Y MEMORIA  ·  RESONANCIA', t: 'Entre muchas formas',
+        p: ['Lo paramétrico no es infinito, es habitable: algunas combinaciones cantan y las demás enseñan por contraste.', 'Una realidad virtual es un espacio de perillas donde el cuerpo aprende a escuchar.'] }
+    },
+    en: {
+      intro: { k: 'OTHER GAME  ·  PARAMETRIC SPACE', t: 'Exploring a possible body',
+        p: ['A leviathan jellyfish is a function of three dials: frequency, density and phase. Among a hundred and twenty-five possible shapes, only three resonate.', 'Working with nodes and parameters is exploring a space: you do not look for the right shape, you listen for the one that holds itself.'] },
+      outro: { k: 'MATTER AND MEMORY  ·  RESONANCE', t: 'Among many shapes',
+        p: ['The parametric is not infinite, it is inhabitable: some combinations sing and the others teach by contrast.', 'A virtual reality is a space of dials where the body learns to listen.'] }
+    }
+  },
+  tortuga: {
+    es: {
+      intro: { k: 'JUEGO OTRO  ·  ANCLAJE Y TIEMPO LENTO', t: 'Un jardín a cuestas',
+        p: ['Anclar es hacer que algo digital se quede en un lugar. En AR se hace con una superficie y una cámara; aquí, con tiempo. Una tortuga-planeta camina un paso cada treinta segundos y lleva un jardín en el caparazón.',
+            'No se puede acelerar. Se siembra, se da un sorbo de agua y se espera: demasiada agua también detiene. Lo que crece, crece también mientras no se mira, y es la misma tortuga que puede quedarse un rato sobre tu mesa.'] },
+      outro: { k: 'DISEÑO DE SUFICIENCIA  ·  CUIDADO', t: 'Lo que crece sin prisa',
+        p: ['Anclar una geometría al mundo no es clavarla: es acompañarla el tiempo que necesita. El cuidado es una mecánica de espera.',
+            'Una tortuga que ya floreció sigue caminando. El jardín no era para terminarlo, sino para que alguien lo atendiera.'] }
+    },
+    en: {
+      intro: { k: 'OTHER GAME  ·  ANCHORING AND SLOW TIME', t: 'A garden on its back',
+        p: ['To anchor is to make something digital stay in a place. In AR it takes a surface and a camera; here, it takes time. A turtle-planet takes one step every thirty seconds and carries a garden on its shell.',
+            'It cannot be hurried. You sow, give a sip of water and wait: too much water also stops it. What grows, grows even when nobody looks, and it is the same turtle that can rest for a while on your table.'] },
+      outro: { k: 'DESIGN OF SUFFICIENCY  ·  CARE', t: 'What grows without hurry',
+        p: ['Anchoring a geometry to the world is not nailing it down: it is keeping it company for as long as it needs. Care is a mechanic of waiting.',
+            'A turtle that has bloomed keeps walking. The garden was never meant to be finished, only tended.'] }
     }
   },
   ballena: {
@@ -9522,7 +9824,7 @@ function tgBuildUI() {
 }
 
 function tgStart(data) {
-  if (window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive)) return;
+  if (window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) return;
   const en = MG.isEN();
   window.isTuningGameActive = true;
   tuningData = data;
@@ -9548,7 +9850,7 @@ function tgStart(data) {
                      : 'Una señal se deshace en el ruido. Escucha dónde se aquieta.', '#e7e4de');
 }
 window.startTuningGame = function(data) {
-  if (MG.pending || window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive)) return;
+  if (MG.pending || window.isTuningGameActive || window.isWiringGameActive || (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) return;
   MG.pending = true;
   MG.reflect(MG.text('tuning', 'intro'), () => { MG.pending = false; tgStart(data); }, { cancelable: true, onCancel: () => { MG.pending = false; } });
 };
@@ -9890,7 +10192,10 @@ function wgUpdateLine(line, a, b) {
   line.geometry.attributes.position.needsUpdate = true;
 }
 
-// ---------- La tela: un canvas vertical (como un tejido colgado) que se teje de abajo hacia arriba ----------
+// ---------- El telar de partículas ----------
+//   La urdimbre son hilos verticales de luz fijos al bastidor; la lanzadera lleva la trama de lado a lado y cada pasada teje una fila,
+//   alternando sentido como en un telar de verdad. El patrón jalq'a aparece mientras se teje: la trama nace del color del hilo
+//   (caliente, brillante) y se asienta en rojo y negro. Los enredos de la urdimbre piden atención: se sueltan con un toque.
 function wgHexRgb(h) { return [(h >> 16) & 255, (h >> 8) & 255, h & 255]; }
 
 // Filas del patrón (0 = arriba) que teje el hilo g: se reparten de abajo hacia arriba entre todos los hilos
@@ -9899,248 +10204,275 @@ function wgThreadRows(g) {
   return [WG_ROWS - 1 - b, WG_ROWS - 1 - a];
 }
 
+const WG_CC = WG_PAL.map(c => [c[0] / 255, c[1] / 255, c[2] / 255]);
+const WG_NW = 90;                                                                // partículas por hilo de urdimbre
+const WG_TN = 28;                                                                // partículas por enredo
+
 function wgBuildCloth() {
-  const W = 640, H = 1024;
-  const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d');
-  const tex = new THREE.CanvasTexture(canvas);
-  if (THREE.SRGBColorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.25, depthWrite: false });
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
-  mesh.position.z = -0.8;
-  scene.add(mesh);
-  WG.cloth = { canvas, ctx, tex, mat, mesh, W, H, data: [], accT: 0, op: 0.25, sc: 1, glow: 0, pat: wgPattern() };
-  wgDrawCloth(0);
+  const b = wgBounds(), N = WG_COLS * WG_ROWS;
+  const H = Math.min(b.halfH * 2 * 0.84, (2 * b.halfH * b.aspect * 0.88) / 0.62), cs = H / WG_ROWS, W = cs * WG_COLS;
+  const grp = new THREE.Group(); grp.position.z = -0.8; scene.add(grp);
+  const L = { grp, cs, W, H, left: -W / 2, right: W / 2, top: H / 2, bottom: -H / 2, pat: wgPattern(), op: 0.3, sc: 1, glow: 0, t: 0, phase2: false,
+    rowP: new Float32Array(WG_ROWS), prevP: new Float32Array(WG_ROWS).fill(-1), rowDir: new Int8Array(WG_ROWS).fill(1), rowFade: new Float32Array(WG_ROWS), prevF: new Float32Array(WG_ROWS).fill(-1),
+    rowVivid: new Float32Array(WG_ROWS * 3).fill(1), tangles: [], unr: null, combFlash: 0, trailT: 0, glowPrev: 0,
+    sh: { j: 0, k: 0, passN: 0, active: false, row: WG_ROWS - 1, dir: 1, p: 0, wait: 1.2, tick: 0 }, label: null, labelKey: -1 };
+  // trama: una partícula por celda (se llena al tejer)
+  L.weft = mkGlowPoints(N);
+  const wp = L.weft.geometry.attributes.position.array;
+  for (let r = 0; r < WG_ROWS; r++) for (let c = 0; c < WG_COLS; c++) { const i = r * WG_COLS + c; wp[i * 3] = L.left + (c + 0.5) * cs; wp[i * 3 + 1] = L.top - (r + 0.5) * cs; wp[i * 3 + 2] = 0; }
+  // urdimbre: hilos verticales de partículas
+  const NWT = WG_COLS * WG_NW;
+  L.warp = mkGlowPoints(NWT);
+  const ap = L.warp.geometry.attributes, sp = (H + cs * 2.4) / WG_NW; L.warpRow = new Uint8Array(WG_NW); L.warpX = new Float32Array(WG_COLS);
+  for (let k = 0; k < WG_NW; k++) { const y = L.top + cs * 1.2 - (k + 0.5) * sp; L.warpRow[k] = Math.max(0, Math.min(WG_ROWS - 1, Math.floor((L.top - y) / cs))); }
+  for (let c = 0; c < WG_COLS; c++) { L.warpX[c] = L.left + (c + 0.5) * cs; for (let k = 0; k < WG_NW; k++) { const i = c * WG_NW + k; ap.position.array[i * 3] = L.warpX[c]; ap.position.array[i * 3 + 1] = L.top + cs * 1.2 - (k + 0.5) * sp; ap.position.array[i * 3 + 2] = -0.1; ap.aCol.array[i * 3] = 0.9; ap.aCol.array[i * 3 + 1] = 0.89; ap.aCol.array[i * 3 + 2] = 0.84; ap.aSize.array[i] = cs * 0.34; } }
+  // bastidor: postes y vigas como hilos de puntos tenues
+  const m = cs * 2.4, x0 = L.left - m, x1 = L.right + m, y0 = L.bottom - m, y1 = L.top + m, st = cs * 0.55;
+  const pts = [];
+  for (let y = y0; y <= y1; y += st) { pts.push([x0, y]); pts.push([x1, y]); }
+  for (let x = x0; x <= x1; x += st) { pts.push([x, y0]); pts.push([x, y1]); }
+  L.frame = mkGlowPoints(pts.length);
+  const fa = L.frame.geometry.attributes;
+  pts.forEach((p, i) => { fa.position.array[i * 3] = p[0]; fa.position.array[i * 3 + 1] = p[1]; fa.position.array[i * 3 + 2] = -0.2; fa.aCol.array[i * 3] = 0.9; fa.aCol.array[i * 3 + 1] = 0.88; fa.aCol.array[i * 3 + 2] = 0.82; fa.aSize.array[i] = cs * 0.5; fa.aAlpha.array[i] = 0.2 + 0.1 * ((i * 7) % 5) / 5; });
+  // peine (marca de la fila en curso)
+  L.comb = mkGlowPoints(WG_COLS * 2);
+  for (let i = 0; i < WG_COLS * 2; i++) { const c = i >> 1; L.comb.geometry.attributes.position.array[i * 3] = L.left + (c + 0.25 + 0.5 * (i & 1)) * cs; L.comb.geometry.attributes.aCol.array[i * 3] = 1; L.comb.geometry.attributes.aCol.array[i * 3 + 1] = 0.95; L.comb.geometry.attributes.aCol.array[i * 3 + 2] = 0.85; L.comb.geometry.attributes.aSize.array[i] = cs * 0.5; L.comb.geometry.attributes.aAlpha.array[i] = 0; }
+  // enredos (hasta 3 a la vez)
+  L.tang = mkGlowPoints(3 * WG_TN);
+  for (let i = 0; i < 3 * WG_TN; i++) { const a = L.tang.geometry.attributes; a.aCol.array[i * 3] = 1; a.aCol.array[i * 3 + 1] = 0.45; a.aCol.array[i * 3 + 2] = 0.55; a.aSize.array[i] = cs * 0.55; a.aAlpha.array[i] = 0; }
+  // lanzadera: un núcleo de luz con cola de puntos
+  const sh = new THREE.Group(); L.shGroup = sh;
+  L.shHalo = mkHalo(0xffffff, cs * 6, 0.9); sh.add(L.shHalo);
+  L.shCore = mkGlowPoints(10);
+  for (let i = 0; i < 10; i++) { const a = L.shCore.geometry.attributes; a.aCol.array[i * 3] = a.aCol.array[i * 3 + 1] = a.aCol.array[i * 3 + 2] = 1; a.aSize.array[i] = cs * (1.1 - i * 0.08); a.aAlpha.array[i] = 1 - i * 0.09; }
+  sh.add(L.shCore);
+  [L.weft, L.warp, L.frame, L.comb, L.tang, sh].forEach(o => grp.add(o));
+  WG.cloth = L; L.mesh = grp;
+  wgPaintRows(true);
 }
 
-function wgDrawCloth(t) {
-  const C = WG.cloth; if (!C) return;
-  const g = C.ctx, W = C.W, H = C.H, X0 = 56, Y0 = 80, CS = 12, pat = C.pat, glow = C.glow;
-  g.globalAlpha = 1;
-  g.clearRect(0, 0, W, H);
-  g.fillStyle = 'rgba(8,4,6,0.72)'; g.fillRect(0, 0, W, H);
-  // bastidor: postes y vigas
-  g.fillStyle = 'rgba(231,228,222,0.22)';
-  g.fillRect(14, 20, 16, H - 40); g.fillRect(W - 30, 20, 16, H - 40);
-  g.fillRect(14, 26, W - 28, 18); g.fillRect(14, H - 44, W - 28, 18);
-  // urdimbre: hilos verticales por los que corren datos
-  for (let c = 0; c < WG_COLS; c++) {
-    const x = X0 + (c + 0.5) * CS, a = 0.16 + 0.2 * (0.5 + 0.5 * Math.sin(t * 1.5 - c * 0.35));
-    g.fillStyle = `rgba(231,228,222,${a})`; g.fillRect(x - 0.7, 48, 1.4, H - 96);
-    g.fillStyle = 'rgba(231,228,222,0.5)';
-    g.beginPath(); g.arc(x, 38, 2.2, 0, 6.2832); g.fill(); g.beginPath(); g.arc(x, H - 34, 2.2, 0, 6.2832); g.fill();
-  }
-  // regla: un tramo por hilo, en el color vivo del hilo cuando ya está tejido
-  for (let k = 0; k < WG.total; k++) {
-    const rr = wgThreadRows(k), e = C.data.find(d => d.t === k && d.removeT < 0);
-    g.fillStyle = e ? `rgb(${e.vivid[0]},${e.vivid[1]},${e.vivid[2]})` : 'rgba(231,228,222,0.14)';
-    g.fillRect(34, Y0 + rr[0] * CS + 1, 9, (rr[1] - rr[0] + 1) * CS - 2);
-  }
-  // trama tejida: sarga suave; rojo y negro, con acentos claros y hueso
-  for (let i = 0; i < C.data.length; i++) {
-    const e = C.data[i], fade = e.removeT >= 0 ? 1 - e.removeT : 1;
-    if (fade <= 0) continue;
-    g.globalAlpha = fade;
-    const upto = Math.min(WG_COLS, Math.ceil(e.p * WG_COLS - 1e-6));
-    for (let r = e.r0; r <= e.r1; r++) {
-      const y = Y0 + r * CS;
-      for (let c = 0; c < upto; c++) {
-        const v = pat[r * WG_COLS + c], over = ((c + r) & 3) !== 0 ? 1 : 0;
-        let sty = WG_STY[v][over];
-        if (glow > 0 && (v === 1 || v === 2)) {                              // el patrón pulsa al terminar
-          const br = 1 + glow * 0.28 * (0.5 + 0.5 * Math.sin(t * 3 - (r + c) * 0.35)), col = WG_PAL[v], k = over ? 1 : 0.82;
-          sty = `rgb(${Math.min(255, col[0] * br * k) | 0},${Math.min(255, col[1] * br * k) | 0},${Math.min(255, col[2] * br * k) | 0})`;
-        }
-        g.fillStyle = sty; g.fillRect(X0 + c * CS + 0.4, y + 0.4, CS - 0.8, CS - 0.8);
-      }
-    }
-    const hgt = (e.r1 - e.r0 + 1) * CS, yy = Y0 + e.r0 * CS;
-    if (upto > 0) { g.fillStyle = `rgb(${e.vivid[0]},${e.vivid[1]},${e.vivid[2]})`; g.fillRect(46, yy + 2, 8, hgt - 4); }          // orillo vivo
-    if (e.p >= 1) { g.fillStyle = `rgb(${e.vivid[0]},${e.vivid[1]},${e.vivid[2]})`; g.fillRect(W - 54, yy + 2, 8, hgt - 4); }
-    if (e.flash > 0 && upto > 0) { g.fillStyle = `rgba(255,255,255,${e.flash * 0.3})`; g.fillRect(X0, yy, upto * CS, hgt); }
-    if (e.p < 1) {                                                              // la lanzadera cruza la urdimbre
-      const sx = X0 + e.p * WG_COLS * CS;
-      g.shadowColor = '#fff0d2'; g.shadowBlur = 14;
-      g.fillStyle = 'rgba(255,240,210,0.95)'; g.fillRect(sx - 8, yy + 3, 16, hgt - 6);
-      g.shadowBlur = 0;
+function wgRowY(L, r) { return L.top - (r + 0.5) * L.cs; }
+
+// Recalcula el color/tamaño de las celdas de una fila (solo si cambió su progreso o su desvanecido)
+function wgPaintRows(force) {
+  const L = WG.cloth; if (!L) return; const A = L.weft.geometry.attributes, cs = L.cs, pat = L.pat, gl = L.glow, t = L.t; let dirty = false;
+  for (let r = 0; r < WG_ROWS; r++) {
+    const P = L.rowP[r], F = L.rowFade[r];
+    if (!force && P === L.prevP[r] && F === L.prevF[r] && gl <= 0 && L.glowPrev <= 0) continue;
+    L.prevP[r] = P; L.prevF[r] = F; dirty = true;
+    const dir = L.rowDir[r], vr = L.rowVivid[r * 3], vg = L.rowVivid[r * 3 + 1], vb = L.rowVivid[r * 3 + 2];
+    for (let c = 0; c < WG_COLS; c++) {
+      const i = r * WG_COLS + c, frac = dir > 0 ? (c + 0.5) / WG_COLS : (WG_COLS - c - 0.5) / WG_COLS, v = pat[i];
+      if (frac > P + 1e-4 || F >= 1) { A.aAlpha.array[i] = 0; continue; }                          // aún sin tejer
+      const heat = Math.max(0, 1 - (P - frac) / 0.16), over = ((c + r) & 3) !== 0, cc = WG_CC[v];
+      let k = over ? 1 : 0.78;
+      if (gl > 0 && (v === 1 || v === 2)) k *= 1 + gl * 0.3 * (0.5 + 0.5 * Math.sin(t * 3 - (r + c) * 0.35));
+      const hm = heat * 0.85;
+      A.aCol.array[i * 3] = Math.min(1.4, cc[0] * k) * (1 - hm) + vr * hm; A.aCol.array[i * 3 + 1] = Math.min(1.4, cc[1] * k) * (1 - hm) + vg * hm; A.aCol.array[i * 3 + 2] = Math.min(1.4, cc[2] * k) * (1 - hm) + vb * hm;
+      A.aSize.array[i] = cs * (over ? 1.18 : 0.92) * (1 + 0.45 * heat);
+      A.aAlpha.array[i] = (v === 0 ? 0.62 : 0.9) * (1 - F);
     }
   }
-  g.globalAlpha = 1;
-  C.tex.needsUpdate = true;
+  L.glowPrev = gl;
+  if (dirty) { A.aCol.needsUpdate = A.aSize.needsUpdate = A.aAlpha.needsUpdate = true; }
+}
+
+// La partida: la lanzadera avanza hacia donde apunta el puntero, con su propio ritmo; los enredos la detienen si no se soltaron
+function wgBeginPass() {
+  const L = WG.cloth, S = L.sh, g = WG.roundStart + S.j, pair = WG.pairs[S.j], rows = wgThreadRows(g);
+  S.row = rows[1] - S.k; S.dir = (S.passN % 2 === 0) ? 1 : -1; S.p = 0; S.active = true; S.tick = 0;
+  const v = wgHexRgb(pair.color); L.rowVivid[S.row * 3] = v[0] / 255; L.rowVivid[S.row * 3 + 1] = v[1] / 255; L.rowVivid[S.row * 3 + 2] = v[2] / 255;
+  L.rowDir[S.row] = S.dir; L.rowP[S.row] = 0;
+  if (L.labelKey !== g) {                                                                           // el nombre del hilo acompaña a la lanzadera
+    if (L.label) { L.shGroup.remove(L.label); mgDispose(L.label); }
+    L.label = createTextSprite(pair.id[MG.isEN() ? 'en' : 'es'], '#' + pair.color.toString(16).padStart(6, '0'), 30); L.label.scale.set(6, 1.5, 1); L.label.position.set(0, L.cs * 3, 0); L.shGroup.add(L.label); L.labelKey = g;
+  }
+  L.tangles.length = 0;
+  const R = Math.min(2, WG.round), first = WG.woven === 0;
+  let n = first ? (S.k === 2 ? 1 : 0) : (Math.random() < [0.22, 0.34, 0.46][R] ? 1 : 0) + (Math.random() < [0, 0.12, 0.28][R] ? 1 : 0);
+  const fs = [];
+  for (let i = 0; i < n; i++) { let f = 0.2 + Math.random() * 0.62, tries = 0; while (fs.some(q => Math.abs(q - f) < 0.22) && tries++ < 20) f = 0.2 + Math.random() * 0.62; fs.push(f); }
+  fs.sort((a, b) => a - b).forEach(f => {
+    const x = S.dir > 0 ? L.left + f * L.W : L.right - f * L.W;
+    L.tangles.push({ f, x, y: wgRowY(L, S.row), state: 'live', a: 0, snagT: 0, ph: Math.random() * 6 });
+  });
+}
+
+function wgUntangle(t) {
+  t.state = 'gone';
+  MG.fx.burst(t.x, t.y, 0, 16, 2.2, 1.4, PAL.gold, 0.22, 0.85); MG.pulse(t.x, t.y, PAL.gold, 0.6, 3, 0.9, 0.4);
+  MGS.bell(MGS.NOTES[4] * 2, 0, 1.0, 0.03); vibrateDevice(12);
+}
+
+function wgThreadDone() {
+  const L = WG.cloth, S = L.sh, g = WG.woven, pair = WG.pairs[S.j], hex = pair.color, vivid = wgHexRgb(hex), rr = wgThreadRows(g), pat = L.pat;
+  let red = 0; for (let r = rr[0]; r <= rr[1]; r++) for (let c = 0; c < WG_COLS; c++) { const v = pat[r * WG_COLS + c]; if (v === 1 || v === 2) red++; }
+  WG.threads[g] = { hex, vivid, v10: Math.round(red / (rr[1] - rr[0] + 1)), round: WG.round };       // 0–44: promedio de rojo por fila
+  const yc = (wgRowY(L, rr[0]) + wgRowY(L, rr[1])) / 2;
+  for (let i = 0; i < 7; i++) MG.fx.burst(L.left + (i + 0.5) / 7 * L.W, yc, 0, 6, 2, 1.6, hex, 0.24, 0.85);
+  MG.pulse(0, yc, hex, 1.5, 9, 1.4, 0.4);
+  WG.woven++; WG.roundConn++; S.j++; S.k = 0;
+  window.currentConnections = WG.roundConn; WG.uiDirty = true;
+  const note = MGS.NOTES[g % 6] * (g >= 9 ? 2 : 1);                                                // la melodía sube con la tela
+  MGS.bell(note, 0, 2.4, 0.055); MGS.bell(note * 1.5, 0.09, 1.8, 0.025);
+  if (WG.roundConn >= WG.pairsNow) wgRoundDone();
+}
+
+function wgLoomPlay(dt, calm) {
+  const L = WG.cloth, S = L.sh; if (!L) return;
+  L.combFlash = Math.max(0, L.combFlash - dt * 2.5);
+  L.tangles.forEach(t => {
+    t.a = t.state === 'gone' ? Math.max(0, t.a - dt * 3) : Math.min(1, t.a + dt * 1.8);
+    if (t.state === 'snag') { t.snagT -= dt; if (t.snagT <= 0) { t.state = 'gone'; MG.fx.burst(t.x, t.y, 0, 10, 1.6, 1.0, PAL.rose, 0.2, 0.7); } }
+  });
+  if (WG.state !== 'play') return;
+  if (!S.active) {
+    S.wait -= dt;
+    if (S.wait <= 0 && S.j < WG.pairsNow) wgBeginPass();
+    return;
+  }
+  const before = S.p;
+  if (WG.pull) {
+    const want = Math.max(0, Math.min(1, S.dir > 0 ? (WG.ptr.x - L.left) / L.W : (L.right - WG.ptr.x) / L.W));
+    if (want > S.p) S.p = Math.min(want, S.p + 1.15 * dt);                                              // la lanzadera lleva su propio ritmo
+  }
+  for (const t of L.tangles) {                                                                          // un enredo sin soltar detiene la lanzadera
+    if (t.state === 'gone' || t.f < before - 0.02) continue;
+    if (S.p >= t.f - 0.012) { S.p = t.f - 0.012; if (t.state === 'live') { t.state = 'snag'; t.snagT = 0.6; wgShort(t.x, t.y); } }
+    break;
+  }
+  if (S.p > before) {
+    const col = Math.floor(S.p * WG_COLS);
+    if (col >= S.tick + 5) { S.tick = col; MGS.bell(MGS.NOTES[(S.row + col) % 6] * (S.dir > 0 ? 1 : 0.5), 0, 0.5, 0.007); }
+    L.trailT -= dt;
+    if (!calm && L.trailT <= 0 && WG.pairs[S.j]) { L.trailT = 0.028; const x = S.dir > 0 ? L.left + S.p * L.W : L.right - S.p * L.W; MG.fx.emit(x, wgRowY(L, S.row), 0, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.9, 0, 1.0, WG.pairs[S.j].color, 0.2, 0.6, 1.4); }
+  }
+  L.rowP[S.row] = S.p;
+  if (S.p >= 0.995) {                                                                                   // pasada completa: el peine golpea la fila
+    L.rowP[S.row] = 1; S.active = false; S.passN++; S.k++; S.wait = 0.32; L.combFlash = 1;
+    MGS.bell(MGS.NOTES[(S.row) % 6] / 2, 0, 0.9, 0.02);
+    MG.pulse(0, wgRowY(L, S.row), 0xe7e4de, 1.5, 6, 0.7, 0.18);
+    const g = WG.roundStart + S.j, rows = wgThreadRows(g);
+    if (S.k >= rows[1] - rows[0] + 1) wgThreadDone();
+  }
 }
 
 function wgUpdateCloth(dt, calm) {
-  const C = WG.cloth; if (!C) return;
-  let busy = false;
-  for (let i = C.data.length - 1; i >= 0; i--) {
-    const r = C.data[i];
-    if (r.p < 1) { r.p = Math.min(1, r.p + dt / 0.9); busy = true; }
-    if (r.flash > 0) { r.flash = Math.max(0, r.flash - dt * 1.5); busy = true; }
-    if (r.removeT >= 0) { r.removeT += dt / 0.8; busy = true; if (r.removeT >= 1) C.data.splice(i, 1); }
-  }
-  C.glow = WG.state === 'quipuWon' ? Math.min(1, WG.winT / 1.5) : 0;
-  C.accT += dt;
-  if (busy || C.glow > 0) { C.accT = 0; wgDrawCloth(WG.t); }
-  else if (!calm && C.accT > 0.12) { C.accT = 0; wgDrawCloth(WG.t); }          // brillo suave que recorre la urdimbre
-  const fill = WG.woven / Math.max(1, WG.total);
-  const tgt = WG.state === 'quipuWon' ? 0.85 : (WG.phase === 2 ? 0.3 : (WG.state === 'roundWon' || WG.state === 'leave' ? 0.75 : 0.22 + 0.32 * fill));
-  C.op += (tgt - C.op) * Math.min(1, dt * 2.5);
-  C.mat.opacity = C.op;
-  const b = wgBounds(), ch = Math.min(b.halfH * 2 * 0.92, (2 * b.halfH * b.aspect * 0.94) / 0.625);   // tejido colgado: vertical, 5:8
-  const tsc = WG.state === 'quipuWon' ? 1.04 : 1;
-  C.sc += (tsc - C.sc) * Math.min(1, dt * 1.5);
-  C.mesh.scale.set(ch * 0.625 * C.sc, ch * C.sc, 1);
-}
+  const L = WG.cloth; if (!L) return;
+  L.t += dt; const t = L.t, S = L.sh, cs = L.cs;
+  if (WG.phase === 1) wgLoomPlay(dt, calm);
+  const phase1 = WG.phase === 1;
+  if (L.unr) { L.unr.t = Math.min(1, L.unr.t + dt / 0.8); for (let r = L.unr.r0; r <= L.unr.r1; r++) L.rowFade[r] = L.unr.t; }      // el mundo se desanuda
+  L.glow = WG.state === 'quipuWon' ? Math.min(1, WG.winT / 1.5) : 0;
+  wgPaintRows(false);
+  const tgt = WG.state === 'quipuWon' ? 0.9 : (phase1 ? (WG.state === 'roundWon' || WG.state === 'leave' ? 0.95 : 0.85) : 0.3);
+  L.op += (tgt - L.op) * Math.min(1, dt * 2.5);
+  L.weft.material.uniforms.uOpacity.value = L.op; L.warp.material.uniforms.uOpacity.value = L.op; L.frame.material.uniforms.uOpacity.value = L.op * 0.8;
+  L.sc += ((WG.state === 'quipuWon' ? 1.04 : 1) - L.sc) * Math.min(1, dt * 1.5); L.grp.scale.set(L.sc, L.sc, 1);
 
-function wgMakeNode(pair, pi, p, s) {
-  const en = MG.isEN();
-  const node = new THREE.Group();
-  const geo = pair.geo();
-  const mat = new THREE.MeshBasicMaterial({ color: pair.color, wireframe: true, transparent: true, opacity: 0.8 });
-  const fillMat = new THREE.MeshBasicMaterial({ color: pair.color, transparent: true, opacity: 0.08, depthWrite: false });
-  const body = new THREE.Mesh(geo, mat);          // solo el cuerpo gira: la etiqueta no orbita
-  const fill = new THREE.Mesh(geo, fillMat); fill.scale.setScalar(0.97);
-  body.add(fill);
-  node.add(body);
-  const halo = mkHalo(pair.color, 5.5, 0.2); halo.position.z = -0.4; node.add(halo);
-  const label = createTextSprite(pair.id[en ? 'en' : 'es'], '#' + pair.color.toString(16).padStart(6, '0'), 24);
-  label.position.set(0, -2.1, 0); node.add(label);
-  const hit = new THREE.Mesh(new THREE.SphereGeometry(2.3, 8, 8), new THREE.MeshBasicMaterial({ visible: false }));
-  hit.userData.node = node; node.add(hit);
-  node.position.copy(p); node.scale.setScalar(0.001);
-  node.userData = { pair: pi, connected: false, base: p.clone(), phase: Math.random() * 6.28, mat, fillMat, body, halo, flash: 0, pop: 0, appear: -Math.random() * 0.4, baseColor: new THREE.Color(pair.color) };
-  scene.add(node);
-  WG.nodes.push(node); WG.hits.push(hit);
+  // urdimbre: corre una luz suave por los hilos; la tejida se atenúa; cerca de la lanzadera los hilos se agitan
+  const A = L.warp.geometry.attributes, colF = S.active ? (S.dir > 0 ? S.p * WG_COLS : (1 - S.p) * WG_COLS) : -99;
+  for (let c = 0; c < WG_COLS; c++) {
+    const fr = (c + 0.5) / WG_COLS, near = Math.abs(c - colF) < 4;
+    for (let k = 0; k < WG_NW; k++) {
+      const i = c * WG_NW + k, r = L.warpRow[k], dir = L.rowDir[r], frac = dir > 0 ? fr : 1 - fr, woven = frac <= L.rowP[r] + 1e-4 && L.rowP[r] > 0 && L.rowFade[r] < 1;
+      let a = 0.14 + (calm ? 0 : 0.12 * Math.sin(t * 1.4 - c * 0.35 + k * 0.13));
+      if (woven) a *= 0.3;
+      A.aAlpha.array[i] = a;
+      A.position.array[i * 3] = L.warpX[c] + ((near && Math.abs(r - S.row) <= 1 && !calm) ? Math.sin(t * 14 + k * 2 + c) * cs * 0.18 * (1 - Math.abs(c - colF) / 4) : 0);
+    }
+  }
+  A.aAlpha.needsUpdate = A.position.needsUpdate = true;
+
+  // peine, enredos y lanzadera
+  const CA = L.comb.geometry.attributes, show = phase1 && WG.state === 'play';
+  for (let i = 0; i < WG_COLS * 2; i++) { CA.position.array[i * 3 + 1] = wgRowY(L, S.row) + cs * 0.55; CA.aAlpha.array[i] = show ? (0.18 + 0.1 * Math.sin(t * 3 + i * 0.4) + L.combFlash * 0.7) : 0; }
+  CA.position.needsUpdate = CA.aAlpha.needsUpdate = true;
+  const TA = L.tang.geometry.attributes;
+  for (let n = 0; n < 3; n++) {
+    const tg = L.tangles[n];
+    for (let j = 0; j < WG_TN; j++) {
+      const i = n * WG_TN + j;
+      if (!tg || !phase1) { TA.aAlpha.array[i] = 0; continue; }
+      const a = j / WG_TN * 6.2832 * 2 + t * (1.4 + (j % 3) * 0.5) + tg.ph, rr = cs * (0.5 + 1.4 * ((j * 7) % 11) / 11) * (tg.state === 'snag' ? 1.4 : 1);
+      TA.position.array[i * 3] = tg.x + Math.cos(a) * rr; TA.position.array[i * 3 + 1] = tg.y + Math.sin(a * 1.3) * rr * 0.8; TA.position.array[i * 3 + 2] = 0.2;
+      TA.aAlpha.array[i] = tg.a * (0.45 + 0.4 * Math.sin(t * 5 + j)) * (tg.state === 'snag' ? 1 : 0.9);
+    }
+  }
+  TA.position.needsUpdate = TA.aAlpha.needsUpdate = true;
+  const pair = WG.pairs[S.j], hex = pair ? pair.color : 0xffffff, sv = wgHexRgb(hex);
+  const sx = S.dir > 0 ? L.left + S.p * L.W : L.right - S.p * L.W, idleX = (S.passN % 2 === 0) ? L.left : L.right;
+  L.shGroup.visible = phase1 && !!pair;
+  const wantX = S.active ? sx : idleX, wantY = wgRowY(L, S.active ? S.row : Math.max(0, S.row - (S.k === 0 && S.j > 0 ? 0 : 0)));
+  L.shGroup.position.x += (wantX - L.shGroup.position.x) * Math.min(1, dt * 10); L.shGroup.position.y += (wantY - L.shGroup.position.y) * Math.min(1, dt * 10);
+  L.shHalo.material.color.setHex(hex); L.shHalo.material.opacity = 0.55 + 0.25 * Math.sin(t * 5) + (WG.pull ? 0.2 : 0);
+  const CP = L.shCore.geometry.attributes;
+  for (let i = 0; i < 10; i++) { CP.position.array[i * 3] = -S.dir * i * cs * 0.55; CP.position.array[i * 3 + 1] = Math.sin(t * 9 + i) * cs * 0.18; CP.aCol.array[i * 3] = 0.6 + 0.4 * sv[0] / 255; CP.aCol.array[i * 3 + 1] = 0.6 + 0.4 * sv[1] / 255; CP.aCol.array[i * 3 + 2] = 0.6 + 0.4 * sv[2] / 255; }
+  CP.position.needsUpdate = CP.aCol.needsUpdate = true;
 }
 
 function wgBuild() {
   wgClear();
-  const n = WG.rounds[WG.round];
+  const L = WG.cloth, n = WG.rounds[WG.round];
   WG.pairsNow = n;
-  const idx = WG_PAIRS.map((_, i) => i).sort(() => Math.random() - 0.5).slice(0, n);   // n tipos distintos al azar
+  const idx = WG_PAIRS.map((_, i) => i).sort(() => Math.random() - 0.5).slice(0, n);   // n tipos distintos al azar: sus nombres y colores son los de cada hilo
   WG.pairs = idx.map(i => WG_PAIRS[i]);
-  const b = wgBounds();
-  WG.scale = Math.max(0.5, Math.min(1, b.hw / 8)) * (n > 7 ? 0.9 : 1);
-  const minD = Math.min(4.2, Math.sqrt((b.hw * 2 * b.hh * 2) / (n * 2)) * 0.75);
-  const pool = wgSample(n * 2, b.hw, b.hh, minD);
-  WG.pairs.forEach((pair, pi) => {
-    const a = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
-    pool.sort((p, q) => q.distanceTo(a) - p.distanceTo(a));
-    const c = pool.splice(Math.floor(Math.random() * Math.ceil(pool.length / 2)), 1)[0];
-    wgMakeNode(pair, pi, a, WG.scale); wgMakeNode(pair, pi, c, WG.scale);
-  });
+  WG.scale = 1;
+  WG.roundStart = WG.rounds.slice(0, WG.round).reduce((a, b) => a + b, 0);
+  const r0 = wgThreadRows(WG.roundStart + n - 1)[0], r1 = wgThreadRows(WG.roundStart)[1];     // filas de este mundo: se reinician si se desanuda
+  for (let r = r0; r <= r1; r++) { L.rowP[r] = 0; L.rowFade[r] = 0; }
+  L.unr = null; L.tangles.length = 0; L.labelKey = -1;
+  L.sh.j = 0; L.sh.k = 0; L.sh.active = false; L.sh.wait = 0.9; L.sh.p = 0; L.sh.row = r1;
   window.currentConnections = 0; window.maxConnections = n;
-  WG.roundConn = 0; WG.shorts = 0; WG.state = 'play'; WG.uiDirty = true;
+  WG.roundConn = 0; WG.shorts = 0; WG.pull = false; WG.state = 'play'; WG.uiDirty = true;
 }
-
-function wgPick() {
-  dragRaycaster.setFromCamera(mouseNDC, camera);
-  const hits = dragRaycaster.intersectObjects(WG.hits, false);
-  return hits.length ? hits[0].object.userData.node : null;
-}
-function wgPointerWorld() { MG.pointerWorld(WG.ptr); }
 
 window.wiringDown = function(cx, cy) {
-  if (WG.phase === 2) {                                   // quipu: un nuevo toque no debe "arrastrar" desde el toque anterior
-    MG.setPointer(cx, cy); wgPointerWorld(); WG.prevPtr.copy(WG.ptr); return;
-  }
-  if (WG.state !== 'play' || WG.drag) return;
-  MG.setPointer(cx, cy);
-  const node = wgPick();
-  if (!node || node.userData.connected || node.userData.appear < 0.6) return;
-  WG.drag = { node, line: wgNewLine(node.userData.baseColor.getHex(), 0.75), end: node.position.clone() };
-  wgPointerWorld();
-  MGS.bell(MGS.NOTES[node.userData.pair % 6] * 2, 0, 0.6, 0.022);
-  MG.pulse(node.position.x, node.position.y, node.userData.baseColor.getHex(), 1.4, 4.2, 0.9, 0.4);
+  MG.setPointer(cx, cy); wgPointerWorld();
+  if (WG.phase === 2) { WG.prevPtr.copy(WG.ptr); return; }                    // quipu: un nuevo toque no debe "arrastrar" desde el toque anterior
+  const L = WG.cloth; if (WG.state !== 'play' || !L) return;
+  const R = MG.isTouch() ? 2.4 : 1.7;
+  let best = null, bd = R;
+  L.tangles.forEach(t => { if (t.state !== 'live') return; const d = Math.hypot(t.x - WG.ptr.x, t.y - WG.ptr.y); if (d < bd) { bd = d; best = t; } });
+  if (best) { wgUntangle(best); return; }                                      // tocar un enredo lo suelta
+  WG.pull = true;
 };
 
-window.wiringMove = function(cx, cy) {
-  if (WG.phase === 2) { MG.setPointer(cx, cy); wgPointerWorld(); return; }
-  if (!WG.drag) return;
-  MG.setPointer(cx, cy);
-  wgPointerWorld();
-  const n = wgPick();
-  WG.hover = (n && n !== WG.drag.node && !n.userData.connected) ? n : null;
-  if (WG.hover && WG.hover !== WG.lastHover) MGS.bell(1568, 0, 0.4, 0.012);
-  WG.lastHover = WG.hover;
-};
+window.wiringMove = function(cx, cy) { MG.setPointer(cx, cy); wgPointerWorld(); };
 
-window.wiringUp = function() {
-  if (WG.phase === 2) return;
-  const d = WG.drag; if (!d) return;
-  const n = wgPick();
-  const tgt = (n && n !== d.node && !n.userData.connected) ? n : null;
-  WG.drag = null; WG.hover = null; WG.lastHover = null;
-  if (!tgt) { mgDispose(d.line); return; }                 // soltar en el vacío: sin penalización
-  if (tgt.userData.pair === d.node.userData.pair) wgConnect(d.node, tgt, d.line);
-  else wgShort(d.node, tgt, d.line, d.end);
-};
+window.wiringUp = function() { WG.pull = false; };
 
-function wgConnect(a, b, line) {
-  const pi = a.userData.pair, hex = WG.pairs[pi].color;
-  line.material.opacity = 0.5;
-  line.material.color.setHex(hex);
-  const motes = mkGlowPoints(WG_MOTES);
-  const at = motes.geometry.attributes;
-  _fxc.setHex(hex);
-  for (let i = 0; i < WG_MOTES; i++) { at.aCol.array[i * 3] = _fxc.r; at.aCol.array[i * 3 + 1] = _fxc.g; at.aCol.array[i * 3 + 2] = _fxc.b; }
-  scene.add(motes);
-  WG.cables.push({ a, b, line, motes, flow: Math.random(), speed: 0.12 });
-  [a, b].forEach(n => {
-    const u = n.userData; u.connected = true; u.pop = 1;
-    u.mat.wireframe = false; u.mat.opacity = 0.95; u.mat.color.copy(u.baseColor).multiplyScalar(1.2);
-    MG.fx.burst(n.position.x, n.position.y, 0, 22, 2.4, 1.8, hex, 0.24, 0.85);
-    MG.pulse(n.position.x, n.position.y, hex, 1.2, 5.2, 1.3, 0.5);
-  });
-  // el hilo se teje: sus filas del patrón aparecen (de abajo hacia arriba). Lo tejido se recordará como un nudo.
-  const g = WG.woven, rr = wgThreadRows(g), vivid = wgHexRgb(hex), pat = WG.cloth.pat;
-  let red = 0; for (let r = rr[0]; r <= rr[1]; r++) for (let c = 0; c < WG_COLS; c++) { const v = pat[r * WG_COLS + c]; if (v === 1 || v === 2) red++; }
-  WG.threads[g] = { hex, vivid, v10: Math.round(red / (rr[1] - rr[0] + 1)), round: WG.round };      // 0–44: promedio de rojo por fila
-  WG.cloth.data.push({ t: g, r0: rr[0], r1: rr[1], vivid, p: 0, flash: 1, removeT: -1, round: WG.round });
-  WG.woven++; WG.roundConn++;
-  window.currentConnections = WG.roundConn; WG.uiDirty = true;
-  const note = MGS.NOTES[g % 6] * (g >= 9 ? 2 : 1);                                // la melodía sube con la tela
-  MGS.bell(note, 0, 2.4, 0.055);
-  MGS.bell(note * 1.5, 0.09, 1.8, 0.025);
-  if (WG.roundConn >= WG.pairsNow) wgRoundDone();
-}
-
-function wgShort(a, b, line, end) {
+function wgShort(x, y) {                                                       // la lanzadera se enreda
   const en = MG.isEN();
   WG.shorts++;
-  for (let i = 0; i < 30; i++) {
-    wgBez(a.position, end, Math.random(), _wgTmp);
-    MG.fx.emit(_wgTmp.x, _wgTmp.y, 0, (Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 1.6 + 0.3, 0, 1.2 + Math.random() * 0.8, PAL.rose, 0.26, 0.7, 1.2);
-  }
-  line.material.color.setHex(PAL.rose);
-  WG.fading.push({ line, life: 0.45 });
-  a.userData.flash = 0.6; b.userData.flash = 0.6;
-  MG.pulse(a.position.x, a.position.y, PAL.rose, 1.2, 4.5, 1.1, 0.4);
-  MG.pulse(b.position.x, b.position.y, PAL.rose, 1.2, 4.5, 1.1, 0.4);
+  for (let i = 0; i < 30; i++) MG.fx.emit(x + (Math.random() - 0.5) * 2, y + (Math.random() - 0.5) * 1.2, 0, (Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 1.6 + 0.3, 0, 1.2 + Math.random() * 0.8, PAL.rose, 0.26, 0.7, 1.2);
+  MG.pulse(x, y, PAL.rose, 1.2, 4.5, 1.1, 0.4);
   shakeIntensity = 0.25;
   MGS.knock();
   showSystemToast(en ? `The threads tangle (${WG.shorts}/${WG.maxShorts})` : `Los hilos se enredan (${WG.shorts}/${WG.maxShorts})`, '#e7e4de');
   if (WG.shorts >= WG.maxShorts) {
     // el mundo en curso se desanuda: sus filas se deshacen; los mundos anteriores quedan tejidos
-    WG.cloth.data.forEach(r => { if (r.round === WG.round && r.removeT < 0) { r.removeT = 0; WG.woven--; } });
-    WG.threads.length = WG.woven;
-    WG.roundConn = 0; WG.uiDirty = true;
+    const L = WG.cloth, n = WG.pairsNow;
+    L.unr = { t: 0, r0: wgThreadRows(WG.roundStart + n - 1)[0], r1: wgThreadRows(WG.roundStart)[1] };
+    WG.woven -= WG.roundConn; WG.threads.length = WG.woven;
+    WG.roundConn = 0; WG.uiDirty = true; WG.pull = false; L.sh.active = false;
     WG.state = 'leave'; WG.next = 'reset'; WG.resetT = 1.0;
     setTimeout(() => showSystemToast(en ? 'The world unravels. Weave it again.' : 'El mundo se desanuda. Vuelve a tejerlo.', '#e7e4de'), 450);
   }
 }
 
 function wgRoundDone() {
-  const en = MG.isEN(), last = WG.round >= WG.rounds.length - 1;
-  WG.state = 'roundWon'; WG.roundT = 0; WG.next = last ? 'phase2' : 'advance';
-  WG.cables.forEach(c => { c.speed = 0.5; });
-  WG.nodes.forEach(n => MG.fx.burst(n.position.x, n.position.y, 0, 14, 2.6, 2.0, WG.pairs[n.userData.pair].color, 0.26, 0.85));
-  MG.pulse(0, 0, PAL.bone, 2, 18, 1.8, 0.3);
+  const en = MG.isEN(), last = WG.round >= WG.rounds.length - 1, L = WG.cloth;
+  WG.state = 'roundWon'; WG.roundT = 0; WG.next = last ? 'phase2' : 'advance'; WG.pull = false;
+  const r0 = wgThreadRows(WG.roundStart + WG.pairsNow - 1)[0], r1 = wgThreadRows(WG.roundStart)[1], yc = (wgRowY(L, r0) + wgRowY(L, r1)) / 2;
+  WG.pairs.forEach((p, i) => MG.fx.burst(L.left + (i + 0.5) / WG.pairs.length * L.W, yc, 0, 14, 2.6, 2.0, p.color, 0.26, 0.85));
+  MG.pulse(0, yc, PAL.bone, 2, 18, 1.8, 0.3);
   MGS.arpeggio(last ? [0, 2, 3, 5] : [0, 2, 3], 0.14, 2.2, 0.04);
   showSystemToast(last ? (en ? 'The three worlds are woven' : 'Los tres mundos están tejidos')
                        : (en ? `${WG_WORLDS[WG.round].name}: woven` : `${WG_WORLDS[WG.round].name}: tejido`), '#e7e4de');
 }
 
+function wgPointerWorld() { MG.pointerWorld(WG.ptr); }
 // ---------- Tarjetas de fase: aparecen un momento y se desvanecen (no bloquean el juego) ----------
 function wgCard(kicker, title, text, secs) {
   const c = WG.els.card; if (!c) return;
@@ -10258,7 +10590,7 @@ function wgQuipuWin() {
 function wgStartQuipu() {
   const en = MG.isEN();
   wgClear();
-  WG.phase = 2; WG.state = 'quipuIntro'; WG.introT = 0; WG.winT = 0;
+  WG.phase = 2; WG.state = 'quipuIntro'; WG.introT = 0; WG.winT = 0; WG.pull = false;
   wgBuildQuipu();
   if (MG.ui && MG.ui.hint) MG.ui.hint.textContent = en
     ? 'Run your finger (or cursor) along each cord. The knot keeps what was woven — it is read with the hands.'
@@ -10322,76 +10654,6 @@ function wgQuipuUpdate(dt, calm) {
 function wgUpdate(dt) {
   WG.t += dt;
   const calm = reduceMotionMQ.matches;
-  const amp = calm ? 0 : (0.25 + 0.08 * WG.round) * WG.scale;                       // los mundos avanzados se agitan más
-  const leaving = WG.state === 'leave';
-
-  WG.nodes.forEach(n => {
-    const u = n.userData;
-    u.appear = leaving ? Math.max(0, u.appear - dt * 1.4) : Math.min(1, u.appear + dt / 0.9);
-    const ap = Math.max(0, u.appear), ease = 1 - Math.pow(1 - ap, 3);
-    n.position.set(u.base.x + Math.sin(WG.t * 0.9 + u.phase) * amp, u.base.y + Math.cos(WG.t * 0.7 + u.phase) * amp, 0);
-    if (!calm) { u.body.rotation.x += dt * 0.5; u.body.rotation.y += dt * 1.0; }
-    let sc = WG.scale * ease;
-    if (u.pop > 0) { u.pop = Math.max(0, u.pop - dt * 3); sc *= 1 + Math.sin(u.pop * Math.PI) * 0.35; }
-    const isHover = WG.hover === n;
-    n.scale.setScalar(Math.max(0.001, sc * (isHover ? 1.2 : 1)));
-    if (u.flash > 0) {
-      u.flash -= dt;
-      u.mat.color.copy(u.baseColor).lerp(_c2.setHex(PAL.rose), Math.min(1, u.flash / 0.6));
-    } else if (!u.connected) {
-      u.mat.color.copy(u.baseColor);
-      if (isHover) u.mat.color.multiplyScalar(1.5);
-    }
-    u.halo.material.opacity = (u.connected ? 0.38 + 0.12 * Math.sin(WG.t * 2 + u.phase) : (isHover ? 0.42 : 0.2)) * ease;
-    u.fillMat.opacity = u.connected ? 0.32 : 0.08;
-  });
-
-  // Hilos conectados + motas que fluyen
-  const cfade = leaving ? Math.max(0, WG.resetT) : 1;
-  WG.cables.forEach(c => {
-    wgUpdateLine(c.line, c.a.position, c.b.position);
-    c.flow = (c.flow + dt * c.speed) % 1;
-    const at = c.motes.geometry.attributes, P = at.position.array, S = at.aSize.array, A = at.aAlpha.array;
-    for (let i = 0; i < WG_MOTES; i++) {
-      const tt = (i / WG_MOTES + c.flow) % 1;
-      wgBez(c.a.position, c.b.position, tt, _wgTmp);
-      P[i * 3] = _wgTmp.x; P[i * 3 + 1] = _wgTmp.y; P[i * 3 + 2] = _wgTmp.z;
-      S[i] = 0.18 + 0.12 * Math.sin(Math.PI * tt);
-      A[i] = 0.85 * Math.sin(Math.PI * tt);
-    }
-    at.position.needsUpdate = true; at.aSize.needsUpdate = true; at.aAlpha.needsUpdate = true;
-    c.motes.material.uniforms.uOpacity.value = cfade; c.line.material.opacity = 0.5 * cfade;
-  });
-
-  // Hilo en mano: sigue al cursor y deja una estela
-  if (WG.drag) {
-    const d = WG.drag, hov = WG.hover;
-    d.end.lerp(hov ? hov.position : WG.ptr, Math.min(1, dt * 18));
-    wgUpdateLine(d.line, d.node.position, d.end);
-    const ok = hov && hov.userData.pair === d.node.userData.pair;
-    if (hov) d.line.material.color.setHex(ok ? WG.pairs[d.node.userData.pair].color : PAL.rose);
-    else d.line.material.color.copy(d.node.userData.baseColor);
-    WG.trailT -= dt;
-    if (!calm && WG.trailT <= 0) {
-      WG.trailT = 0.03;
-      MG.fx.emit(d.end.x, d.end.y, 0, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5 + 0.2, 0, 1.0, d.node.userData.baseColor.getHex(), 0.2, 0.55, 1.3);
-    }
-  }
-
-  for (let i = WG.fading.length - 1; i >= 0; i--) {
-    const f = WG.fading[i]; f.life -= dt;
-    f.line.material.opacity = Math.max(0, f.life / 0.45) * 0.6;
-    if (f.life <= 0) { mgDispose(f.line); WG.fading.splice(i, 1); }
-  }
-
-  // Brasas: cada tanto un nodo suelta una mota que sube despacio
-  WG.emberT -= dt;
-  if (!calm && WG.emberT <= 0 && WG.nodes.length && !leaving) {
-    WG.emberT = 0.22;
-    const n = WG.nodes[Math.floor(Math.random() * WG.nodes.length)];
-    MG.fx.emit(n.position.x + (Math.random() - 0.5), n.position.y + (Math.random() - 0.5), 0, (Math.random() - 0.5) * 0.3, 0.35 + Math.random() * 0.3, 0,
-      2.6, WG.pairs[n.userData.pair].color, 0.18, n.userData.connected ? 0.7 : 0.4, 0.2);
-  }
 
   // Máquina de estados. Fase I: jugando → mundo completo → nodos se desvanecen → siguiente mundo (o reinicio) · Fase II: quipu
   if (WG.state === 'roundWon') {
@@ -10417,8 +10679,8 @@ function wgUpdate(dt) {
   if (WG.phase === 1) MG.setHUD({
     'lives-value': WG.shorts + '/' + WG.maxShorts,
     'level-value': WG.woven + '/' + WG.total,
-    'files-value': (WG.woven * 25) + ' Mbps',
-    'combo-value': (WG.drag ? WG.drag.node.position.distanceTo(WG.drag.end) * 0.8 : 0).toFixed(2) + ' Ω'
+    'files-value': (WG.cloth ? WG.cloth.sh.passN : 0) + '',
+    'combo-value': (WG.cloth ? Math.round(WG.cloth.sh.p * 100) : 0) + '%'
   });
   else { const Q = WG.quipu; MG.setHUD({
     'lives-value': '—',
@@ -10429,14 +10691,14 @@ function wgUpdate(dt) {
 }
 
 function wgStart(data) {
-  if (window.isWiringGameActive || window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive)) return;
+  if (window.isWiringGameActive || window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) return;
   const en = MG.isEN();
   window.isWiringGameActive = true;
   window.wiringData = data;
   MG.enter(15);
   const ui = MG.buildUI(en
-    ? 'Draw a thread from each node to its twin — same colour, same shape. Every thread you connect is woven into the world.'
-    : 'Lleva un hilo de cada nodo hasta su gemelo — mismo color, misma forma. Cada hilo que conectas se teje en el mundo.');
+    ? 'Drag the shuttle from side to side: every pass weaves one row. If a pink tangle appears, touch it to loosen it before the shuttle gets there. Weaving asks for rhythm, not haste.'
+    : 'Arrastra la lanzadera de lado a lado: cada pasada teje una fila. Si aparece un enredo rosa, tócalo para soltarlo antes de que llegue la lanzadera. Tejer pide ritmo, no prisa.');
   const kicker = document.createElement('div');
   kicker.style.cssText = 'font-size:0.66rem; font-weight:300; letter-spacing:0.34em; color:#a8a49c;';
   const round = document.createElement('div');
@@ -10458,16 +10720,16 @@ function wgStart(data) {
   wgBuildCloth();
   wgBuild();
   wgWorldCard(true);
-  morphHUD('enrutar');
+  morphHUD('tejer');
 }
 window.startWiringGame = function(data) {
-  if (MG.pending || window.isWiringGameActive || window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive)) return;
+  if (MG.pending || window.isWiringGameActive || window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) return;
   MG.pending = true;
   MG.reflect(MG.text('wiring', 'intro'), () => { MG.pending = false; wgStart(data); }, { cancelable: true, onCancel: () => { MG.pending = false; } });
 };
 
 function wgTeardown() {
-  window.isWiringGameActive = false; WG.state = 'idle'; WG.phase = 1;
+  window.isWiringGameActive = false; WG.state = 'idle'; WG.phase = 1; WG.pull = false;
   wgClear();
   if (WG.quipu) { mgDispose(WG.quipu.group); WG.quipu = null; }
   if (WG.cloth) { mgDispose(WG.cloth.mesh); WG.cloth = null; }
@@ -10978,12 +11240,14 @@ const HG_CAM = { yaw: 0, yawT: 0, yawV: 0, pit: 0, pitT: 0, zoom: 1, zoomT: 1, p
 const HG_ZOOM = [0.55, 1.4], HG_PITCH = [-0.3, 0.5];
 function hgCamReset() { const C = HG_CAM; C.yaw = C.yawT = C.yawV = C.pit = C.pitT = 0; C.zoom = C.zoomT = 1; C.ptrs.clear(); C.pinchD = 0; C.tapOK = true; C.moved = 0; }
 function hgCamClampZ(z) { return Math.max(HG_ZOOM[0], Math.min(HG_ZOOM[1], z)); }
-function hgCamLive() { return !!(window.isHogueraActive || window.isWhaleActive); }
+function hgCamLive() { return !!(window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive)); }
 function hgCamBind() {
   const C = HG_CAM; if (C.bound || typeof window.addEventListener !== 'function') return;
   const skip = (e) => !hgCamLive() || window.isMiniIntro || (e.target && e.target.closest && e.target.closest('button, a, input, textarea'));
   const down = (e) => {
     if (skip(e) || HG.chips.some(c => c.state === 'drag')) return;
+    if (window.isWhaleActive && window.whDown) window.whDown();
+    if (window.isColossusActive && window.colDown) window.colDown(e.clientX, e.clientY);
     C.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (C.ptrs.size === 1) { C.tapOK = true; C.moved = 0; C.t0 = performance.now(); C.yawV = 0; }
     else { C.tapOK = false; const p = [...C.ptrs.values()]; C.pinchD = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); }
@@ -11004,8 +11268,10 @@ function hgCamBind() {
   };
   const up = (e) => {
     if (!C.ptrs.has(e.pointerId)) return;
+    if (window.isWhaleActive && window.whUp) window.whUp();
+    if (window.isColossusActive && window.colUp) window.colUp();
     const was = C.ptrs.size; C.ptrs.delete(e.pointerId);
-    if (was === 1 && C.tapOK && C.moved < 8 && performance.now() - C.t0 < 500 && e.type === 'pointerup') { if (window.isWhaleActive) { if (window.whTap) window.whTap(e.clientX, e.clientY); } else if (window.hgTap) window.hgTap(e.clientX, e.clientY); }
+    if (was === 1 && C.tapOK && C.moved < 8 && performance.now() - C.t0 < 500 && e.type === 'pointerup') { if (window.isSputnikActive) { if (window.sptTap) window.sptTap(e.clientX, e.clientY); } else if (window.isTortugaActive) { if (window.trtTap) window.trtTap(e.clientX, e.clientY); } else if (window.isColossusActive) { if (window.colTap) window.colTap(e.clientX, e.clientY); } else if (window.isWhaleActive) { if (window.whTap) window.whTap(e.clientX, e.clientY); } else if (window.hgTap) window.hgTap(e.clientX, e.clientY); }
     if (C.ptrs.size === 0) { C.tapOK = true; C.yawV = Math.max(-2.5, Math.min(2.5, C.yawV)); if (C.moved < 8) C.yawV = 0; }
   };
   const wheel = (e) => { if (skip(e)) return; e.preventDefault(); C.zoomT = hgCamClampZ(C.zoomT * Math.exp(e.deltaY * 0.0012)); };
@@ -11193,7 +11459,7 @@ function hgBurn(c) {
 function hgGrowl(kind) {
   const calm = reduceMotionMQ.matches;
   const menace = kind === 'menace';
-  const loud = menace ? 1.5 : kind === 'click' ? 1 : kind === 'angry' ? 1.2 : kind === 'sigh' ? 0.5 : 0.7;
+  const loud = menace ? 1.9 : kind === 'click' ? 1 : kind === 'angry' ? 1.2 : kind === 'sigh' ? 0.5 : 0.7;
   const dur = menace ? 3.6 + Math.random() * 1.4 : kind === 'click' ? 2.2 : kind === 'angry' ? 2.8 : kind === 'sigh' ? 3.2 : 1.8 + Math.random();
   HG.growlP = 0; HG.growlAmp = loud; HG.growlDur = dur;
   if (HG.colos && HG.fx) {
@@ -11201,9 +11467,11 @@ function hgGrowl(kind) {
     HG.fx.burst(_hgV.x, _hgV.y, _hgV.z, kind === 'sigh' ? 10 : menace ? 34 : 18, menace ? 2.4 : 1.6, 2.0, menace ? 0x7a828c : 0x59616b, 0.32, 0.5);        // aliento de ceniza
     if (kind === 'click' || kind === 'angry' || menace) MG.pulse(HG_COLOSSUS.x, 0.05, 0xd64a3a, 2, 16, 1.8, 0.35, HG_COLOSSUS.z);   // onda sobre el suelo
   }
-  if (!calm && (kind === 'click' || kind === 'angry' || menace)) { shakeIntensity = Math.max(shakeIntensity, menace ? 0.16 : 0.1); HG.flashV = Math.max(HG.flashV, menace ? 0.8 : 0.5); }
-  if (menace) { hgHiss(); setTimeout(() => hgRattle(1), 500); }
+  if (!calm && (kind === 'click' || kind === 'angry' || menace)) { shakeIntensity = Math.max(shakeIntensity, menace ? 0.3 : 0.1); HG.flashV = Math.max(HG.flashV, menace ? 1 : 0.5); }
+  if (menace) { vibrateDevice(220); [0, 450, 900].forEach(d => setTimeout(() => { if (window.isHogueraActive) MG.pulse(HG_COLOSSUS.x, 0.05, 0xd64a3a, 2, 22, 1.6, 0.4, HG_COLOSSUS.z); }, d)); }
+  if (menace) { setTimeout(hgHiss, 700); setTimeout(() => hgRattle(1), 1300); }
   if (!MGS.ok()) return;
+  if (menace) { hgRoar(dur); for (let i = 0; i < 14; i++) setTimeout(() => hgNoise('bandpass', 0.016, 1400 + Math.random() * 2600, 0.06), Math.random() * dur * 700); return; }
   try {
     const ctx = audioCtx, t = ctx.currentTime, sigh = kind === 'sigh';
     const out = ctx.createGain();
@@ -11244,6 +11512,40 @@ function hgGrowl(kind) {
     }
   } catch (e) {}
   for (let i = 0; i < (menace ? 10 : 5); i++) setTimeout(() => hgNoise('bandpass', 0.012 * loud, 1400 + Math.random() * 2600, 0.06), Math.random() * dur * 700);   // estática de CRT
+}
+// RUGIDO: garganta de tres sierras que sube y cae, saturada y pasada por formantes que van de «aaa» a «ooo»,
+// un sub que hace vibrar el pecho y un aliento ronco; todo con la cola de una sala grande. Es la voz que ya no se puede ignorar.
+function hgRoar(dur) {
+  try {
+    const ctx = audioCtx, t = ctx.currentTime, end = t + dur + 0.25, B = MGS.bus();
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.25;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, t); out.gain.linearRampToValueAtTime(0.5, t + 0.14); out.gain.setValueAtTime(0.42, t + dur * 0.4); out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    out.connect(comp); comp.connect(masterGain); comp.connect(B.input);
+    const sh = ctx.createWaveShaper(), cv = new Float32Array(512);
+    for (let i = 0; i < 512; i++) cv[i] = Math.tanh((i / 511 * 2 - 1) * 5);
+    sh.curve = cv; sh.oversample = '2x';
+    [[720, 300, 3, 1.0], [1250, 620, 4, 0.7], [2700, 1100, 5, 0.32]].forEach(([f0, f1, q, g]) => {            // vocal que se cierra: «aaa» → «ooo»
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = q; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      const gg = ctx.createGain(); gg.gain.value = g; sh.connect(f); f.connect(gg); gg.connect(out);
+    });
+    const amp = ctx.createGain(); amp.gain.value = 0.55; amp.connect(sh);
+    const lfo = ctx.createOscillator(); lfo.frequency.setValueAtTime(30, t); lfo.frequency.exponentialRampToValueAtTime(8, t + dur);
+    const lg = ctx.createGain(); lg.gain.value = 0.45; lfo.connect(lg); lg.connect(amp.gain); lfo.start(t); lfo.stop(end);       // el gruñido se arrastra y se vuelve lento
+    const f0 = 44 + Math.random() * 8;
+    [1, 1.011, 0.5].forEach((m, i) => {
+      const o = ctx.createOscillator(); o.type = i === 2 ? 'square' : 'sawtooth';
+      o.frequency.setValueAtTime(f0 * m * 0.8, t); o.frequency.exponentialRampToValueAtTime(f0 * m * 1.8, t + dur * 0.2); o.frequency.exponentialRampToValueAtTime(f0 * m * 0.55, t + dur);
+      const gn = ctx.createGain(); gn.gain.value = i === 2 ? 0.25 : 0.5; o.connect(gn); gn.connect(amp); o.start(t); o.stop(end);
+    });
+    const sub = ctx.createOscillator(); sub.type = 'sine'; sub.frequency.setValueAtTime(40, t); sub.frequency.exponentialRampToValueAtTime(21, t + dur);
+    const sg = ctx.createGain(); sg.gain.value = 0.7; sub.connect(sg); sg.connect(out); sub.start(t); sub.stop(end);
+    const nb = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 2), ctx.sampleRate), nd = nb.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    const ns = ctx.createBufferSource(); ns.buffer = nb; ns.loop = true;
+    const nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.Q.value = 0.8; nf.frequency.setValueAtTime(1000, t); nf.frequency.exponentialRampToValueAtTime(260, t + dur);
+    const ng = ctx.createGain(); ng.gain.value = 0.28; ns.connect(nf); nf.connect(ng); ng.connect(out); ns.start(t); ns.stop(end);
+  } catch (e) {}
 }
 // Siseo de cobra: ráfaga de aire agudo que se abre y se cierra
 function hgHiss() {
@@ -11361,7 +11663,7 @@ function hgBuildUI() {
 }
 
 function hgStart() {
-  if (window.isHogueraActive || window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive) return;
+  if (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive) || window.isTuningGameActive || window.isWiringGameActive) return;
   const en = MG.isEN();
   window.isHogueraActive = true;
   MG.enter(24);
@@ -11393,7 +11695,7 @@ function hgStart() {
   showSystemToast(en ? 'A fire, a traveler, and a monument that gives off cold.' : 'Un fuego, un viajero y un monumento que irradia frío.', '#e7e4de');
 }
 window.startHogueraGame = function() {
-  if (MG.pending || window.isHogueraActive || window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive) return;
+  if (MG.pending || window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive) || window.isTuningGameActive || window.isWiringGameActive) return;
   MG.pending = true;
   MG.reflect(MG.text('hoguera', 'intro'), () => { MG.pending = false; hgStart(); }, { cancelable: true, onCancel: () => { MG.pending = false; } });
 };
@@ -11538,7 +11840,8 @@ function hgUpdate(dt) {
   HG.screenMat.uniforms.uRune.value = 0.25 + HG.listenS * 0.75 + HG.calmV * 0.3 + HG.growlG * 0.4 + HG.menaceP * 0.25;          // las runas se encienden al escuchar su caja negra
   if (HG.growlP < 1) HG.growlP = Math.min(1, HG.growlP + dt / HG.growlDur);                  // envolvente del gruñido: ataque rápido y caída
   HG.growlG = HG.growlAmp * Math.min(1, HG.growlP / 0.1) * (1 - HG.growlP);
-  if (HG.growlG > 0.3 && !calm) shakeIntensity = Math.max(shakeIntensity, HG.growlG * 0.05);
+  if (HG.growlG > 0.3 && !calm) shakeIntensity = Math.max(shakeIntensity, HG.growlG * (HG.growlAmp >= 1.8 ? 0.13 : 0.05));
+  if (HG.growlAmp >= 1.8 && HG.growlG > 0.2) HG.flashV = Math.max(HG.flashV, 0.35 + 0.4 * HG.growlG);
   hgAnimateColossus(t, HG.coldS, calm);
   HG.eyes.forEach(e => { e.material.opacity = Math.min(1, 0.3 + HG.coldS * 0.45 + HG.growlG * 0.5 + HG.menaceP * 0.45) * (0.85 + 0.15 * Math.sin(t * 3)) * (1 - HG.calmV * 0.4); if (e.material.color && e.material.color.setHex) e.material.color.setHex(HG.menaceP > 0.5 ? 0xff3a2a : 0xffa24d); });   // ojos de brasa: arden más cuando el fuego muere
   // pluma de ceniza que el viento arrastra desde la corona (como el penacho negro del coloso)
@@ -11607,7 +11910,8 @@ window.endHogueraGame = function() {
   if (!window.isHogueraActive) return;
   hgTeardown();
   MG.exit();
-  setTimeout(() => { MG.reflect(MG.text('hoguera', 'outro'), () => {}); }, 700);   // reflexión final sobre el universo restaurado
+  colossusFound('serpiente');
+  setTimeout(() => { MG.reflect(MG.text('hoguera', 'outro'), () => { if (window.colMaybeBestiary) window.colMaybeBestiary(); }); }, 700);   // reflexión final sobre el universo restaurado
 };
 
 window.abortHogueraGame = function() {
@@ -11628,13 +11932,15 @@ window.abortHogueraGame = function() {
 window.isWhaleActive = false;
 const WH_ISO = { yaw: 0.785, pitch: 0.5, dist: 84, fov: 30, target: new THREE.Vector3(-6, 5, 0) };
 const WH_POS = { x: -21, z: -1, yaw: 1.5708, scale: 0.4, trav: { x: 12.5, z: 2.5 } };
-const WH_ROUNDS = 3;                                           // 2 rondas de eco + 1 de reciprocidad
+const WH_ROUNDS = 6;                                           // 3 llamadas de ritmo + 2 notas sostenidas + 1 de reciprocidad
+const WH_HOLD = [3.2, 5.2];                                    // segundos de las dos notas largas
 const WH = {
   st: 'idle', t: 0, round: 0, att: 0, attS: 0, lone: 0, loneS: 0, fails: 0, idleT: 0, talk: 0, echoes: 0, pulsesN: 0,
   pat: null, beats: [], notes: [], bi: 0, ct: 0, at: 0, vt: 0, ft: 0, fSil: 0, fin: 0, taps: [], lit: 0, recall: false, lastP: 0, rise: 0,
   sing: 0, subT: 0, ok: false, q: 0, echoT: 0, echoList: [], ei: 0, finBurst: 0,
   pulses: [], pslot: 0, group: null, ocean: null, mats: null, whale: null, eyes: [], halo: null, spec: null,
-  tone: null, els: {}, saved: null, keyFn: null, pose: null
+  tone: null, els: {}, saved: null, keyFn: null, keyUpFn: null, pose: null,
+  hold: 0, hfails: 0, holding: false, hHeld: 0, hdur: 3, hSung: false, ht: 0, hpass: false, choir: [], plank: null, holdTone: null
 };
 
 // ---------- Plano de la ballena: partes como datos puros {cells, pivot, parent} ----------
@@ -11759,7 +12065,7 @@ function whSing(freq, dur, vol, low) {
   try {
     const ctx = audioCtx, t = ctx.currentTime, f = freq * (low ? 0.8 : 1);
     const out = ctx.createGain(); out.gain.setValueAtTime(0, t); out.gain.linearRampToValueAtTime(vol, t + 0.22); out.gain.setValueAtTime(vol, t + dur * 0.55); out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = low ? 520 : 900; lp.Q.value = 0.7; lp.connect(out); out.connect(masterGain);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = low ? 520 : 900; lp.Q.value = 0.7; lp.connect(out); out.connect(MGS.bus().input);
     const vib = ctx.createOscillator(); vib.frequency.value = low ? 3.6 : 4.8; const vg = ctx.createGain(); vg.gain.value = f * 0.014; vib.connect(vg);
     [[1, 1, 'sine'], [2, 0.32, 'sine'], [0.5, 0.45, 'triangle']].forEach(([m, g, type]) => {
       const o = ctx.createOscillator(), gn = ctx.createGain(); o.type = type; gn.gain.value = g;
@@ -11813,16 +12119,18 @@ function whToneStop() {
 const WH_TXT = {
   es: { listen: '…escucha…', answer: '…responde con el mismo ritmo…', ok: '…te escuchó…', retry: '…no importa. Ella espera. Escucha otra vez, más despacio…',
         over: '…aún cantaba. Primero, escucha…', lone: '…el silencio también es una respuesta, pero no la que ella espera…', free: '…ahora canta tú. Ella escuchará…',
+        hold: '…ahora sostiene una sola nota…', holdAns: '…sostén tú también, el mismo tiempo. Respira con ella…', holdOk: '…respiraron juntos…', holdRetry: '…no hace falta medir. Escucha cuánto dura, y acompáñala…', holdLone: '…ella sigue sosteniendo la nota…',
         echo: '…te devuelve tu propio ritmo…', end: '…nadie estaba sola: faltaba quien escuchara.', gentle: '…te acompaña igualmente…' },
   en: { listen: '…listen…', answer: '…answer with the same rhythm…', ok: '…she heard you…', retry: '…it does not matter. She waits. Listen again, slower…',
         over: '…she was still singing. Listen first…', lone: '…silence is also an answer, but not the one she waits for…', free: '…now you sing. She will listen…',
+        hold: '…now she holds a single note…', holdAns: '…hold too, for as long. Breathe with her…', holdOk: '…you breathed together…', holdRetry: '…no need to measure. Listen to how long it lasts, and keep her company…', holdLone: '…she keeps holding the note…',
         echo: '…she gives you back your own rhythm…', end: '…no one was alone: someone to listen was missing.', gentle: '…she keeps you company all the same…' }
 };
 function whText(k) { return WH_TXT[MG.isEN() ? 'en' : 'es'][k]; }
 function whSub(text, secs) { const el = WH.els.sub; if (!el) return; el.textContent = text; el.style.opacity = '1'; WH.subT = secs || 6; }
 
 function whPattern(round, fails) {
-  const base = [[0, 0.6, 1.8], [0, 0.6, 1.2, 2.6]][round], notes = [[0, 2, 4], [1, 3, 2, 4]][round];
+  const base = [[0, 0.6, 1.8], [0, 0.6, 1.2, 2.6], [0, 0.5, 1.0, 2.2, 3.0]][round], notes = [[0, 2, 4], [1, 3, 2, 4], [0, 2, 3, 1, 4]][round];
   const times = base.slice(), nn = notes.slice();
   if (fails >= 2 && times.length > 2) { times.pop(); nn.pop(); }              // tras dos intentos, la ballena simplifica su canto
   const slow = 1 + 0.18 * Math.min(fails, 3);
@@ -11853,8 +12161,8 @@ function whDots(n, lit) {
 function whBuildUI() {
   const en = MG.isEN();
   const ui = MG.buildUI(en
-    ? 'The whale sings in pulses. Listen, then answer with the same rhythm: tap, or press Space. Drag empty space to turn around the scene; pinch to zoom.'
-    : 'La ballena canta en pulsos. Escucha y responde con el mismo ritmo: toca, o pulsa Espacio. Arrastra el espacio vacío para girar la escena; pellizca para acercar.');
+    ? 'The whale sings in pulses. Listen, then answer with the same rhythm: tap, or press Space. Sometimes she holds a single note: press and hold. Drag empty space to turn around the scene; pinch to zoom.'
+    : 'La ballena canta en pulsos. Escucha y responde con el mismo ritmo: toca, o pulsa Espacio. A veces sostiene una sola nota: mantén pulsado. Arrastra el espacio vacío para girar la escena; pellizca para acercar.');
   const title = document.createElement('div');
   title.textContent = en ? 'LISTENING TO A WHALE' : 'ESCUCHANDO A UNA BALLENA';
   title.style.cssText = 'font-size:0.66rem; font-weight:300; letter-spacing:0.34em; color:#a8a49c;';
@@ -11875,7 +12183,7 @@ function whBuildUI() {
 
 // ---------- Inicio y fin ----------
 function whStart() {
-  if (window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
+  if (window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive) || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
   const en = MG.isEN();
   window.isWhaleActive = true;
   MG.enter(24);
@@ -11887,25 +12195,28 @@ function whStart() {
   window.hgPose = { pos: new THREE.Vector3(tx, feet, tz), yaw: Math.atan2(WH_POS.x - tx, WH_POS.z - tz) };   // mira a la ballena
   tg.visible = true; tg.position.copy(window.hgPose.pos);
 
-  Object.assign(WH, { st: 'arrive', t: 0, round: 0, att: 0, attS: 0, lone: 0, loneS: 0, fails: 0, idleT: 0, talk: 0, echoes: 0, pulsesN: 0, taps: [], lit: 0, rise: 0, sing: 0, fin: 0, subT: 0, recall: false, lastP: 0, pslot: 0, pulses: [], echoList: [] });
+  Object.assign(WH, { st: 'arrive', t: 0, round: 0, att: 0, attS: 0, lone: 0, loneS: 0, fails: 0, idleT: 0, talk: 0, echoes: 0, pulsesN: 0, taps: [], lit: 0, rise: 0, sing: 0, fin: 0, subT: 0, recall: false, lastP: 0, pslot: 0, pulses: [], echoList: [], hold: 0, hfails: 0, holding: false, hHeld: 0, hdur: 3, hSung: false, ht: 0, hpass: false });
   if (MG.dust) MG.dust.pts.position.set(WH_ISO.target.x, 6, WH_ISO.target.z);
   WH.group = new THREE.Group();
   WH.ocean = whBuildOcean(); WH.group.add(WH.ocean);
   WH.group.add(whBuildWhale());
+  WH.group.add(whBuildChoir()); WH.group.add(whBuildPlankton());
   WH.halo = mkHalo(0xffd9a8, 4, 0.2); WH.halo.position.set(tx, 0.8, tz); WH.group.add(WH.halo);     // el calor del Viajero: late con cada respuesta tuya
   scene.add(WH.group);
   hgAddPets({ a: [tx + 2.4, tz - 1.8], b: [tx + 0.4, tz + 2.2] });
   whBuildUI();
   whToneStart();
   hgCamReset(); hgCamBind();
-  WH.keyFn = (e) => { if (!window.isWhaleActive || window.isMiniIntro) return; if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) whPulse(); } };
+  WH.keyFn = (e) => { if (!window.isWhaleActive || window.isMiniIntro) return; if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) { if (WH.st === 'hcall' || WH.st === 'hanswer') whDown(); else whPulse(); } } };
   window.addEventListener('keydown', WH.keyFn, true);
+  WH.keyUpFn = (e) => { if (window.isWhaleActive && (e.key === ' ' || e.key === 'Enter')) whUp(); };
+  window.addEventListener('keyup', WH.keyUpFn, true);
 
   morphHUD('resonar');
   showSystemToast(en ? 'Something enormous sings beneath the silence.' : 'Algo enorme canta bajo el silencio.', '#e7e4de');
 }
 window.startWhaleGame = function(data) {
-  if (MG.pending || window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
+  if (MG.pending || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive) || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
   MG.pending = true;
   MG.reflect(MG.text('ballena', 'intro'), () => { MG.pending = false; whStart(); },
     { cancelable: true, onCancel: () => { MG.pending = false; if (data && typeof openProjectPopup === 'function') openProjectPopup(data); } });   // al volver, la ballena conserva su ficha original
@@ -11914,17 +12225,20 @@ window.startWhaleGame = function(data) {
 function whTeardown() {
   window.isWhaleActive = false; window.hgPose = null; WH.st = 'idle';
   hgCamUnbind(); whToneStop();
+  whHoldTone(false);
   if (WH.keyFn) { window.removeEventListener('keydown', WH.keyFn, true); WH.keyFn = null; }
+  if (WH.keyUpFn) { window.removeEventListener('keyup', WH.keyUpFn, true); WH.keyUpFn = null; }
   HG.pets.forEach(p => scene.remove(p)); HG.pets = [];
   if (WH.group) { mgDispose(WH.group); WH.group = null; }
   const tg = window.travelerGroup;
   if (tg && WH.saved) { tg.position.copy(WH.saved.pos); tg.quaternion.copy(WH.saved.quat); tg.scale.copy(WH.saved.scale); }
-  WH.saved = null; WH.whale = null; WH.ocean = null; WH.mats = null; WH.eyes = []; WH.halo = null; WH.els = {}; WH.pulses = [];
+  WH.saved = null; WH.choir = []; WH.plank = null; WH.holding = false; WH.whale = null; WH.ocean = null; WH.mats = null; WH.eyes = []; WH.halo = null; WH.els = {}; WH.pulses = [];
 }
 window.endWhaleGame = function() {
   if (!window.isWhaleActive) return;
   whTeardown(); MG.exit();
-  setTimeout(() => { MG.reflect(MG.text('ballena', 'outro'), () => {}); }, 700);
+  colossusFound('ballena');
+  setTimeout(() => { MG.reflect(MG.text('ballena', 'outro'), () => { if (window.colMaybeBestiary) window.colMaybeBestiary(); }); }, 700);
 };
 window.abortWhaleGame = function() {
   if (!window.isWhaleActive) return;
@@ -11952,6 +12266,7 @@ function whPulse() {                                                           /
   if (now - WH.lastP < 90) return;
   WH.lastP = now;
   const tx = WH_POS.trav.x, tz = WH_POS.trav.z, st = WH.st;
+  if (st === 'hcall' || st === 'hanswer' || st === 'hverdict') return;                    // en las notas largas importa la duración, no el toque
   if (st === 'call') {                                                          // hablar encima de ella: onda gris y un tono apagado
     WH.talk++; whEmit(tx, tz, 0.5, WH_C_MUTE, 0x888890); MGS.bell(MGS.NOTES[0] / 2, 0, 0.8, 0.012); WH.halo.material.opacity = 0.35; return;
   }
@@ -11970,12 +12285,90 @@ function whPulse() {                                                           /
 }
 window.whTap = function(cx, cy) { whPulse(); };
 
+// ---------- Nota sostenida: la ballena canta una sola nota larga y se responde con el mismo aliento ----------
+function whHoldBegin() { WH.st = 'hcall'; WH.ht = -0.8; WH.hSung = false; WH.holding = false; WH.hHeld = 0; whDots(0, 0); whSub(whText('hold'), 5); }
+function whHoldTone(on) {                                                       // la voz del jugador: una nota cálida que dura lo que dura la presión
+  if (!on) {
+    const T = WH.holdTone; if (!T) return; WH.holdTone = null;
+    try { const t = T.ctx.currentTime; T.g.gain.cancelScheduledValues(t); T.g.gain.setTargetAtTime(0, t, 0.22); T.os.forEach(o => o.stop(t + 1.3)); } catch (e) {}
+    return;
+  }
+  if (WH.holdTone || !MGS.ok()) return;
+  try {
+    const ctx = audioCtx, t = ctx.currentTime, B = MGS.bus(), f = MGS.NOTES[WH.hold ? 3 : 2] / 2;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.06, t + 0.4);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 760; lp.connect(g); g.connect(B.input);
+    const os = [['triangle', 1, 0], ['sawtooth', 1, 0.004], ['sine', 2, 0]].map(([type, m, d]) => { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; o.frequency.value = f * m * (1 + d); og.gain.value = type === 'sawtooth' ? 0.22 : 0.5; o.connect(og); og.connect(lp); o.start(t); return o; });
+    WH.holdTone = { ctx, g, os };
+  } catch (e) {}
+}
+window.whDown = function() {
+  if (!window.isWhaleActive || window.isMiniIntro || WH.holding) return;
+  if (WH.st !== 'hcall' && WH.st !== 'hanswer') return;
+  WH.holding = true; if (WH.st === 'hanswer') WH.hHeld = 0; whHoldTone(true);
+};
+window.whUp = function() {
+  if (!window.isWhaleActive || !WH.holding) return;
+  WH.holding = false; whHoldTone(false);
+  if (WH.st !== 'hanswer' || WH.hHeld < 0.3) { if (WH.st === 'hanswer') WH.hHeld = 0; return; }       // un toque suelto no cuenta
+  const r = WH.hHeld / WH.hdur;
+  whHoldVerdict(r >= 0.6 && r <= 1.7);
+};
+function whHoldVerdict(ok) {
+  WH.st = 'hverdict'; WH.vt = 0;
+  if (ok || WH.hfails >= 2) {
+    WH.att = Math.max(WH.att, [0.78, 0.92][WH.hold]); WH.lone = Math.max(0, WH.lone - 0.3); WH.echoes++; WH.hpass = true; WH.hfails = 0; WH.hold++;
+    whSub(ok ? whText('holdOk') : whText('gentle'), 5);
+    MGS.arpeggio([0, 2, 4], 0.25, 3.2, 0.035); whSing(MGS.NOTES[2] / 4, 3.6, 0.05, false);
+    whMouth(_whM); whEmit(_whM.x, _whM.z, 1.3, WH_C_WHALE, 0xbfe6ff); whEmit(WH_POS.trav.x, WH_POS.trav.z, 1.3, WH_C_WHALE, 0xbfe6ff);
+    WH.sing = 1; hgMeow(0, false); setTimeout(() => hgMeow(1, false), 700);
+    if (WH.hold >= 2) whChoirSing(1);                                           // al completar la segunda nota, a lo lejos otras ballenas responden
+  } else {
+    WH.hfails++; WH.lone = Math.min(1, WH.lone + 0.08); WH.hpass = false; whSub(whText('holdRetry'), 6);
+  }
+}
+
+// ---------- Coro lejano: otras ballenas, apenas siluetas de puntos, que se unen cuando hay sintonía ----------
+function whBuildChoir() {
+  const g = new THREE.Group(); WH.choir = [];
+  [[-44, -5, -22, 0.5, 1.0], [-52, -5, 24, 2.7, 0.85], [-14, -5, -36, 5.0, 0.7]].forEach(([x, y, z, yaw, sc], k) => {
+    const n = 200, p = mkGlowPoints(n), A = p.geometry.attributes;
+    for (let i = 0; i < n; i++) {
+      let px, py, pz;
+      if (i < 160) { const u = Math.random(), r = 2.0 * Math.pow(Math.sin(Math.PI * Math.min(1, u * 1.04)), 0.6) * (1 - 0.55 * u), a = Math.random() * 6.2832; px = -9 + 15 * u; py = r * Math.sin(a) * 0.8; pz = r * Math.cos(a); }
+      else { const u = Math.random(); px = 6 + u * 3.6; py = (Math.random() - 0.5) * 0.3; pz = (Math.random() < 0.5 ? -1 : 1) * u * 2.8 * Math.random(); }
+      A.position.array[i * 3] = px * sc; A.position.array[i * 3 + 1] = py * sc; A.position.array[i * 3 + 2] = pz * sc;
+      A.aCol.array[i * 3] = 0.62; A.aCol.array[i * 3 + 1] = 0.8; A.aCol.array[i * 3 + 2] = 1; A.aSize.array[i] = 0.22 * sc; A.aAlpha.array[i] = 0.7;
+    }
+    p.material.uniforms.uOpacity.value = 0;
+    const holder = new THREE.Group(); holder.add(p); holder.position.set(x, y, z); holder.rotation.y = yaw; g.add(holder);
+    WH.choir.push({ holder, pts: p, x, z, ph: k * 2.1, sc });
+  });
+  return g;
+}
+function whChoirSing(amp) {                                                     // acorde lejano, suave: cada ballena una nota
+  (WH.choir || []).forEach((c, i) => setTimeout(() => {
+    if (!window.isWhaleActive) return;
+    whSing(MGS.NOTES[[0, 2, 3][i % 3]] / 4, 4.2, 0.03 * amp, i === 1);
+    whEmit(c.x, c.z, 0.9 * amp, WH_C_WHALE, 0x9fd0ff); c.glow = 1;
+  }, i * 650));
+}
+function whBuildPlankton() {                                                     // plancton bioluminiscente: nubes de motas que respiran con la sintonía
+  const n = 240, p = mkGlowPoints(n), A = p.geometry.attributes; WH.plank = { p, seeds: [] };
+  for (let i = 0; i < n; i++) {
+    const x = WH_ISO.target.x + (Math.random() - 0.5) * 80, z = (Math.random() - 0.5) * 60, y = 1 + Math.random() * 15;
+    A.position.array[i * 3] = x; A.position.array[i * 3 + 1] = y; A.position.array[i * 3 + 2] = z; WH.plank.seeds.push(Math.random() * 6.28);
+    A.aCol.array[i * 3] = 0.55; A.aCol.array[i * 3 + 1] = 0.85; A.aCol.array[i * 3 + 2] = 0.95; A.aSize.array[i] = 0.12 + Math.random() * 0.18; A.aAlpha.array[i] = 0;
+  }
+  return p;
+}
+
 function whVerdict(res) {                                                       // la ballena escucha tu respuesta
   WH.st = 'verdict'; WH.vt = 0; WH.ok = res.ok; WH.q = res.q;
   const en = MG.isEN();
   if (res.ok || WH.fails >= 2) {
     const gentle = !res.ok;                                                     // tras tres intentos, ella se acerca igualmente: no hay castigo
-    WH.att = Math.max(WH.att, [0.34, 0.68][WH.round]); WH.lone = Math.max(0, WH.lone - 0.3); WH.fails = 0; WH.echoes++;
+    WH.att = Math.max(WH.att, [0.2, 0.4, 0.6][WH.round]); WH.lone = Math.max(0, WH.lone - 0.3); WH.fails = 0; WH.echoes++;
     whSub(gentle ? whText('gentle') : whText('ok'), 5);
     [0, 2, 4].forEach((n, i) => whSing(MGS.NOTES[n] / 4, 3.2, 0.05, false));
     MGS.arpeggio([2, 3, 5], 0.18, 2.2, 0.04);
@@ -12022,9 +12415,34 @@ function whUpdate(dt) {
       if (WH.vt > 2.6) {
         if (WH.pass) {
           WH.round++;
-          if (WH.round >= 2) { WH.st = 'free'; WH.ft = 0; WH.taps = []; WH.fSil = 0; WH.idleT = 0; whDots(3, 0); whSub(whText('free'), 7); }
+          if (WH.round >= 3) { WH.recall = false; WH.hold = 0; WH.hfails = 0; whHoldBegin(); }
           else { WH.recall = false; whStartCall(); }
         } else { WH.recall = false; whStartCall(); }
+      }
+      break;
+    case 'hcall': {
+      WH.ht += dt;
+      if (!WH.hSung && WH.ht >= 0) {
+        WH.hSung = true; WH.hdur = WH_HOLD[Math.min(1, WH.hold)] * (1 + 0.12 * Math.min(WH.hfails, 3));
+        whSing(MGS.NOTES[WH.hold ? 1 : 0] / 4, WH.hdur + 1.0, 0.075, WH.recall);
+        whMouth(_whM); whEmit(_whM.x, _whM.z, 1.1, WH_C_WHALE, 0x9fd0ff);
+      }
+      if (WH.hSung) WH.sing = Math.max(WH.sing, Math.max(0, Math.min(1, 1 - (WH.ht - WH.hdur) / 0.9)));          // la boca sigue abierta mientras dura la nota
+      if (WH.hSung && WH.ht >= WH.hdur + 1.4) { WH.st = 'hanswer'; WH.at = 0; WH.idleT = 0; WH.hHeld = 0; whSub(whText('holdAns'), 7); }
+      break; }
+    case 'hanswer': {
+      WH.at += dt; WH.idleT += dt;
+      if (WH.holding) { WH.hHeld += dt; WH.halo.material.opacity = Math.max(WH.halo.material.opacity, 0.3 + Math.min(0.5, WH.hHeld * 0.1)); WH.idleT = 0; if (WH.hHeld > WH.hdur * 2.2) { window.whUp(); } }
+      else if (WH.idleT > 11) { WH.lone = Math.min(1, WH.lone + 0.18); WH.recall = true; whSub(whText('holdLone'), 6); WH.st = 'hcall'; WH.ht = -0.8; WH.hSung = false; WH.idleT = 0; }
+      break; }
+    case 'hverdict':
+      WH.vt += dt;
+      if (WH.vt > 2.8) {
+        WH.recall = false;
+        if (WH.hpass) {
+          if (WH.hold >= 2) { WH.st = 'free'; WH.ft = 0; WH.taps = []; WH.fSil = 0; WH.idleT = 0; whDots(3, 0); whSub(whText('free'), 7); }
+          else whHoldBegin();
+        } else whHoldBegin();
       }
       break;
     case 'free': {
@@ -12046,9 +12464,10 @@ function whUpdate(dt) {
       if (WH.fin > 0.6 && WH.finBurst < 4 && WH.fin > 0.6 + WH.finBurst * 1.2) {
         WH.finBurst++; whMouth(_whM); whEmit(_whM.x, _whM.z, 1.4, WH_C_WHALE, 0xbfe6ff); whEmit(WH_POS.trav.x, WH_POS.trav.z, 1.4, WH_C_YOU, 0xffd9a8);
         MGS.arpeggio([0, 2, 3, 5], 0.2, 3, 0.04); whSing(MGS.NOTES[WH.finBurst % 4] / 4, 3, 0.07, false); WH.sing = 1;
+        if (WH.finBurst === 1 || WH.finBurst === 3) whChoirSing(1.1);
         if (MG.fx) MG.fx.burst(WH_POS.x, 12, WH_POS.z, 40, 3, 2.6, 0xbfe6ff, 0.3, 0.9);
       }
-      if (WH.fin > 7.5) { window.endWhaleGame(); return; }
+      if (WH.fin > 9.5) { window.endWhaleGame(); return; }
       break;
   }
   if (!window.isWhaleActive) return;
@@ -12097,6 +12516,23 @@ function whUpdate(dt) {
   }
   HG.pets.forEach(p => { const b = 1 + Math.sin(t * 1.4 + p.userData.ph) * 0.02; p.scale.y = (p.userData.sy || (p.userData.sy = p.scale.y)) * b; });
 
+  // ----- Coro lejano y plancton -----
+  WH.choir.forEach((c, i) => {
+    c.glow = Math.max(0, (c.glow || 0) - dt * 0.5);
+    const target = Math.max(0, (A - 0.3) / 0.7) * 0.55 + c.glow * 0.45 + (WH.st === 'finale' ? 0.3 : 0);
+    const u = c.pts.material.uniforms.uOpacity; u.value += (Math.min(1, target) - u.value) * Math.min(1, dt * 1.2);
+    c.holder.position.y = -5 + Math.sin(t * 0.3 + c.ph) * 0.5 * sw; c.holder.rotation.z = Math.sin(t * 0.22 + c.ph) * 0.05 * sw;
+    c.holder.position.x = c.x + Math.sin(t * 0.05 + c.ph) * 2 * sw;
+  });
+  if (WH.plank) {
+    const PA = WH.plank.p.geometry.attributes, boost = 0.1 + 0.5 * A + 0.5 * WH.sing;
+    for (let i = 0; i < PA.aAlpha.array.length; i++) {
+      PA.position.array[i * 3 + 1] += dt * (0.18 + 0.1 * Math.sin(WH.plank.seeds[i])) * sw; if (PA.position.array[i * 3 + 1] > 16) PA.position.array[i * 3 + 1] = 1;
+      PA.aAlpha.array[i] = boost * (0.4 + 0.6 * Math.sin(t * 0.8 + WH.plank.seeds[i] * 3) * Math.sin(t * 0.8 + WH.plank.seeds[i] * 3));
+    }
+    PA.position.needsUpdate = PA.aAlpha.needsUpdate = true;
+  }
+
   // ----- Sonido, interfaz y HUD -----
   whToneUpdate(A, Ls);
   if (E.fill) {
@@ -12106,8 +12542,1726 @@ function whUpdate(dt) {
   }
   MG.setHUD({
     'lives-value': Math.round(Ls * 100) + '%',
-    'level-value': Math.min(WH_ROUNDS, WH.round + 1) + ' / ' + WH_ROUNDS,
+    'level-value': (WH.st === 'hcall' || WH.st === 'hanswer' || WH.st === 'hverdict' ? 4 + Math.min(1, WH.hold) : (WH.st === 'free' || WH.st === 'echo' || WH.st === 'finale' ? WH_ROUNDS : Math.min(3, WH.round + 1))) + ' / ' + WH_ROUNDS,
     'files-value': String(WH.echoes),
     'combo-value': Math.round(A * 100) + '%'
   });
 }
+
+// ==========================================
+// 🛰️ JUEGO OTRO: SPUTNIK — «compañero de viaje» (3 capítulos)
+//   I   ENCAJAR    Seis piezas rotas, cada una con una constelación; cada lugar de la sonda guarda la suya. Se calzan; nada se castiga.
+//   II  TRANSMITIR Su disco se apaga. Cada fragmento enviado a la Tierra tarda más que el anterior (la Tierra se aleja); solo caben cuatro.
+//   III DERIVA     Tú eres la sonda y no eliges rumbo: solo aferras o sueltas lo que pasa. Lo que llevas decide el final.
+//   Memoria técnica como cuidado con pérdida (ana-arqueología), no como almacenamiento.
+// ==========================================
+window.isSputnikActive = false;
+const SPT_ISO = { yaw: 0.55, pitch: 0.32, dist: 21, fov: 42, target: new THREE.Vector3(0, 0, 0) };
+const SPT_FR = [                                              // fragmentos del archivo (hechos del Sputnik 1) y lo que la sonda «recuerda»
+  { es: 'Lanzado el 4 de octubre de 1957.', en: 'Launched on 4 October 1957.', eEs: 'Sé la fecha en que empecé a sonar.', eEn: 'I know the date I began to sound.' },
+  { es: 'Esfera de aluminio pulido, 58 cm.', en: 'Polished aluminium sphere, 58 cm.', eEs: 'Todavía recuerdo mi forma.', eEn: 'I still remember my shape.' },
+  { es: 'Cuatro antenas hacia atrás.', en: 'Four antennae swept back.', eEs: 'Tengo cuatro brazos que no abrazan a nadie.', eEn: 'I have four arms that embrace no one.' },
+  { es: 'Su nombre significa «compañero de viaje».', en: 'Its name means "fellow traveler".', eEs: 'Me llamaron compañero. No sé de quién.', eEn: 'They called me companion. I do not know of whom.' },
+  { es: 'Transmitía en 20,005 MHz.', en: 'It transmitted on 20.005 MHz.', eEs: 'Mi voz vive en una frecuencia exacta.', eEn: 'My voice lives on an exact frequency.' },
+  { es: 'Solo decía: bip.', en: 'It only said: beep.', eEs: 'Solo supe decir una cosa.', eEn: 'I only knew how to say one thing.' },
+  { es: 'No llevaba instrumentos de ciencia.', en: 'It carried no science instruments.', eEs: 'No medí nada. Solo estuve.', eEn: 'I measured nothing. I was simply there.' },
+  { es: 'Los radioaficionados lo siguieron desde sus patios.', en: 'Radio amateurs followed it from their yards.', eEs: 'Alguien me escuchaba desde un patio.', eEn: 'Someone listened to me from a yard.' },
+  { es: 'Para unos fue esperanza; para otros, amenaza.', en: 'For some it was hope; for others, a threat.', eEs: 'Me oyeron de maneras que no elegí.', eEn: 'I was heard in ways I did not choose.' },
+  { es: 'Orbitó 92 días.', en: 'It orbited for 92 days.', eEs: 'Tuve noventa y dos días de cielo.', eEn: 'I had ninety-two days of sky.' },
+  { es: 'Se quemó al volver, el 4 de enero de 1958.', en: 'It burned up on return, on 4 January 1958.', eEs: 'Volver también es una forma de irse.', eEn: 'Coming back is also a way of leaving.' },
+  { es: 'Arriba quedan miles de satélites sin voz.', en: 'Thousands of voiceless satellites remain above.', eEs: 'Hay muchos como yo, callados.', eEn: 'There are many like me, silent.' }
+];
+const SPT_ITEMS = {                                            // lo que pasa a la deriva (capítulo IV)
+  ruin: { es: 'un trozo de ruina', en: 'a piece of ruin', hex: 0x9a9fa8 },
+  voice: { es: 'una voz', en: 'a voice', hex: 0xffd9a8 },
+  light: { es: 'una luz lejana', en: 'a distant light', hex: 0xbfe6ff },
+  silence: { es: 'un silencio', en: 'a silence', hex: 0xcfa3c4 },
+  name: { es: 'un nombre', en: 'a name', hex: 0xd9c28a }
+};
+const SPT_TXT = {
+  es: {
+    c1: 'I · ENCAJAR', c2: 'II · TRANSMITIR', c3: 'III · DERIVA',
+    h1: 'Toca una pieza y luego el lugar que le corresponde: cada pieza lleva una constelación, y cada lugar guarda la suya. Arrastra el espacio vacío para girar; pellizca para acercar.',
+    h2: 'El disco se apaga. Toca un fragmento para enviarlo a la Tierra: cada envío tarda más que el anterior, y solo caben cuatro. Lo que no envíes se perderá.',
+    h3: 'No eliges el rumbo. Toca lo que pase cerca para aferrarlo; toca lo que llevas para soltarlo. Solo caben tres.',
+    s1: '…llega en pedazos. Cada uno recuerda su lugar…', s1b: '…aún no encaja. Mira su constelación…', s1ok: '…encaja. Y empieza a sonar.',
+    s2: '…su disco se apaga…', s2full: 'Solo caben cuatro envíos.', s2end: '…lo que no se envió ya no está.', s2late: '…la Tierra se aleja. Cada mensaje tarda más…',
+    s3: '…ahora eres tú quien deriva…', s3far: '…aún está lejos…', s3full: '…ya llevas lo que puedes llevar…', s3burn: '…vuelve. Y se quema.',
+    close: 'CERRAR EL ARCHIVO', you: 'ENVÍAS', probe: 'SONDA', kept: 'enviado',
+    end1: 'Se quemó el 4 de enero de 1958.', endNone: 'No llevaba nada, y aun así alguien lo escuchó.', carry: 'Llevaba', and: 'y', saved: (n) => n === 0 ? 'Del archivo no se envió nada.' : n === 1 ? 'Del archivo se envió un fragmento.' : `Del archivo se enviaron ${n} fragmentos.`,
+    toast: 'Una esfera pulida sigue diciendo bip.', title: 'COMPAÑERO DE VIAJE'
+  },
+  en: {
+    c1: 'I · FITTING', c2: 'II · TRANSMITTING', c3: 'III · DRIFT',
+    h1: 'Tap a piece, then the place that belongs to it: each piece carries a constellation, and each place keeps its own. Drag empty space to turn; pinch to zoom.',
+    h2: 'The disk is dying. Tap a fragment to send it to Earth: each send takes longer than the last, and only four fit. What you do not send will be lost.',
+    h3: 'You do not choose the course. Tap what passes near to hold it; tap what you carry to let it go. Only three fit.',
+    s1: '…it arrives in pieces. Each remembers its place…', s1b: '…not yet. Look at its constellation…', s1ok: '…it fits. And begins to sound.',
+    s2: '…its disk is dying…', s2full: 'Only four sends fit.', s2end: '…what was not sent is no longer there.', s2late: '…Earth is drifting away. Each message takes longer…',
+    s3: '…now you are the one who drifts…', s3far: '…still far…', s3full: '…you already carry what you can carry…', s3burn: '…it returns. And it burns.',
+    close: 'CLOSE THE ARCHIVE', you: 'YOU SEND', probe: 'PROBE', kept: 'sent',
+    end1: 'It burned up on 4 January 1958.', endNone: 'It carried nothing, and still someone listened.', carry: 'It carried', and: 'and', saved: (n) => n === 0 ? 'Nothing from the archive was sent.' : n === 1 ? 'One fragment of the archive was sent.' : `${n} fragments of the archive were sent.`,
+    toast: 'A polished sphere is still saying beep.', title: 'FELLOW TRAVELER'
+  }
+};
+function sptT(k) { return SPT_TXT[MG.isEN() ? 'en' : 'es'][k]; }
+const SPT = {
+  st: 'idle', ch: 0, t: 0, ct: 0, group: null, tilt: null, probe: null, wire: null, halo: null, earth: null, stars: null,
+  els: {}, subT: 0, bip: false, bipT: 0, pieces: [], sockets: [], sel: -1, holdT: 0, warnT: 0, idle1: 0, nextCh: 0,
+  fr: [], kept: [], diskMax: 56, msgs: [], sent: 0, arrived: 0, log: null, closing: false, hintK: -1, hintT: 0, miss: 0, items: [], held: [], spawnT: 0, spawned: 0, burnT: 0, endT: 0, saved: null
+};
+const _sptV = new THREE.Vector3(), _sptRC = new THREE.Raycaster();
+
+function sptSub(text, secs) { const el = SPT.els.sub; if (!el) return; el.textContent = text; el.style.opacity = '1'; SPT.subT = secs || 6; }
+function sptShuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function sptBip(vol) { MGS.ping(1480, 0, 0.5, (vol || 0.035) * 0.7); MG.pulse(0, 0, 0xbfe6ff, 1.2, 10, 2.4, 0.14, 0); }
+
+// ---------- Escena ----------
+//   Todo se hace con la misma materia que el resto del universo: monitores CRT que fallan y puntos de luz. Nada es liso.
+function sptPoints(n, fn) {                                     // nube de puntos luminosos; fn(i, o) rellena {x,y,z,r,g,b,s,a}
+  const p = mkGlowPoints(n), A = p.geometry.attributes, o = { x: 0, y: 0, z: 0, r: 1, g: 1, b: 1, s: 0.2, a: 1 };
+  for (let i = 0; i < n; i++) {
+    o.r = o.g = o.b = 1; o.a = 1; fn(i, o);
+    A.position.array[i * 3] = o.x; A.position.array[i * 3 + 1] = o.y; A.position.array[i * 3 + 2] = o.z;
+    A.aCol.array[i * 3] = o.r; A.aCol.array[i * 3 + 1] = o.g; A.aCol.array[i * 3 + 2] = o.b;
+    A.aSize.array[i] = o.s; A.aAlpha.array[i] = o.a;
+  }
+  A.position.needsUpdate = A.aCol.needsUpdate = A.aSize.needsUpdate = A.aAlpha.needsUpdate = true;
+  return p;
+}
+function sptMonitors(fill, scale, pivot) {                      // grupo de monitores fusionados (usa los materiales compartidos de Sputnik)
+  const cells = []; fill(cells);
+  const g = hgPart(cells, pivot || [0, 0, 0], [0, 0, 0], SPT.mats); g.scale.setScalar(scale); return g;
+}
+function sptBuildScene() {
+  SPT.mats = hgMakeMats(0x6a7684);
+  const g = new THREE.Group();
+  // cielo: estrellas de tamaños y tintes distintos + una banda de polvo en espiral, apenas visible, que gira muy despacio
+  SPT.stars = sptPoints(620, (i, o) => { const u = Math.random() * 2 - 1, a = Math.random() * 6.283, r = 70 + Math.random() * 45, s = Math.sqrt(1 - u * u), k = Math.random();
+    o.x = r * s * Math.cos(a); o.y = r * u; o.z = r * s * Math.sin(a); o.s = 0.07 + Math.pow(Math.random(), 4) * 0.4; o.a = 0.35 + Math.random() * 0.65;
+    if (k < 0.2) { o.r = 0.7; o.g = 0.82; o.b = 1; } else if (k < 0.3) { o.r = 1; o.g = 0.8; o.b = 0.65; } }); g.add(SPT.stars);
+  SPT.dust = sptPoints(1100, (i, o) => { const arm = i % 3, t = Math.pow(Math.random(), 0.7), r = 22 + t * 62, a = arm * 2.094 + t * 3.4 + (Math.random() - 0.5) * 0.35;
+    o.x = Math.cos(a) * r; o.z = Math.sin(a) * r - 14; o.y = (Math.random() - 0.5) * (4 + t * 9) - 10; o.s = 0.12 + Math.random() * 0.45; o.a = 0.07 + Math.random() * 0.16;
+    if (arm === 0) { o.r = 0.45; o.g = 0.6; o.b = 1; } else if (arm === 1) { o.r = 0.8; o.g = 0.5; o.b = 0.85; } else { o.r = 0.4; o.g = 0.85; o.b = 0.9; } }); g.add(SPT.dust);
+  // la Tierra: una esfera de puntos con continentes de ruido, y su aliento
+  SPT.earth = new THREE.Group();
+  const GA = 2.399963, NE = 2200;
+  SPT.earth.add(sptPoints(NE, (i, o) => { const y = 1 - 2 * (i + 0.5) / NE, rr = Math.sqrt(1 - y * y), a = i * GA, x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+    const n = Math.sin(x * 3.1 + 1) * Math.cos(z * 2.7) + Math.sin(y * 4.3 + x * 2) * 0.6, land = n > 0.35;
+    o.x = x * 6; o.y = y * 6; o.z = z * 6; o.s = land ? 0.13 : 0.085; o.a = land ? 0.85 : 0.5;
+    if (land) { o.r = 0.55; o.g = 0.78; o.b = 0.62; } else { o.r = 0.22; o.g = 0.45; o.b = 0.8; } }));
+  const eh = mkHalo(0x6fa8d8, 21, 0.1); SPT.earth.add(eh); SPT.earth.userData.halo = eh;
+  SPT.earth.position.set(-36, -9, -10); g.add(SPT.earth);
+  // la sonda: una esfera de monitores (con franjas de runas), cuatro antenas de monitores y un aliento de puntos
+  const tilt = new THREE.Group(); SPT.tilt = tilt; g.add(tilt);
+  const probe = new THREE.Group(); SPT.probe = probe; tilt.add(probe);
+  probe.add(sptMonitors((c) => { hgDome(c, 0, 0, 0, 6, 6, 6, Math.PI, [1, 3], 0.0); }, 0.2));
+  [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(([sx, sy]) => {
+    probe.add(sptMonitors((c) => { hgChain(c, [[sx * 3.4, sy * 3.4, 3], [sx * 5, sy * 5, 13], [sx * 7.6, sy * 7.6, 27], [sx * 10.5, sy * 10.5, 44]], 3.1, 0, 0, 'F', 1.5, 0.55, 3); }, 0.2));
+  });
+  SPT.shell = sptPoints(380, (i, o) => { const y = 1 - 2 * (i + 0.5) / 380, rr = Math.sqrt(1 - y * y), a = i * GA, R = 1.5 + Math.random() * 0.25;
+    o.x = Math.cos(a) * rr * R; o.y = y * R; o.z = Math.sin(a) * rr * R; o.s = 0.05 + Math.random() * 0.07; o.a = 0.8; o.r = 0.6; o.g = 0.8; o.b = 1; }); probe.add(SPT.shell);
+  // órbita: un hilo de puntos y un cometa pequeño que la recorre
+  SPT.orbit = sptPoints(260, (i, o) => { const a = i / 260 * 6.283; o.x = Math.cos(a) * 11; o.z = Math.sin(a) * 11 * 0.55; o.y = Math.sin(a) * 2.2; o.s = 0.05; o.a = 0.28; o.r = 0.6; o.g = 0.75; o.b = 1; }); g.add(SPT.orbit);
+  SPT.comet = mkHalo(0xbfe6ff, 1.1, 0.8); g.add(SPT.comet);
+  SPT.halo = mkHalo(0x9fd0ff, 6, 0.04); probe.add(SPT.halo);
+  SPT.stars.material.uniforms.uOpacity.value = 0.75; SPT.dust.material.uniforms.uOpacity.value = 0.7; SPT.orbit.material.uniforms.uOpacity.value = 0.6; SPT.shell.material.uniforms.uOpacity.value = 0.6;
+  SPT.earth.children[0].material.uniforms.uOpacity.value = 0.72;
+  scene.add(g); SPT.group = g;
+}
+
+// ---------- Capítulo I: encajar ----------
+function sptConstel(n, R, fn) {                                  // constelación de n vértices (3..8) unidos por hilos de puntos; fn(o, esVértice) tiñe
+  const verts = []; for (let v = 0; v < n; v++) { const q = v / n * 6.283 - 1.5708; verts.push([Math.cos(q) * R, Math.sin(q) * R]); }
+  const per = 5, tot = n * (per + 1);
+  return sptPoints(tot, (i, o) => { const e = Math.floor(i / (per + 1)), u = (i % (per + 1)) / (per + 1), A = verts[e], B = verts[(e + 1) % n], vtx = (i % (per + 1)) === 0;
+    o.x = A[0] + (B[0] - A[0]) * u; o.y = A[1] + (B[1] - A[1]) * u; o.z = 0; fn(o, vtx); });
+}
+function sptBuildPieces() {
+  const makers = [
+    (c) => hgShell(c, 0, 0, 0, 6, 6, 6, ['+z', '-z', '+x', '-x', '+y'], 0),                                   // caja de pantallas
+    (c) => hgSpike(c, 0, -7, 0, [0, 1, 0], 6, 5, 3.2, [0, 0, 1]),                                           // espina
+    (c) => hgDome(c, 0, 0, 0, 5, 5, 5, Math.PI / 2, [1], 0),                                                 // cúpula
+    (c) => hgChain(c, [[-6, 0, 0], [-3, 0, 4], [3, 0, 4], [6, 0, 0], [3, 0, -4]], 2.6, 0, 0, 'F', 2.2, 1.6, 3),   // arco de monitores
+    (c) => hgFeather(c, 0, -6, 0, [0, 1, 0], 7, 4.2, 3.4, [0, 0, 1]),                                       // pluma
+    (c) => hgDome(c, 0, 0, 0, 4, 6, 4, Math.PI * 0.85, [2], 0)                                               // cápsula
+  ];
+  const cols = [[0.75, 0.9, 1], [0.95, 0.78, 0.6], [0.72, 0.85, 0.68], [0.82, 0.7, 0.88], [0.9, 0.89, 0.85], [0.92, 0.65, 0.6]];
+  const hexes = [0xbfe6ff, 0xf2c799, 0xb8d9ad, 0xd1b3e0, 0xe7e4de, 0xea9f95];
+  const perm = sptShuffle([0, 1, 2, 3, 4, 5]), shapes = sptShuffle([0, 1, 2, 3, 4, 5]);       // perm[i] = lugar al que pertenece la pieza i
+  SPT.pieces = []; SPT.sockets = [];
+  const owner = []; perm.forEach((k, i) => { owner[k] = i; });
+  for (let k = 0; k < 6; k++) {                                // 6 lugares en un anillo alrededor de la sonda: aro de puntos + la constelación de su pieza
+    const a = (k + 0.5) * Math.PI / 3, R = 3.3, sg = new THREE.Group(), oi = owner[k], c = cols[oi];
+    const ring = sptPoints(36, (i, o) => { const q = i / 36 * 6.283; o.x = Math.cos(q) * 0.55; o.z = Math.sin(q) * 0.55; o.s = 0.04; o.a = 0.7; o.r = c[0]; o.g = c[1]; o.b = c[2]; });
+    sg.add(ring); ring.material.uniforms.uOpacity.value = 0.5;
+    const con = sptConstel(3 + oi, 0.3, (o, v) => { o.s = v ? 0.07 : 0.032; o.a = v ? 0.95 : 0.5; o.r = c[0]; o.g = c[1]; o.b = c[2]; }); con.rotation.x = -1.5708; con.position.y = 0.02; sg.add(con);
+    const hit = new THREE.Mesh(new THREE.SphereGeometry(0.85, 8, 6), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })); hit.userData.socket = k; sg.add(hit);
+    sg.position.set(Math.cos(a) * R, 0, Math.sin(a) * R); SPT.tilt.add(sg);
+    SPT.sockets.push({ k, a, g: sg, ring, con, hit, piece: -1, pos: sg.position.clone() });
+  }
+  for (let i = 0; i < 6; i++) {
+    const sc = 0.2, mesh = new THREE.Group(), c = cols[i];
+    mesh.add(sptMonitors(makers[shapes[i]], 1));
+    const con = sptConstel(3 + i, 3.4, (o, v) => { o.s = v ? 0.34 : 0.15; o.a = v ? 0.95 : 0.5; o.r = c[0]; o.g = c[1]; o.b = c[2]; }); con.position.y = 7.5; mesh.add(con);
+    const halo = mkHalo(hexes[i], 16, 0); mesh.add(halo);
+    const hit = new THREE.Mesh(new THREE.SphereGeometry(6.5, 8, 6), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })); hit.userData.piece = i; mesh.add(hit);
+    mesh.scale.setScalar(sc); mesh.userData.piece = i;
+    const base = i * Math.PI / 3 + 0.3;
+    mesh.position.set(Math.cos(base) * 8, 0, Math.sin(base) * 8); SPT.group.add(mesh);
+    SPT.pieces.push({ i, mesh, hit, halo, con, sc, col: hexes[i], target: perm[i], slot: -1, base, spin: 0.15 + Math.random() * 0.35, shake: 0 });
+  }
+}
+function sptPlace(pi, k) {
+  const p = SPT.pieces[pi], s = SPT.sockets[k];
+  if (p.slot >= 0) SPT.sockets[p.slot].piece = -1;
+  p.slot = k; s.piece = pi; SPT.group.attach(p.mesh); SPT.tilt.attach(p.mesh); SPT.sel = -1; SPT.hintK = -1; SPT.miss = 0;
+  MGS.bell(MGS.NOTES[(pi + k) % 6], 0, 1.8, 0.035); vibrateDevice(14);
+  if (MG.fx) { p.mesh.getWorldPosition(_sptV); MG.fx.burst(_sptV.x, _sptV.y, _sptV.z, 8, 1.2, 0.9, p.col, 0.14, 0.8); }
+}
+function sptUnplace(pi) {
+  const p = SPT.pieces[pi]; if (p.slot < 0) return;
+  SPT.sockets[p.slot].piece = -1; p.slot = -1; SPT.group.attach(p.mesh); SPT.sel = pi;
+  MGS.bell(MGS.NOTES[2] / 2, 0, 0.9, 0.02);
+}
+function sptTap1(rc) {
+  const hitsP = rc.intersectObjects(SPT.pieces.map(p => p.hit), false);
+  const hitsS = rc.intersectObjects(SPT.sockets.map(s => s.hit), false);
+  const dP = hitsP.length ? hitsP[0].distance : 1e9, dS = hitsS.length ? hitsS[0].distance : 1e9;
+  if (dP < 1e9 && dP <= dS + 0.8) {
+    const pi = hitsP[0].object.userData.piece, p = SPT.pieces[pi];
+    if (p.slot >= 0) sptUnplace(pi); else { SPT.sel = SPT.sel === pi ? -1 : pi; MGS.ping(MGS.NOTES[4], 0, 0.7, 0.025); }
+  } else if (dS < 1e9 && SPT.sel >= 0) {
+    const k = hitsS[0].object.userData.socket, p = SPT.pieces[SPT.sel];
+    if (SPT.sockets[k].piece >= 0) return;
+    if (p.target === k) sptPlace(SPT.sel, k);
+    else {                                                     // no encaja: la pieza tiembla un poco, sin castigo
+      p.shake = 1; MGS.ping(MGS.NOTES[0] / 2, 0, 0.8, 0.02); SPT.miss++;
+      if (SPT.miss >= 2) { sptSub(sptT('s1b'), 5); SPT.hintK = p.target; SPT.hintT = 6; }
+    }
+  }
+}
+
+// ---------- Capítulo II: transmitir (interfaz DOM) ----------
+function sptStartArchive() {
+  const en = MG.isEN(), box = SPT.els.panel; box.innerHTML = '';
+  const log = document.createElement('div'); log.style.cssText = 'max-height:12vh; overflow-y:auto; font:300 0.68rem/1.7 -apple-system,Helvetica,Arial,sans-serif; letter-spacing:0.03em; text-align:left; color:#b9bfc9; min-height:1.4em; margin-bottom:8px;';
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid; grid-template-columns:repeat(2,1fr); gap:6px; max-height:30vh; overflow-y:auto;';
+  const ids = sptShuffle([...Array(SPT_FR.length).keys()]).slice(0, 8);
+  SPT.fr = ids.map((id, n) => ({ id, dieAt: 12 + n * ((SPT.diskMax - 18) / ids.length), kept: false, sent: false, dead: false, el: null }));
+  SPT.fr.forEach(f => {
+    const b = document.createElement('button'); b.type = 'button';
+    b.style.cssText = 'pointer-events:auto; text-align:left; background:rgba(10,12,16,0.5); border:1px solid rgba(231,228,222,0.16); color:#c3c8d0; padding:9px 10px; font:300 0.68rem/1.45 -apple-system,Helvetica,Arial,sans-serif; letter-spacing:0.02em; cursor:pointer; transition:opacity .8s, border-color .3s, background .3s;';
+    b.textContent = en ? SPT_FR[f.id].en : SPT_FR[f.id].es;
+    ['mousedown', 'touchstart', 'mouseup', 'touchend'].forEach(ev => b.addEventListener(ev, (e) => e.stopPropagation()));
+    b.addEventListener('click', (e) => { e.stopPropagation(); sptSendFrag(f); });
+    f.el = b; grid.appendChild(b);
+  });
+  const bar = document.createElement('div'); bar.style.cssText = 'margin-top:10px; height:2px; background:rgba(231,228,222,0.12); position:relative;';
+  const fill = document.createElement('div'); fill.style.cssText = 'position:absolute; left:0; top:0; height:2px; width:100%; background:#bfe6ff; opacity:0.7; box-shadow:0 0 6px rgba(191,230,255,0.4);'; bar.appendChild(fill);
+  const done = document.createElement('button'); done.type = 'button'; done.textContent = sptT('close');
+  done.style.cssText = 'pointer-events:auto; margin:12px auto 0; display:block; background:rgba(10,10,12,0.3); border:1px solid rgba(255,255,255,0.14); color:#9a968f; padding:8px 18px; font:300 0.62rem -apple-system,Helvetica,Arial,sans-serif; letter-spacing:0.28em; cursor:pointer;';
+  ['mousedown', 'touchstart', 'mouseup', 'touchend'].forEach(ev => done.addEventListener(ev, (e) => e.stopPropagation()));
+  done.addEventListener('click', (e) => { e.stopPropagation(); sptEndArchive(); });
+  box.appendChild(log); box.appendChild(grid); box.appendChild(bar); box.appendChild(done);
+  SPT.els.fill = fill; SPT.els.grid = grid; SPT.log = log; SPT.msgs = []; SPT.sent = 0; SPT.arrived = 0; SPT.kept = []; SPT.closing = false;
+  box.style.display = 'block'; sptSub(sptT('s2'), 6);
+}
+function sptLog(who, text, dim) {
+  if (!SPT.log) return;
+  const d = document.createElement('div'); d.style.cssText = 'opacity:' + (dim ? 0.55 : 1) + ';';
+  d.innerHTML = '<span style="color:#7f8a99; letter-spacing:0.22em; font-size:0.58rem;">' + who + '</span>&nbsp; ';
+  d.appendChild(document.createTextNode(text)); SPT.log.appendChild(d); SPT.log.scrollTop = SPT.log.scrollHeight; return d;
+}
+function sptKill(f) {
+  f.dead = true; f.el.style.opacity = '0.2'; f.el.style.borderColor = 'rgba(231,228,222,0.05)'; f.el.style.background = 'transparent'; f.el.disabled = true;
+  f.el.textContent = '▒▒▒▒ ▒▒▒ ▒▒▒▒▒▒'; MGS.bell(MGS.NOTES[0] / 4, 0, 1.6, 0.015);
+}
+function sptSendFrag(f) {
+  if (SPT.st !== 'archive' || f.sent || f.dead || SPT.closing) return;
+  if (SPT.sent >= 4) { sptSub(sptT('s2full'), 4); MGS.ping(MGS.NOTES[0] / 2, 0, 0.7, 0.015); return; }
+  const en = MG.isEN(), i = SPT.sent++, d = 2.0 + 1.6 * i;                    // cada viaje es más largo que el anterior
+  f.sent = true; f.kept = true; SPT.kept.push(f.id); f.el.style.borderColor = 'rgba(191,230,255,0.7)'; f.el.style.background = 'rgba(40,70,100,0.35)'; f.el.style.opacity = '1'; f.el.disabled = true;
+  const ball = mkHalo(0xffd9a8, 1.4, 0.7); SPT.group.add(ball); ball.position.copy(SPT.probe.position);
+  SPT.msgs.push({ i, d, t: 0, phase: 'out', ball, reply: '«' + (en ? SPT_FR[f.id].eEn : SPT_FR[f.id].eEs) + '»' });
+  sptLog(sptT('you'), en ? SPT_FR[f.id].en : SPT_FR[f.id].es, false); MGS.bell(MGS.NOTES[3], 0, 1.8, 0.03); vibrateDevice(16);
+  SPT.earth.userData.farTarget = (SPT.earth.userData.farTarget !== undefined ? SPT.earth.userData.farTarget : SPT.earth.position.x) - 3.2;    // la Tierra se aleja con cada envío
+  if (SPT.sent === 1) setTimeout(() => { if (window.isSputnikActive && SPT.st === 'archive') sptSub(sptT('s2late'), 5); }, 1800);
+}
+function sptEndArchive() {
+  if (SPT.st !== 'archive' || SPT.closing) return;
+  SPT.closing = true; SPT.fr.forEach(f => { if (!f.sent && !f.dead) sptKill(f); });
+  sptSub(sptT('s2end'), 4);
+}
+
+// ---------- Capítulo III: deriva ----------
+function sptStartDrift() {
+  SPT.els.panel.style.display = 'none'; SPT.els.panel.innerHTML = '';
+  SPT.items = []; SPT.held = []; SPT.spawnT = 0; SPT.spawned = 0;
+  sptSub(sptT('s3'), 7);
+}
+function sptSpawnItem() {
+  const kinds = Object.keys(SPT_ITEMS), kind = kinds[Math.floor(Math.random() * kinds.length)], K = SPT_ITEMS[kind];
+  const cr = ((K.hex >> 16) & 255) / 255, cg = ((K.hex >> 8) & 255) / 255, cb = (K.hex & 255) / 255;
+  const mesh = new THREE.Group();
+  if (kind === 'ruin') mesh.add(sptMonitors((c) => { hgShell(c, 0, 0, 0, 6, 6, 6, ['+z', '+x', '+y'], 0.35); }, 0.17));          // un trozo roto de pantallas
+  else if (kind === 'name') mesh.add(sptMonitors((c) => { hgChain(c, [[-5, -3, 0], [-2, 3, 0], [1, -2, 0], [4, 4, 0], [6, -1, 0]], 2.8, 0, 0, 'F', 1.7, 1.2, 1); }, 0.17));   // un glifo que se enciende
+  else if (kind === 'voice') mesh.add(sptPoints(90, (i, o) => { const ring = i % 3, q = (i / 3) * 0.4 + ring, R = 0.25 + ring * 0.28; o.x = Math.cos(q) * R; o.z = Math.sin(q) * R; o.y = Math.sin(q * 2) * 0.05; o.s = 0.08; o.a = 0.9 - ring * 0.2; o.r = cr; o.g = cg; o.b = cb; }));   // anillos concéntricos
+  else if (kind === 'light') mesh.add(sptPoints(70, (i, o) => { const arm = i % 4, d = Math.floor(i / 4) / 17, q = arm * 1.5708; const R = d * 0.9; o.x = Math.cos(q) * R; o.y = Math.sin(q) * R; o.z = 0; o.s = 0.14 * (1 - d) + 0.04; o.a = 1 - d * 0.7; o.r = cr; o.g = cg; o.b = cb; }));   // una cruz de luz
+  else { mesh.add(new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 8), new THREE.MeshBasicMaterial({ color: 0x000000 })));                                                                     // un silencio: un hueco con corona
+         mesh.add(sptPoints(60, (i, o) => { const q = i / 60 * 6.283; o.x = Math.cos(q) * 0.5; o.y = Math.sin(q) * 0.5; o.z = 0; o.s = 0.06; o.a = 0.7; o.r = cr; o.g = cg; o.b = cb; })); }
+  const hit = new THREE.Mesh(new THREE.SphereGeometry(1.4, 8, 6), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })); hit.userData.item = true; mesh.add(hit);
+  const halo = mkHalo(K.hex, 2.6, 0.0); mesh.add(halo);
+  const it = { kind, mesh, hit, halo, state: 'drift', x: -26, y: (Math.random() - 0.5) * 6, z: (Math.random() - 0.5) * 16, vx: 2.4 + Math.random() * 0.8, vy: (Math.random() - 0.5) * 0.15, vz: 0, slot: -1, spin: 0.4 + Math.random() * 0.8, ph: Math.random() * 6 };
+  mesh.position.set(it.x, it.y, it.z); mesh.userData.it = it; hit.userData.itRef = it; SPT.group.add(mesh); SPT.items.push(it);
+}
+function sptDropItem(it) { SPT.group.remove(it.mesh); it.mesh.traverse(c => { if (c.geometry && c.geometry.dispose) c.geometry.dispose(); if (c.material && c.material.dispose && !(SPT.mats && (c.material === SPT.mats.body || c.material === SPT.mats.screen))) c.material.dispose(); }); }
+function sptTap4(rc) {
+  const hits = rc.intersectObjects(SPT.items.map(i => i.hit), false); if (!hits.length) return;
+  const it = hits[0].object.userData.itRef;
+  if (it.state === 'held') { it.state = 'free'; const d = it.mesh.position.clone().normalize(); it.vx = d.x * 3; it.vy = d.y * 3; it.vz = d.z * 3; SPT.held = SPT.held.filter(x => x !== it); MGS.bell(MGS.NOTES[1] / 2, 0, 1.6, 0.02); return; }
+  if (it.state !== 'drift') return;
+  if (it.mesh.position.length() > 8) { sptSub(sptT('s3far'), 3); return; }
+  if (SPT.held.length >= 3) { sptSub(sptT('s3full'), 4); return; }
+  it.state = 'held'; SPT.held.push(it); it.slot = [0, 1, 2].find(s => !SPT.held.some(h => h !== it && h.slot === s));
+  MGS.arpeggio([it.slot, it.slot + 2], 0.07, 1.4, 0.035); vibrateDevice(18);
+  if (MG.fx) MG.fx.burst(it.mesh.position.x, it.mesh.position.y, it.mesh.position.z, 8, 1.4, 0.9, SPT_ITEMS[it.kind].hex, 0.18, 0.8);
+}
+
+// ---------- Interfaz ----------
+function sptBuildUI() {
+  const en = MG.isEN();
+  const ui = MG.buildUI(sptT('h1'));
+  const title = document.createElement('div');
+  title.style.cssText = 'font-size:0.66rem; font-weight:300; letter-spacing:0.34em; color:#a8a49c;'; title.textContent = sptT('title');
+  const chap = document.createElement('div'); chap.style.cssText = 'margin-top:10px; font-size:0.72rem; font-weight:300; letter-spacing:0.3em; color:#e7e4de;';
+  ui.extra.appendChild(title); ui.extra.appendChild(chap);
+  const sub = document.createElement('div');
+  sub.style.cssText = 'position:absolute; left:50%; top:calc(150px + env(safe-area-inset-top,0px)); transform:translateX(-50%); width:min(90vw,640px); text-align:center; font-size:0.95rem; font-weight:300; letter-spacing:0.12em; line-height:1.8; color:#cfd8e3; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 14px rgba(0,0,0,0.9);';
+  ui.root.appendChild(sub);
+  const panel = document.createElement('div');
+  panel.style.cssText = 'display:none; position:absolute; left:50%; bottom:calc(138px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); width:min(94vw,560px); pointer-events:none;';
+  ui.root.appendChild(panel);
+  const bars = [['top'], ['bottom']].map(([pos]) => { const b = document.createElement('div'); b.style.cssText = `position:absolute; left:0; right:0; ${pos}:0; height:0; background:#000; pointer-events:none; transition:height 3s ease;`; ui.root.insertBefore(b, ui.root.firstChild); return b; });
+  requestAnimationFrame(() => requestAnimationFrame(() => bars.forEach(b => { b.style.height = '4.5vh'; })));
+  SPT.els = { title, chap, sub, panel, hint: ui.hint };
+}
+
+// ---------- Capítulos ----------
+function sptGo(ch) {
+  SPT.ch = ch; SPT.ct = SPT.t;
+  SPT.els.chap.textContent = sptT('c' + ch); SPT.els.hint.textContent = sptT('h' + ch);
+  MGS.arpeggio([0, 2, 4], 0.14, 2.4, 0.025);
+  if (ch === 1) { SPT.st = 'mend'; sptBuildPieces(); sptSub(sptT('s1'), 7); }
+  else if (ch === 2) { SPT.st = 'archive'; SPT.pieces.forEach(p => p.mesh.visible = false); SPT.sockets.forEach(s => s.g.visible = false); sptStartArchive(); }
+  else if (ch === 3) { SPT.st = 'drift'; sptStartDrift(); }
+}
+
+// ---------- Inicio y fin ----------
+function sptStart() {
+  if (window.isSputnikActive || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive || window.isWhaleActive) return;
+  const en = MG.isEN();
+  window.isSputnikActive = true;
+  MG.enter(24);
+  camera.fov = SPT_ISO.fov; targetFov = SPT_ISO.fov; camera.updateProjectionMatrix();
+  userGroup.rotation.order = 'YXZ';
+  Object.assign(SPT, { st: 'intro', ch: 0, t: 0, ct: 0, bip: false, bipT: 0, sel: -1, holdT: 0, warnT: 0, idle1: 0, nextCh: 0, kept: [], msgs: [], sent: 0, arrived: 0, items: [], held: [], burnT: 0, endT: 0, subT: 0, closing: false, hintK: -1, hintT: 0, miss: 0 });
+  sptBuildScene();
+  sptBuildUI();
+  hgCamReset(); hgCamBind();
+  morphHUD('resonar');
+  showSystemToast(sptT('toast'), '#e7e4de');
+  setTimeout(() => { if (window.isSputnikActive && SPT.st === 'intro') sptGo(1); }, 2500);
+}
+window.startSputnikGame = function(data) {
+  if (MG.pending || window.isSputnikActive || window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
+  MG.pending = true;
+  MG.reflect(MG.text('sputnik', 'intro'), () => { MG.pending = false; sptStart(); },
+    { cancelable: true, onCancel: () => { MG.pending = false; if (data && typeof openProjectPopup === 'function') openProjectPopup(data); } });
+};
+function sptTeardown() {
+  window.isSputnikActive = false; SPT.st = 'idle';
+  hgCamUnbind();
+  if (SPT.group) { mgDispose(SPT.group); SPT.group = null; }
+  SPT.tilt = SPT.probe = SPT.shell = SPT.halo = SPT.earth = SPT.stars = SPT.dust = SPT.orbit = SPT.comet = SPT.mats = null; SPT.pieces = []; SPT.sockets = []; SPT.items = []; SPT.held = []; SPT.msgs = []; SPT.fr = []; SPT.els = {}; SPT.log = null;
+}
+window.endSputnikGame = function() { if (!window.isSputnikActive) return; sptTeardown(); MG.exit(); setTimeout(() => { MG.reflect(MG.text('sputnik', 'outro'), () => {}); }, 700); };
+window.abortSputnikGame = function() { if (!window.isSputnikActive) return; sptTeardown(); MG.exit(); setTimeout(() => { MG.reflect(MG.text('sputnik', 'outro'), () => {}); }, 700); };
+window.sptTap = function(cx, cy) {
+  if (!window.isSputnikActive || window.isMiniIntro) return;
+  _sptRC.setFromCamera({ x: (cx / window.innerWidth) * 2 - 1, y: -(cy / window.innerHeight) * 2 + 1 }, camera);
+  if (SPT.st === 'mend') sptTap1(_sptRC); else if (SPT.st === 'drift') sptTap4(_sptRC);
+};
+
+// ---------- Actualización ----------
+function sptEpilogue() {
+  const en = MG.isEN(), L = en ? 'en' : 'es', names = SPT.held.map(h => SPT_ITEMS[h.kind][L]);
+  let s = sptT('end1') + ' ';
+  if (!names.length) s += sptT('endNone');
+  else s += sptT('carry') + ' ' + (names.length === 1 ? names[0] : names.slice(0, -1).join(', ') + ' ' + sptT('and') + ' ' + names[names.length - 1]) + '.';
+  return s + ' ' + sptT('saved')(SPT.kept.length);
+}
+function sptUpdate(dt) {
+  const calm = reduceMotionMQ.matches, t = MG.time, sw = calm ? 0 : 1;
+  SPT.t += dt; SPT.subT -= dt;
+  if (SPT.els.sub && SPT.subT <= 0) SPT.els.sub.style.opacity = '0';
+  const T = SPT.t - SPT.ct;
+
+  // sonda: gira despacio; el bip suena una vez sostenida
+  SPT.probe.rotation.y += dt * 0.12 * sw;
+  const MT = SPT.mats, bipK = SPT.bip ? Math.max(0, 1 - (SPT.bipT > 0 ? 2.6 - SPT.bipT : 0) * 1.2) : 0;
+  MT.screen.uniforms.uTime.value = t; MT.screen.uniforms.uRune.value = SPT.bip ? 0.45 + 0.55 * bipK : 0.12;
+  if (SPT.st !== 'burn') MT.screen.uniforms.uCalm.value = SPT.bip ? 0.9 : 0.55;
+  SPT.stars.rotation.y += dt * 0.004 * sw; SPT.dust.rotation.y += dt * 0.012 * sw;
+  const oa = t * 0.12; SPT.comet.position.set(Math.cos(oa) * 11, Math.sin(oa) * 2.2, Math.sin(oa) * 11 * 0.55);
+  SPT.shell.rotation.y += dt * 0.2 * sw; SPT.shell.rotation.x += dt * 0.07 * sw;
+  if (SPT.bip && SPT.st !== 'burn') { SPT.bipT -= dt; if (SPT.bipT <= 0) { SPT.bipT = 2.6; sptBip(0.03); SPT.halo.material.opacity = 0.5; } }
+  SPT.halo.material.opacity += ((SPT.st === 'burn' ? 0.6 : SPT.bip ? 0.08 : 0.035) - SPT.halo.material.opacity) * Math.min(1, dt * 2);
+  SPT.earth.rotation.y += dt * 0.03;
+  SPT.earth.userData.halo.material.opacity = 0.06 + 0.02 * Math.sin(t * 0.4);
+  if (SPT.earth.userData.farTarget !== undefined) SPT.earth.position.x += (SPT.earth.userData.farTarget - SPT.earth.position.x) * Math.min(1, dt * 0.8);
+
+  if (SPT.st === 'mend') {
+    const placed = SPT.sockets.filter(x => x.piece >= 0).length, full = placed === 6;
+    SPT.idle1 += dt; SPT.hintT -= dt; if (SPT.hintT <= 0) SPT.hintK = -1;
+    if (SPT.idle1 > 40 && SPT.sel >= 0 && SPT.hintK < 0) { SPT.hintK = SPT.pieces[SPT.sel].target; SPT.hintT = 8; SPT.idle1 = 20; }
+    SPT.pieces.forEach(p => {
+      const sel = SPT.sel === p.i;
+      p.halo.material.opacity += ((sel ? 0.34 + 0.12 * Math.sin(t * 5) : 0) - p.halo.material.opacity) * Math.min(1, dt * 8);
+      const k = Math.min(1, dt * 5); p.shake = Math.max(0, p.shake - dt * 2.2);
+      if (p.slot >= 0) { p.mesh.position.lerp(SPT.sockets[p.slot].pos, k); p.mesh.scale.setScalar(p.sc * 0.9); p.mesh.rotation.y += dt * 0.25; p.con.visible = false; }
+      else {
+        const a = p.base + t * 0.06, r = 7.5 + 0.6 * Math.sin(t * 0.5 + p.i);
+        _sptV.set(Math.cos(a) * r + Math.sin(t * 48) * 0.22 * p.shake, 1.2 * Math.sin(t * 0.4 + p.i * 1.7), Math.sin(a) * r);
+        p.mesh.position.lerp(_sptV, k * 0.6); p.mesh.scale.setScalar(p.sc * (sel ? 1.25 + 0.06 * Math.sin(t * 5) : 1)); p.con.visible = true;
+        p.mesh.rotation.x += dt * p.spin * sw; p.mesh.rotation.y += dt * p.spin * 0.7 * sw;
+        p.con.rotation.set(-p.mesh.rotation.x, -p.mesh.rotation.y, 0);                  // la constelación se mantiene de frente
+        p.con.quaternion.copy(p.mesh.quaternion).invert();
+      }
+    });
+    SPT.sockets.forEach(x => {
+      const hint = SPT.hintK === x.k && x.piece < 0, base = x.piece >= 0 ? 0.9 : (SPT.sel >= 0 ? 0.5 + 0.2 * Math.sin(t * 3 + x.k) : 0.5);
+      x.ring.material.uniforms.uOpacity.value = hint ? 0.8 + 0.2 * Math.sin(t * 7) : base;
+      x.con.material.uniforms.uOpacity.value = x.piece >= 0 ? 0.0 : (hint ? 1 : 0.55 + 0.25 * Math.sin(t * 1.3 + x.k));
+    });
+    if (full) {
+      SPT.holdT += dt;
+      if (SPT.holdT > 1.4 && !SPT.bip) { SPT.bip = true; SPT.bipT = 0; sptSub(sptT('s1ok'), 6); MGS.arpeggio([0, 2, 3, 5], 0.2, 3.2, 0.03); SPT.nextCh = SPT.t + 4.5; SPT.st = 'mend_ok'; }
+    } else SPT.holdT = 0;
+  } else if (SPT.st === 'mend_ok') {
+    if (SPT.t > SPT.nextCh) sptGo(2);
+  } else if (SPT.st === 'archive') {
+    const left = Math.max(0, 1 - T / SPT.diskMax);
+    SPT.els.fill.style.width = (left * 100) + '%';
+    SPT.shell.material.uniforms.uOpacity.value = 0.06 + 0.54 * left; MT.screen.uniforms.uCalm.value = 0.9 * left; MT.screen.uniforms.uCold.value = 0.5 * (1 - left); SPT.probe.rotation.y += dt * 0.2 * left * sw;
+    SPT.fr.forEach(f => { if (!f.sent && !f.dead && T >= f.dieAt) sptKill(f); else if (!f.sent && !f.dead && T > f.dieAt - 4) f.el.style.opacity = String(0.5 + 0.35 * Math.abs(Math.sin(T * 3))); });
+    const P = SPT.probe.position, E = SPT.earth.position;
+    SPT.msgs.forEach(m => {
+      if (m.phase === 'done') return;
+      m.t += dt; const u = Math.min(1, m.t / m.d);
+      if (m.phase === 'out') { m.ball.position.lerpVectors(P, E, u); if (u >= 1) { m.phase = 'back'; m.t = 0; m.ball.material.color.setHex(0xbfe6ff); MGS.ping(1480, 0, 0.5, 0.02); MG.pulse(0, 0, 0xffd9a8, 1.2, 7, 2, 0.2, 0); } }
+      else { m.ball.position.lerpVectors(E, P, u); if (u >= 1) { m.phase = 'done'; SPT.group.remove(m.ball); m.ball.material.dispose(); SPT.arrived++; sptLog(sptT('probe'), m.reply, false); MGS.arpeggio([1, 3], 0.14, 2.2, 0.025); vibrateDevice(18); } }
+    });
+    const resolved = SPT.fr.every(f => f.sent || f.dead);
+    if ((SPT.closing || SPT.sent >= 4 || (resolved && T > 6)) && SPT.arrived >= SPT.sent) {
+      SPT.fr.forEach(f => { if (!f.sent && !f.dead) sptKill(f); });
+      SPT.st = 'archive_end'; SPT.nextCh = SPT.t + 4; sptSub(sptT('s2end'), 4);
+    }
+  } else if (SPT.st === 'archive_end') {
+    SPT.shell.material.uniforms.uOpacity.value += (0.2 - SPT.shell.material.uniforms.uOpacity.value) * Math.min(1, dt * 1.5);
+    if (SPT.t > SPT.nextCh) sptGo(3);
+  } else if (SPT.st === 'drift') {
+    SPT.spawnT -= dt;
+    if (SPT.spawnT <= 0 && T < 30) { sptSpawnItem(); SPT.spawnT = 1.6 + Math.random() * 0.8; }
+    SPT.items.forEach(it => {
+      const m = it.mesh;
+      if (it.state === 'held') {
+        const a = it.slot * 2.094 + t * 0.6, r = 3.1;
+        _sptV.set(Math.cos(a) * r, Math.sin(t * 0.7 + it.slot) * 0.5, Math.sin(a) * r); m.position.lerp(_sptV, Math.min(1, dt * 4)); m.scale.setScalar(0.85);
+        it.halo.material.opacity += (0.5 - it.halo.material.opacity) * Math.min(1, dt * 3);
+      } else {
+        it.x += it.vx * dt; it.y += it.vy * dt; it.z += it.vz * dt;
+        if (it.state === 'drift') { m.position.set(it.x, it.y + Math.sin(t * 0.8 + it.ph) * 0.3, it.z); } else { m.position.x += it.vx * dt; m.position.y += it.vy * dt; m.position.z += it.vz * dt; }
+        const near = it.state === 'drift' && m.position.length() <= 8;
+        it.halo.material.opacity += ((near ? 0.55 + 0.25 * Math.sin(t * 5 + it.ph) : 0.08) - it.halo.material.opacity) * Math.min(1, dt * 4);
+      }
+      m.rotation.x += dt * it.spin * sw; m.rotation.y += dt * it.spin * 0.6 * sw;
+    });
+    SPT.items = SPT.items.filter(it => { if (it.state !== 'held' && it.mesh.position.length() > 60) { sptDropItem(it); return false; } return true; });
+    if (T >= 36) { SPT.st = 'burn'; SPT.burnT = 0; sptSub(sptT('s3burn'), 5); MGS.arpeggio([5, 3, 2, 0], 0.3, 3.2, 0.04); }
+  } else if (SPT.st === 'burn') {
+    SPT.burnT += dt; const b = Math.min(1, SPT.burnT / 7);
+    SPT.probe.rotation.y += dt * (0.4 + b * 3) * sw;
+    MT.screen.uniforms.uCold.value = b; MT.screen.uniforms.uCalm.value = 0; MT.body.uniforms.color.value.setRGB(0.42 + b * 0.5, 0.46 - b * 0.1, 0.52 - b * 0.35);
+    SPT.shell.material.uniforms.uTint.value.setRGB(1, 1 - b * 0.45, 1 - b * 0.8);
+    SPT.items.forEach(it => { if (it.state !== 'held') it.mesh.visible = false; });
+    if (MG.fx && SPT.burnT > 0.5 && SPT.burnT < 7.5) { const k = Math.random(); MG.fx.emit(-0.5 + (Math.random() - 0.5), (Math.random() - 0.5), 0, -4 - Math.random() * 3, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5), 1.6, k < 0.5 ? 0xffb070 : 0xff7a3a, 0.28, 0.9, 0.5); }
+    SPT.held.forEach((it, idx) => { if (SPT.burnT > 3.5 + idx * 1.1 && it.mesh.visible) { it.mesh.visible = false; MG.fx.burst(it.mesh.position.x, it.mesh.position.y, it.mesh.position.z, 22, 3, 2.2, SPT_ITEMS[it.kind].hex, 0.3, 0.9); MGS.bell(MGS.NOTES[(idx * 2 + 1) % 6] * 2, 0, 2.4, 0.04); } });
+    if (SPT.burnT > 7) { const sc = Math.max(0, 1 - (SPT.burnT - 7) / 1.5); SPT.probe.scale.setScalar(sc); }
+    if (SPT.burnT > 7.6 && SPT.st === 'burn') { SPT.st = 'epilogue'; SPT.endT = 0; sptSub(sptEpilogue(), 12); SPT.els.panel.style.display = 'none'; }
+  } else if (SPT.st === 'epilogue') {
+    SPT.endT += dt;
+    if (SPT.endT > 11) { window.endSputnikGame(); return; }
+  }
+  if (!window.isSputnikActive) return;
+
+  // cámara: giro libre a distancia fija + zoom (mismo manejo que Hoguera y Ballena)
+  const CM = HG_CAM;
+  if (!CM.ptrs.size) { CM.yawT += CM.yawV * dt; CM.yawV *= Math.exp(-dt * 3.2); }
+  const kc = 1 - Math.exp(-dt * 9);
+  CM.yaw += (CM.yawT - CM.yaw) * kc; CM.pit += (CM.pitT - CM.pit) * kc; CM.zoom += (CM.zoomT - CM.zoom) * kc;
+  const asp = window.innerWidth / window.innerHeight, fit = Math.max(1, 1.5 / asp);
+  const D = SPT_ISO.dist * (SPT.st === 'drift' ? 1.25 : 1) * fit * CM.zoom;
+  const psi = SPT_ISO.yaw + CM.yaw + Math.sin(t * 0.05) * 0.03 * sw, phi = Math.max(0.05, Math.min(1.2, SPT_ISO.pitch + CM.pit));
+  const Tg = SPT_ISO.target;
+  userGroup.position.set(Tg.x + D * Math.sin(psi) * Math.cos(phi), Tg.y + D * Math.sin(phi), Tg.z + D * Math.cos(psi) * Math.cos(phi));
+  userGroup.rotation.set(-phi, psi, 0);
+  // HUD (reutiliza las cuatro etiquetas del juego de la ballena)
+  MG.setHUD({ 'lives-value': String(SPT.ch || 0), 'level-value': String(SPT.kept.length), 'files-value': String(SPT.held.length), 'combo-value': String(SPT.bip ? 1 : 0) });
+}
+
+window.sptStart = sptStart;
+
+// ==========================================
+// 🐢 JUEGO OTRO: LA TORTUGA-PLANETA (sección WebAR · anclar lo digital en el mundo y esperar)
+//   Un coloso lento que da un paso cada treinta segundos y lleva un jardín en el caparazón. Se siembra con un toque, se da un sorbo de agua
+//   y el resto es esperar: lo que crece, crece con tiempo real (también mientras no se mira). El mismo jardín vive en la página y,
+//   en AR, sobre la mesa: la tortuga es una sola. Demasiada agua también detiene. No se pierde nada, solo se espera.
+// ==========================================
+window.isTortugaActive = false;
+const TRT_ISO = { yaw: 0.6, pitch: 0.34, dist: 27, fov: 42, target: new THREE.Vector3(0, 1.2, 0) };
+const TRT_KEY = 'dac_tortuga_v1';
+const TRT_ST = { sprout: 14, stem: 38, bud: 66, bloom: 96 };                       // segundos de crecimiento de cada etapa
+const TRT_R = 7, TRT_H = 4.6, TRT_STEP = 30;                                        // radio y altura del caparazón; segundos por paso
+const TRT_HEX = [0xf2c799, 0xea9f95, 0xd1b3e0, 0xbfe6ff, 0xf0e08a, 0xb8d9ad, 0xe7e4de];
+const TRT_PLOTS = (() => { const a = [[0, 0]]; for (let k = 0; k < 6; k++) { const q = k * Math.PI / 3 + 0.3; a.push([Math.cos(q) * 0.52 * TRT_R, Math.sin(q) * 0.52 * TRT_R]); } return a; })();
+const TRT_TXT = {
+  es: {
+    title: 'LA TORTUGA-PLANETA', toast: 'Un coloso lento lleva un jardín a cuestas.',
+    h: 'Toca un lugar del caparazón para sembrar. Toca un brote para darle un sorbo de agua: uno basta. Lo demás es esperar. Arrastra el espacio vacío para girar; pellizca para acercar.',
+    s0: '…camina una vez cada treinta segundos…', plant: '…una semilla. Ahora, esperar…', water: '…un sorbo. Crece despacio…', flood: '…demasiada agua también detiene. Espera…',
+    sprout: '…brotó…', bloom: '…floreció…', away: '…creció mientras no mirabas…', step: '…un paso…', done: '…ya florece. Lleva un bosque a cuestas y sigue caminando.', seed: '…aún es semilla…',
+    ar0: 'Toca con el dedo o el controlador un lugar del caparazón', ar1: 'Es la misma tortuga que en la página',
+    lbl: 'TORTUGA', lblOn: 'MODELOS'
+  },
+  en: {
+    title: 'THE TURTLE-PLANET', toast: 'A slow colossus carries a garden on its back.',
+    h: 'Tap a place on the shell to sow. Tap a sprout to give it a sip of water: one is enough. The rest is waiting. Drag empty space to turn; pinch to zoom.',
+    s0: '…it walks once every thirty seconds…', plant: '…a seed. Now, wait…', water: '…a sip. It grows slowly…', flood: '…too much water also stops it. Wait…',
+    sprout: '…it sprouted…', bloom: '…it bloomed…', away: '…it grew while you were not looking…', step: '…a step…', done: '…it blooms now. It carries a forest and keeps walking.', seed: '…still a seed…',
+    ar0: 'Touch a place on the shell with your finger or controller', ar1: 'It is the same turtle as on the page',
+    lbl: 'TURTLE', lblOn: 'MODELS'
+  }
+};
+function trtT(k) { return TRT_TXT[(window.currentLang === 'en') ? 'en' : 'es'][k]; }
+
+// ---------- Modelo compartido (página y AR): crecimiento, riego y guardado ----------
+const TRT = { plots: TRT_PLOTS.map(() => ({ seed: false, t: 0, water: 0, flood: 0, stage: 0 })), steps: 0, stepT: 0, saveT: 0, loaded: false, away: false };
+function trtStageOf(t, seed) { return !seed ? -1 : t >= TRT_ST.bloom ? 3 : t >= TRT_ST.bud ? 2 : t >= TRT_ST.sprout ? 1 : 0; }
+function trtInit() {                                                              // al abrir (página o AR): carga lo guardado y deja crecer lo que pasó mientras no se miraba
+  const now = Date.now(); TRT.away = false;
+  if (!TRT.loaded) {
+    TRT.loaded = true;
+    try {
+      const j = JSON.parse(localStorage.getItem(TRT_KEY) || 'null');
+      if (j && Array.isArray(j.plots)) { j.plots.slice(0, TRT.plots.length).forEach((s, i) => { const p = TRT.plots[i]; p.seed = !!s.s; p.t = Math.min(TRT_ST.bloom, +s.t || 0); p.stage = trtStageOf(p.t, p.seed); }); TRT.steps = j.steps | 0; TRT.lastT = +j.at || now; }
+    } catch (e) {}
+  }
+  if (TRT.lastT) {
+    const off = Math.max(0, Math.min(1800, (now - TRT.lastT) / 1000)) * 0.25;                                // mientras no se mira, crece, pero más despacio
+    if (off > 0) TRT.plots.forEach(p => { if (p.seed && p.t < TRT_ST.bloom) { const t0 = p.t; p.t = Math.min(TRT_ST.bloom, p.t + off); p.stage = trtStageOf(p.t, true); if (p.t - t0 > 5) TRT.away = true; } });
+  }
+  TRT.lastT = now;
+}
+function trtSave() { try { localStorage.setItem(TRT_KEY, JSON.stringify({ plots: TRT.plots.map(p => ({ s: p.seed ? 1 : 0, t: Math.round(p.t * 10) / 10 })), steps: TRT.steps, at: Date.now() })); } catch (e) {} }
+function trtCounts() { let seeds = 0, sprouts = 0, blooms = 0; TRT.plots.forEach(p => { if (p.seed) { seeds++; if (p.t >= TRT_ST.sprout) sprouts++; if (p.t >= TRT_ST.bloom) blooms++; } }); return { seeds, sprouts, blooms }; }
+function trtGrow(dt) {                                                            // devuelve la lista de eventos de este cuadro
+  const ev = []; TRT.lastT = Date.now();
+  TRT.plots.forEach((p, k) => {
+    if (!p.seed) return;
+    p.flood = Math.max(0, p.flood - dt); p.water = Math.max(0, p.water - dt * 0.02);
+    if (p.t < TRT_ST.bloom) p.t = Math.min(TRT_ST.bloom, p.t + dt * (p.flood > 0 ? 0 : 1 + 1.5 * p.water));
+    const s = trtStageOf(p.t, true); if (s > p.stage) { p.stage = s; ev.push({ k, stage: s }); }
+  });
+  TRT.stepT += dt; if (TRT.stepT >= TRT_STEP) { TRT.stepT -= TRT_STEP; TRT.steps++; ev.push({ step: true }); }
+  TRT.saveT += dt; if (TRT.saveT > 5) { TRT.saveT = 0; trtSave(); }
+  return ev;
+}
+function trtTend(k) {                                                             // un toque: sembrar, regar con medida o, si ya floreció, solo saludar
+  const p = TRT.plots[k]; if (!p) return null;
+  if (!p.seed) { p.seed = true; p.t = 0; p.water = 0.3; p.flood = 0; p.stage = 0; trtSave(); return 'plant'; }
+  if (p.t >= TRT_ST.bloom) return 'bloomed';
+  if (p.water > 0.65) { p.flood = 6; p.water = 0.3; return 'flood'; }             // demasiada agua: se detiene unos segundos, no se pierde nada
+  p.water = Math.min(1, p.water + 0.5); return 'water';
+}
+
+// ---------- Construcción de la tortuga (la misma para la página y para la mesa) ----------
+//   mk(n, fn) fabrica nubes de puntos: sptPoints en la página, arPoints (tamaños en metros) en AR. sk = factor de tamaño de punto.
+function trtBlob(mk, n, cx, cy, cz, rx, ry, rz, c, s, a) {
+  return mk(n, (i, o) => { const u = Math.random() * 2 - 1, q = Math.random() * 6.2832, w = Math.sqrt(1 - u * u), r = 0.55 + 0.45 * Math.random();
+    o.x = cx + Math.cos(q) * w * rx * r; o.y = cy + u * ry * r; o.z = cz + Math.sin(q) * w * rz * r; o.s = s; o.a = a; o.r = c[0]; o.g = c[1]; o.b = c[2]; });
+}
+function trtBuild(mk, sk) {
+  const R = TRT_R, H = TRT_H, GA = 2.399963, root = new THREE.Group(), B = { root, sk, plants: [], legs: [], plotPos: [], pulse: [] };
+  const surf = (x, z) => H * Math.sqrt(Math.max(0, 1 - (x * x + z * z) / (R * R)));
+  const body = [0.5, 0.58, 0.56];
+  B.shell = mk(1500, (i, o) => { const y = (i + 0.5) / 1500, rr = Math.sqrt(1 - y * y), a = i * GA, x = Math.cos(a) * rr * R, z = Math.sin(a) * rr * R;
+    o.x = x; o.z = z; o.y = y * H; const cell = Math.sin(x * 0.9) * Math.sin(z * 0.9) + Math.sin((x + z) * 0.55) * 0.6, edge = Math.abs(cell) < 0.18;
+    o.s = (edge ? 0.12 : 0.085) * sk; o.a = edge ? 0.85 : 0.42; o.r = edge ? 0.72 : 0.36; o.g = edge ? 0.88 : 0.52; o.b = edge ? 0.78 : 0.48; });
+  root.add(B.shell);
+  root.add(mk(90, (i, o) => { const a = i / 90 * 6.2832; o.x = Math.cos(a) * R * 1.01; o.z = Math.sin(a) * R * 1.01; o.y = 0.1; o.s = 0.1 * sk; o.a = 0.7; o.r = 0.6; o.g = 0.75; o.b = 0.7; }));
+  B.head = new THREE.Group(); B.head.position.set(R - 0.6, 1.5, 0); root.add(B.head);                                  // cabeza y cuello
+  B.head.add(trtBlob(mk, 150, 3.5, 0.35, 0, 1.6, 1.1, 1.0, body, 0.11 * sk, 0.6));
+  B.head.add(trtBlob(mk, 70, 1.0, 0.1, 0, 1.6, 0.7, 0.7, body, 0.1 * sk, 0.5));
+  [-0.55, 0.55].forEach(z => B.head.add(mk(1, (i, o) => { o.x = 4.5; o.y = 0.7; o.z = z; o.s = 0.2 * sk; o.a = 1; o.r = 1; o.g = 0.95; o.b = 0.8; })));
+  B.eyeHalo = mkHalo(0xffe9c0, 1.0, 0.0); B.eyeHalo.position.set(4.5, 0.7, 0); B.head.add(B.eyeHalo);
+  [[3.5, 5.6], [3.5, -5.6], [-3.5, 5.6], [-3.5, -5.6]].forEach(([x, z], i) => {                                       // patas que cuelgan y se balancean
+    const lg = new THREE.Group(); lg.position.set(x, 0.6, z); lg.add(trtBlob(mk, 110, 0, -1.4, 0, 1.0, 1.7, 1.0, body, 0.1 * sk, 0.55)); root.add(lg); B.legs.push(lg);
+  });
+  root.add(trtBlob(mk, 50, -R - 1.4, 0.6, 0, 1.3, 0.5, 0.5, body, 0.09 * sk, 0.5));                                   // cola
+  TRT_PLOTS.forEach(([x, z], k) => {                                                                                  // el jardín
+    const y = surf(x, z) + 0.05, ph = k * 1.7, hex = TRT_HEX[k % TRT_HEX.length], [fr, fg, fb] = arRGB(hex);
+    const pts = mk(64, (i, o) => { o.x = x; o.y = y; o.z = z; o.a = 0; o.s = 0.14 * sk;
+      if (i < 16) { o.r = 0.55; o.g = 0.85; o.b = 0.6; } else if (i < 40) { o.r = 0.5; o.g = 0.8; o.b = 0.55; } else { o.r = fr; o.g = fg; o.b = fb; } });
+    root.add(pts); const halo = mkHalo(hex, 2.6, 0); root.add(halo);
+    B.plants.push({ pts, halo, x, y, z, ph, hex, pulse: 0 }); B.plotPos.push(new THREE.Vector3(x, y + 0.8, z));
+  });
+  B.motes = mk(110, (i, o) => { const a = Math.random() * 6.2832, r = 2 + Math.random() * 9; o.x = Math.cos(a) * r; o.z = Math.sin(a) * r; o.y = 1 + Math.random() * 8; o.s = (0.06 + Math.random() * 0.08) * sk; o.a = 0; o.r = 1; o.g = 0.92; o.b = 0.7; });
+  B.motes.userData.ph = Array.from({ length: 110 }, () => Math.random() * 6.28); root.add(B.motes);
+  B.walk = 0; B.lift = 0; B.finale = 0;
+  return B;
+}
+const trtSm = (a, b, x) => { const u = Math.max(0, Math.min(1, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
+function trtPlantFill(B, k, T, dt, calm) {
+  const P = B.plants[k], M = TRT.plots[k], A = P.pts.geometry.attributes, pa = A.position.array, al = A.aAlpha.array, sz = A.aSize.array, co = A.aCol.array, sk = B.sk;
+  const t = M.t, sw = calm ? 0 : 1, dr = M.flood > 0 ? 1 : 0, ST = TRT_ST;
+  P.pulse = Math.max(0, P.pulse - dt * 1.4);
+  al.fill(0);
+  if (!M.seed) { pa[0] = P.x; pa[1] = P.y + 0.12; pa[2] = P.z; al[0] = 0.3 + 0.15 * Math.sin(T * 1.5 + k); sz[0] = 0.15 * sk; co[0] = 0.8; co[1] = 0.9; co[2] = 0.95; }
+  else {
+    const stemH = 0.3 + 2.9 * trtSm(ST.sprout, ST.bud, t), sprouted = t >= ST.sprout;
+    const swayX = (u) => Math.sin(T * 0.9 + u * 2.5 + P.ph) * 0.18 * u * sw * (1 + dr) + dr * u * u * 0.9;
+    if (!sprouted) { pa[0] = P.x; pa[1] = P.y + 0.12; pa[2] = P.z; al[0] = 0.75 + 0.2 * Math.sin(T * 2 + P.ph); sz[0] = (0.2 + P.pulse * 0.2) * sk; co[0] = 0.95; co[1] = 0.85; co[2] = 0.65; }
+    else {
+      for (let i = 0; i < 16; i++) { const u = i / 15; pa[i * 3] = P.x + swayX(u); pa[i * 3 + 1] = P.y + u * stemH; pa[i * 3 + 2] = P.z; al[i] = 0.85 * (dr ? 0.5 : 1); sz[i] = (0.11 + P.pulse * 0.08) * sk; if (i === 0) { co[0] = 0.55; co[1] = 0.85; co[2] = 0.6; } }
+      const leaf = trtSm(ST.sprout + 4, ST.stem, t);
+      for (let j = 0; j < 12; j++) for (let sd = 0; sd < 2; sd++) {
+        const idx = 16 + j * 2 + sd, u = 0.25 + 0.6 * j / 11, ang = P.ph + j * 2.4 + sd * Math.PI, len = leaf * (0.45 + 0.55 * Math.sin(j / 11 * Math.PI)) * 1.0;
+        pa[idx * 3] = P.x + swayX(u) + Math.cos(ang) * len; pa[idx * 3 + 1] = P.y + u * stemH + len * 0.25 - dr * len * 0.6; pa[idx * 3 + 2] = P.z + Math.sin(ang) * len;
+        al[idx] = leaf > 0.02 ? 0.7 * (dr ? 0.5 : 1) : 0; sz[idx] = 0.1 * sk;
+      }
+      if (t >= ST.stem) {
+        const bl = trtSm(ST.bud, ST.bloom, t), rr = 0.15 + 1.15 * bl, topx = P.x + swayX(1), topy = P.y + stemH + 0.1;
+        for (let n = 0; n < 24; n++) {
+          const idx = 40 + n, inner = n >= 16, q = (inner ? (n - 16) / 8 : n / 16) * 6.2832 + T * 0.1 * sw + (inner ? 0.4 : 0), r = inner ? rr * 0.38 : rr;
+          pa[idx * 3] = topx + Math.cos(q) * r; pa[idx * 3 + 1] = topy + (inner ? 0.18 : 0.08 + 0.18 * bl * Math.sin(q * 2 + T * 0.6 * sw)); pa[idx * 3 + 2] = topz(P, q, r);
+          al[idx] = (0.45 + 0.5 * bl) * (dr ? 0.5 : 1); sz[idx] = (0.12 + 0.2 * bl + P.pulse * 0.12) * sk;
+          if (inner) { co[idx * 3] = 1; co[idx * 3 + 1] = 0.93; co[idx * 3 + 2] = 0.72; }
+        }
+        P.halo.position.set(topx, topy, P.z);
+        P.halo.material.opacity += (((bl > 0.9 ? 0.3 : 0.06) + P.pulse * 0.4) - P.halo.material.opacity) * Math.min(1, dt * 3);
+      } else P.halo.material.opacity *= 0.9;
+    }
+  }
+  A.position.needsUpdate = A.aAlpha.needsUpdate = A.aSize.needsUpdate = A.aCol.needsUpdate = true;
+}
+function topz(P, q, r) { return P.z + Math.sin(q) * r * 0.8; }
+function trtAnimate(B, T, dt, calm) {                                             // todo lo que se mueve de la tortuga: patas, cabeza, jardín y luciérnagas
+  const sw = calm ? 0 : 1, ph = T * 6.2832 / TRT_STEP;
+  B.legs.forEach((lg, i) => { lg.rotation.z = Math.sin(ph + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.3 * sw; });
+  B.root.position.y = (B.baseY || 0) + Math.sin(ph * 2) * 0.05 * sw * B.sk;
+  B.lift += ((B.finale ? 0.35 : 0) - B.lift) * Math.min(1, dt * 0.8);
+  B.head.rotation.z = Math.sin(T * 0.35) * 0.05 * sw + B.lift; B.head.position.y = 1.5 + Math.sin(T * 0.5) * 0.06 * sw;
+  B.eyeHalo.material.opacity = 0.12 + 0.05 * Math.sin(T * 0.7);
+  for (let k = 0; k < B.plants.length; k++) trtPlantFill(B, k, T, dt, calm);
+  const MA = B.motes.geometry.attributes, ph2 = B.motes.userData.ph, want = B.finale ? 0.8 : trtCounts().blooms > 0 ? 0.25 : 0;
+  for (let i = 0; i < ph2.length; i++) {
+    MA.position.array[i * 3 + 1] += dt * 0.12 * sw; if (MA.position.array[i * 3 + 1] > 10) MA.position.array[i * 3 + 1] = 1;
+    MA.aAlpha.array[i] += (want * (0.5 + 0.5 * Math.sin(T * 1.1 + ph2[i])) - MA.aAlpha.array[i]) * Math.min(1, dt * 1.5);
+  }
+  MA.position.needsUpdate = MA.aAlpha.needsUpdate = true;
+}
+function trtFeedback(k, res, B, onSub) {                                          // sonido, vibración y pulso visual de un toque
+  if (!res) return;
+  const P = B.plants[k]; P.pulse = 1;
+  if (res === 'plant') { MGS.bell(MGS.NOTES[k % 6], 0, 2.4, 0.03); vibrateDevice(14); onSub && onSub('plant'); }
+  else if (res === 'water') { MGS.ping(MGS.NOTES[3] * 2, 0, 0.9, 0.025); MGS.ping(MGS.NOTES[5] * 2, 0.12, 0.8, 0.018); vibrateDevice(10); onSub && onSub('water'); }
+  else if (res === 'flood') { MGS.ping(MGS.NOTES[0] / 2, 0, 1.2, 0.02); onSub && onSub('flood'); }
+  else if (res === 'bloomed') { MGS.arpeggio([k % 6, (k + 2) % 6], 0.1, 2, 0.02); }
+}
+function trtEvents(ev, B, onSub) {
+  ev.forEach(e => {
+    if (e.step) { MGS.ping(62, 0, 2.4, 0.05); MGS.bell(MGS.NOTES[0] / 4, 0.1, 2.6, 0.02); onSub && onSub('step'); }
+    else if (e.stage === 1) { MGS.arpeggio([2, 4], 0.1, 1.8, 0.025); B.plants[e.k].pulse = 1; onSub && onSub('sprout'); }
+    else if (e.stage === 3) { MGS.arpeggio([0, 2, 3, 5], 0.16, 3, 0.03); B.plants[e.k].pulse = 1; onSub && onSub('bloom'); }
+  });
+}
+
+// ---------- Escena y juego en la página ----------
+const TRP = { data: null, st: 'idle', t: 0, B: null, group: null, stars: null, dust: null, ground: null, sun: null, els: {}, subT: 0, finT: 0, done: false };
+const _trV = new THREE.Vector3();
+function trpSub(text, secs) { const el = TRP.els.sub; if (!el) return; el.textContent = text; el.style.opacity = '1'; TRP.subT = secs || 6; }
+function trpOnSub(kind) { trpSub(trtT(kind), kind === 'step' ? 3 : 5); }
+function trpBuildScene() {
+  const g = new THREE.Group();
+  TRP.stars = sptPoints(560, (i, o) => { const u = Math.random() * 2 - 1, a = Math.random() * 6.283, r = 80 + Math.random() * 40, s = Math.sqrt(1 - u * u), k = Math.random();
+    o.x = r * s * Math.cos(a); o.y = r * u; o.z = r * s * Math.sin(a); o.s = 0.07 + Math.pow(Math.random(), 4) * 0.35; o.a = 0.3 + Math.random() * 0.6;
+    if (k < 0.2) { o.r = 0.7; o.g = 0.82; o.b = 1; } else if (k < 0.3) { o.r = 1; o.g = 0.82; o.b = 0.65; } }); g.add(TRP.stars);
+  TRP.stars.material.uniforms.uOpacity.value = 0.75;
+  TRP.dust = sptPoints(700, (i, o) => { const t = Math.pow(Math.random(), 0.7), r = 26 + t * 60, a = Math.random() * 6.283; o.x = Math.cos(a) * r; o.z = Math.sin(a) * r - 10; o.y = (Math.random() - 0.5) * 18 - 6; o.s = 0.14 + Math.random() * 0.4; o.a = 0.05 + Math.random() * 0.12;
+    const k = i % 3; if (k === 0) { o.r = 0.45; o.g = 0.7; o.b = 0.85; } else if (k === 1) { o.r = 0.7; o.g = 0.55; o.b = 0.85; } else { o.r = 0.5; o.g = 0.85; o.b = 0.75; } }); g.add(TRP.dust);
+  TRP.ground = sptPoints(420, (i, o) => { o.x = (Math.random() - 0.5) * 100; o.z = (Math.random() - 0.5) * 70; o.y = -2.7; o.s = 0.08 + Math.random() * 0.12; o.a = 0.12 + Math.random() * 0.2; o.r = 0.55; o.g = 0.7; o.b = 0.8; }); g.add(TRP.ground);   // el suelo que pasa despacio
+  TRP.sun = mkHalo(0xf2c799, 46, 0.1); TRP.sun.position.set(-70, 22, -60); g.add(TRP.sun);
+  TRP.B = trtBuild(sptPoints, 1); TRP.B.baseY = 0; g.add(TRP.B.root);
+  scene.add(g); TRP.group = g;
+}
+function trpBuildUI() {
+  const ui = MG.buildUI(trtT('h'));
+  const title = document.createElement('div'); title.style.cssText = 'font-size:0.66rem; font-weight:300; letter-spacing:0.34em; color:#a8a49c;'; title.textContent = trtT('title');
+  ui.extra.appendChild(title);
+  const sub = document.createElement('div');
+  sub.style.cssText = 'position:absolute; left:50%; top:calc(150px + env(safe-area-inset-top,0px)); transform:translateX(-50%); width:min(90vw,640px); text-align:center; font-size:0.95rem; font-weight:300; letter-spacing:0.12em; line-height:1.8; color:#cfd8e3; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 14px rgba(0,0,0,0.9); pointer-events:none;';
+  ui.root.appendChild(sub);
+  TRP.els = { title, sub, hint: ui.hint };
+}
+function trpStart() {
+  if (window.isTortugaActive || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive || window.isWhaleActive || window.isSputnikActive) return;
+  window.isTortugaActive = true;
+  MG.enter(24);
+  camera.fov = TRT_ISO.fov; targetFov = TRT_ISO.fov; camera.updateProjectionMatrix();
+  userGroup.rotation.order = 'YXZ';
+  Object.assign(TRP, { st: 'tend', t: 0, subT: 0, finT: 0, done: false });
+  const tg = window.travelerGroup;
+  TRP.tsave = tg ? { pos: tg.position.clone(), quat: tg.quaternion.clone(), scale: tg.scale.clone() } : null;
+  if (tg) { tg.visible = true; window.hgPose = { pos: new THREE.Vector3(9, -2.7 + ((typeof TRAVELER_FEET !== 'undefined') ? TRAVELER_FEET : 0.6), -0.3), yaw: Math.atan2(-9, 0.3) }; }   // el Viajero, al pie del coloso
+  trtInit();
+  trpBuildScene(); trpBuildUI();
+  hgCamReset(); hgCamBind();
+  morphHUD('tortuga');
+  showSystemToast(trtT('toast'), '#e7e4de');
+  trpSub(TRT.away ? trtT('away') : trtT('s0'), 7);
+}
+window.startTortugaGame = function(data) {
+  TRP.data = data || null;
+  if (MG.pending || window.isTortugaActive || window.isSputnikActive || window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
+  MG.pending = true;
+  MG.reflect(MG.text('tortuga', 'intro'), () => { MG.pending = false; trpStart(); },
+    { cancelable: true, onCancel: () => { MG.pending = false; if (data && typeof openProjectPopup === 'function') openProjectPopup(data); } });
+};
+function trpTeardown() {
+  trtSave();
+  window.isTortugaActive = false; TRP.st = 'idle';
+  const tg = window.travelerGroup; if (tg && TRP.tsave) { tg.position.copy(TRP.tsave.pos); tg.quaternion.copy(TRP.tsave.quat); tg.scale.copy(TRP.tsave.scale); }
+  TRP.tsave = null; window.hgPose = null;
+  hgCamUnbind();
+  if (TRP.group) { mgDispose(TRP.group); TRP.group = null; }
+  TRP.B = TRP.stars = TRP.dust = TRP.ground = TRP.sun = null; TRP.els = {};
+}
+window.endTortugaGame = function() { if (!window.isTortugaActive) return; const w = TRP.done, d = TRP.data; trpTeardown(); MG.exit(); setTimeout(() => { MG.reflect(MG.text('tortuga', 'outro'), () => colAfter(d, w)); }, 700); };
+window.abortTortugaGame = window.endTortugaGame;
+window.trtTap = function(cx, cy) {                                                // toque: el lugar del caparazón más cercano al dedo
+  if (!window.isTortugaActive || window.isMiniIntro || !TRP.B) return;
+  camera.updateMatrixWorld(true); TRP.B.root.updateMatrixWorld(true);
+  let best = -1, bd = Math.max(46, window.innerHeight * 0.075);
+  TRP.B.plotPos.forEach((p, k) => {
+    _trV.copy(p); TRP.B.root.localToWorld(_trV); _trV.project(camera);
+    if (_trV.z > 1) return;
+    const sx = (_trV.x * 0.5 + 0.5) * window.innerWidth, sy = (-_trV.y * 0.5 + 0.5) * window.innerHeight, d = Math.hypot(sx - cx, sy - cy);
+    if (d < bd) { bd = d; best = k; }
+  });
+  if (best < 0) return;
+  const res = trtTend(best); trtFeedback(best, res, TRP.B, (kind) => trpSub(trtT(kind), 5));
+  if (res === 'bloomed') trpSub(trtT('bloom'), 3);
+};
+function trpUpdate(dt) {
+  const calm = reduceMotionMQ.matches, t = MG.time, sw = calm ? 0 : 1;
+  TRP.t += dt; TRP.subT -= dt;
+  if (TRP.els.sub && TRP.subT <= 0) TRP.els.sub.style.opacity = '0';
+  const ev = trtGrow(dt); trtEvents(ev, TRP.B, trpOnSub);
+  const C = trtCounts();
+  if (ev.some(e => e.step) && !calm) { shakeIntensity = Math.max(shakeIntensity, 0.06); if (MG.fx) MG.fx.burst(TRP.B.root.position.x + 3.5, -2.5, 5.6, 6, 1.4, 1.6, 0x9aa3ad, 0.2, 0.9); }
+  if (!TRP.done && C.blooms >= 4) { TRP.done = true; TRP.B.finale = 1; TRP.st = 'finale'; TRP.finT = 0; colossusFound('tortuga'); colVoice('tortuga', 1); trpSub(trtT('done'), 12); MGS.arpeggio([0, 2, 3, 5, 4], 0.2, 3.4, 0.03); }
+  if (TRP.st === 'finale') { TRP.finT += dt; if (TRP.finT > 15) { window.endTortugaGame(); return; } }
+  trtAnimate(TRP.B, t, dt, calm);
+  // el mundo pasa despacio bajo la tortuga
+  const GA = TRP.ground.geometry.attributes.position.array, sp = 0.35 * sw;
+  for (let i = 0; i < GA.length; i += 3) { GA[i] -= dt * sp; if (GA[i] < -50) GA[i] += 100; }
+  TRP.ground.geometry.attributes.position.needsUpdate = true;
+  TRP.stars.rotation.y += dt * 0.004 * sw; TRP.dust.rotation.y += dt * 0.01 * sw;
+  TRP.sun.material.opacity = 0.09 + 0.02 * Math.sin(t * 0.3);
+  // cámara: giro libre a distancia fija + zoom (igual que Hoguera, Ballena y Sputnik)
+  const CM = HG_CAM;
+  if (!CM.ptrs.size) { CM.yawT += CM.yawV * dt; CM.yawV *= Math.exp(-dt * 3.2); }
+  const kc = 1 - Math.exp(-dt * 9);
+  CM.yaw += (CM.yawT - CM.yaw) * kc; CM.pit += (CM.pitT - CM.pit) * kc; CM.zoom += (CM.zoomT - CM.zoom) * kc;
+  const asp = window.innerWidth / window.innerHeight, fit = Math.max(1, 1.5 / asp), D = TRT_ISO.dist * fit * CM.zoom;
+  const psi = TRT_ISO.yaw + CM.yaw + Math.sin(t * 0.05) * 0.03 * sw, phi = Math.max(0.05, Math.min(1.2, TRT_ISO.pitch + CM.pit)), Tg = TRT_ISO.target;
+  userGroup.position.set(Tg.x + D * Math.sin(psi) * Math.cos(phi), Tg.y + D * Math.sin(phi), Tg.z + D * Math.cos(psi) * Math.cos(phi));
+  userGroup.rotation.set(-phi, psi, 0);
+  MG.setHUD({ 'lives-value': String(TRT.steps), 'level-value': String(C.sprouts), 'files-value': String(C.blooms), 'combo-value': String(C.seeds) });
+}
+
+// ---------- Modo AR: la misma tortuga sobre la mesa ----------
+const ART = { active: false, group: null, B: null, t: 0, last: 0, hint: null, hintT: 0, ctrlPrev: [false, false] };
+const ART_K = 0.032;                                                              // 7 unidades de caparazón → ~22 cm
+function artHint(text, secs) {
+  if (ART.hint) { camera.remove(ART.hint); if (ART.hint.material.map) ART.hint.material.map.dispose(); ART.hint.material.dispose(); }
+  const sp = arTextSprite('', text, 0.5, 0.17); sp.position.set(0, -0.14, -0.55); camera.add(sp); ART.hint = sp; ART.hintT = secs || 6;
+}
+function arTurtleSetLabel(on) {
+  const txt = on ? trtT('lblOn') : trtT('lbl');
+  if (window.arTBtn) window.arTBtn.textContent = txt;
+  if (window.arTurtle3D) { if (window.arTurtle3D.material.map) window.arTurtle3D.material.map.dispose(); window.arTurtle3D.material.map = arBtnTexture(txt); window.arTurtle3D.material.needsUpdate = true; }
+}
+function arTurtleStart() {
+  if (ART.active || !window.isARSession || !renderer.xr.isPresenting) return;
+  if (window.arQuipu && window.arQuipu.active && window.arQuipuStop) window.arQuipuStop();
+  trtInit();
+  camera.updateMatrixWorld(true);
+  const cp = new THREE.Vector3(); camera.getWorldPosition(cp);
+  const fw = new THREE.Vector3(0, 0, -1).transformDirection(camera.matrixWorld); fw.y = 0;
+  if (fw.lengthSq() < 1e-4) fw.set(0, 0, -1); fw.normalize();
+  const dist = 0.85, rx = -fw.z, rz = fw.x;                                         // la tortuga camina hacia la derecha de quien mira
+  const grp = new THREE.Group(); grp.position.set(cp.x + fw.x * dist, cp.y - 0.72, cp.z + fw.z * dist); grp.rotation.y = Math.atan2(-rz, rx); scene.add(grp);
+  const mk = (n, fn) => arPoints(n, (i, o) => { fn(i, o); });                       // los tamaños ya vienen multiplicados por sk
+  const B = trtBuild(mk, ART_K); B.root.scale.setScalar(ART_K); grp.add(B.root);
+  Object.assign(ART, { active: true, group: grp, B, t: 0, last: performance.now(), ctrlPrev: [false, false] });
+  arTurtleSetLabel(true);
+  artHint(TRT.away ? trtT('away') : trtT('ar0'), 7);
+  MGS.arpeggio([2, 0], 0.3, 3, 0.04);
+}
+function arTurtleStop() {
+  if (!ART.active) return;
+  ART.active = false; trtSave();
+  if (ART.group) { scene.remove(ART.group); mgDispose(ART.group); ART.group = null; }
+  if (ART.hint) { camera.remove(ART.hint); if (ART.hint.material.map) ART.hint.material.map.dispose(); ART.hint.material.dispose(); ART.hint = null; }
+  ART.B = null; arTurtleSetLabel(false);
+}
+function arTurtleToggle() { if (ART.active) arTurtleStop(); else arTurtleStart(); }
+function arTurtleTick() {
+  if (!ART.active || !ART.group) return;
+  arFHUpdate();
+  const now = performance.now(), dt = Math.min(0.05, (now - ART.last) / 1000); ART.last = now; ART.t += dt;
+  const reduce = reduceMotionMQ.matches, B = ART.B;
+  ART.group.updateMatrixWorld(true);
+  const ev = trtGrow(dt);
+  trtEvents(ev, B, (kind) => { if (kind === 'sprout' || kind === 'bloom' || kind === 'plant' || kind === 'flood') artHint(trtT(kind), 4); });
+  // toques: el rayo del controlador (o del dedo sobre la pantalla) que se pulsa cerca de un lugar del caparazón
+  [xrController1, xrController2].forEach((ct, ci) => {
+    const pressed = !!(ct.visible && ct.userData.sel), edge = pressed && !ART.ctrlPrev[ci]; ART.ctrlPrev[ci] = pressed;
+    if (!edge) return;
+    ct.updateMatrixWorld(true);
+    _arO.setFromMatrixPosition(ct.matrixWorld); _arM.identity().extractRotation(ct.matrixWorld); _arD.set(0, 0, -1).applyMatrix4(_arM).normalize();
+    let best = -1, bd = 0.07;
+    B.plotPos.forEach((p, k) => { _arP.copy(p); B.root.localToWorld(_arP); const v = _arP.clone().sub(_arO), along = v.dot(_arD); if (along <= 0) return;
+      const perp = v.sub(_arD.clone().multiplyScalar(along)).length(); if (perp < bd) { bd = perp; best = k; } });
+    if (best >= 0) { const res = trtTend(best); trtFeedback(best, res, B, (kind) => artHint(trtT(kind), 4)); arHaptic(ct, 0.4, 40); }
+  });
+  trtAnimate(B, ART.t, dt, reduce);
+  if (ART.hint) {
+    ART.hintT -= dt; ART.hint.material.opacity += ((ART.hintT > 0 ? 1 : 0) - ART.hint.material.opacity) * Math.min(1, dt * 3);
+    if (ART.hintT < -1) { camera.remove(ART.hint); if (ART.hint.material.map) ART.hint.material.map.dispose(); ART.hint.material.dispose(); ART.hint = null; }
+  }
+}
+window.arTurtleTick = arTurtleTick; window.arTurtleToggle = arTurtleToggle; window.arTurtleStop = arTurtleStop; window.arTurtle = ART;
+
+// ==========================================================================================
+// 🐾 EL BESTIARIO DE COLOSOS
+//   Nueve colosos viven en el universo: tres ya estaban (la serpiente, la ballena y la tortuga) y seis se ganan en las secciones.
+//   Cada uno se «encuentra» al terminar su Juego Otro. Los encontrados quedan guardados; con el primero llega el logro «Primer coloso»;
+//   con los nueve, el logro «Bestiario de colosos» y su recompensa: el bestiario completo con el mapa de conceptos.
+// ==========================================================================================
+const COLOSSI = [
+  { id: 'serpiente', hex: 0xc9786b, es: ['Serpiente emplumada', 'La Hoguera de Datos', 'El Viajero, libre en el vacío'], en: ['Feathered serpent', 'The Data Bonfire', 'The Traveler, free in the void'],
+    con: { es: ['Suficiencia', 'Renuncia', 'Calor compartido'], en: ['Sufficiency', 'Renunciation', 'Shared warmth'] },
+    tx: { es: 'Un coloso de monitores que ruge cuando se le da la espalda. Se calma con fuego pequeño: aprender cuánto es suficiente.', en: 'A colossus of monitors that roars when ignored. It calms with a small fire: learning how much is enough.' } },
+  { id: 'ballena', hex: 0x9fd0ff, es: ['Ballena cósmica', 'Un canto sin respuesta', 'Cualquier ballena del universo'], en: ['Cosmic whale', 'A song without answer', 'Any whale of the universe'],
+    con: { es: ['Alteridad', 'Eco', 'Escucha'], en: ['Otherness', 'Echo', 'Listening'] },
+    tx: { es: 'Canta en pulsos y espera. No pide que la entiendas, pide que respondas con el mismo aliento.', en: 'She sings in pulses and waits. She does not ask to be understood, only to be answered with the same breath.' } },
+  { id: 'tortuga', hex: 0xb8d9ad, es: ['Tortuga-planeta', 'Un jardín a cuestas', 'Módulo WebAR'], en: ['Turtle-planet', 'A garden on its back', 'WebAR Module'],
+    con: { es: ['Anclaje', 'Tiempo lento', 'Cuidado'], en: ['Anchoring', 'Slow time', 'Care'] },
+    tx: { es: 'Camina un paso cada treinta segundos y lleva un jardín. Lo que crece, crece también cuando nadie mira.', en: 'She takes one step every thirty seconds and carries a garden. What grows, grows when nobody looks.' } },
+  { id: 'condor', hex: 0xd9d6cf, es: ['Cóndor de ceniza', 'Pedir permiso', 'Docencia en Diseño'], en: ['Ash condor', 'Asking permission', 'Design Teaching'],
+    con: { es: ['Umbral', 'Confianza', 'Pedagogía del permiso'], en: ['Threshold', 'Trust', 'Pedagogy of permission'] },
+    tx: { es: 'Un maestro posado en un risco. Solo se deja acercar quien sabe esperar cuando lo miran.', en: 'A teacher perched on a cliff. Only those who can wait while watched are allowed near.' } },
+  { id: 'arbol', hex: 0x8fd6a8, es: ['Pewen-servidor', 'Una red de cuidado', 'GameLab Tadeo'], en: ['Pewen server-tree', 'A network of care', 'Tadeo GameLab'],
+    con: { es: ['Mutualismo', 'Redes de cuidado', 'Ecosistema de investigación'], en: ['Mutualism', 'Networks of care', 'Research ecosystem'] },
+    tx: { es: 'El pewen, árbol sagrado del pueblo mapuche-pehuenche, vive milenios y da piñones. Aquí sus ramas se apagan si nadie las cuida: nada brilla solo.', en: 'The pewen, sacred tree of the Mapuche-Pehuenche people, lives for millennia and gives piñones. Here its branches go dark if nobody tends them: nothing shines alone.' } },
+  { id: 'escarabajo', hex: 0xe0b45c, es: ['Autómata-escarabajo', 'Cerrar el circuito', 'Consola Arduino'], en: ['Automaton beetle', 'Closing the circuit', 'Arduino Console'],
+    con: { es: ['Prueba y error', 'Hardware como lenguaje', 'Ritmo de marcha'], en: ['Trial and error', 'Hardware as language', 'Gait'] },
+    tx: { es: 'No trae manual. Aprende a caminar cuando sus patas encuentran, probando, un compás común.', en: 'It comes without a manual. It learns to walk when its legs find, by trying, a shared beat.' } },
+  { id: 'mariquita', hex: 0xe8756a, es: ['Catarina de pantallas', 'Curar sin controlar', 'MediaLab Cinemateca'], en: ['Screen ladybug', 'Curating without controlling', 'Cinemateca MediaLab'],
+    con: { es: ['Curaduría', 'Co-creación', 'Emergencia'], en: ['Curation', 'Co-creation', 'Emergence'] },
+    tx: { es: 'Un enjambre de fotogramas que se pinta de motas y decide su rumbo. Curar es invitar, y también dejar ir.', en: 'A swarm of film frames that paints itself with spots and chooses its course. To curate is to invite, and also to let go.' } },
+  { id: 'colibri', hex: 0x7fd4c0, es: ['Barbudito del páramo', 'Escuchar el conflicto', 'Games for Change'], en: ['Páramo helmetcrest', 'Listening to the conflict', 'Games for Change'],
+    con: { es: ['Empatía', 'Mediación', 'Atención equitativa'], en: ['Empathy', 'Mediation', 'Equitable attention'] },
+    tx: { es: 'Un colibrí colosal que eriza la cresta cuando nadie lo escucha. Se calma cuando cada voz es oída, y el frailejón florece.', en: 'A colossal hummingbird that bristles its crest when nobody listens. It calms when each voice is heard, and the frailejón blooms.' } },
+  { id: 'medusa', hex: 0xcfa3c4, es: ['Medusa-leviatán', 'Espacio paramétrico', 'TouchDesigner & VR'], en: ['Leviathan jellyfish', 'Parametric space', 'TouchDesigner & VR'],
+    con: { es: ['Parámetro', 'Resonancia', 'Exploración'], en: ['Parameter', 'Resonance', 'Exploration'] },
+    tx: { es: 'Su cuerpo es una función de tres perillas. Entre muchas formas posibles, algunas resuenan.', en: 'Her body is a function of three dials. Among many possible shapes, a few resonate.' } }
+];
+function colossiGot() { try { return readUnlocks().colossi || {}; } catch (e) { return {}; } }
+function colossiCount() { const g = colossiGot(); return COLOSSI.filter(c => g[c.id]).length; }
+function colossusFound(id) {                                                       // se llama al terminar el Juego Otro de cada coloso
+  const c = COLOSSI.find(x => x.id === id); if (!c) return false;
+  const g = colossiGot(); if (g[id]) return false;
+  const u = readUnlocks(); u.colossi = Object.assign({}, g, { [id]: Date.now() }); writeUnlocks(u);
+  const en = window.currentLang === 'en', n = colossiCount();
+  setTimeout(() => { if (typeof showSystemToast === 'function') showSystemToast((en ? '🐾 BESTIARY · ' : '🐾 BESTIARIO · ') + (en ? c.en[0] : c.es[0]) + '  ' + n + '/' + COLOSSI.length, '#e7e4de'); }, 1500);
+  try { if (typeof updateAchievementsMenu === 'function') updateAchievementsMenu(); if (ACH.open && typeof renderAchievementsPanel === 'function') renderAchievementsPanel(); } catch (e) {}
+  return true;
+}
+function colGlyph(id, hex, locked) {                                                // silueta de puntos y trazos de cada coloso (24×16)
+  const G = {
+    serpiente: 'M2 12c3-6 5 4 8-1s4-6 7-2 3 3 5 0M19 7l3-2M19 7l3 1', ballena: 'M2 9c4-6 12-6 17 0l3-3M2 9c3 4 12 5 17 0M7 8h.1M17 8c0 1-1 2-3 2',
+    tortuga: 'M5 11c0-6 12-6 14 0zM4 11h16M19 9l3-1M7 11v3M16 11v3M9 7l2 2M13 7l-1 2', condor: 'M12 8l-9-5 4 6-4 3 9-2 9 2-4-3 4-6zM12 8v-3M12 5l1 1',
+    arbol: 'M12 17V8M12 8l-7-3M12 8l7-3M12 6l-3-3M12 6l3-3M12 10l-4-1M12 10l4-1M8 17h8M5 5h.1M19 5h.1', escarabajo: 'M7 6c0-3 10-3 10 0v6c0 3-10 3-10 0zM12 4v10M7 7l-4-1M7 10l-4 1M17 7l4-1M17 10l4 1M10 3l-1-2M14 3l1-2',
+    mariquita: 'M12 15c-5 0-6-8 0-9 6 1 5 9 0 9zM12 6v9M9 9h.1M15 9h.1M9 12h.1M15 12h.1M10 4l-1-2M14 4l1-2M7 10l-3-1M17 10l3-1', colibri: 'M6 13c0-5 5-7 9-5l5-2-4 3 1 3-5 3-3 3-1-3zM15 9h.1M9 9l-5-5M11 8l-1-4M13 7l1-3',
+    medusa: 'M5 7c0-6 14-6 14 0zM8 7v6c0 1-1 1-1 2M12 7v7c0 1 1 1 1 2M16 7v6c0 1 1 1 1 2'
+  };
+  const col = locked ? '#5c6068' : '#' + hex.toString(16).padStart(6, '0');
+  return `<svg viewBox="0 0 24 18" width="46" height="35" fill="none" stroke="${col}" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${G[id]}" stroke-dasharray="${locked ? '0.4 1.6' : 'none'}"/></svg>`;
+}
+function colBestiaryHTML() {                                                       // el cuerpo del bestiario (separado del DOM para poder probarlo)
+  const en = window.currentLang === 'en', L = en ? 'en' : 'es', got = colossiGot(), n = colossiCount(), all = n >= COLOSSI.length;
+  const cards = COLOSSI.map(c => {
+    const has = !!got[c.id];
+    if (!has) return `<li class="bst-card is-locked"><div class="bst-glyph">${colGlyph(c.id, c.hex, true)}</div><strong>▒▒▒▒ ▒▒▒▒▒</strong><span class="bst-where">${achEsc(c[L][2])}</span><small>${en ? 'Not found yet.' : 'Aún sin encontrar.'}</small></li>`;
+    return `<li class="bst-card"><div class="bst-glyph">${colGlyph(c.id, c.hex, false)}</div><strong>${achEsc(c[L][0])}</strong><span class="bst-where">${achEsc(c[L][1])} · ${achEsc(c[L][2])}</span>
+      <small>${achEsc(c.tx[L])}</small><div class="bst-chips">${c.con[L].map(k => `<i>${achEsc(k)}</i>`).join('')}</div></li>`;
+  }).join('');
+  let map = '';
+  if (all) {                                                                       // recompensa: el mapa de conceptos que une a los colosos
+    const idx = {}; COLOSSI.forEach(c => c.con[L].forEach(k => { (idx[k] = idx[k] || []).push(c[L][0]); }));
+    map = `<h3>${en ? 'Concept map' : 'Mapa de conceptos'}</h3><p class="bst-note">${en ? 'Nine colossi, one question: what does it mean to accompany what is bigger and slower than us?' : 'Nueve colosos, una sola pregunta: ¿qué significa acompañar lo que es más grande y más lento que nosotros?'}</p>
+      <ul class="bst-map">${Object.keys(idx).map(k => `<li><b>${achEsc(k)}</b><span>${idx[k].map(achEsc).join(' · ')}</span></li>`).join('')}</ul>`;
+  }
+  return `<button type="button" class="ach-close" aria-label="${en ? 'Close' : 'Cerrar'}">×</button><p class="ach-eyebrow">🐾</p><h2>${en ? 'Bestiary of colossi' : 'Bestiario de colosos'}</h2>
+    <p class="ach-sub">${en ? 'The colossi found in each section of the universe.' : 'Los colosos que viven en cada sección del universo.'}</p><p class="ach-count">${n} / ${COLOSSI.length}</p><div class="ach-bar"><i style="width:${Math.round(n / COLOSSI.length * 100)}%"></i></div>
+    <ul class="bst-grid">${cards}</ul>${map}`;
+}
+let _bstEl = null;
+function openBestiary() {
+  if (!document.getElementById('bst-style')) {
+    const st = document.createElement('style'); st.id = 'bst-style';
+    st.textContent = `#bst-panel{position:fixed;inset:0;z-index:2147483200;display:flex;align-items:center;justify-content:center;background:rgba(4,5,8,.72);backdrop-filter:blur(6px);font-family:-apple-system,Helvetica,Arial,sans-serif;color:#e7e4de}
+      #bst-panel[hidden]{display:none} #bst-panel .ach-box{position:relative;width:min(94vw,720px);max-height:88vh;overflow:auto;padding:26px 22px;background:rgba(10,12,16,.92);border:1px solid rgba(231,228,222,.16);text-align:center}
+      .bst-grid{list-style:none;padding:0;margin:18px 0 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;text-align:left}
+      .bst-card{padding:12px;border:1px solid rgba(231,228,222,.14);background:rgba(231,228,222,.03);display:flex;flex-direction:column;gap:5px;font-weight:300}
+      .bst-card.is-locked{opacity:.55} .bst-card strong{font-weight:400;letter-spacing:.06em;font-size:.85rem} .bst-where{font-size:.62rem;letter-spacing:.14em;color:#9a968f;text-transform:uppercase}
+      .bst-card small{font-size:.72rem;line-height:1.55;color:#c3c8d0} .bst-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px} .bst-chips i{font-style:normal;font-size:.6rem;letter-spacing:.1em;padding:2px 7px;border:1px solid rgba(231,228,222,.22);color:#cfd3da}
+      #bst-panel h3{margin:26px 0 8px;font-weight:300;letter-spacing:.3em;font-size:.72rem;color:#a8a49c} .bst-note{font-size:.8rem;line-height:1.7;color:#cfd3da;margin:0 0 12px}
+      .bst-map{list-style:none;padding:0;margin:0;text-align:left;font-size:.74rem;font-weight:300} .bst-map li{padding:6px 0;border-top:1px solid rgba(231,228,222,.08);display:flex;gap:10px;flex-wrap:wrap} .bst-map b{font-weight:400;min-width:12em;letter-spacing:.05em} .bst-map span{color:#9a968f}`;
+    document.head.appendChild(st);
+  }
+  if (!_bstEl) {
+    _bstEl = document.createElement('div'); _bstEl.id = 'bst-panel'; _bstEl.hidden = true;
+    _bstEl.addEventListener('click', (e) => { if (e.target === _bstEl || (e.target.closest && e.target.closest('.ach-close'))) closeBestiary(); });
+    ['touchstart', 'touchmove', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'wheel'].forEach(evt => _bstEl.addEventListener(evt, (e) => e.stopPropagation(), { passive: true }));
+    document.body.appendChild(_bstEl);
+  }
+  _bstEl.innerHTML = '<div class="ach-box">' + colBestiaryHTML() + '</div>'; _bstEl.hidden = false; window._bstOpen = true; isUIOpen = true;
+  if (typeof playSound === 'function') playSound('ui');
+}
+function closeBestiary() { if (_bstEl) _bstEl.hidden = true; window._bstOpen = false; isUIOpen = !!ACH.open; if (typeof playSound === 'function') playSound('ui'); const f = window._bstAfter; window._bstAfter = null; if (f) setTimeout(f, 300); }
+document.addEventListener('keydown', (e) => { if (window._bstOpen && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeBestiary(); } }, true);
+window.openBestiary = openBestiary; window.closeBestiary = closeBestiary;
+
+// ==========================================================================================
+// 🐾 MARCO COMÚN DE LOS SEIS COLOSOS NUEVOS (cóndor, árbol, escarabajo, catarina, colibrí, medusa)
+//   Cada coloso es una definición COL_DEF[id] = { iso, hud, txt, build(g), update(S,dt,t,calm), tap/down/up(S,x,y), hudVals(S), endAfter }.
+//   El marco pone la escena, la cámara orbital, la interfaz, el HUD, el final, el registro en el bestiario y la limpieza.
+// ==========================================================================================
+window.isColossusActive = false;
+const COLG = { id: null, data: null, def: null, t: 0, group: null, S: null, els: {}, subT: 0, won: false, finT: 0, stars: null, dust: null };
+const COL_DEF = {};
+const _colV = new THREE.Vector3();
+function colT(k) { const D = COLG.def; if (!D) return ''; const tx = D.txt[window.currentLang === 'en' ? 'en' : 'es']; return tx && tx[k] !== undefined ? tx[k] : ''; }
+function colSub(text, secs) { const el = COLG.els.sub; if (!el || !text) return; el.textContent = text; el.style.opacity = '1'; COLG.subT = secs || 6; }
+function colPick(list, cx, cy, maxPx) {                                           // el punto (en coordenadas de mundo) más cercano al dedo, en píxeles
+  camera.updateMatrixWorld(true);
+  let best = -1, bd = maxPx || Math.max(46, window.innerHeight * 0.075);
+  list.forEach((w, i) => { if (!w) return; _colV.copy(w).project(camera); if (_colV.z > 1) return;
+    const sx = (_colV.x * 0.5 + 0.5) * window.innerWidth, sy = (-_colV.y * 0.5 + 0.5) * window.innerHeight, d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = i; } });
+  return best;
+}
+function colW(obj, x, y, z) { obj.updateMatrixWorld(true); return obj.localToWorld(new THREE.Vector3(x, y, z)); }
+function colFace() { const p = userGroup.position; return Math.atan2(-p.z, p.x); }              // rotación y para que +x local mire hacia la cámara
+function colSky(g, tint) {
+  COLG.stars = sptPoints(520, (i, o) => { const u = Math.random() * 2 - 1, a = Math.random() * 6.283, r = 85 + Math.random() * 40, s = Math.sqrt(1 - u * u), k = Math.random();
+    o.x = r * s * Math.cos(a); o.y = r * u; o.z = r * s * Math.sin(a); o.s = 0.07 + Math.pow(Math.random(), 4) * 0.35; o.a = 0.3 + Math.random() * 0.6;
+    if (k < 0.2) { o.r = 0.7; o.g = 0.82; o.b = 1; } else if (k < 0.3) { o.r = 1; o.g = 0.82; o.b = 0.65; } });
+  COLG.stars.material.uniforms.uOpacity.value = 0.72; g.add(COLG.stars);
+  COLG.dust = sptPoints(600, (i, o) => { const t = Math.pow(Math.random(), 0.7), r = 24 + t * 60, a = Math.random() * 6.283; o.x = Math.cos(a) * r; o.z = Math.sin(a) * r - 8; o.y = (Math.random() - 0.5) * 22 - 4; o.s = 0.14 + Math.random() * 0.4; o.a = 0.05 + Math.random() * 0.1; o.r = tint[0]; o.g = tint[1]; o.b = tint[2]; });
+  g.add(COLG.dust);
+}
+function colStart(id) {
+  const D = COL_DEF[id]; if (!D || window.isColossusActive) return;
+  window.isColossusActive = true; COLG.id = id; COLG.def = D;
+  MG.enter(24);
+  camera.fov = D.iso.fov || 42; targetFov = camera.fov; camera.updateProjectionMatrix();
+  userGroup.rotation.order = 'YXZ';
+  Object.assign(COLG, { t: 0, subT: 0, won: false, finT: 0 });
+  const g = new THREE.Group(); COLG.group = g; colSky(g, D.sky || [0.5, 0.6, 0.8]);
+  COLG.S = D.build(g); scene.add(g);
+  const tg = window.travelerGroup;                                                  // el Viajero siempre está: da la medida de la inmensidad del coloso
+  COLG.tsave = tg ? { pos: tg.position.clone(), quat: tg.quaternion.clone(), scale: tg.scale.clone() } : null;
+  COLG.pose = { pos: new THREE.Vector3(0, (typeof TRAVELER_FEET !== 'undefined') ? TRAVELER_FEET : 0.6, 0), yaw: 0 };
+  if (tg) { tg.visible = true; window.hgPose = COLG.pose; }
+  COLG.pad = sptPoints(46, (i, o) => { const a = i / 46 * 6.283; o.x = Math.cos(a) * 1.9; o.z = Math.sin(a) * 1.9; o.y = 0.04; o.s = 0.1; o.a = 0.5; o.r = 0.75; o.g = 0.85; o.b = 1; }); g.add(COLG.pad);
+  const ui = MG.buildUI(colT('h'));
+  const title = document.createElement('div'); title.style.cssText = 'font-size:0.66rem; font-weight:300; letter-spacing:0.34em; color:#a8a49c;'; title.textContent = colT('title'); ui.extra.appendChild(title);
+  const sub = document.createElement('div');
+  sub.style.cssText = 'position:absolute; left:50%; top:calc(150px + env(safe-area-inset-top,0px)); transform:translateX(-50%); width:min(90vw,640px); text-align:center; font-size:0.95rem; font-weight:300; letter-spacing:0.12em; line-height:1.8; color:#cfd8e3; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 14px rgba(0,0,0,0.9); pointer-events:none;';
+  ui.root.appendChild(sub); COLG.els = { title, sub, hint: ui.hint };
+  hgCamReset(); hgCamBind();
+  window.__colHud = D.hud; morphHUD('coloso');
+  showSystemToast(colT('toast'), '#e7e4de');
+  colSub(colT('s0'), 7);
+  if (D.voice && D.voiceEvery !== undefined) setTimeout(() => { if (window.isColossusActive && COLG.id === id) colVoice(D.voice, 0.6); }, 2200);
+}
+window.startColossusGame = function(id, data) {
+  COLG.data = data || null;
+  if (MG.pending || window.isColossusActive || window.isTortugaActive || window.isSputnikActive || window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
+  MG.pending = true;
+  MG.reflect(MG.text(id, 'intro'), () => { MG.pending = false; colStart(id); },
+    { cancelable: true, onCancel: () => { MG.pending = false; if (data && typeof openProjectPopup === 'function') openProjectPopup(data); } });
+};
+function colTeardown() {
+  window.isColossusActive = false; hgCamUnbind();
+  const tg = window.travelerGroup; if (tg && COLG.tsave) { tg.position.copy(COLG.tsave.pos); tg.quaternion.copy(COLG.tsave.quat); tg.scale.copy(COLG.tsave.scale); }
+  COLG.tsave = null; COLG.pose = null; COLG.pad = null; window.hgPose = null;
+  if (COLG.def && COLG.def.dispose && COLG.S) { try { COLG.def.dispose(COLG.S); } catch (e) {} }
+  if (COLG.group) { mgDispose(COLG.group); COLG.group = null; }
+  COLG.S = COLG.stars = COLG.dust = null; COLG.els = {};
+}
+function colAfter(data, found) {                                                  // al cerrar la reflexión final: (bestiario si se completó) y luego el contenido de la sección
+  const open = () => { if (data && typeof openProjectPopup === 'function') openProjectPopup(data); };
+  const u = readUnlocks();
+  if (found && colossiCount() >= COLOSSI.length && !u.bestiarySeen) { u.bestiarySeen = true; writeUnlocks(u); window._bstAfter = open; setTimeout(openBestiary, 400); } else open();
+}
+window.colAfter = colAfter;
+function colOutro(id, wasFound, data) { setTimeout(() => { MG.reflect(MG.text(id, 'outro'), () => colAfter(data, wasFound)); }, 700); }
+window.endColossusGame = function() { if (!window.isColossusActive) return; const id = COLG.id, w = COLG.won, d = COLG.data; colTeardown(); MG.exit(); colOutro(id, w, d); };
+window.abortColossusGame = function() { if (!window.isColossusActive) return; const id = COLG.id, d = COLG.data; colTeardown(); MG.exit(); colOutro(id, false, d); };
+window.colTap = function(cx, cy) { if (window.isColossusActive && !window.isMiniIntro && COLG.def && COLG.def.tap) COLG.def.tap(COLG.S, cx, cy); };
+window.colDown = function(cx, cy) { if (window.isColossusActive && !window.isMiniIntro && COLG.def && COLG.def.down) COLG.def.down(COLG.S, cx, cy); };
+window.colUp = function() { if (window.isColossusActive && COLG.def && COLG.def.up) COLG.def.up(COLG.S); };
+window.colMaybeBestiary = function() { const u = readUnlocks(); if (colossiCount() >= COLOSSI.length && !u.bestiarySeen) { u.bestiarySeen = true; writeUnlocks(u); setTimeout(openBestiary, 600); } };
+function colUpdate(dt) {
+  const D = COLG.def, S = COLG.S; if (!D || !S) return;
+  const calm = reduceMotionMQ.matches, t = MG.time, sw = calm ? 0 : 1;
+  COLG.t += dt; COLG.subT -= dt;
+  if (COLG.els.sub && COLG.subT <= 0) COLG.els.sub.style.opacity = '0';
+  COLG.stars.rotation.y += dt * 0.004 * sw; COLG.dust.rotation.y += dt * 0.01 * sw;
+  D.update(S, dt, t, calm);
+  const P = COLG.pose; if (P) { const tp = D.travPos ? D.travPos(S) : (D.trav ? [Math.sin(D.trav[0]) * D.trav[1], Math.cos(D.trav[0]) * D.trav[1]] : [0, 12]); P.pos.x = tp[0]; P.pos.z = tp[1]; P.yaw = Math.atan2(-tp[0], -tp[1]); COLG.pad.position.set(tp[0], 0, tp[1]); }
+  if (D.voice && D.voiceEvery && !COLG.won) { S.vT = (S.vT === undefined ? D.voiceEvery * 0.3 : S.vT) - dt; if (S.vT <= 0) { S.vT = D.voiceEvery * (0.8 + 0.4 * Math.random()); colVoice(D.voice, 0.7); } }
+  if (S.won && !COLG.won) { COLG.won = true; COLG.finT = 0; colossusFound(COLG.id); if (D.voice) colVoice(D.voiceWin || D.voice, 1); colSub(colT('done'), 12); }
+  if (COLG.won) { COLG.finT += dt; if (COLG.finT > (D.endAfter || 14)) { window.endColossusGame(); return; } }
+  // cámara: giro libre a distancia fija + zoom (igual que Hoguera, Ballena, Sputnik y Tortuga)
+  const CM = HG_CAM, I = D.iso;
+  if (!CM.ptrs.size) { CM.yawT += CM.yawV * dt; CM.yawV *= Math.exp(-dt * 3.2); }
+  const kc = 1 - Math.exp(-dt * 9);
+  CM.yaw += (CM.yawT - CM.yaw) * kc; CM.pit += (CM.pitT - CM.pit) * kc; CM.zoom += (CM.zoomT - CM.zoom) * kc;
+  const asp = window.innerWidth / window.innerHeight, fit = Math.max(1, 1.5 / asp), base = D.camDist ? D.camDist(S) : I.dist, Dd = base * fit * (D.camDist ? Math.max(0.7, Math.min(1.3, CM.zoom)) : CM.zoom);
+  const psi = I.yaw + CM.yaw + Math.sin(t * 0.05) * 0.03 * sw, phi = Math.max(0.05, Math.min(1.2, I.pitch + CM.pit)), Tg = I.tg;
+  userGroup.position.set(Tg[0] + Dd * Math.sin(psi) * Math.cos(phi), Tg[1] + Dd * Math.sin(phi), Tg[2] + Dd * Math.cos(psi) * Math.cos(phi));
+  userGroup.rotation.set(-phi, psi, 0);
+  const v = D.hudVals(S); MG.setHUD({ 'lives-value': String(v[0]), 'level-value': String(v[1]), 'files-value': String(v[2]), 'combo-value': String(v[3]) });
+}
+
+// ---------- Voces propias de los colosos (sintetizadas, con compresor y la reverberación de sala grande) ----------
+let _colNB = null;
+function colNoiseBuf(ctx) { if (!_colNB || _colNB.sampleRate !== ctx.sampleRate) { _colNB = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 2), ctx.sampleRate); const d = _colNB.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } return _colNB; }
+function colVoice(kind, k) {                                                       // k = intensidad 0..1
+  try {
+    if (!MGS.ok()) return;
+    k = k === undefined ? 1 : k;
+    const ctx = audioCtx, t = ctx.currentTime, B = MGS.bus();
+    const out = ctx.createGain(), comp = ctx.createDynamicsCompressor(); comp.threshold.value = -22; comp.ratio.value = 5;
+    out.connect(comp); comp.connect(masterGain); comp.connect(B.input);
+    const env = (dur, peak, att) => { out.gain.setValueAtTime(0.0001, t); out.gain.linearRampToValueAtTime(peak, t + att); out.gain.exponentialRampToValueAtTime(0.0001, t + dur); };
+    const osc = (type, f0, f1, dur, g, dest) => { const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur); const gn = ctx.createGain(); gn.gain.value = g; o.connect(gn); gn.connect(dest || out); o.start(t); o.stop(t + dur + 0.1); return o; };
+    const noise = (type, f0, f1, q, dur, g, dest) => { const s = ctx.createBufferSource(); s.buffer = colNoiseBuf(ctx); s.loop = true; const f = ctx.createBiquadFilter(); f.type = type; f.Q.value = q; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur); const gn = ctx.createGain(); gn.gain.value = g; s.connect(f); f.connect(gn); gn.connect(dest || out); s.start(t, Math.random()); s.stop(t + dur + 0.1); };
+    const lowpass = (hz) => { const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = hz; lp.connect(out); return lp; };
+    const am = (node, hz, depth) => { const l = ctx.createOscillator(); l.frequency.value = hz; const g = ctx.createGain(); g.gain.value = depth; l.connect(g); g.connect(node.gain); l.start(t); l.stop(t + 4); };
+    if (kind === 'condor') {                                                       // chillido de rapaz: aire áspero y armónicos que caen
+      env(1.15, 0.34 * k, 0.04); noise('bandpass', 3300, 1300, 2.2, 1.15, 0.9); osc('sawtooth', 2100, 880, 1.0, 0.22); osc('square', 1450, 640, 0.9, 0.1); noise('highpass', 5200, 4200, 0.7, 0.18, 0.7);
+    } else if (kind === 'condor_coo') {                                            // arrullo grave y corto, cuando se inclina
+      env(1.7, 0.16 * k, 0.25); const o = osc('sine', 330, 270, 1.6, 0.6); osc('triangle', 660, 540, 1.6, 0.12); am(out, 5, 0.04);
+    } else if (kind === 'arbol') {                                                 // crujido de madera con un zumbido de racks
+      env(3.0, 0.34 * k, 0.6); const lp = lowpass(300); osc('sawtooth', 54, 46, 3.0, 0.3, lp); osc('sine', 98, 92, 3.0, 0.3); osc('sine', 147, 139, 3.0, 0.16); noise('bandpass', 420, 240, 7, 2.2, 0.5);
+    } else if (kind === 'escarabajo') {                                            // zumbido mecánico con chasquidos
+      env(1.1, 0.3 * k, 0.05); const buzz = ctx.createGain(); buzz.gain.value = 0.5; buzz.connect(out); osc('sawtooth', 92, 112, 1.0, 0.6, buzz); am(buzz, 30, 0.35); osc('sine', 780, 1250, 1.0, 0.08);
+      const cl = ctx.createGain(); cl.gain.setValueAtTime(0, t); for (let i = 0; i < 9; i++) { cl.gain.setValueAtTime(0.7, t + i * 0.1); cl.gain.setValueAtTime(0, t + i * 0.1 + 0.018); } cl.connect(out); noise('highpass', 2600, 2600, 0.7, 1.0, 0.6, cl);
+    } else if (kind === 'mariquita') {                                             // zumbido suave de élitros y un trino
+      env(0.8, 0.2 * k, 0.04); const bz = ctx.createGain(); bz.gain.value = 0.5; bz.connect(out); osc('triangle', 230, 300, 0.7, 0.6, bz); am(bz, 46, 0.4); osc('sine', 1900, 2700, 0.16, 0.25);
+    } else if (kind === 'oso') {                                                   // rugido de pecho: vocal que se cierra, pulso lento
+      const dur = 1.2 + 1.2 * k; env(dur, 0.5 * k, 0.12);
+      const sh = ctx.createWaveShaper(), cv = new Float32Array(512); for (let i = 0; i < 512; i++) cv[i] = Math.tanh((i / 511 * 2 - 1) * 4); sh.curve = cv;
+      [[560, 230, 3, 1.0], [980, 520, 4, 0.7], [2300, 1000, 5, 0.3]].forEach(([f0, f1, q, g]) => { const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = q; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur); const gg = ctx.createGain(); gg.gain.value = g; sh.connect(f); f.connect(gg); gg.connect(out); });
+      const amp = ctx.createGain(); amp.gain.value = 0.6; amp.connect(sh); am(amp, 22, 0.4);
+      const f0 = 62 + Math.random() * 14; [1, 1.013, 0.5].forEach((m, i) => osc(i === 2 ? 'square' : 'sawtooth', f0 * m * 0.8, f0 * m * 0.6, dur, i === 2 ? 0.2 : 0.5, amp));
+      osc('sine', 52, 26, dur, 0.6); noise('bandpass', 900, 260, 0.9, dur, 0.3);
+    } else if (kind === 'colibri') {                                                // chillido y castañeteo de un colibrí colosal (dos octavas de cuerpo)
+      const n = 6 + Math.round(9 * k), gap = 0.07, tot = n * gap + 0.5; env(tot, 0.4 * k, 0.01);
+      const hi = ctx.createOscillator(), lo = ctx.createOscillator(), gh = ctx.createGain(), gl = ctx.createGain(); hi.type = 'sawtooth'; lo.type = 'triangle'; gh.gain.value = 0; gl.gain.value = 0;
+      hi.connect(gh); lo.connect(gl); gh.connect(out); gl.connect(out); hi.start(t); lo.start(t); hi.stop(t + tot + 0.1); lo.stop(t + tot + 0.1);
+      for (let i = 0; i < n; i++) { const t0 = t + i * gap, f = 5200 + Math.random() * 1200 + (i % 3) * 250;
+        hi.frequency.setValueAtTime(f, t0); hi.frequency.exponentialRampToValueAtTime(f * 0.55, t0 + gap * 0.8); lo.frequency.setValueAtTime(f * 0.3, t0); lo.frequency.exponentialRampToValueAtTime(f * 0.17, t0 + gap * 0.8);
+        [gh, gl].forEach((gn, j) => { gn.gain.setValueAtTime(0.0001, t0); gn.gain.linearRampToValueAtTime(j ? 0.8 : 0.35, t0 + 0.008); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + gap * 0.92); }); }
+      noise('bandpass', 4200, 3000, 1.5, tot, 0.35); am(out, 38, 0.18);
+    } else if (kind === 'colibri_song') {                                           // canto bajito: tres notas que descienden, con eco
+      env(3.4, 0.2 * k, 0.05); [[3300, 2500, 0], [2900, 2200, 0.5], [2500, 1900, 1.1]].forEach(([f0, f1, d]) => { const o = ctx.createOscillator(), gn = ctx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f0, t + d); o.frequency.exponentialRampToValueAtTime(f1, t + d + 0.35);
+        gn.gain.setValueAtTime(0.0001, t + d); gn.gain.linearRampToValueAtTime(0.7, t + d + 0.03); gn.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.45); o.connect(gn); gn.connect(out); o.start(t); o.stop(t + 3);
+        const l2 = ctx.createOscillator(), g2 = ctx.createGain(); l2.type = 'sine'; l2.frequency.setValueAtTime(f0 / 4, t + d); l2.frequency.exponentialRampToValueAtTime(f1 / 4, t + d + 0.35); g2.gain.setValueAtTime(0.0001, t + d); g2.gain.linearRampToValueAtTime(0.4, t + d + 0.05); g2.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.7); l2.connect(g2); g2.connect(out); l2.start(t); l2.stop(t + 3); });
+    } else if (kind === 'oso_sigh') {                                              // suspiro largo de quien por fin descansa
+      env(2.6, 0.14 * k, 0.5); noise('lowpass', 520, 140, 0.8, 2.6, 0.9); osc('sine', 96, 58, 2.6, 0.5);
+    } else if (kind === 'medusa') {                                                // canto etéreo: tres voces que suben despacio
+      env(3.4, 0.16 * k, 1.1); [392, 494, 587].forEach((f, i) => { const o = osc(i ? 'triangle' : 'sine', f * 0.5, f * 0.52, 3.4, 0.5 - i * 0.1); const v = ctx.createOscillator(); v.frequency.value = 4.5 + i; const vg = ctx.createGain(); vg.gain.value = 3 + i; v.connect(vg); vg.connect(o.frequency); v.start(t); v.stop(t + 3.6); });
+    } else if (kind === 'tortuga') {                                               // exhalación profunda de un coloso lento
+      env(3.4, 0.34 * k, 0.8); osc('sine', 48, 35, 3.4, 0.8); noise('lowpass', 220, 90, 0.7, 3.4, 0.25);
+    }
+  } catch (e) { if (window.__colDebug) throw e; }
+}
+window.colVoice = colVoice;
+function colMon(fill, scale, mats, pivot) {                                        // grupo de monitores fusionados con sus propios materiales
+  const cells = []; fill(cells); const g = hgPart(cells, pivot || [0, 0, 0], [0, 0, 0], mats); g.scale.setScalar(scale); return g;
+}
+function colMats(S, hex) { const m = hgMakeMats(hex); (S.mats = S.mats || []).push(m); return m; }
+function colMatsTick(S, t, calm, rune) { (S.mats || []).forEach(m => { m.screen.uniforms.uTime.value = t; m.screen.uniforms.uCalm.value = calm; if (rune !== undefined) m.screen.uniforms.uRune.value = rune; }); }
+function colLimb(out, P, step, r0, r1, s0, s1, runeEvery) {                        // extremidad de monitores: cuatro caras a lo largo de una curva
+  let len = 0, prev = hgCR(P, 0);
+  for (let i = 1; i <= 30; i++) { const q = hgCR(P, i / 30); len += Math.hypot(q[0] - prev[0], q[1] - prev[1], q[2] - prev[2]); prev = q; }
+  const N = Math.max(2, Math.round(len / step)), F = [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]];
+  for (let i = 0; i <= N; i++) {
+    const u = i / N, c = hgCR(P, u), r = r0 + (r1 - r0) * u, sz = s0 + (s1 - s0) * u;
+    F.forEach((n, k) => hgSurf(out, c[0] + n[0] * r, c[1] + n[1] * r, c[2] + n[2] * r, n, sz, Math.max(sz * 0.9, step * 1.02), sz * 0.8, !!runeEvery && k === 0 && i % runeEvery === 1));
+  }
+}
+function colEll(cx, cy, cz, Rx, Ry, Rz, az, el) {                                  // punto y normal sobre un elipsoide (az desde +x hacia +z)
+  const x = Rx * Math.cos(el) * Math.cos(az), y = Ry * Math.sin(el), z = Rz * Math.cos(el) * Math.sin(az);
+  return { p: [cx + x, cy + y, cz + z], n: [x / (Rx * Rx), y / (Ry * Ry), z / (Rz * Rz)] };
+}
+
+// ---------- Modelado orgánico en puntos (pelaje, plumas, élitros, patas) ----------
+const COL_LD = [0.42, 0.78, 0.46];                                                  // luz de luna
+function colNorm() { const u = Math.random() * 2 - 1, a = Math.random() * 6.283, s = Math.sqrt(1 - u * u); return [s * Math.cos(a), u, s * Math.sin(a)]; }
+function colPush(L, x, y, z, c, s, a, o) { L.push({ x, y, z, r: c[0], g: c[1], b: c[2], s: (s || 0.14) * (0.75 + Math.random() * 0.6), a: Math.min(1, (a || 0.85) * (0.72 + Math.random() * 0.28) * (c[3] === undefined ? 1 : c[3])) }); }
+function colShell(L, n, cx, cy, cz, rx, ry, rz, fn, o) {                           // puntos sobre un elipsoide (con pelaje opcional); fn → [r,g,b,(a)]
+  o = o || {}; let k = 0, guard = 0;
+  while (k < n && guard++ < n * 8) {
+    const v = colNorm(); if (o.keep && !o.keep(v[0], v[1], v[2])) continue;
+    const f = o.fur ? Math.random() * o.fur : 0, x = cx + (rx + f) * v[0], y = cy + (ry + f) * v[1], z = cz + (rz + f) * v[2];
+    let gx = v[0] / rx, gy = v[1] / ry, gz = v[2] / rz; const gl = Math.hypot(gx, gy, gz) || 1; gx /= gl; gy /= gl; gz /= gl;
+    const lit = 0.4 + 0.8 * Math.max(0, gx * COL_LD[0] + gy * COL_LD[1] + gz * COL_LD[2]);
+    colPush(L, x, y, z, fn(x, y, z, gx, gy, gz, lit), o.s, o.a); k++;
+  }
+}
+function colTube(L, P, n, r0, r1, fn, o) {                                         // tubo orgánico a lo largo de una curva
+  o = o || {};
+  for (let k = 0; k < n; k++) {
+    const u = Math.random(), c = hgCR(P, u), a = hgCR(P, Math.max(0, u - 0.03)), b = hgCR(P, Math.min(1, u + 0.03));
+    let T = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]; const tl = Math.hypot(T[0], T[1], T[2]) || 1; T = [T[0] / tl, T[1] / tl, T[2] / tl];
+    const v = colNorm(), d = v[0] * T[0] + v[1] * T[1] + v[2] * T[2]; let N = [v[0] - d * T[0], v[1] - d * T[1], v[2] - d * T[2]]; const nl = Math.hypot(N[0], N[1], N[2]) || 1; N = [N[0] / nl, N[1] / nl, N[2] / nl];
+    const r = r0 + (r1 - r0) * u + (o.fur ? Math.random() * o.fur : 0), lit = 0.4 + 0.8 * Math.max(0, N[0] * COL_LD[0] + N[1] * COL_LD[1] + N[2] * COL_LD[2]);
+    colPush(L, c[0] + N[0] * r, c[1] + N[1] * r, c[2] + N[2] * r, fn(c[0] + N[0] * r, c[1] + N[1] * r, c[2] + N[2] * r, N[0], N[1], N[2], lit, u), o.s, o.a);
+  }
+}
+function colLine(L, A, B, n, c, s, a, jit) {                                         // trazo fino (garras, antenas, trazos de circuito)
+  for (let i = 0; i < n; i++) { const u = n > 1 ? i / (n - 1) : 0, j = jit || 0; colPush(L, A[0] + (B[0] - A[0]) * u + (Math.random() - 0.5) * j, A[1] + (B[1] - A[1]) * u + (Math.random() - 0.5) * j, A[2] + (B[2] - A[2]) * u + (Math.random() - 0.5) * j, c, s, a); }
+}
+function colFeather(L, root, dir, len, wid, n, fn, s) {                              // pluma: raquis con barbas que se abren y vuelven a cerrarse
+  const T = Math.hypot(dir[0], dir[1], dir[2]) || 1, d = [dir[0] / T, dir[1] / T, dir[2] / T];
+  let w = [-d[2], 0, d[0]]; const wl = Math.hypot(w[0], w[1], w[2]) || 1; w = [w[0] / wl, 0, w[2] / wl];
+  for (let i = 0; i < n; i++) { const u = Math.random(), sp = (Math.random() * 2 - 1) * wid * Math.pow(Math.sin(Math.min(1, u * 1.1) * Math.PI), 0.7) * (0.35 + 0.65 * u);
+    colPush(L, root[0] + d[0] * len * u + w[0] * sp, root[1] + d[1] * len * u + (Math.random() - 0.5) * 0.12, root[2] + d[2] * len * u + w[2] * sp, fn(u, sp / (wid || 1)), s, 0.9); }
+}
+function colCloud(L, pivot, parent) {                                                // convierte la lista en una nube de puntos con su pivote
+  const g = new THREE.Group(), par = parent || [0, 0, 0];
+  if (!L.length) colPush(L, pivot[0], pivot[1], pivot[2], [0, 0, 0], 0.01, 0);
+  g.pts = sptPoints(L.length, (i, o) => { const p = L[i]; o.x = p.x - pivot[0]; o.y = p.y - pivot[1]; o.z = p.z - pivot[2]; o.r = p.r; o.g = p.g; o.b = p.b; o.s = p.s; o.a = p.a; });
+  g.add(g.pts); g.position.set(pivot[0] - par[0], pivot[1] - par[1], pivot[2] - par[2]); return g;
+}
+function colTint(g, r, gg, b) { if (g && g.pts) g.pts.material.uniforms.uTint.value.setRGB(r, gg, b); }
+const colMix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+
+// ---------- 4 · EL CÓNDOR DE CENIZA (Docencia en Diseño) — pedir permiso ----------
+COL_DEF.condor = {
+  iso: { yaw: 0.9, pitch: 0.18, dist: 46, tg: [0, 7, 0] }, travPos(S) { const d = 4.5 + Math.max(0, S.D - 8) / 38 * 4.5; return [Math.sin(0.9) * d, Math.cos(0.9) * d]; }, sky: [0.75, 0.62, 0.55], hud: ['DISTANCIA', 'CONFIANZA', 'MIRADA', 'PLUMA'], endAfter: 13, voice: 'condor', voiceEvery: 0,
+  txt: {
+    es: { title: 'EL CÓNDOR DE CENIZA', toast: 'Un maestro posado en un risco.',
+      h: 'Mantén pulsado para acercarte, pero solo cuando mire a otro lado. Suelta y espera cuando te mire: la confianza crece quieta. Arrastra el espacio vacío para girar.',
+      s0: '…te observa desde lejos…', watch: '…te mira. Suelta y baja la mirada…', away: '…mira a otro lado. Ahora puedes avanzar…', back: '…aún no. La confianza se espera, no se empuja…', bow: '…inclina la cabeza. Tócalo…', gift: '…te deja una pluma…', done: '…una pluma de ceniza. Aprender también es que te lo permitan.' },
+    en: { title: 'THE ASH CONDOR', toast: 'A teacher perched on a cliff.',
+      h: 'Hold to approach, but only when it looks away. Let go and wait when it looks at you: trust grows in stillness. Drag empty space to turn.',
+      s0: '…it watches from afar…', watch: '…it looks at you. Let go and lower your gaze…', away: '…it looks away. Now you may advance…', back: '…not yet. Trust is waited for, not pushed…', bow: '…it bows its head. Touch it…', gift: '…it leaves you a feather…', done: '…a feather of ash. To learn is also to be allowed.' }
+  },
+  build(g) {
+    const S = { D: 46, trust: 0, cycle: 0, watch: false, hold: false, stage: 'approach', ruffle: 0, hy: 0, bow: 0, open: 0, feather: 0, giftT: 0, msgT: 0, won: false, lastWatch: false };
+    g.add(sptPoints(700, (i, o) => { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * 15; o.x = Math.cos(a) * r - 4; o.z = Math.sin(a) * r * 0.8; o.y = -0.2 - Math.random() * 0.3; o.s = 0.12 + Math.random() * 0.12; o.a = 0.28 + Math.random() * 0.3; o.r = 0.5; o.g = 0.46; o.b = 0.44; }));   // la cornisa
+    g.add(sptPoints(500, (i, o) => { o.x = -16 + Math.random() * 16; o.y = -Math.random() * 18; o.z = (Math.random() - 0.5) * 16; o.s = 0.16 + Math.random() * 0.2; o.a = 0.1 + Math.random() * 0.2; o.r = 0.42; o.g = 0.4; o.b = 0.44; }));       // el risco que cae
+    const root = new THREE.Group(); g.add(root); S.bird = root;
+    const ash = (x, y, z, nx, ny, nz, lit) => { const v = 0.18 + 0.42 * Math.pow(lit, 1.2) + Math.random() * 0.05; return [v * 0.95, v * 0.97, v * 1.08]; };
+    const down = (x, y, z, nx, ny, nz, lit) => { const v = 0.3 + 0.5 * lit + Math.random() * 0.08; return [v, v * 0.98, v * 0.95]; };
+    let c = [];
+    colShell(c, 2600, -0.2, 5.0, 0, 2.3, 3.6, 1.9, ash, { fur: 0.35, s: 0.2, a: 0.85 });                                                             // cuerpo con plumaje en capas
+    colShell(c, 340, 0.9, 6.2, 0, 1.4, 2.2, 1.5, (x, y, z, nx, ny, nz, lit) => ash(x, y, z, nx, ny, nz, lit * 1.25), { fur: 0.25, s: 0.14, keep: (nx) => nx > 0.1 });   // pecho
+    [-1, 1].forEach(s => { colTube(c, [[s * 0.9, 1.9, 0], [s * 0.95, 0.9, 0.2], [s * 0.95, 0.1, 0.5]], 130, 0.34, 0.24, (x, y, z) => [0.72, 0.6, 0.56], { s: 0.11 });          // patas escamosas
+      for (let k = -1; k <= 1; k++) colLine(c, [s * 0.95, 0.1, 0.5], [s * 0.95 + 0.9, 0.05, 0.5 + k * 0.5], 5, [0.15, 0.14, 0.14], 0.12, 0.95); });                           // garras
+    for (let k = 0; k < 9; k++) { const a = -0.5 + k * 0.1; colFeather(c, [-1.2, 2.2, (k - 4) * 0.3], [-0.45, -1, 0.05 * (k - 4)], 3.4 + (k % 3) * 0.3, 0.35, 34, (u) => ash(0, 0, 0, 0, 0, 0, 0.6 + 0.6 * u), 0.11); }   // cola
+    colTube(c, [[0.3, 7.0, 0], [0.7, 8.4, 0], [1.2, 9.7, 0], [1.3, 10.5, 0]], 340, 0.85, 0.58, (x, y, z) => [0.82 + Math.random() * 0.06, 0.56, 0.5], { s: 0.11, a: 0.9 });                  // cuello pelado
+    root.add(colCloud(c, [0, 0, 0]));
+    // gorguera de plumón blanco
+    c = []; for (let k = 0; k < 520; k++) { const a = Math.random() * 6.283, r = 1.0 + Math.random() * 0.9, y = 8.6 + (Math.random() - 0.5) * 0.9 + Math.sin(a * 3) * 0.1; colPush(c, 0.5 + Math.cos(a) * r, y, Math.sin(a) * r, [0.9 + Math.random() * 0.1, 0.9, 0.88], 0.17, 0.85); }
+    S.ruff = colCloud(c, [0.5, 8.7, 0]); root.add(S.ruff);
+    // cabeza calva con cresta, pico de marfil en gancho y ojos
+    const HC = [1.3, 11.1, 0], HP = [0.9, 10.2, 0];
+    c = []; colShell(c, 380, HC[0], HC[1], HC[2], 1.4, 1.2, 1.15, (x, y, z, nx, ny, nz, lit) => [(0.55 + 0.4 * lit) * 0.95, (0.36 + 0.3 * lit) * 0.8, (0.34 + 0.28 * lit) * 0.78], { fur: 0.06, s: 0.1, a: 0.9 });
+    colShell(c, 60, 1.5, 12.35, 0, 0.9, 0.5, 0.2, () => [0.62, 0.3, 0.3], { s: 0.1, a: 0.95 });                                                      // cresta
+    colTube(c, [[2.3, 11.2, 0], [3.2, 10.9, 0], [3.8, 10.3, 0], [3.8, 9.6, 0]], 120, 0.42, 0.1, (x, y, z, nx, ny, nz, lit) => { const v = 0.55 + 0.45 * lit; return [v, v * 0.97, v * 0.86]; }, { s: 0.1, a: 0.95 });   // pico
+    S.head = colCloud(c, HP); root.add(S.head); S.headY0 = S.head.position.y;
+    S.eyeHalo = mkHalo(0xffe0a0, 2.2, 0.1); S.eyeHalo.position.set(2.2 - HP[0], 11.5 - HP[1], 0); S.head.add(S.eyeHalo);
+    S.head.add(sptPoints(2, (i, o) => { o.x = 2.2 - HP[0]; o.y = 11.4 - HP[1]; o.z = i ? -1.0 : 1.0; o.s = 0.28; o.a = 1; o.r = 1; o.g = 0.9; o.b = 0.55; }));
+    // alas: coberteras, plumas secundarias con parches blancos y primarias en dedos; se pliegan y se abren al inclinarse
+    S.wingG = [-1, 1].map(s => {
+      const wc = [], P0 = [0, 8, s * 2.0];
+      colShell(wc, 520, -0.2, 8, s * 3.6, 1.6, 0.5, 3.0, (x, y, z, nx, ny, nz, lit) => ash(x, y, z, nx, ny, nz, lit * 1.1), { fur: 0.2, s: 0.13, keep: (nx, ny) => ny > -0.4 });                // coberteras
+      for (let k = 0; k < 8; k++) { const zr = s * (1.2 + k * 0.5); colFeather(wc, [-0.9, 7.9, zr], [-1, -0.02, s * 0.12 * k * 0.1], 3.0 - Math.abs(k - 3) * 0.04, 0.5, 52, (u, e) => (k >= 1 && k <= 6 ? [0.8 - 0.2 * u, 0.8 - 0.2 * u, 0.82 - 0.2 * u] : ash(0, 0, 0, 0, 0, 0, 0.55 + 0.7 * u)), 0.12); }   // secundarias (parche blanco)
+      for (let k = 0; k < 9; k++) { const zr = s * (4.4 + k * 0.4), a = k * 0.13; colFeather(wc, [-0.6, 8, zr], [-Math.cos(a), -0.03, s * Math.sin(a) * 1.1], 3.6 + k * 0.12, 0.42, 52, (u) => ash(0, 0, 0, 0, 0, 0, 0.4 + 1.0 * Math.pow(u, 2)), 0.12); }  // primarias
+      const wg = colCloud(wc, P0); wg.rotation.x = s * 1.3; root.add(wg); return wg; });
+    S.mist = sptPoints(120, (i, o) => { o.x = (Math.random() - 0.5) * 50; o.y = -1 + Math.random() * 4; o.z = (Math.random() - 0.5) * 30; o.s = 0.4 + Math.random() * 0.5; o.a = 0.06 + Math.random() * 0.06; o.r = 0.75; o.g = 0.74; o.b = 0.78; }); g.add(S.mist);
+    S.feather = sptPoints(28, (i, o) => { const u = i / 27; o.x = u * 2.6; o.y = Math.sin(u * 3) * 0.12; o.z = 0; o.s = 0.1 + Math.sin(u * 3.14) * 0.1; o.a = 1; o.r = 0.95; o.g = 0.92; o.b = 0.86; });
+    S.feather.material.uniforms.uOpacity.value = 0; g.add(S.feather);
+    return S;
+  },
+  camDist(S) { return S.D; },
+  update(S, dt, t, calm) {
+    const sw = calm ? 0 : 1; S.cycle += dt; S.msgT -= dt;
+    const win = Math.max(1.4, 4.2 - 2.8 * S.trust), per = 7.5;
+    const watching = S.stage === 'approach' && (S.cycle % per) < win;
+    if (watching !== S.watch) { S.watch = watching; if (watching && S.hold) colVoice('condor', 0.7); if (S.hold && watching && S.msgT <= 0) { colSub(colT('watch'), 4); S.msgT = 4; } else if (!watching && S.hold && S.msgT <= 0 && S.stage === 'approach') { colSub(colT('away'), 3); S.msgT = 3; } }
+    if (S.stage === 'approach') {
+      if (S.hold) {
+        if (!S.watch) S.D = Math.max(6, S.D - (3.6 + 2 * S.trust) * dt);
+        else { S.D = Math.min(46, S.D + 3.2 * dt); S.ruffle = 1; }
+      } else if (S.D < 45.5) S.trust = Math.min(1, S.trust + dt * (S.watch ? 0.05 : 0.02));
+      else S.trust = Math.min(1, S.trust + dt * 0.01);
+      if (S.D <= 8.2) {
+        if (S.trust >= 0.45) { S.stage = 'bow'; S.hold = false; colSub(colT('bow'), 8); MGS.arpeggio([0, 2, 4], 0.2, 3, 0.03); colVoice('condor_coo', 1); }
+        else { S.back = true; if (S.msgT <= 0) { colSub(colT('back'), 5); S.msgT = 5; } }
+      }
+      if (S.back) { S.D += 5 * dt; if (S.D >= 14) S.back = false; }
+    } else if (S.stage === 'gift') {
+      S.giftT += dt; S.feather.material.uniforms.uOpacity.value = Math.min(1, S.giftT);
+      S.feather.position.set(S.bird.position.x + 3 + S.giftT * 0.5, 9 + S.giftT * 0.6 + Math.sin(S.giftT * 1.5) * 0.2, 0.8); S.feather.rotation.z = Math.sin(S.giftT) * 0.4;
+      if (S.giftT > 2.5) S.won = true;
+    }
+    S.ruffle = Math.max(0, S.ruffle - dt * 0.8); S.ruff.scale.setScalar(1 + 0.3 * S.ruffle);
+    const bowT = S.stage === 'bow' || S.stage === 'gift' ? 1 : 0; S.bow += (bowT - S.bow) * Math.min(1, dt * 1.5);
+    const tgt = colFace() + (S.watch || bowT ? 0 : 1.75);
+    S.hy += (tgt - S.hy) * Math.min(1, dt * 3); S.head.rotation.y = S.hy; S.head.rotation.z = -0.55 * S.bow; S.head.position.y = S.headY0 - 2.6 * S.bow;
+    S.open += ((bowT ? 0.6 : 0) - S.open) * Math.min(1, dt * 1.2); S.wingG.forEach((w, k) => { const q = Math.min(1, S.open / 0.6); w.rotation.x = (k ? 1 : -1) * (1.3 - 1.85 * q); w.scale.z = 0.3 + 0.7 * q; });
+    S.eyeHalo.material.opacity += (((S.watch || bowT) ? 0.5 : 0.08) - S.eyeHalo.material.opacity) * Math.min(1, dt * 4);
+    S.bird.position.y = Math.sin(t * 0.6) * 0.04 * sw;
+    const mp = S.mist.geometry.attributes.position.array; for (let i = 0; i < mp.length; i += 3) { mp[i] += dt * 0.5 * sw; if (mp[i] > 26) mp[i] = -26; } S.mist.geometry.attributes.position.needsUpdate = true;
+  },
+  tap(S) { if (S.stage === 'bow') { S.stage = 'gift'; S.giftT = 0; colSub(colT('gift'), 6); MGS.bell(MGS.NOTES[2], 0, 3, 0.04); MGS.arpeggio([0, 3, 5], 0.2, 3.4, 0.03); } },
+  down(S) { if (S.stage === 'approach') S.hold = true; }, up(S) { S.hold = false; },
+  hudVals(S) { return [Math.round(S.D) + ' m', Math.round(S.trust * 100) + '%', S.watch ? '●' : '○', S.stage === 'gift' ? '1' : '0']; }
+};
+
+// ---------- 1 · EL ÁRBOL-SERVIDOR (GameLab Tadeo) — una red de cuidado ----------
+COL_DEF.arbol = {
+  iso: { yaw: 0.6, pitch: 0.12, dist: 68, tg: [0, 15, 0] }, trav: [0.1, 9], sky: [0.45, 0.8, 0.65], hud: ['ENERGÍA', 'RAMAS', 'ESPORAS', 'RED'], endAfter: 13, voice: 'arbol', voiceEvery: 20,
+  txt: {
+    es: { title: 'EL PEWEN-SERVIDOR', toast: 'El árbol sagrado mapuche: se apaga si nadie lo cuida.',
+      h: 'Toca una rama apagada para enviarle una espora desde las raíces. La energía se recarga despacio. Las ramas se apagan solas: reparte el cuidado. Arrastra el espacio vacío para girar.',
+      s0: '…sus ramas se apagan despacio…', send: '…una espora sube por la red…', lit: '…una rama vuelve a encenderse…', empty: '…esperar también es cuidar…', done: '…todas brillan y caen los piñones. Nada brilla solo.' },
+    en: { title: 'THE PEWEN SERVER-TREE', toast: 'The sacred Mapuche tree: it goes dark if nobody tends it.',
+      h: 'Tap a dark branch to send it a spore from the roots. Energy recharges slowly. Branches dim on their own: spread the care. Drag empty space to turn.',
+      s0: '…its branches slowly go dark…', send: '…a spore climbs the network…', lit: '…a branch lights up again…', empty: '…waiting is also caring…', done: '…they all shine and the piñones fall. Nothing shines alone.' }
+  },
+  build(g) {
+    const S = { energy: 5, lit: 0, sent: 0, allT: 0, won: false, leaves: [], edges: [], pulses: [], msgT: 0 };
+    const nodes = [[0, -2.2, 0], [0, 27, 0]]; S.src = nodes[0]; S.trunk = nodes[1];
+    const edgesDef = [[0, 1, []]];
+    for (let m = 0; m < 3; m++) {
+      const ang = m * 2.094 + 0.4, mn = nodes.push([Math.cos(ang) * 8, 29.4, Math.sin(ang) * 8]) - 1; edgesDef.push([1, mn, []]);
+      const cnt = m < 2 ? 3 : 2;
+      for (let j = 0; j < cnt; j++) { const a2 = ang + (j - (cnt - 1) / 2) * 0.95, ln = nodes.push([nodes[mn][0] + Math.cos(a2) * 5.2, 32.4 + Math.random() * 2, nodes[mn][2] + Math.sin(a2) * 5.2]) - 1; edgesDef.push([mn, ln, [S.leaves.length]]); S.leaves.push({ node: ln, main: mn, lit: Math.random() * 0.22, path: [0, 1, mn, ln] }); }
+    }
+    S.nodes = nodes.map(n => new THREE.Vector3(n[0], n[1], n[2]));
+    const mainLeaves = {}; S.leaves.forEach((L, i) => { (mainLeaves[L.main] = mainLeaves[L.main] || []).push(i); });
+    edgesDef.forEach(([a, b, lv]) => { const ls = lv.length ? lv : (b === 1 ? S.leaves.map((_, i) => i) : mainLeaves[b] || []); S.edges.push({ a, b, ls }); });
+    const PE = 20, total = S.edges.length * PE;
+    S.lines = sptPoints(total, (i, o) => { const e = S.edges[Math.floor(i / PE)], u = (i % PE) / (PE - 1), A = nodes[e.a], B = nodes[e.b];
+      o.x = A[0] + (B[0] - A[0]) * u + (Math.random() - 0.5) * 0.12; o.y = A[1] + (B[1] - A[1]) * u; o.z = A[2] + (B[2] - A[2]) * u + (Math.random() - 0.5) * 0.12; o.s = 0.22; o.a = 0.3; o.r = 0.55; o.g = 0.9; o.b = 0.72; });
+    g.add(S.lines); S.PE = PE;
+    g.add(trtBlob(sptPoints, 760, 0, 12.5, 0, 1.8, 15, 1.8, [0.52, 0.42, 0.34], 0.2, 0.6));                                     // el tronco: una columna de racks
+    S.racks = sptPoints(46, (i, o) => { const row = Math.floor(i / 2); o.x = (i % 2 ? 0.9 : -0.9); o.y = -1 + row * 1.15; o.z = 1.75; o.s = 0.2; o.a = 0.6; o.r = 0.4; o.g = 1; o.b = 0.7; }); g.add(S.racks);
+    for (let r = 0; r < 6; r++) { const a = r * 1.047, rp = sptPoints(60, (i, o) => { const u = i / 59; o.x = Math.cos(a) * u * 11 + (Math.random() - 0.5) * 0.2; o.y = -2.2 - Math.sin(u * 2.4) * 2.6; o.z = Math.sin(a) * u * 11 + (Math.random() - 0.5) * 0.2; o.s = 0.1; o.a = 0.35 * (1 - u * 0.5); o.r = 0.5; o.g = 0.65; o.b = 0.55; }); g.add(rp); }   // raíces
+    S.srcHalo = mkHalo(0x9fe8c0, 9, 0.25); S.srcHalo.position.copy(S.nodes[0]); g.add(S.srcHalo);
+    S.leaves.forEach(L => { const p = S.nodes[L.node]; L.pos = p;
+      L.canopy = trtBlob(sptPoints, 130, p.x, p.y + 0.8, p.z, 3.1, 1.8, 3.1, [0.38, 0.8, 0.58], 0.28, 0.9); g.add(L.canopy);
+      L.halo = mkHalo(0x9fe8c0, 8, 0); L.halo.position.set(p.x, p.y + 0.8, p.z); g.add(L.halo); });
+    // verticilos de ramas viejas a lo largo del tronco (la silueta del pewen) y los piñones de la copa
+    S.old = sptPoints(5 * 6 * 14, (i, o) => { const k = Math.floor(i / 84), m = Math.floor(i % 84 / 14), u = (i % 14) / 13, a = m * 1.047 + k * 0.5; o.x = Math.cos(a) * u * 5.5; o.z = Math.sin(a) * u * 5.5; o.y = 7 + k * 3.6 - Math.sin(u * 1.5) * 1.6 + u * 0.6; o.s = 0.22; o.a = 0.3 - k * 0.03; o.r = 0.4; o.g = 0.45; o.b = 0.36; }); g.add(S.old);
+    S.pin = sptPoints(S.leaves.length * 5, (i, o) => { const L = S.leaves[Math.floor(i / 5)], a = i * 2.4; o.x = L.pos.x + Math.cos(a) * 2.2; o.z = L.pos.z + Math.sin(a) * 2.2; o.y = L.pos.y - 0.4 - (i % 3) * 0.5; o.s = 0.5; o.a = 1; o.r = 1; o.g = 0.78; o.b = 0.4; });
+    S.pin.material.uniforms.uOpacity.value = 0; g.add(S.pin);
+    S.pp = sptPoints(36, (i, o) => { o.a = 0; o.s = 0.3; o.r = 0.9; o.g = 1; o.b = 0.85; }); g.add(S.pp);
+    return S;
+  },
+  update(S, dt, t, calm) {
+    S.energy = Math.min(5, S.energy + dt * 0.65); S.msgT -= dt;
+    let all = true, litN = 0;
+    S.leaves.forEach(L => { L.lit = Math.max(0, L.lit - dt / 70); if (L.lit < 0.8) all = false; else litN++; });
+    S.lit = litN; S.allT = all ? S.allT + dt : 0; if (S.allT > 5 && !S.won) S.won = true;
+    if (S.won) S.leaves.forEach(L => { L.lit = Math.min(1, L.lit + dt * 0.5); });
+    // pulsos: cada uno recorre el camino raíz → tronco → rama → hoja
+    for (let k = S.pulses.length - 1; k >= 0; k--) {
+      const p = S.pulses[k]; p.d += dt * 15;
+      let seg = 0, rem = p.d; while (seg < p.lens.length && rem > p.lens[seg]) { rem -= p.lens[seg]; seg++; }
+      if (seg >= p.lens.length) {
+        const L = S.leaves[p.leaf]; L.lit = Math.min(1, L.lit + 0.34); MGS.bell(MGS.NOTES[p.leaf % 6], 0, 2, 0.03); L.halo.material.opacity = 0.7; if (L.lit >= 0.8 && S.msgT <= 0) { colSub(colT('lit'), 3); S.msgT = 3; }
+        S.pulses.splice(k, 1); continue;
+      }
+      p.pos.lerpVectors(S.nodes[p.path[seg]], S.nodes[p.path[seg + 1]], rem / p.lens[seg]);
+    }
+    const A = S.pp.geometry.attributes, pa = A.position.array, al = A.aAlpha.array; al.fill(0);
+    S.pulses.forEach((p, k) => { for (let j = 0; j < 3 && k * 3 + j < 36; j++) { const idx = k * 3 + j; pa[idx * 3] = p.pos.x; pa[idx * 3 + 1] = p.pos.y - j * 0.35; pa[idx * 3 + 2] = p.pos.z; al[idx] = 1 - j * 0.3; } });
+    A.position.needsUpdate = A.aAlpha.needsUpdate = true;
+    // aspecto: aristas según lo encendido de sus hojas, racks según la energía
+    const LA = S.lines.geometry.attributes.aAlpha.array;
+    S.edges.forEach((e, ei) => { let m = 0; e.ls.forEach(i => { m = Math.max(m, S.leaves[i].lit); }); for (let j = 0; j < S.PE; j++) LA[ei * S.PE + j] = 0.14 + 0.7 * m; });
+    S.lines.geometry.attributes.aAlpha.needsUpdate = true;
+    const RA = S.racks.geometry.attributes.aAlpha.array; for (let i = 0; i < RA.length; i++) RA[i] = (i / RA.length < S.energy / 5 ? 0.9 : 0.15) * (0.7 + 0.3 * Math.sin(t * 3 + i * 1.7));
+    S.racks.geometry.attributes.aAlpha.needsUpdate = true;
+    S.leaves.forEach((L, i) => { L.canopy.material.uniforms.uOpacity.value = 0.12 + 0.88 * L.lit; L.canopy.position.y = Math.sin(t * 0.7 + i) * 0.08 * (calm ? 0 : 1); L.halo.material.opacity += ((0.5 * L.lit * L.lit) - L.halo.material.opacity) * Math.min(1, dt * 2); });
+    S.srcHalo.material.opacity = 0.12 + 0.05 * S.energy;
+    S.pin.material.uniforms.uOpacity.value = Math.pow(S.leaves.reduce((m, L) => m + L.lit, 0) / S.leaves.length, 2);
+  },
+  tap(S, cx, cy) {
+    const k = colPick(S.leaves.map(L => colW(COLG.group, L.pos.x, L.pos.y + 0.8, L.pos.z)), cx, cy, Math.max(52, window.innerHeight * 0.09));
+    if (k < 0) return;
+    if (S.energy < 1) { if (S.msgT <= 0) { colSub(colT('empty'), 3); S.msgT = 3; } return; }
+    S.energy -= 1; S.sent++;
+    const path = S.leaves[k].path, lens = []; for (let i = 0; i < path.length - 1; i++) lens.push(S.nodes[path[i]].distanceTo(S.nodes[path[i + 1]]));
+    S.pulses.push({ leaf: k, path, lens, d: 0, pos: new THREE.Vector3().copy(S.nodes[0]) }); if (S.pulses.length > 12) S.pulses.shift();
+    MGS.ping(MGS.NOTES[k % 6] * 2, 0, 0.8, 0.02); vibrateDevice(10); if (S.sent === 1) colSub(colT('send'), 4);
+  },
+  hudVals(S) { return [S.energy.toFixed(1), S.lit + '/8', S.sent, Math.round(S.leaves.reduce((a, L) => a + L.lit, 0) / 8 * 100) + '%']; }
+};
+
+// ---------- 2 · EL AUTÓMATA-ESCARABAJO (Consola Arduino) — cerrar el circuito ----------
+const COL_PH = [[1, 0.55, 0.45], [1, 0.85, 0.4], [0.5, 0.95, 0.65], [0.55, 0.75, 1]];       // un color por fase de cada pata
+COL_DEF.escarabajo = {
+  iso: { yaw: 0.7, pitch: 0.42, dist: 42, tg: [0, 3, 0] }, trav: [2.4, 22], sky: [0.9, 0.7, 0.4], hud: ['COMPÁS', 'PATAS', 'PASOS', 'LED'], endAfter: 13, voice: 'escarabajo', voiceEvery: 15,
+  txt: {
+    es: { title: 'EL AUTÓMATA-ESCARABAJO', toast: 'Viene sin manual: se aprende probando.',
+      h: 'Toca una pata para cambiar su fase (cada color es un instante del paso). Prueba hasta que todas encuentren un compás común. Arrastra el espacio vacío para girar.',
+      s0: '…tropieza: sus patas no se ponen de acuerdo…', better: '…va mejor. Escucha el compás…', ok: '…encuentra el paso…', done: '…camina, y su luz se enciende. Nadie le dio un manual.' },
+    en: { title: 'THE AUTOMATON BEETLE', toast: 'It comes without a manual: it is learned by trying.',
+      h: 'Tap a leg to change its phase (each colour is an instant of the step). Try until all legs find a shared beat. Drag empty space to turn.',
+      s0: '…it stumbles: its legs do not agree…', better: '…better. Listen for the beat…', ok: '…it finds its step…', done: '…it walks, and its light turns on. Nobody gave it a manual.' }
+  },
+  build(g) {
+    const S = { ph: [0, 1, 2, 3, 1, 0], clock: 0, holdT: 0, steps: 0, lastTick: 0, legs: [], won: false, led: 0, rise: 0, bestC: 0, msgT: 0, open: 0 };
+    S.body = new THREE.Group(); g.add(S.body);
+    const rn = Math.random, GOLD = [0.9, 0.7, 0.34];
+    // caparazón: élitros de coleóptero con estrías longitudinales y brillo irisado, partidos por la línea media
+    const shell = (x, y, z, nx, ny, nz, lit) => { const st = 0.78 + 0.22 * Math.cos(z * 3.1), v = (0.18 + 0.5 * Math.pow(lit, 1.3)) * st, k = 0.5 + 0.5 * Math.sin(x * 0.35 + ny * 2.2);
+      return [v * (0.95 + 0.25 * k), v * (0.72 + 0.2 * k), v * (0.34 + 0.4 * (1 - k))]; };
+    const EC = [-2.2, 4.4, 0], ER = [9, 5.6, 6.4];
+    S.circ = [];
+    [1, -1].forEach(s => {
+      const c = []; colShell(c, 1150, EC[0], EC[1], EC[2], ER[0], ER[1], ER[2], shell, { fur: 0.12, s: 0.15, a: 0.88, keep: (nx, ny, nz) => ny > -0.12 && nz * s > 0.02 });
+      colLine(c, [EC[0] + ER[0] * 0.95, EC[1] + 0.2, s * 0.15], [EC[0] - ER[0] * 0.95, EC[1] + 0.2, s * 0.15], 48, [1, 0.85, 0.5], 0.13, 0.9);          // la sutura
+      const el = colCloud(c, [EC[0], EC[1] + ER[1], s * 0.3], [0, 0, 0]); S.body.add(el); S['el' + (s > 0 ? 'L' : 'R')] = el;
+      // circuitos dorados sobre el élitro: se encienden cuando las patas se ponen de acuerdo
+      const tr = []; for (let k = 0; k < 5; k++) { let z = s * (1.1 + k * 1.05), x = EC[0] + ER[0] * 0.8; const run = [];
+        while (x > EC[0] - ER[0] * 0.8) { const nx = x - 0.5, yy = (xx, zz) => EC[1] + ER[1] * Math.sqrt(Math.max(0, 1 - Math.pow((xx - EC[0]) / ER[0], 2) - Math.pow(zz / ER[2], 2))) + 0.18; colLine(tr, [x, yy(x, z), z], [nx, yy(nx, z), z], 2, GOLD, 0.1, 0.95); x = nx;
+          if (rn() < 0.08) { const nz = z + s * (rn() < 0.5 ? 0.5 : -0.5); colLine(tr, [x, yy(x, z), z], [x, yy(x, nz), nz], 3, GOLD, 0.1, 0.95); z = nz; }
+          if (rn() < 0.03) tr.push({ x, y: yy(x, z) + 0.05, z, r: 1, g: 0.95, b: 0.7, s: 0.3, a: 1 }); } }
+      const cc = colCloud(tr, [EC[0], EC[1] + ER[1], s * 0.3], [EC[0], EC[1] + ER[1], s * 0.3]); el.add(cc); cc.pts.material.uniforms.uOpacity.value = 0.1; S.circ.push(cc.pts);
+    });
+    // cuerpo: abdomen, protórax, cabeza y el gran cuerno curvo
+    const dark = (x, y, z, nx, ny, nz, lit) => { const v = 0.12 + 0.42 * Math.pow(lit, 1.3); return [v * 0.85, v * 0.7, v * 0.45]; };
+    let c = [];
+    colShell(c, 480, -2.2, 3.1, 0, 8.4, 2.2, 5.2, dark, { fur: 0.1, s: 0.13, keep: (nx, ny) => ny < 0.5 });                                                   // abdomen
+    colShell(c, 560, 8.4, 4.6, 0, 3.8, 3.2, 5.4, shell, { fur: 0.1, s: 0.14, a: 0.9 });                                                                        // protórax
+    colShell(c, 300, 12.6, 4.1, 0, 2.5, 2.1, 3.1, dark, { fur: 0.1, s: 0.13 });                                                                               // cabeza
+    colTube(c, [[12, 5.2, 0], [14.2, 6.6, 0], [15.6, 9.4, 0], [15.1, 11.8, 0]], 260, 0.8, 0.28, dark, { s: 0.13 });                                            // cuerno
+    [-1, 1].forEach(s => { colTube(c, [[13.2, 5.5, s * 0.5], [14.3, 6.3, s * 0.8], [14.6, 7.9, s * 0.4]], 40, 0.18, 0.1, dark, { s: 0.11 });                       // cuernito lateral
+      colTube(c, [[14.4, 3.4, s * 1.7], [16.4, 3.1, s * 2.0], [17.4, 3.6, s * 1.1]], 70, 0.5, 0.18, dark, { s: 0.12 });                                          // mandíbulas
+      colTube(c, [[13.9, 4.9, s * 2.4], [15.2, 6.2, s * 3.6], [16.3, 6.8, s * 4.3]], 36, 0.1, 0.1, dark, { s: 0.1 });                                            // antena
+      colShell(c, 22, 16.6, 6.9, s * 4.4, 0.45, 0.45, 0.8, () => [0.9, 0.7, 0.4], { s: 0.12 }); });
+    colShell(c, 14, 14.5, 4.6, 0, 0.4, 0.4, 2.6, () => [0.04, 0.04, 0.05], { s: 0.2, a: 1 });                                                                  // ojos
+    S.body.add(colCloud(c, [0, 0, 0], [0, 0, 0]));
+    S.led = mkHalo(0xbfffd9, 4.4, 0); S.led.position.set(8.6, 7.9, 0); S.body.add(S.led);
+    S.ledPts = sptPoints(1, (i, o) => { o.x = 8.6; o.y = 7.9; o.z = 0; o.s = 0.9; o.a = 0; o.r = 0.7; o.g = 1; o.b = 0.85; }); S.body.add(S.ledPts);
+    // seis patas con fémur, tibia, espinas y tarso con garras; cada una se tiñe con su fase
+    [[5.6, 1], [5.6, -1], [-0.4, 1], [-0.4, -1], [-6.4, 1], [-6.4, -1]].forEach(([x, s], i) => {
+      const dx = x > 2 ? 2.2 : x < -4 ? -2.2 : 0.2, hip = [x, 3.4, s * 4.4], knee = [x + dx, 5.5, s * 8.2], ank = [x + dx * 1.5, 2.5, s * 10.4], foot = [x + dx * 1.7, 0.25, s * 11.5];
+      const lc = [], leg = (x1, y1, z1, nx, ny, nz, lit) => { const v = 0.2 + 0.5 * Math.pow(lit, 1.3); return [v * 0.95, v * 0.78, v * 0.42]; };
+      colTube(lc, [hip, knee], 150, 0.85, 0.65, leg, { fur: 0.1, s: 0.13 }); colTube(lc, [knee, ank, foot], 150, 0.6, 0.3, leg, { fur: 0.1, s: 0.12 });
+      for (let k = 0; k < 7; k++) { const u = 0.2 + k * 0.11, p = hgCR([knee, ank, foot], u); colLine(lc, p, [p[0] + (k % 2 ? 0.5 : -0.5), p[1] + 0.2, p[2] + s * 0.5], 3, [0.85, 0.8, 0.6], 0.09, 0.9); }          // espinas
+      colLine(lc, foot, [foot[0] + 0.5, 0.1, foot[2] + s * 0.7], 4, [0.95, 0.9, 0.75], 0.1, 0.9);
+      const lg = colCloud(lc, hip, [0, 0, 0]); S.body.add(lg);
+      const lamp = mkHalo(0xffffff, 4, 0.4); lamp.position.set(knee[0] - hip[0], knee[1] - hip[1] + 0.6, knee[2] - hip[2]); lg.add(lamp);
+      S.legs.push({ g: lg, cloud: lg, s, x, tip: [foot[0] - hip[0], foot[1] - hip[1], foot[2] - hip[2]], y0: lg.position.y, lamp });
+    });
+    S.ground = sptPoints(380, (i, o) => { o.x = (Math.random() - 0.5) * 70; o.z = (Math.random() - 0.5) * 40; o.y = 0.2; o.s = 0.1 + Math.random() * 0.1; o.a = 0.15 + Math.random() * 0.2; o.r = 0.7; o.g = 0.6; o.b = 0.4; });
+    g.add(S.ground);
+    S.wingsP = sptPoints(260, (i, o) => { const s = i % 2 ? 1 : -1, u = Math.random(), w = Math.random(); o.x = 3 - u * 15; o.y = 9.8 + u * 1.4 + Math.sin(w * 3) * 0.3; o.z = s * (2 + u * 11 * (0.4 + 0.6 * w)); o.s = 0.14; o.a = 0.75; o.r = 0.8; o.g = 0.92; o.b = 1; });
+    S.wingsP.material.uniforms.uOpacity.value = 0; S.body.add(S.wingsP);
+    return S;
+  },
+  coherence(S) {
+    const p = S.ph, a = p[0], B = (a + 2) % 4; let ok = 1;
+    if (p[3] === a) ok++; if (p[4] === a) ok++; if (p[1] === B) ok++; if (p[2] === B) ok++; if (p[5] === B) ok++;
+    return ok / 6;
+  },
+  update(S, dt, t, calm) {
+    const sw = calm ? 0 : 1, coh = this.coherence(S); S.coh = coh; S.msgT -= dt;
+    S.clock += dt * (0.7 + 1.0 * coh);
+    S.legs.forEach((L, i) => {
+      const w = Math.sin(S.clock * 3.77 + S.ph[i] * 1.5708);
+      L.g.rotation.y = w * 0.5 * sw * (S.won ? 0.4 : 1); L.g.position.y = L.y0 + Math.max(0, Math.cos(S.clock * 3.77 + S.ph[i] * 1.5708)) * 0.8 * sw;
+      const c = COL_PH[S.ph[i]]; L.lamp.material.color.setRGB(c[0], c[1], c[2]); colTint(L.cloud, 0.55 + 0.7 * c[0], 0.55 + 0.7 * c[1], 0.55 + 0.7 * c[2]);
+    });
+    const cyc = Math.floor(S.clock * 3.77 / 6.283); if (cyc > S.lastTick) { S.lastTick = cyc; S.steps++; if (!S.won) MGS.ping(150 + 90 * coh, 0, 0.14, 0.012 + 0.02 * coh); }
+    S.circ.forEach(p => { p.material.uniforms.uOpacity.value = 0.08 + 0.92 * coh * coh; });
+    S.body.rotation.z = (1 - coh) * Math.sin(t * 9) * 0.045 * sw; S.body.rotation.x = (1 - coh) * Math.sin(t * 7.3) * 0.03 * sw;
+    if (coh < 1 && !calm && Math.random() < dt * (1 - coh) * 2 && MG.fx) MG.fx.burst(0, 3, 0, 3, 1.2, 0.6, 0xe0b45c, 0.14, 0.5);
+    const sp = 4 * Math.pow(coh, 3) * (S.won ? 0.4 : 1), gp = S.ground.geometry.attributes.position.array;
+    for (let i = 0; i < gp.length; i += 3) { gp[i] -= dt * sp; if (gp[i] < -35) gp[i] += 70; } S.ground.geometry.attributes.position.needsUpdate = true;
+    if (coh >= 1 && !S.won) { S.holdT += dt; if (S.holdT > 6) { S.won = true; MGS.arpeggio([0, 2, 3, 5], 0.2, 3.4, 0.03); } if (S.msgT <= 0 && S.holdT > 0.3 && S.holdT < 1) { colSub(colT('ok'), 4); S.msgT = 6; } } else if (!S.won) S.holdT = Math.max(0, S.holdT - dt * 2);
+    if (coh > S.bestC + 0.15) { S.bestC = coh; if (coh < 1 && S.msgT <= 0) { colSub(colT('better'), 3); S.msgT = 4; } }
+    S.led.material.opacity += ((S.won ? 0.9 : Math.pow(coh, 4) * 0.5) - S.led.material.opacity) * Math.min(1, dt * 2);
+    S.ledPts.geometry.attributes.aAlpha.array[0] = S.won ? 1 : Math.pow(coh, 4); S.ledPts.geometry.attributes.aAlpha.needsUpdate = true;
+    if (S.won) { S.open = Math.min(1, S.open + dt * 0.4); S.elL.rotation.x = -0.5 * S.open; S.elR.rotation.x = 0.5 * S.open; S.wingsP.material.uniforms.uOpacity.value = S.open; S.rise += dt; S.body.position.y = Math.min(5, S.rise * 0.45); }
+  },
+  tap(S, cx, cy) {
+    if (S.won) return;
+    const k = colPick(S.legs.map(L => colW(L.g, L.tip[0], L.tip[1], L.tip[2])), cx, cy, Math.max(50, window.innerHeight * 0.085));
+    if (k < 0) return;
+    S.ph[k] = (S.ph[k] + 1) % 4; MGS.ping(MGS.NOTES[S.ph[k] + 1] * 2, 0, 0.5, 0.025); vibrateDevice(8);
+  },
+  hudVals(S) { const n = Math.round((S.coh || 0) * 6); return [Math.round((S.coh || 0) * 100) + '%', n + '/6', S.steps, S.won ? '1' : '0']; }
+};
+
+// ---------- 3 · LA CATARINA DE PANTALLAS (MediaLab Cinemateca) — curar sin controlar ----------
+const COL_TONES = [0xf2c799, 0xea9f95, 0xd1b3e0, 0xbfe6ff, 0xf0e08a, 0xb8d9ad];
+const COL_SPOTS = [[-1.45, 1.25], [1.45, 1.25], [-1.7, -0.55], [1.7, -0.55], [-0.95, -1.9], [0.95, -1.9], [0, 0.15]];
+COL_DEF.mariquita = {
+  iso: { yaw: 0.5, pitch: 0.12, dist: 34, tg: [0, 6, 0] }, trav: [1.4, 11], sky: [0.85, 0.55, 0.55], hud: ['FOTOGRAMAS', 'TONOS', 'MOTAS', 'VUELO'], endAfter: 12, voice: 'mariquita', voiceEvery: 0,
+  txt: {
+    es: { title: 'LA CATARINA DE PANTALLAS', toast: 'Un enjambre de fotogramas que decide su rumbo.',
+      h: 'Toca los fotogramas que quieras invitar al enjambre. Cada uno le pinta una mota con su tono: necesita variedad para tomar forma. Tú no la diriges: ella decide a dónde va. Arrastra el espacio vacío para girar.',
+      s0: '…un enjambre sin forma, buscando…', join: '…un fotograma se une…', tone: '…un tono nuevo le pinta una mota…', wings: '…empieza a ser catarina…', done: '…abre los élitros, toma el vuelo y se va. Curar es invitar, y también dejar ir.' },
+    en: { title: 'THE SCREEN LADYBUG', toast: 'A swarm of frames that chooses its course.',
+      h: 'Tap the frames you want to invite into the swarm. Each paints a spot with its tone: it needs variety to take shape. You do not steer it: it decides where to go. Drag empty space to turn.',
+      s0: '…a shapeless swarm, searching…', join: '…a frame joins…', tone: '…a new tone paints a spot…', wings: '…it begins to be a ladybug…', done: '…it opens its shell, takes flight and goes. To curate is to invite, and also to let go.' }
+  },
+  build(g) {
+    const N = 480, S = { N, joined: 0, pool: [], frames: [], spawnT: 0.5, tonePick: 0, fly: 0, flap: 0, cx: 0, cy: 6, cz: 0, f: 0, won: false, msgT: 0, wingsMsg: false, ang: [], rad: [], home: [], cat: [], spot: [], ord: [], open: 0 };
+    const add = (x, y, cat, sp) => { S.home.push([x * 2.5, y * 2.5]); S.cat.push(cat); S.spot.push(sp === undefined ? -1 : sp); };
+    COL_SPOTS.forEach((p, k) => { for (let j = 0; j < 13; j++) { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * 0.42; add(p[0] + Math.cos(a) * r, p[1] + Math.sin(a) * r, 1, k); } });
+    for (let j = 0; j < 70; j++) { const a = j / 70 * 6.283; add(Math.cos(a) * 2.75, -0.3 + Math.sin(a) * 3.1, 2); }                                   // contorno
+    for (let j = 0; j < 26; j++) { const a = -0.1 + j / 25 * 3.34; add(Math.cos(a) * 1.35, 2.75 + Math.sin(a) * 0.95, 2); }                                // cabeza
+    for (let j = 0; j < 16; j++) { const u = (j % 8) / 7, s = j < 8 ? -1 : 1; add(s * (0.5 + u * 1.2), 3.6 + u * 1.3, 2); }                                // antenas
+    for (let j = 0; j < 18; j++) { const lg = j % 3, s = j < 9 ? -1 : 1, u = Math.floor(j % 9 / 3) / 2; add(s * (2.7 + u * 0.7), 1.4 - lg * 1.7 + u * 0.3 * (lg - 1), 2); }   // patas
+    while (S.home.length < N) { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()), x = Math.cos(a) * r * 2.6, y = -0.3 + Math.sin(a) * r * 2.95; if (Math.abs(x) < 0.1) continue; add(x, y, 0); }   // élitros
+    for (let i = 0; i < N; i++) { S.ord.push(Math.random()); S.ang.push(Math.random() * 6.283); S.rad.push(4 + Math.random() * 9); }
+    S.swarm = sptPoints(N, (i, o) => { o.x = (Math.random() - 0.5) * 20; o.y = 6 + (Math.random() - 0.5) * 8; o.z = (Math.random() - 0.5) * 20; o.s = 0.17; o.a = 0.5; o.r = 0.7; o.g = 0.72; o.b = 0.78; }); g.add(S.swarm);
+    S.hw = sptPoints(120, (i, o) => { const s = i % 2 ? 1 : -1, u = Math.random(), a = Math.random() * 6.283; S.hwh = S.hwh || []; S.hwh.push([s * (2.2 + u * 3.4), -1 + Math.sin(a) * 2.2 * (1 - u * 0.5)]); o.x = o.y = o.z = 0; o.s = 0.12; o.a = 0.7; o.r = 0.75; o.g = 0.9; o.b = 1; });
+    S.hw.material.uniforms.uOpacity.value = 0; g.add(S.hw);
+    S.proj = sptPoints(60, (i, o) => { o.x = (Math.random() - 0.5) * 70; o.y = Math.random() * 20; o.z = -20 - Math.random() * 20; o.s = 0.3 + Math.random() * 0.4; o.a = 0.05; o.r = 0.8; o.g = 0.8; o.b = 0.9; }); g.add(S.proj);
+    return S;
+  },
+  spawn(S, g) {
+    const tone = this.nextTone(S), fr = new THREE.Group(), a = Math.random() * 6.283, r = 10 + Math.random() * 6, hex = COL_TONES[tone], [cr, cg, cb] = arRGB(hex);
+    fr.add(sptPoints(26, (i, o) => { const u = i / 26 * 4; const side = Math.floor(u), w = u - side, W = 1.5, H = 1.0; if (side === 0) { o.x = -W + 2 * W * w; o.y = -H; } else if (side === 1) { o.x = W; o.y = -H + 2 * H * w; } else if (side === 2) { o.x = W - 2 * W * w; o.y = H; } else { o.x = -W; o.y = H - 2 * H * w; } o.z = 0; o.s = 0.17; o.a = 0.95; o.r = cr; o.g = cg; o.b = cb; }));
+    fr.add(sptPoints(30, (i, o) => { o.x = (Math.random() - 0.5) * 2.6; o.y = (Math.random() - 0.5) * 1.8; o.z = 0; o.s = 0.12; o.a = 0.25; o.r = cr; o.g = cg; o.b = cb; }));
+    const halo = mkHalo(hex, 4.2, 0.25); fr.add(halo);
+    const F = { g: fr, tone, a, r, y: 3 + Math.random() * 7, sp: (0.07 + Math.random() * 0.06) * (Math.random() < 0.5 ? 1 : -1), hex, join: 0, life: 0 };
+    S.frames.push(F); COLG.group.add(fr);
+  },
+  nextTone(S) { const t = S.tonePick % 6; S.tonePick++; return [0, 1, 2, 3, 4, 5][(t + (Math.random() < 0.3 ? 1 : 0)) % 6]; },
+  update(S, dt, t, calm) {
+    const sw = calm ? 0 : 1; S.msgT -= dt; S.spawnT -= dt; S.flap += dt * (1.2 + S.pool.length * 0.07 + new Set(S.pool).size * 0.15);
+    if (S.spawnT <= 0 && S.frames.filter(f => !f.join).length < 7 && !S.won) { this.spawn(S); S.spawnT = 2.2; }
+    const distinct = new Set(S.pool).size, tf = Math.min(1, S.joined / 7);
+    S.f += (tf - S.f) * Math.min(1, dt * 0.8);
+    if (S.won) { S.fly += dt; S.open = Math.min(1, S.open + dt * 0.7); }
+    const bx = Math.sin(t * 0.21) * 5 + S.fly * S.fly * 1.4, by = 6 + Math.sin(t * 0.33) * 2 + S.fly * 1.2, bz = Math.cos(t * 0.17) * 5 - S.fly * S.fly * 3.2;
+    S.cx += (bx - S.cx) * Math.min(1, dt * 1.5); S.cy += (by - S.cy) * Math.min(1, dt * 1.5); S.cz += (bz - S.cz) * Math.min(1, dt * 1.5);
+    const psi = Math.atan2(userGroup.position.x - S.cx, userGroup.position.z - S.cz), rx = Math.cos(psi), rz = -Math.sin(psi);                  // el plano de la catarina mira a la cámara
+    const A = S.swarm.geometry.attributes, pa = A.position.array, co = A.aCol.array, al = A.aAlpha.array, flut = 1 + 0.025 * Math.sin(S.flap * 5) * sw;
+    const pool = S.pool.length ? S.pool : null, spread = 1 + 0.45 * S.open;
+    for (let i = 0; i < S.N; i++) {
+      let tx, ty, tz; const inF = S.ord[i] < S.f, cat = S.cat[i];
+      if (inF) { const hx = S.home[i][0] * flut * (cat === 0 && S.open ? spread : 1), hy = S.home[i][1]; tx = S.cx + hx * rx; tz = S.cz + hx * rz; ty = S.cy + hy; }
+      else { const a = S.ang[i] + t * 0.15 * (i % 2 ? 1 : -1) * sw, r = S.rad[i]; tx = S.cx + Math.cos(a) * r; ty = S.cy + Math.sin(a * 1.3 + i) * (r * 0.5); tz = S.cz + Math.sin(a) * r; }
+      pa[i * 3] += (tx - pa[i * 3]) * Math.min(1, dt * 2.2); pa[i * 3 + 1] += (ty - pa[i * 3 + 1]) * Math.min(1, dt * 2.2); pa[i * 3 + 2] += (tz - pa[i * 3 + 2]) * Math.min(1, dt * 2.2);
+      if (inF) {
+        if (cat === 0) { co[i * 3] = 0.95; co[i * 3 + 1] = 0.2; co[i * 3 + 2] = 0.17; al[i] = 0.85; }                                       // élitros rojos
+        else if (cat === 1) { const k = S.spot[i]; if (k < S.pool.length) { const [cr, cg, cb] = arRGB(COL_TONES[S.pool[k]]); co[i * 3] = cr; co[i * 3 + 1] = cg; co[i * 3 + 2] = cb; al[i] = 1; } else { co[i * 3] = 0.12; co[i * 3 + 1] = 0.1; co[i * 3 + 2] = 0.14; al[i] = 0.55; } }   // cada mota toma el tono de un fotograma
+        else { co[i * 3] = 0.82; co[i * 3 + 1] = 0.86; co[i * 3 + 2] = 0.95; al[i] = 0.9; }
+      } else if (pool) { const [cr, cg, cb] = arRGB(COL_TONES[pool[i % pool.length]]); co[i * 3] = cr; co[i * 3 + 1] = cg; co[i * 3 + 2] = cb; al[i] = 0.5; } else al[i] = 0.4;
+    }
+    A.position.needsUpdate = A.aCol.needsUpdate = A.aAlpha.needsUpdate = true;
+    // alas membranosas que asoman al abrir los élitros
+    const hp = S.hw.geometry.attributes.position.array, flapW = Math.sin(S.flap * 9) * 0.25 * S.open * sw;
+    for (let i = 0; i < S.hwh.length; i++) { const hx = S.hwh[i][0] * (1 + flapW * Math.sign(S.hwh[i][0])), hy = S.hwh[i][1]; hp[i * 3] = S.cx + hx * rx; hp[i * 3 + 1] = S.cy + hy + Math.abs(hx) * 0.15 * S.open; hp[i * 3 + 2] = S.cz + hx * rz; }
+    S.hw.geometry.attributes.position.needsUpdate = true; S.hw.material.uniforms.uOpacity.value = S.open * 0.9;
+    // fotogramas a la deriva y los que se unen
+    for (let k = S.frames.length - 1; k >= 0; k--) {
+      const F = S.frames[k]; F.life += dt;
+      if (!F.join) { F.a += F.sp * dt * sw; F.g.position.set(Math.cos(F.a) * F.r, F.y + Math.sin(t * 0.5 + F.a * 3) * 0.4, Math.sin(F.a) * F.r); F.g.rotation.y = colFace(); }
+      else { F.join += dt * 1.2; F.g.position.lerp(_colV.set(S.cx, S.cy, S.cz), Math.min(1, dt * 3)); F.g.scale.setScalar(Math.max(0.01, 1 - F.join)); if (F.join >= 1) { COLG.group.remove(F.g); mgDispose(F.g); S.frames.splice(k, 1); } }
+    }
+    if (!S.wingsMsg && S.f > 0.6) { S.wingsMsg = true; colSub(colT('wings'), 5); }
+    if (!S.won && S.joined >= 7 && distinct >= 5) { S.won = true; MGS.arpeggio([0, 2, 3, 5, 4], 0.2, 3.6, 0.03); }
+    S.distinct = distinct;
+  },
+  tap(S, cx, cy) {
+    if (S.won) return;
+    const cand = S.frames.filter(f => !f.join), k = colPick(cand.map(F => colW(F.g, 0, 0, 0)), cx, cy, Math.max(56, window.innerHeight * 0.1));
+    if (k < 0) return;
+    const F = cand[k], before = new Set(S.pool).size; F.join = 0.001; S.pool.push(F.tone); S.joined++;
+    MGS.bell(MGS.NOTES[F.tone % 6], 0, 2.2, 0.03); MGS.ping(MGS.NOTES[(F.tone + 2) % 6] * 2, 0.12, 0.8, 0.015); vibrateDevice(10); colVoice('mariquita', 0.45);
+    colSub(new Set(S.pool).size > before ? colT('tone') : colT('join'), 3);
+  },
+  hudVals(S) { return [S.joined, (S.distinct || 0) + '/6', Math.min(S.pool.length, 7) + '/7', S.won ? '1' : '0']; }
+};
+
+
+// ---------- 5 · EL BARBUDITO DEL PÁRAMO (Games for Change) — escuchar el conflicto, en el páramo ----------
+const COL_FIG = [Math.PI / 2, Math.PI * 7 / 6, Math.PI * 11 / 6];
+COL_DEF.colibri = {
+  iso: { yaw: 0.35, pitch: 0.2, dist: 56, tg: [0, 17, 0], fov: 42 }, trav: [0.15, 12], sky: [0.5, 0.62, 0.55], hud: ['TENSIÓN', 'ESCUCHA', 'VOCES CALMAS', 'COLIBRÍ'], endAfter: 13, voice: 'colibri', voiceEvery: 0, voiceWin: 'colibri_song',
+  txt: {
+    es: { title: 'EL BARBUDITO DEL PÁRAMO', toast: 'Un colibrí colosal en el páramo: tres voces que no se oyen.',
+      h: 'Mantén pulsada una figura para escucharla: se calma. Pero las otras se tensan donde no miras. Reparte la atención. Arrastra el espacio vacío para girar.',
+      s0: '…el colibrí eriza la cresta y chilla entre la niebla: hay tres voces y ninguna se oye…', listen: '…la escuchas. Se va calmando…', neglect: '…las otras se tensan donde no miras…', heard: '…quien es escuchado empieza a escuchar…', done: '…pliega las alas, baja la cresta y canta bajito sobre el frailejón. Nadie fue vencido.' },
+    en: { title: 'THE PÁRAMO HELMETCREST', toast: 'A colossal hummingbird of the páramo: three voices that cannot hear each other.',
+      h: 'Hold a figure to listen to it: it calms. But the others tense up where you are not looking. Share your attention. Drag empty space to turn.',
+      s0: '…the hummingbird bristles its crest and shrieks in the mist: there are three voices and none is heard…', listen: '…you listen. It slowly calms…', neglect: '…the others tense where you are not looking…', heard: '…whoever is heard begins to listen…', done: '…it folds its wings, lowers its crest and sings softly on the frailejón. No one was defeated.' }
+  },
+  build(g) {
+    const S = { a: [0.85, 0.7, 0.8], listen: -1, calmT: 0, won: false, msgT: 0, breath: 0, rumT: 0, agit: 1, down: 0, figs: [], heardMsg: false, neglMsg: false, roarT: 2.5, rear: 0, rp: 0, jx: 0, hy: 0 };
+    const rnd = Math.random;
+    // --- el páramo: pajonal, frailejones, laguna, cordilleras y niebla ---
+    g.add(sptPoints(900, (i, o) => { const a = rnd() * 6.283, r = Math.sqrt(rnd()) * 50; o.x = Math.cos(a) * r; o.z = Math.sin(a) * r; o.y = -0.1 + Math.sin(o.x * 0.3) * Math.cos(o.z * 0.25) * 0.35; o.s = 0.1 + rnd() * 0.14; o.a = 0.12 + rnd() * 0.25; o.r = 0.45; o.g = 0.52 + rnd() * 0.1; o.b = 0.38; }));
+    const PL = []; for (let k = 0; k < 30; k++) { const a = rnd() * 6.283, r = 24 + rnd() * 24; PL.push({ x: Math.cos(a) * r, z: Math.sin(a) * r * 0.9, h: 2.2 + rnd() * 3.4 }); }
+    const PER = 52;
+    S.fr = sptPoints(PL.length * PER, (i, o) => { const p = PL[Math.floor(i / PER)], j = i % PER;
+      if (j < 8) { o.x = p.x; o.z = p.z; o.y = p.h * j / 7; o.s = 0.2; o.a = 0.8; o.r = 0.5; o.g = 0.42; o.b = 0.3; }
+      else { const L = (j - 8) % 11, a = Math.floor((j - 8) / 11) * 1.57 + L * 0.02 + p.x, u = 0.3 + L / 10 * 1.3; o.x = p.x + Math.cos(a) * u * 1.2; o.z = p.z + Math.sin(a) * u * 1.2; o.y = p.h + 0.2 + Math.sin(L / 10 * 2.2) * 0.9 - u * 0.1; o.s = 0.16; o.a = 0.75; o.r = 0.72; o.g = 0.8; o.b = 0.7; } });
+    g.add(S.fr);
+    S.flow = sptPoints(PL.length * 3, (i, o) => { const p = PL[Math.floor(i / 3)], j = i % 3; o.x = p.x + (j - 1) * 0.35; o.z = p.z + (j === 1 ? 0.3 : -0.2); o.y = p.h + 1.6 + (j === 1 ? 0.5 : 0); o.s = 0.4; o.a = 1; o.r = 1; o.g = 0.86; o.b = 0.25; });
+    S.flow.material.uniforms.uOpacity.value = 0; g.add(S.flow);
+    g.add(sptPoints(300, (i, o) => { const a = rnd() * 6.283, r = Math.sqrt(rnd()); o.x = -6 + Math.cos(a) * r * 14; o.z = -36 + Math.sin(a) * r * 7; o.y = 0.02; o.s = 0.2; o.a = 0.22; o.r = 0.4; o.g = 0.6; o.b = 0.8; }));      // laguna
+    for (let L = 0; L < 3; L++) g.add(sptPoints(420, (i, o) => { const x = -95 + 190 * (i / 420); o.x = x; o.z = -64 - L * 12; o.y = 8 + L * 3 + 6 * Math.sin(x * 0.045 + L * 2) + 3 * Math.sin(x * 0.13 + L); o.s = 0.5; o.a = 0.3; o.r = 0.26 + L * 0.03; o.g = 0.34 + L * 0.03; o.b = 0.42 + L * 0.03; }));
+    S.mist = sptPoints(170, (i, o) => { o.x = (Math.random() - 0.5) * 90; o.y = Math.random() * 12; o.z = (Math.random() - 0.5) * 70; o.s = 1.2 + Math.random() * 1.6; o.a = 0.07 + Math.random() * 0.07; o.r = 0.7; o.g = 0.78; o.b = 0.82; }); g.add(S.mist);
+    // --- el frailejón colosal: tronco forrado de hojas muertas, roseta plateada y flores amarillas ---
+    S.root = new THREE.Group(); g.add(S.root);
+    const rn = Math.random, YEL = [1, 0.84, 0.28];
+    let c = [];
+    colTube(c, [[0, 0, 0], [0.25, 9, 0.2], [0, 17.2, 0]], 1100, 1.8, 1.55, (x, y, z, nx, ny, nz, lit) => { const v = 0.22 + 0.5 * lit; return [v * (0.95 + rn() * 0.15), v * 0.72, v * 0.42]; }, { fur: 0.8, s: 0.22, a: 0.8 });
+    for (let k = 0; k < 90; k++) { const a = rn() * 6.283, y0 = 16.5 - rn() * 4; colLine(c, [Math.cos(a) * 2.2, y0, Math.sin(a) * 2.2], [Math.cos(a) * (2.7 + rn() * 0.6), y0 - 3 - rn() * 9, Math.sin(a) * (2.7 + rn() * 0.6)], 12, [0.5 + rn() * 0.12, 0.38, 0.22], 0.17, 0.75, 0.15); }   // faldas de hojas secas
+    for (let k = 0; k < 22; k++) { const a = k / 22 * 6.283 + rn() * 0.1, ca = Math.cos(a), sa = Math.sin(a), len = 6.6 + rn() * 2.2;
+      for (let i = 0; i < 90; i++) { const u = Math.pow(rn(), 0.85), w = (rn() * 2 - 1) * 1.15 * Math.pow(Math.sin(Math.min(1, u * 1.05) * Math.PI), 0.55) * (0.4 + 0.6 * (1 - u)), r = len * u, y = 17.3 + 2.8 * Math.sin(u * 1.7) - 2.4 * u * u;
+        const f = 0.62 + 0.3 * rn(), sil = rn() < 0.2; colPush(c, ca * r - sa * w, y + (rn() - 0.5) * 0.15, sa * r + ca * w, sil ? [0.85, 0.92, 0.85] : [0.5 * f, 0.7 * f, 0.5 * f], 0.19, 0.85); } }                    // roseta de hojas aterciopeladas
+    S.root.add(colCloud(c, [0, 0, 0]));
+    c = []; colShell(c, 520, 0, 18.1, 0, 3.6, 1.7, 3.6, (x, y, z, nx, ny, nz, lit) => YEL.map(v => v * (0.55 + 0.55 * lit)), { fur: 0.55, s: 0.2, a: 0.9 });            // la flor donde se posa
+    S.root.add(colCloud(c, [0, 0, 0]));
+    c = []; [[-5.5, 21.5, 2], [4.5, 22.5, -2.5], [1.5, 20.6, 5.5], [-3, 20.8, -5], [6.2, 20, 3.4]].forEach(p => { colLine(c, [0, 17.3, 0], p, 16, [0.55, 0.6, 0.35], 0.14, 0.8, 0.1); colShell(c, 170, p[0], p[1], p[2], 1.5, 1.1, 1.5, (x, y, z, nx, ny, nz, lit) => YEL.map(v => v * (0.6 + 0.6 * lit)), { fur: 0.4, s: 0.2, a: 0.9 }); });
+    S.bloom = colCloud(c, [0, 0, 0]); S.root.add(S.bloom); S.bloom.pts.material.uniforms.uOpacity.value = 0.15;
+    // --- el barbudito del páramo (Oxypogon): cresta erizada, antifaz oscuro, collar blanco y barba iridiscente ---
+    S.bird = new THREE.Group(); S.bird.position.set(0, 18.9, 0); S.bird.rotation.y = -0.5; S.root.add(S.bird); S.by0 = 18.9;
+    const WH = [0.95, 0.94, 0.9];
+    const body = (x, y, z, nx, ny, nz, lit) => { const e = rn();
+      if (y > 5.4 && nx > -0.25 && e > 0.12) return WH.map(v => v * (0.55 + 0.5 * lit));                              // el collar blanco que baja por el pecho
+      if (nx < -0.2) { const v = 0.2 + 0.42 * Math.pow(lit, 1.2), gr = rn() * 0.12; return [v * (0.85 + gr), v * (0.95 + gr * 1.6), v * 0.62]; }   // dorso oliva con brillo verde
+      const v = 0.3 + 0.5 * lit; return [v * 0.92, v * 0.82, v * 0.64]; };
+    c = []; colShell(c, 2300, 0, 4.9, 0, 3.2, 4.8, 2.7, body, { fur: 0.4, s: 0.2, a: 0.85 });
+    for (let k = 0; k < 7; k++) colFeather(c, [-1.7, 2.7, (k - 3) * 0.4], [-0.5, -1, (k - 3) * 0.1], 4.2 + (k % 2) * 0.4, 0.34, 40, (u) => { const v = 0.18 + 0.2 * u; return [v, v, v * 1.15]; }, 0.14);   // cola
+    [-1, 1].forEach(s => { colTube(c, [[0.2, 1.8, s * 0.9], [0.25, 0.8, s * 1.0], [0.2, 0.05, s * 1.1]], 70, 0.16, 0.14, () => [0.34, 0.33, 0.38], { s: 0.12 });
+      for (let k = -1; k <= 1; k++) colLine(c, [0.2, 0.05, s * 1.1], [0.2 + (k === 0 ? 1.1 : -0.7), 0, s * (1.1 + k * 0.35)], 5, [0.22, 0.22, 0.26], 0.1, 0.95); });
+    S.body = colCloud(c, [0, 0, 0]); S.bird.add(S.body);
+    // cabeza (pivote en el cuello)
+    const NP = [0.3, 8.8, 0];
+    const face = (x, y, z, nx, ny, nz, lit) => { const e = rn();
+      if (ny > 0.78) return [0.1 + 0.1 * lit, 0.09 + 0.1 * lit, 0.12 + 0.1 * lit];                                  // casquete negro
+      if (nx > -0.3 && ny > 0.22 && ny < 0.62 && Math.abs(nz) > 0.35 && e > 0.1) return WH.map(v => v * (0.7 + 0.5 * lit));   // ceja blanca
+      if (y < 9.7 && e > 0.2) return WH.map(v => v * (0.55 + 0.5 * lit));                                           // garganta
+      if (nx < -0.45) { const v = 0.28 + 0.3 * lit; return [v * 0.9, v * 0.85, v * 0.7]; }
+      return [0.09 + 0.14 * lit, 0.08 + 0.12 * lit, 0.1 + 0.14 * lit]; };                                           // antifaz oscuro
+    c = []; colShell(c, 760, 1.0, 10.5, 0, 2.3, 2.2, 2.1, face, { fur: 0.22, s: 0.17, a: 0.9 });
+    colTube(c, [[3.1, 10.3, 0], [5.6, 10.0, 0], [8.6, 9.5, 0]], 190, 0.24, 0.05, (x, y, z, nx, ny, nz, lit) => [0.28 + 0.4 * lit, 0.29 + 0.4 * lit, 0.34 + 0.4 * lit], { s: 0.13, a: 0.95 });   // pico largo y fino
+    [-1, 1].forEach(s => { colShell(c, 16, 2.55, 10.7, s * 1.55, 0.42, 0.42, 0.28, () => [0.02, 0.02, 0.04], { s: 0.3, a: 1 }); colPush(c, 2.9, 11.0, s * 1.4, [1, 1, 1], 0.1, 1); });       // ojos con destello
+    S.head = colCloud(c, NP, [0, 0, 0]); S.bird.add(S.head);
+    // cresta: cinco púas negras con la punta blanca
+    c = []; for (let k = 0; k < 5; k++) { const z = (k - 2) * 0.32, b = [1.3 - k * 0.3, 12.5, z], m = [0.5 - k * 0.55, 14.5 - k * 0.15, z * 1.4], t = [-1.2 - k * 0.95, 17 - k * 0.7, z * 2];
+      colTube(c, [b, m, t], 90, 0.3, 0.04, (x, y, z2, nx, ny, nz, lit, u) => (u > 0.7 ? [0.95, 0.95, 0.92] : [0.12 + 0.12 * lit, 0.12 + 0.12 * lit, 0.15 + 0.12 * lit]), { s: 0.12, a: 0.95 }); }
+    S.crest = colCloud(c, [0.6, 12.3, 0], NP); S.head.add(S.crest);
+    // barba iridiscente (verde, azul y blanco)
+    c = []; colTube(c, [[2.3, 9.2, 0], [2.8, 7.2, 0], [3.4, 4.6, 0]], 300, 0.6, 0.1, (x, y, z, nx, ny, nz, lit, u) => (nz > 0.55 && rn() > 0.3) ? [0.95, 0.97, 1] : colMix(colMix([0.15, 0.95, 0.5], [0.2, 0.7, 1], Math.min(1, u * 1.6)), [0.85, 0.95, 1], Math.max(0, u - 0.7) * 3), { s: 0.14, a: 0.95 });
+    S.beard = colCloud(c, [2.3, 9.2, 0], NP); S.head.add(S.beard);
+    // alas (pivote en el hombro): se pliegan como una capa y se abren al chillar
+    S.wings = [-1, 1].map(s => {
+      const wc = [], dk = (u) => { const v = 0.22 + 0.3 * (1 - u); return [v * 0.95, v * 0.9, v * 0.7]; };
+      colShell(wc, 320, -0.3, 7.5, s * 4.8, 1.7, 0.5, 3.1, (x, y, z, nx, ny, nz, lit) => { const v = 0.22 + 0.4 * lit; return [v * 0.9, v * 0.95, v * 0.62]; }, { fur: 0.2, s: 0.16, keep: (nx, ny) => ny > -0.3 });
+      for (let k = 0; k < 13; k++) { const zr = s * (1.4 + k * 0.5), a = k * 0.05; colFeather(wc, [-0.7, 7.5, zr], [-Math.cos(a), -0.02, s * Math.sin(a) * 1.2], 3.2 + k * 0.1, 0.4, 40, (u) => dk(u), 0.13); }
+      const wg = colCloud(wc, [-0.3, 7.5, s * 2.7], [0, 0, 0]); wg.rotation.x = s * 1.35; wg.scale.z = 0.35; S.bird.add(wg); return wg; });
+    S.eyes = [-1, 1].map(s => { const h = mkHalo(0xbfe6ff, 1.6, 0.0); h.position.set(2.8 - NP[0], 11 - NP[1], s * 1.45); S.head.add(h); return h; });
+    S.sig = mkHalo(0xbfe6ff, 30, 0.08); S.sig.position.set(0, 24, 0); S.root.add(S.sig);
+    // --- las tres voces: la familia, el agua y la máquina ---
+    const FIGP = [[0, 0, -20], [-17.5, 0, 10], [17.5, 0, 10]];
+    for (let i = 0; i < 3; i++) {
+      const f = new THREE.Group(); f.position.set(FIGP[i][0], 0, FIGP[i][2]); g.add(f);
+      const ps = [];
+      if (i === 0) { ps.push(trtBlob(sptPoints, 70, 0, 1.6, 0, 0.6, 1.5, 0.6, [1, 0.6, 0.45], 0.14, 0.8), trtBlob(sptPoints, 40, 0, 3.5, 0, 0.55, 0.55, 0.55, [1, 0.6, 0.45], 0.13, 0.85));
+        ps.push(sptPoints(48, (k, o) => { const a = k / 48 * 6.283; o.x = Math.cos(a) * 1.25; o.z = Math.sin(a) * 1.25; o.y = 3.95; o.s = 0.13; o.a = 0.9; o.r = 1; o.g = 0.6; o.b = 0.45; }), sptPoints(14, (k, o) => { const a = k / 14 * 6.283; o.x = Math.cos(a) * 0.55; o.z = Math.sin(a) * 0.55; o.y = 4.3 + (k % 2) * 0.25; o.s = 0.12; o.a = 0.9; o.r = 1; o.g = 0.6; o.b = 0.45; })); }       // campesina con sombrero
+      else if (i === 1) { for (let r = 1; r <= 3; r++) ps.push(sptPoints(r * 22, (k, o) => { const a = k / (r * 22) * 6.283; o.x = Math.cos(a) * r * 1.1; o.z = Math.sin(a) * r * 1.1; o.y = 0.1; o.s = 0.13; o.a = 0.85; o.r = 1; o.g = 0.6; o.b = 0.45; }));
+        ps.push(sptPoints(46, (k, o) => { const u = k / 45; o.x = Math.sin(u * 9) * 0.3 * (1 - u); o.z = Math.cos(u * 9) * 0.3 * (1 - u); o.y = 0.2 + u * 3.6; o.s = 0.15; o.a = 0.9; o.r = 1; o.g = 0.6; o.b = 0.45; })); }                                                                                          // el agua
+      else { const bx = (k, o) => { const ax = Math.floor(Math.random() * 3), sg = Math.random() < 0.5 ? -1 : 1; let u = Math.random() * 2 - 1, v = Math.random() * 2 - 1; if (Math.random() < 0.5) { u = Math.round(u * 3) / 3; v = Math.round(v * 3) / 3; } const q = [0, 0, 0]; q[ax] = sg; q[(ax + 1) % 3] = u; q[(ax + 2) % 3] = v; o.x = q[0] * 1.5; o.y = 2.2 + q[1] * 1.3; o.z = q[2] * 1.5; o.s = 0.13; o.a = 0.85; o.r = 1; o.g = 0.6; o.b = 0.45; };
+        ps.push(sptPoints(300, bx), sptPoints(16, (k, o) => { o.x = 0; o.y = 3.6 + k * 0.12; o.z = 0; o.s = 0.12; o.a = 0.9; o.r = 1; o.g = 0.6; o.b = 0.45; }), sptPoints(18, (k, o) => { const a = k / 18 * 6.283; o.x = Math.cos(a) * 0.9; o.y = 5.5; o.z = Math.sin(a) * 0.9; o.s = 0.13; o.a = 0.9; o.r = 1; o.g = 0.6; o.b = 0.45; })); }   // la máquina: una caja de puntos con antena
+      ps.forEach(p => f.add(p));
+      const halo = mkHalo(0xff8a5c, 5, 0.3); halo.position.set(0, 2.4, 0); f.add(halo);
+      const lamp = sptPoints(1, (k, o) => { o.x = 0.9; o.y = 2.2; o.z = 0; o.s = 0.4; o.a = 0; o.r = 1; o.g = 0.9; o.b = 0.6; }); f.add(lamp);
+      S.figs.push({ g: f, ps, halo, lamp, base: f.position.clone() });
+    }
+    return S;
+  },
+  update(S, dt, t, calm) {
+    const sw = calm ? 0 : 1; S.msgT -= dt; S.rumT -= dt; S.roarT -= dt;
+    // el conflicto: lo que escuchas se calma; lo demás se tensa; quien ya se calmó ayuda a calmar a los otros
+    if (!S.won) {
+      for (let i = 0; i < 3; i++) {
+        if (S.listen === i) S.a[i] = Math.max(0, S.a[i] - 0.16 * dt);
+        else if (S.listen >= 0) S.a[i] = Math.min(1, S.a[i] + 0.035 * dt);
+        for (let j = 0; j < 3; j++) if (j !== i && S.a[j] < 0.35) S.a[i] = Math.max(0, S.a[i] - 0.02 * dt);
+      }
+      const maxA = Math.max(...S.a); if (maxA < 0.2) { S.calmT += dt; if (S.calmT > 3) S.won = true; } else S.calmT = 0;
+      if (S.listen >= 0 && S.msgT <= 0 && !S.neglMsg && S.a.some((v, i) => i !== S.listen && v > 0.9)) { S.neglMsg = true; colSub(colT('neglect'), 5); S.msgT = 5; }
+      if (!S.heardMsg && S.a.some(v => v < 0.35)) { S.heardMsg = true; colSub(colT('heard'), 5); S.msgT = 5; }
+    }
+    const mean = (S.a[0] + S.a[1] + S.a[2]) / 3, tgt = S.won ? 0 : mean; S.agit += (tgt - S.agit) * Math.min(1, dt * 1.5);
+    S.breath += dt * (0.9 + 1.6 * S.agit);
+    S.down += ((S.won ? 1 : 0) - S.down) * Math.min(1, dt * 0.5);
+    // su chillido: eriza la cresta, abre las alas con un zumbido y mira al cielo
+    if (!S.won && S.agit > 0.5 && S.roarT <= 0) { S.roarT = 7 - 3 * S.agit + Math.random() * 2; S.rear = 1.9; colVoice('colibri', S.agit); if (!calm) shakeIntensity = Math.max(shakeIntensity, 0.25 * S.agit); if (MG.fx && !calm) MG.fx.burst(2, 24, 0, 6, 1.6, 1.6, 0xdff0d0, 0.3, 0.9); }
+    S.rear = Math.max(0, S.rear - dt); S.rp += ((S.rear > 0 ? 1 : 0) - S.rp) * Math.min(1, dt * 4);
+    const rp = S.rp * (0.4 + 0.6 * S.agit), calmK = 1 - S.agit, q = Math.max(rp, 0.12 * S.agit);
+    S.crest.rotation.z = -0.6 * S.agit * (1 - S.down) + 0.3 * calmK;
+    S.wings.forEach((w, k) => { const s = k ? 1 : -1; w.rotation.x = s * (1.35 - 1.95 * q) + s * Math.sin(t * 34 + k) * 0.5 * rp * sw; w.scale.z = 0.35 + 0.65 * q; });
+    let want = 0; if (S.listen >= 0 && !S.won) { const f = S.figs[S.listen].base, rel = Math.atan2(-f.z, f.x) - S.bird.rotation.y; want = Math.atan2(Math.sin(rel), Math.cos(rel)); want = Math.max(-1.1, Math.min(1.1, want)); } else want = Math.sin(t * 0.35) * 0.35 * sw;
+    S.hy += (want - S.hy) * Math.min(1, dt * 3);
+    S.head.rotation.y = S.hy + Math.sin(t * 25) * 0.03 * rp * sw; S.head.rotation.z = 0.4 * rp - 0.32 * S.down + Math.sin(S.breath * 0.6) * 0.02 * sw;
+    S.beard.rotation.z = Math.sin(t * 1.3) * 0.05 * sw + 0.25 * rp; S.beard.scale.setScalar(1 + 0.1 * rp * Math.sin(t * 30) * sw);
+    S.body.scale.set(1 + 0.05 * S.agit + 0.015 * Math.sin(S.breath), 1 + 0.05 * S.agit + 0.025 * Math.sin(S.breath), 1 + 0.05 * S.agit);
+    S.bird.position.y = S.by0 + 1.2 * rp + Math.sin(t * 0.8) * 0.12 * sw - 0.5 * S.down; S.bird.rotation.z = -0.1 * rp;
+    S.root.position.x = (Math.random() - 0.5) * 0.25 * S.agit * sw; S.root.position.z = (Math.random() - 0.5) * 0.25 * S.agit * sw;
+    [S.body, S.head, S.crest, S.beard].concat(S.wings).forEach(p => colTint(p, 1 + 0.16 * S.agit - 0.06 * calmK, 1 - 0.06 * S.agit + 0.04 * calmK, 1 - 0.14 * S.agit + 0.14 * calmK));
+    S.bloom.pts.material.uniforms.uOpacity.value = 0.12 + 0.88 * Math.pow(calmK, 1.2);
+    S.eyes.forEach(e => { e.material.opacity = 0.05 + 0.25 * calmK; });
+    S.sig.material.opacity = 0.04 + 0.12 * calmK;
+    if (S.agit > 0.45 && S.rumT <= 0) { S.rumT = 2.6; MGS.ping(1600 + 500 * S.agit, 0, 0.12, 0.012 * S.agit); }
+    // el páramo responde: la niebla se espesa con la tensión y los frailejones florecen con la calma
+    S.mist.material.uniforms.uOpacity.value = 0.45 + 1.4 * S.agit; S.flow.material.uniforms.uOpacity.value = Math.pow(calmK, 1.5);
+    const mp = S.mist.geometry.attributes.position.array; for (let i = 0; i < mp.length; i += 3) { mp[i] += dt * (0.5 + 1.5 * S.agit) * sw; if (mp[i] > 45) mp[i] = -45; } S.mist.geometry.attributes.position.needsUpdate = true;
+    S.figs.forEach((f, i) => {
+      const a = S.a[i], c = a < 0.35 ? [0.6, 0.85, 1] : [1, 0.6 - 0.2 * a, 0.45 - 0.2 * a];
+      f.ps.forEach(p => p.material.uniforms.uTint.value.setRGB(c[0], c[1], c[2]));
+      f.g.position.x = f.base.x + (Math.random() - 0.5) * 0.25 * a * sw; f.g.position.z = f.base.z + (Math.random() - 0.5) * 0.25 * a * sw;
+      f.g.scale.y += ((S.won ? 0.75 : 1) - f.g.scale.y) * Math.min(1, dt);
+      f.halo.material.opacity += ((0.1 + 0.4 * a + (S.listen === i ? 0.2 : 0)) - f.halo.material.opacity) * Math.min(1, dt * 3);
+      f.halo.material.color.setHex(a < 0.35 ? 0x9fd0ff : 0xff8a5c);
+      f.lamp.geometry.attributes.aAlpha.array[0] += (((S.listen === i || a < 0.35) ? 1 : 0) - f.lamp.geometry.attributes.aAlpha.array[0]) * Math.min(1, dt * 3); f.lamp.geometry.attributes.aAlpha.needsUpdate = true;
+    });
+  },
+  down(S, cx, cy) {
+    if (S.won) return;
+    const k = colPick(S.figs.map(f => colW(f.g, 0, 2.4, 0)), cx, cy, Math.max(70, window.innerHeight * 0.12));
+    if (k >= 0) { S.listen = k; if (S.msgT <= 0) { colSub(colT('listen'), 3); S.msgT = 3; } MGS.ping(MGS.NOTES[k + 1], 0, 1.2, 0.02); vibrateDevice(8); }
+  },
+  up(S) { S.listen = -1; },
+  hudVals(S) { const calm = S.a.filter(v => v < 0.35).length; return [Math.round((S.a[0] + S.a[1] + S.a[2]) / 3 * 100) + '%', S.listen >= 0 ? (S.listen + 1) : '–', calm + '/3', S.won ? '♪' : S.agit > 0.6 ? '!!' : '·']; }
+};
+
+// ---------- 6 · LA MEDUSA-LEVIATÁN (TouchDesigner & VR) — explorar un espacio paramétrico ----------
+const COL_DIAL = [{ x: -6, hex: 0x8fe0ff }, { x: 0, hex: 0xffd28a }, { x: 6, hex: 0xe6a0d0 }];
+COL_DEF.medusa = {
+  iso: { yaw: 0.25, pitch: 0.2, dist: 38, tg: [0, 7, 0] }, trav: [1.55, 12], sky: [0.8, 0.6, 0.85], hud: ['FRECUENCIA', 'DENSIDAD', 'FASE', 'RESONANCIAS'], endAfter: 13, voice: 'medusa', voiceEvery: 24,
+  txt: {
+    es: { title: 'LA MEDUSA-LEVIATÁN', toast: 'Su cuerpo es una función de tres perillas.',
+      h: 'Toca una perilla (cian, ámbar, rosa) para girarla. Su cuerpo cambia con cada valor; cuando una combinación resuena, canta. Hay tres. Arrastra el espacio vacío para girar.',
+      s0: '…su cuerpo cambia con cada perilla…', warm: '…se calienta. Vas cerca…', cold: '…se enfría…', res: '…resuena. Una forma que se sostiene sola…', done: '…las tres formas cantan juntas. Explorar es una manera de escuchar.' },
+    en: { title: 'THE LEVIATHAN JELLYFISH', toast: 'Her body is a function of three dials.',
+      h: 'Tap a dial (cyan, amber, rose) to turn it. Her body changes with each value; when a combination resonates, she sings. There are three. Drag empty space to turn.',
+      s0: '…her body changes with every dial…', warm: '…warmer. You are close…', cold: '…cooling…', res: '…it resonates. A shape that holds itself…', done: '…the three shapes sing together. To explore is a way of listening.' }
+  },
+  build(g) {
+    const S = { v: [0, 0, 0], sm: [0, 0, 0], targets: [], found: [], lock: 0, lockHex: 0xffffff, warm: 0, won: false, msgT: 0, bloom: 0, lastW: 0 };
+    const used = [];
+    while (S.targets.length < 3) { const c = [Math.floor(Math.random() * 5), Math.floor(Math.random() * 5), Math.floor(Math.random() * 5)]; if (c.every(x => x === 0)) continue; if (used.every(u => Math.abs(u[0] - c[0]) + Math.abs(u[1] - c[1]) + Math.abs(u[2] - c[2]) >= 3)) { used.push(c); S.targets.push(c); } }
+    S.NB = 900; S.bell = sptPoints(S.NB, (i, o) => { o.s = 0.17; o.a = 0.7; o.r = 0.85; o.g = 0.7; o.b = 0.95; }); g.add(S.bell);
+    S.NT = 16; S.TL = 22; S.tent = sptPoints(S.NT * S.TL, (i, o) => { o.s = 0.13; o.a = 0.5; o.r = 0.85; o.g = 0.6; o.b = 0.9; }); g.add(S.tent);
+    S.ring = sptPoints(120, (i, o) => { o.a = 0; o.s = 0.22; o.r = 1; o.g = 1; o.b = 1; }); g.add(S.ring);
+    S.halo = mkHalo(0xcfa3c4, 26, 0.1); S.halo.position.set(0, 9, 0); g.add(S.halo);
+    S.dials = COL_DIAL.map((D, k) => {
+      const dg = new THREE.Group(); dg.position.set(D.x, 1.6, 14); g.add(dg); const [r, gg, b] = arRGB(D.hex);
+      dg.add(sptPoints(40, (i, o) => { const a = i / 40 * 6.283; o.x = Math.cos(a) * 1.6; o.y = Math.sin(a) * 1.6; o.z = 0; o.s = 0.12; o.a = 0.6; o.r = r; o.g = gg; o.b = b; }));
+      dg.add(sptPoints(5, (i, o) => { const a = -1.5708 + i * 1.2566; o.x = Math.cos(a) * 2.0; o.y = Math.sin(a) * 2.0; o.z = 0; o.s = 0.18; o.a = 0.8; o.r = r; o.g = gg; o.b = b; }));
+      const needle = sptPoints(8, (i, o) => { const u = (i + 1) / 8; o.x = 0; o.y = u * 1.5; o.z = 0; o.s = 0.14 + u * 0.06; o.a = 1; o.r = 1; o.g = 1; o.b = 1; }); dg.add(needle);
+      const halo = mkHalo(D.hex, 4.4, 0.15); dg.add(halo);
+      return { g: dg, needle, halo };
+    });
+    return S;
+  },
+  dist(S) { let best = 99; S.targets.forEach((c, i) => { if (S.found[i]) return; best = Math.min(best, Math.abs(c[0] - S.v[0]) + Math.abs(c[1] - S.v[1]) + Math.abs(c[2] - S.v[2])); }); return best; },
+  update(S, dt, t, calm) {
+    const sw = calm ? 0 : 1; S.msgT -= dt; S.lock = Math.max(0, S.lock - dt * 0.25);
+    for (let k = 0; k < 3; k++) S.sm[k] += (S.v[k] - S.sm[k]) * Math.min(1, dt * 3.5);
+    const d = this.dist(S), warm = d >= 99 ? 1 : Math.max(0, 1 - d / 8); S.warm += (warm - S.warm) * Math.min(1, dt * 2);
+    const f = S.sm[0], dn = S.sm[1], ph = S.sm[2], lobes = 2 + f, rings = 2 + dn * 1.5, tw = ph * 0.38, A = 0.16 + 0.05 * f / 4 + 0.14 * S.lock;
+    const BA = S.bell.geometry.attributes, bp = BA.position.array, bc = BA.aCol.array, ba = BA.aAlpha.array, GA = 2.399963, pulse = 1 + 0.07 * Math.sin(t * 1.4) * (1 - 0.5 * S.lock), lc = arRGB(S.lockHex);
+    for (let i = 0; i < S.NB; i++) {
+      const u = (i + 0.5) / S.NB, th = Math.acos(1 - u * 0.97), phi = i * GA, p2 = phi + tw * th;
+      const r = 6.2 * (1 + A * Math.sin(lobes * p2) * Math.sin(th * 1.6)), rr = r * Math.sin(th);
+      bp[i * 3] = rr * Math.cos(phi); bp[i * 3 + 1] = 9 + r * 0.78 * Math.cos(th) * pulse; bp[i * 3 + 2] = rr * Math.sin(phi);
+      const band = Math.pow(Math.abs(Math.sin(th * rings * 1.9)), 3);
+      ba[i] = 0.25 + 0.65 * band + 0.2 * S.lock; const w = S.warm;
+      bc[i * 3] = 0.75 + 0.2 * w + (lc[0] - 0.8) * S.lock * 0.5; bc[i * 3 + 1] = 0.62 + 0.25 * w * band + (lc[1] - 0.8) * S.lock * 0.5; bc[i * 3 + 2] = 0.95 - 0.25 * w + (lc[2] - 0.8) * S.lock * 0.5;
+    }
+    BA.position.needsUpdate = BA.aAlpha.needsUpdate = BA.aCol.needsUpdate = true;
+    const TA = S.tent.geometry.attributes, tp = TA.position.array, ta = TA.aAlpha.array, amp = 0.5 + 0.2 * dn;
+    for (let k = 0; k < S.NT; k++) { const a = k / S.NT * 6.283 + tw * 0.3, bx = Math.cos(a) * 6.0, bz = Math.sin(a) * 6.0;
+      for (let j = 0; j < S.TL; j++) { const idx = k * S.TL + j, u = j / (S.TL - 1);
+        tp[idx * 3] = bx * (1 - u * 0.25) + Math.sin(t * 1.1 * sw + k + u * (2 + f)) * amp * u * 2.4; tp[idx * 3 + 1] = 9 + 0.5 - u * 11; tp[idx * 3 + 2] = bz * (1 - u * 0.25) + Math.cos(t * 0.9 * sw + k * 1.3 + u * (2 + ph)) * amp * u * 2.4; ta[idx] = 0.55 * (1 - u * 0.8); } }
+    TA.position.needsUpdate = TA.aAlpha.needsUpdate = true;
+    S.halo.material.opacity = 0.06 + 0.2 * S.warm + 0.2 * S.lock;
+    const RA = S.ring.geometry.attributes; for (let i = 0; i < 120; i++) { const a = i / 120 * 6.283 + t * 0.2 * sw; RA.position.array[i * 3] = Math.cos(a) * 7.6; RA.position.array[i * 3 + 1] = 9 + Math.sin(a * 4 + t) * 0.4; RA.position.array[i * 3 + 2] = Math.sin(a) * 7.6; RA.aAlpha.array[i] = S.lock * 0.9; RA.aCol.array[i * 3] = lc[0]; RA.aCol.array[i * 3 + 1] = lc[1]; RA.aCol.array[i * 3 + 2] = lc[2]; }
+    RA.position.needsUpdate = RA.aAlpha.needsUpdate = RA.aCol.needsUpdate = true;
+    S.dials.forEach((D, k) => { D.needle.rotation.z = -S.sm[k] * 1.2566; D.halo.material.opacity = 0.1 + 0.25 * S.warm; });
+    if (S.won) { S.bloom += dt; S.lock = Math.max(S.lock, 0.8); }
+  },
+  tap(S, cx, cy) {
+    if (S.won) return;
+    const k = colPick(S.dials.map(D => colW(D.g, 0, 0, 0)), cx, cy, Math.max(60, window.innerHeight * 0.1)); if (k < 0) return;
+    S.v[k] = (S.v[k] + 1) % 5;
+    const w = (() => { const d = this.dist(S); return d >= 99 ? 1 : Math.max(0, 1 - d / 8); })();
+    MGS.ping(180 + 720 * w + S.v[k] * 20, 0, 0.7, 0.025); vibrateDevice(8);
+    if (w > S.lastW + 0.12 && S.msgT <= 0) { colSub(colT('warm'), 3); S.msgT = 4; } else if (w < S.lastW - 0.2 && S.msgT <= 0) { colSub(colT('cold'), 3); S.msgT = 4; } S.lastW = w;
+    const hit = S.targets.findIndex((c, i) => !S.found[i] && c[0] === S.v[0] && c[1] === S.v[1] && c[2] === S.v[2]);
+    if (hit >= 0) { S.found[hit] = true; S.lock = 1; S.lockHex = COL_DIAL[hit].hex; colSub(colT('res'), 5); MGS.arpeggio([0, 2, 4, 5], 0.16, 3, 0.035); MGS.bell(MGS.NOTES[hit * 2], 0.1, 3, 0.04); vibrateDevice(40); if (S.found.filter(Boolean).length >= 3) S.won = true; }
+  },
+  hudVals(S) { return [S.v[0] + 1 + '/5', S.v[1] + 1 + '/5', S.v[2] + 1 + '/5', S.found.filter(Boolean).length + '/3']; }
+};
+
