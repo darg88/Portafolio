@@ -4620,8 +4620,8 @@ const ACHIEVEMENTS = [
   { id: 'reader',       es: ['Lector atento', 'Lee tres proyectos en el archivo ejecutivo.'],         en: ['Attentive reader', 'Read three projects in the executive archive.'] },
   { id: 'polyglot',     es: ['Políglota', 'Cambia el idioma del universo.'],                          en: ['Polyglot', 'Change the universe language.'] },
   { id: 'colossus',     es: ['Primer coloso', 'Encuentra tu primer coloso.'],                       en: ['First colossus', 'Find your first colossus.'] },
-  { id: 'bestiary',     es: ['Bestiario de colosos', 'Encuentra los nueve colosos del universo.'],   en: ['Bestiary of colossi', 'Find all nine colossi of the universe.'],
-    reward: { es: 'Recompensa: el Bestiario completo', en: 'Reward: the complete Bestiary' } },
+  { id: 'bestiary',     es: ['Colección de colosos', 'Encuentra los nueve colosos del universo.'],   en: ['Colossi collection', 'Find all nine colossi of the universe.'],
+    reward: { es: 'Recompensa: la Colección completa', en: 'Reward: the complete Collection' } },
   { id: 'sovereignty', secret: true, es: ['Soberanía', 'Alcanza la madurez del sistema (100%).'], en: ['Sovereignty', 'Reach system maturity (100%).'], reward: { es: 'Insignia de Sistema', en: 'System Badge' } }
 ];
 const ACH = { got: Object.assign({}, readUnlocks().ach), initialLang: null, toggles: 0, open: false, lastLang: null };
@@ -4868,7 +4868,38 @@ function ensureAchievementsMenu() {
 function updateAchievementsMenu() {
   const a = document.getElementById('menu-achievements');
   if (a) a.textContent = `✦ ${window.currentLang === 'en' ? 'Achievements' : 'Logros'} · ${achCount()}/${ACHIEVEMENTS.length}`;
+  try { updateCollectionMenu(); } catch (e) {}
 }
+function ensureCollectionMenu() {
+  const m = menuList(); if (!m || !m.ul || document.getElementById('menu-collection')) return;
+  const li = document.createElement('li');
+  li.innerHTML = '<a href="#" id="menu-collection" class="social-item"></a>';
+  const ach = document.getElementById('menu-achievements'), ref = ach ? ach.closest('li') : m.retroLi;
+  m.ul.insertBefore(li, ref && ref.nextSibling ? ref.nextSibling : m.retroLi);
+  li.firstChild.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); if (typeof sideMenu !== 'undefined') sideMenu.classList.remove('open'); if (window.openBestiary) window.openBestiary(); });
+  const dm = document.createElement('li'); dm.innerHTML = '<a href="#" id="menu-dome" class="social-item"></a>'; m.ul.insertBefore(dm, li.nextSibling);
+  dm.firstChild.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); if (typeof sideMenu !== 'undefined') sideMenu.classList.remove('open'); if (window.domeToggle) window.domeToggle(true); });
+  updateCollectionMenu();
+}
+function ensureCollectionButton() {                                                   // botón directo en la pantalla principal: aparece al encontrar el primer coloso
+  const n = (typeof colossiCount === 'function') ? colossiCount() : 0; let b = document.getElementById('btn-collection'); const en = window.currentLang === 'en';
+  if (n < 1) { if (b) b.style.display = 'none'; return; }
+  if (!b) {
+    if (!document.getElementById('btn-collection-style')) { const st = document.createElement('style'); st.id = 'btn-collection-style';
+      st.textContent = `#btn-collection{position:fixed;right:25px;bottom:255px;box-sizing:border-box;width:40px;height:40px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,.03);border:1px solid rgba(201,168,92,.55);color:#e7d9b4;cursor:pointer;z-index:10001;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-size:17px;line-height:1;transition:box-shadow .3s ease,background .3s ease}
+        #btn-collection:hover{background:rgba(201,168,92,.14)} #btn-collection small{position:absolute;right:-4px;bottom:-5px;font:600 .52rem/1 -apple-system,Helvetica,Arial,sans-serif;letter-spacing:.04em;background:#0b0c10;border:1px solid rgba(201,168,92,.55);border-radius:9px;padding:2px 4px;color:#e7d9b4}
+        #btn-collection.is-new{animation:colNew 2s ease-in-out infinite alternate} @keyframes colNew{from{box-shadow:0 0 6px rgba(201,168,92,.2)}to{box-shadow:0 0 24px rgba(201,168,92,.75)}}
+        @media (max-width:768px){#btn-collection{bottom:195px}} @media (prefers-reduced-motion:reduce){#btn-collection.is-new{animation:none;box-shadow:0 0 16px rgba(201,168,92,.6)}}`; document.head.appendChild(st); }
+    b = document.createElement('button'); b.id = 'btn-collection'; b.type = 'button';
+    b.addEventListener('click', (e) => { e.stopPropagation(); window._colNewUntil = 0; if (window.openBestiary) window.openBestiary(); });
+    ['mousedown', 'touchstart', 'pointerdown'].forEach(ev => b.addEventListener(ev, (e) => e.stopPropagation(), { passive: true }));
+    document.body.appendChild(b);
+    setInterval(() => { const busy = window.isColossusActive || window.isTortugaActive || window.isWhaleActive || window.isHogueraActive || window.isSputnikActive || window.isTuningGameActive || window.isWiringGameActive || window._bstOpen || window.isMiniIntro || document.body.classList.contains('terminal-mode');
+      b.style.display = busy ? 'none' : 'flex'; b.classList.toggle('is-new', !!(window._colNewUntil && Date.now() < window._colNewUntil)); }, 500);
+  }
+  b.title = en ? 'Colossi collection' : 'Colección de colosos'; b.setAttribute('aria-label', b.title); b.innerHTML = '🐾<small>' + n + '/9</small>';
+}
+function updateCollectionMenu() { try { ensureCollectionButton(); } catch (e) {} const dm = document.getElementById('menu-dome'); if (dm) dm.textContent = (window.currentLang === 'en' ? '◐ Dome mode' : '◐ Modo Domo') + '  ·  Ctrl+Shift+D'; const a = document.getElementById('menu-collection'); if (a) a.textContent = `🐾 ${window.currentLang === 'en' ? 'Colossi collection' : 'Colección de colosos'} · ${typeof colossiCount === 'function' ? colossiCount() : 0}/9`; }
 function ensureInvertedMenu() {
   const m = menuList(); if (!m || !m.ul || document.getElementById('menu-inverted')) return;
   const li = document.createElement('li');
@@ -4927,7 +4958,7 @@ function renderAchievementsPanel() {
       <button type="button" class="ach-act" data-act="inverted">${inverted ? (en ? 'Dark mode' : 'Modo oscuro') : (en ? 'Activate' : 'Activar')}</button></li>`);
   if (ACH.got.sovereignty) rewards.push(`<li class="ach-reward"><span class="sov-emblem" style="width:1.6rem;height:1.6rem;display:block" aria-hidden="true">${sovereignEmblemSVG(false)}</span><div><strong>${en ? 'System Badge' : 'Insignia de Sistema'}</strong>
       <small>${en ? 'Shown in the header; a crown of pulses follows the Traveler.' : 'Se muestra en la cabecera; una corona de pulsos acompaña al Viajero.'}</small></div><span></span></li>`);
-  if (colossiCount() >= 1) rewards.push(`<li class="ach-reward"><span aria-hidden="true">🐾</span><div><strong>${en ? 'Bestiary of colossi' : 'Bestiario de colosos'} · ${colossiCount()}/${COLOSSI.length}</strong>
+  if (colossiCount() >= 1) rewards.push(`<li class="ach-reward"><span aria-hidden="true">🐾</span><div><strong>${en ? 'Colossi collection' : 'Colección de colosos'} · ${colossiCount()}/${COLOSSI.length}</strong>
       <small>${colossiCount() >= COLOSSI.length ? (en ? 'Complete: with the concept map.' : 'Completo: con el mapa de conceptos.') : (en ? 'Each colossus adds its entry; the concept map appears when all nine are found.' : 'Cada coloso suma su ficha; el mapa de conceptos aparece al encontrar los nueve.')}</small></div>
       <button type="button" class="ach-act" data-act="bestiary">${en ? 'Open' : 'Abrir'}</button></li>`);
   if (window.pulseSword.unlocked) rewards.push(`<li class="ach-reward"><span aria-hidden="true">⚔</span><div><strong>${en ? 'Pulse sword' : 'Espada de pulsos'}</strong>
@@ -5244,7 +5275,7 @@ function runSovereigntyCeremony() {
 
 // Eventos sueltos
 
-ensureAchievementsMenu();
+ensureAchievementsMenu(); try { ensureCollectionMenu(); } catch (e) {}
 if (ACH.got.cartographer) ensureInvertedMenu();
 
 // Si ya se había desbloqueado en una visita anterior, el viajero nace con ella
@@ -5667,6 +5698,109 @@ function updateTraveler() {
 
 let frames = 0; let lastTime = performance.now(); let lowFPSCount = 0;
 let totalRotated = 0; let prevAngle = 0;
+
+// ==========================================================================================
+// ◐ MODO DOMO — domemaster (fisheye azimutal equidistante 1:1) en vivo
+//   Se renderiza la escena en un cubemap desde la cámara y un shader la convierte en el círculo del domo.
+//   Centro de la imagen = cenit; arriba de la imagen = frente del domo. Para Amateras/NDI: abre la página en una fuente
+//   «Navegador» de OBS de 2048×2048 con  ?domo=1  y emite esa fuente por NDI (DistroAV).
+//   Teclas: Ctrl+Shift+D entra/sale · G cuadrícula · M espejo · Esc sale (si no hay un juego abierto).
+// ==========================================================================================
+const DOME = { on: false, fov: 180, elev: 0, res: 1024, grid: false, flip: false, rt: null, cam: null, quat: null, scene: null, ortho: null, mat: null, ui: null, idleT: 0, styled: false };
+function domeBuild() {
+  if (DOME.scene) return;
+  DOME.scene = new THREE.Scene(); DOME.ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  DOME.mat = new THREE.ShaderMaterial({
+    uniforms: { tCube: { value: null }, uFov: { value: Math.PI }, uElev: { value: 0 }, uGrid: { value: 0 }, uFlip: { value: 1 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: `precision highp float; uniform samplerCube tCube; uniform float uFov, uElev, uGrid, uFlip; varying vec2 vUv;
+      void main(){
+        vec2 p = vUv * 2.0 - 1.0; float r = length(p);
+        if (r > 1.0) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
+        float th = r * uFov * 0.5, ph = atan(p.x, p.y);
+        vec3 d = vec3(sin(th) * sin(ph), cos(th), -sin(th) * cos(ph));
+        float c = cos(uElev), s = sin(uElev); d = vec3(d.x, d.y * c + d.z * s, -d.y * s + d.z * c);
+        d.x *= uFlip;
+        vec3 col = textureCube(tCube, d).rgb;
+        if (uGrid > 0.5) {
+          float deg = th * 57.29578, md = ph * 57.29578, lw = max(fwidth(deg), 0.0001), lm = min(max(fwidth(md), 0.0001), 3.0);
+          float par = 1.0 - smoothstep(0.0, lw * 1.6, abs(fract(deg / 15.0 + 0.5) - 0.5) * 15.0);
+          float mer = (1.0 - smoothstep(0.0, lm * 1.6, abs(fract(md / 30.0 + 0.5) - 0.5) * 30.0)) * smoothstep(0.0, 6.0, deg);
+          float hor = 1.0 - smoothstep(0.0, lw * 2.2, abs(deg - 90.0)), edge = 1.0 - smoothstep(0.0, lw * 2.0, abs(r - 1.0) * uFov * 28.6479);
+          float front = (1.0 - smoothstep(0.0, lm * 2.4, abs(md))) * step(p.y, 0.0 + 1.0) * smoothstep(0.0, 6.0, deg);
+          col = mix(col, vec3(0.25, 0.9, 1.0), 0.55 * max(par, mer)); col = mix(col, vec3(1.0, 0.8, 0.2), hor * 0.85); col = mix(col, vec3(1.0, 0.35, 0.2), front * 0.9); col = mix(col, vec3(1.0), edge * 0.7);
+        }
+        gl_FragColor = vec4(col, 1.0);
+      }`,
+    depthTest: false, depthWrite: false
+  });
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), DOME.mat); quad.frustumCulled = false; DOME.scene.add(quad);
+}
+function domeCube() {
+  if (DOME.rt && DOME.rt.width === DOME.res) return;
+  if (DOME.rt) DOME.rt.dispose();
+  DOME.rt = new THREE.WebGLCubeRenderTarget(DOME.res, { generateMipmaps: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+  if (!DOME.cam) { DOME.cam = new THREE.CubeCamera(0.1, 1000, DOME.rt); camera.add(DOME.cam); } else DOME.cam.renderTarget = DOME.rt;
+  DOME.mat.uniforms.tCube.value = DOME.rt.texture;
+}
+function domeRender() {
+  domeCube();
+  const u = DOME.mat.uniforms; u.uFov.value = DOME.fov * Math.PI / 180; u.uElev.value = DOME.elev * Math.PI / 180; u.uGrid.value = DOME.grid ? 1 : 0; u.uFlip.value = DOME.flip ? -1 : 1;
+  const keep = GLOW_SCALE.value; GLOW_SCALE.value = DOME.res * 0.5 * Math.tan(THREE.MathUtils.degToRad(37.5));      // tamaño de los puntos en píxeles de cada cara del cubo
+  camera.updateMatrixWorld(true); DOME.cam.update(renderer, scene);
+  GLOW_SCALE.value = keep;
+  const w = window.innerWidth, h = window.innerHeight, side = Math.min(w, h);
+  renderer.setRenderTarget(null); renderer.setScissorTest(false); renderer.setViewport(0, 0, w, h); renderer.setClearColor(0x000000, 1); renderer.clear();
+  renderer.setViewport((w - side) / 2, (h - side) / 2, side, side); renderer.render(DOME.scene, DOME.ortho);
+  renderer.setViewport(0, 0, w, h);
+}
+function domeToggle(on) {
+  on = on === undefined ? !DOME.on : !!on; if (on === DOME.on) return;
+  DOME.on = window.__dome = on;
+  if (!DOME.styled) { DOME.styled = true; const st = document.createElement('style');
+    st.textContent = `body.dome-mode{background:#000 !important;overflow:hidden} body.dome-mode #bg-canvas{position:fixed !important;inset:0 !important;width:100vw !important;height:100vh !important;z-index:2147483100 !important;background:#000 !important} body.dome-mode.dome-idle{cursor:none}
+      #dome-ui{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2147483300;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;max-width:94vw;padding:10px 14px;background:rgba(8,9,12,.82);border:1px solid rgba(231,228,222,.18);color:#e7e4de;font:300 .7rem -apple-system,Helvetica,Arial,sans-serif;letter-spacing:.08em;transition:opacity .5s ease}
+      #dome-ui.hide{opacity:0;pointer-events:none} #dome-ui button,#dome-ui select{background:rgba(231,228,222,.06);border:1px solid rgba(231,228,222,.22);color:#e7e4de;font:inherit;padding:5px 10px;cursor:pointer} #dome-ui button.on{border-color:#c9a85c;color:#e7d9b4} #dome-ui input{width:90px}`;
+    document.head.appendChild(st); }
+  document.body.classList.toggle('dome-mode', on);
+  if (on) { domeBuild(); DOME.prevSize = [window.innerWidth, window.innerHeight]; domeUI(); domeUIShow(); }
+  else { if (DOME.ui) DOME.ui.remove(), DOME.ui = null; renderer.setClearColor(0x000000, 0); renderer.setViewport(0, 0, window.innerWidth, window.innerHeight); document.body.classList.remove('dome-idle'); }
+}
+function domeUI() {
+  const en = window.currentLang === 'en', ui = document.createElement('div'); ui.id = 'dome-ui'; DOME.ui = ui;
+  const btn = (txt, on, fn) => { const b = document.createElement('button'); b.textContent = txt; if (on) b.classList.add('on'); b.addEventListener('click', (e) => { e.stopPropagation(); fn(b); }); return b; };
+  const grp = (label) => { const s = document.createElement('span'); s.textContent = label + ' '; s.style.opacity = '.6'; return s; };
+  ui.appendChild(grp(en ? 'DOME' : 'DOMO'));
+  const fovs = [180, 200, 220].map(v => btn(v + '°', v === DOME.fov, () => { DOME.fov = v; fovs.forEach((b, i) => b.classList.toggle('on', [180, 200, 220][i] === v)); })); fovs.forEach(b => ui.appendChild(b));
+  ui.appendChild(grp(en ? 'ELEV.' : 'ELEV.')); const el = document.createElement('input'); el.type = 'range'; el.min = 0; el.max = 60; el.value = DOME.elev; const ev = document.createElement('span'); ev.textContent = DOME.elev + '°';
+  el.addEventListener('input', () => { DOME.elev = +el.value; ev.textContent = el.value + '°'; }); ui.appendChild(el); ui.appendChild(ev);
+  ui.appendChild(grp(en ? 'FACE' : 'CARA')); const rs = [512, 1024, 2048].map(v => btn(v === 512 ? '0.5K' : v === 1024 ? '1K' : '2K', v === DOME.res, () => { DOME.res = v; rs.forEach((b, i) => b.classList.toggle('on', [512, 1024, 2048][i] === v)); })); rs.forEach(b => ui.appendChild(b));
+  ui.appendChild(btn(en ? 'GRID (G)' : 'CUADRÍCULA (G)', DOME.grid, (b) => { DOME.grid = !DOME.grid; b.classList.toggle('on', DOME.grid); }));
+  ui.appendChild(btn(en ? 'MIRROR (M)' : 'ESPEJO (M)', DOME.flip, (b) => { DOME.flip = !DOME.flip; b.classList.toggle('on', DOME.flip); }));
+  const sel = document.createElement('select'); sel.innerHTML = '<option value="">' + (en ? 'Colossus…' : 'Coloso…') + '</option>' + COLOSSI.map(c => `<option value="${c.id}">${c[en ? 'en' : 'es'][0]}</option>`).join('');
+  sel.addEventListener('change', () => { const id = sel.value; sel.value = ''; if (id) colVisit(id, true); }); ui.appendChild(sel);
+  ui.appendChild(btn(en ? 'CLOSE COLOSSUS' : 'CERRAR COLOSO', false, () => { try { MG.abort(); } catch (e) {} }));
+  ui.appendChild(btn(en ? 'EXIT DOME' : 'SALIR DEL DOMO', false, () => domeToggle(false)));
+  const hint = document.createElement('div'); hint.style.cssText = 'width:100%;text-align:center;opacity:.55;font-size:.62rem'; hint.textContent = en ? 'Top of the image = dome front · centre = zenith · OBS Browser Source 2048×2048 → NDI' : 'Arriba de la imagen = frente del domo · centro = cenit · OBS Fuente Navegador 2048×2048 → NDI'; ui.appendChild(hint);
+  ['mousedown', 'touchstart', 'pointerdown', 'pointerup', 'wheel'].forEach(e2 => ui.addEventListener(e2, (e) => e.stopPropagation(), { passive: true }));
+  document.body.appendChild(ui);
+}
+function domeUIShow() { DOME.idleT = 0; if (DOME.ui) DOME.ui.classList.remove('hide'); document.body.classList.remove('dome-idle'); }
+window.addEventListener('mousemove', () => { if (DOME.on) domeUIShow(); }, { passive: true });
+window.addEventListener('touchstart', () => { if (DOME.on) domeUIShow(); }, { passive: true });
+setInterval(() => { if (!DOME.on) return; DOME.idleT += 0.5; if (DOME.idleT > 4 && DOME.ui && !DOME.ui.matches(':hover')) { DOME.ui.classList.add('hide'); document.body.classList.add('dome-idle'); } }, 500);
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) { e.preventDefault(); e.stopImmediatePropagation(); domeToggle(); return; }
+  if (!DOME.on || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'g' || e.key === 'G') { DOME.grid = !DOME.grid; if (DOME.ui) DOME.ui.querySelectorAll('button').forEach(b => { if (/^(CUADR|GRID)/.test(b.textContent)) b.classList.toggle('on', DOME.grid); }); domeUIShow(); }
+  else if (e.key === 'm' || e.key === 'M') { DOME.flip = !DOME.flip; if (DOME.ui) DOME.ui.querySelectorAll('button').forEach(b => { if (/^(ESPEJO|MIRROR)/.test(b.textContent)) b.classList.toggle('on', DOME.flip); }); domeUIShow(); }
+  else if (e.key === 'Escape' && !window.isColossusActive && !window.isHogueraActive && !window.isWhaleActive && !window.isTortugaActive && !window.isMiniIntro) { e.preventDefault(); domeToggle(false); }
+}, true);
+window.domeToggle = domeToggle; window.domeRender = domeRender; window.DOME = DOME;
+if (/[?&]domo=1\b/.test(location.search)) { let kicked = false; const waitDome = setInterval(() => {                         // arranque automático para la fuente Navegador de OBS: entra solo y activa el domo
+  const sb = document.getElementById('start-btn');
+  if (!kicked && sb && sb.style.display === 'block' && !isGameStarted && typeof initSystem === 'function') { kicked = true; try { initSystem(true); } catch (e) {} }
+  if (isGameStarted) { clearInterval(waitDome); setTimeout(() => domeToggle(true), 1200); } }, 600); }
 
 renderer.setAnimationLoop((timestamp, frame) => {
   // 🛟 Red de seguridad: three.js solo programa el SIGUIENTE cuadro si el actual termina sin lanzar. Un solo error
@@ -6921,8 +7055,10 @@ if (!isAR && !(window.isTuningGameActive || window.isWiringGameActive || (window
   // 🔥 4. ESCUDO PROTECTOR DE RENDERIZADO
 
   // 🔥 4. ESCUDO PROTECTOR DE RENDERIZADO
-if (isXR) { 
+ if (isXR) { 
     renderer.render(scene, camera); 
+  } else if (window.__dome) {
+    try { domeRender(); } catch (e) { console.error('Modo Domo:', e); domeToggle(false); }
   } else { 
     try { composer.render(); } 
     catch(e) { renderer.render(scene, camera); } 
@@ -8637,7 +8773,7 @@ window.toggleTerminalMode = function() {
   ACH.toggles++;
   if (ACH.toggles >= 2) unlockAchievement('twoWorlds'); 
 
-  const uiElements = ['portfolio-header', 'unified-hud', 'universe-legend', 'touch-controls', 'legend-sidebar', 'dac-microsite', 'legend-toggle-btn', 'btn-sword'];
+  const uiElements = ['portfolio-header', 'unified-hud', 'universe-legend', 'touch-controls', 'legend-sidebar', 'dac-microsite', 'legend-toggle-btn', 'btn-sword', 'btn-collection'];
   const modeBtn = document.getElementById('mode-toggle-btn');
   const T = EX_TEXT[exLang()];
 
@@ -9620,12 +9756,15 @@ const REFL = {
   }
 };
 
-MG.text = function(game, which) { return REFL[game][this.isEN() ? 'en' : 'es'][which]; };
+MG.text = function(game, which) { return Object.assign({}, REFL[game][this.isEN() ? 'en' : 'es'][which], { _g: game, _w: which }); };
+function reflSeen(g, w) { try { return !!((readUnlocks().refl || {})[g + '.' + w]); } catch (e) { return false; } }
+function reflMark(g, w) { try { const u = readUnlocks(); u.refl = Object.assign({}, u.refl, { [g + '.' + w]: 1 }); writeUnlocks(u); } catch (e) {} }
 MG.pending = false;
 window.isMiniIntro = false;
 
 MG.reflect = function(R, onDone, opts) {
   opts = opts || {};
+  if (R && R._g && !opts.force && reflSeen(R._g, R._w)) { if (onDone) onDone(); return; }          // las reflexiones se leen la primera vez; después viven en la Colección
   const en = this.isEN();
   window.isMiniIntro = true;
 
@@ -9673,6 +9812,7 @@ MG.reflect = function(R, onDone, opts) {
     if (keyH) window.removeEventListener('keydown', keyH, true);
     veil.style.pointerEvents = 'none'; veil.style.opacity = '0';
     setTimeout(() => { if (veil.parentNode) veil.parentNode.removeChild(veil); }, 1500);
+    if (accept && R && R._g && !opts.force) reflMark(R._g, R._w);
     if (accept) { if (onDone) onDone(); } else if (opts.onCancel) opts.onCancel();
   };
 
@@ -11694,8 +11834,9 @@ function hgStart() {
   morphHUD('renunciar');
   showSystemToast(en ? 'A fire, a traveler, and a monument that gives off cold.' : 'Un fuego, un viajero y un monumento que irradia frío.', '#e7e4de');
 }
-window.startHogueraGame = function() {
+window.startHogueraGame = function(view) {
   if (MG.pending || window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive) || window.isTuningGameActive || window.isWiringGameActive) return;
+  if (view) { HG.view = true; hgStart(); HG.phase = 'won'; HG.winT = 0; HG.listen = HG.listenS = 1; hgGrowl('sigh'); HG.vT = 7; colViewBar(() => { HG.vk = (HG.vk || 0) + 1; hgGrowl(['sigh', 'idle', 'click'][HG.vk % 3]); }); return; }
   MG.pending = true;
   MG.reflect(MG.text('hoguera', 'intro'), () => { MG.pending = false; hgStart(); }, { cancelable: true, onCancel: () => { MG.pending = false; } });
 };
@@ -11780,7 +11921,8 @@ function hgUpdate(dt) {
   } else if (HG.phase === 'won') {
     HG.winT += dt; HG.cold = Math.max(0, HG.cold - dt * 0.6);
     HG.heat = Math.min(1, HG.heat + dt * 0.25);
-    if (HG.winT > 4.2) { window.endHogueraGame(); return; }
+    if (HG.view) { HG.vT -= dt; if (HG.vT <= 0) { HG.vT = 9 + Math.random() * 6; hgGrowl(Math.random() < 0.5 ? 'sigh' : 'idle'); } }
+    else if (HG.winT > 4.2) { window.endHogueraGame(); return; }
   }
   HG.calmV += ((HG.phase === 'won' ? 1 : 0) - HG.calmV) * Math.min(1, dt * 1.5);
   HG.coldS += (HG.cold - HG.coldS) * Math.min(1, dt * 0.9);                      // el Coloso reacciona despacio
@@ -11894,7 +12036,7 @@ function hgUpdate(dt) {
 }
 
 function hgTeardown() {
-  window.isHogueraActive = false; window.hgPose = null; HG.phase = 'idle';
+  window.isHogueraActive = false; window.hgPose = null; HG.phase = 'idle'; HG.view = false;
   hgCamUnbind();
   hgToneStop();
   HG.pets.forEach(p => scene.remove(p)); HG.pets = [];
@@ -11907,7 +12049,7 @@ function hgTeardown() {
 }
 
 window.endHogueraGame = function() {
-  if (!window.isHogueraActive) return;
+  if (!window.isHogueraActive || HG.view) return;
   hgTeardown();
   MG.exit();
   colossusFound('serpiente');
@@ -11917,9 +12059,9 @@ window.endHogueraGame = function() {
 window.abortHogueraGame = function() {
   if (!window.isHogueraActive) return;
   const en = MG.isEN();
-  hgTeardown();
+  const v = HG.view; hgTeardown();
   MG.exit();
-  setTimeout(() => { MG.reflect(MG.text('hoguera', 'outro'), () => {}); }, 700);
+  if (!v) setTimeout(() => { MG.reflect(MG.text('hoguera', 'outro'), () => {}); }, 700);
 };
 
 // ==========================================
@@ -12215,15 +12357,16 @@ function whStart() {
   morphHUD('resonar');
   showSystemToast(en ? 'Something enormous sings beneath the silence.' : 'Algo enorme canta bajo el silencio.', '#e7e4de');
 }
-window.startWhaleGame = function(data) {
+window.startWhaleGame = function(data, view) {
   if (MG.pending || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive) || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
+  if (view) { WH.view = true; whStart(); WH.st = 'finale'; WH.fin = 0; WH.att = 1; WH.lone = 0; WH.finBurst = 0; WH.vT = 9; colViewBar(() => { WH.vk = (WH.vk || 0) + 1; whBeat([0, 2, 4, 3][WH.vk % 4], false); if (WH.vk % 2) whChoirSing(1.0); }); return; }
   MG.pending = true;
   MG.reflect(MG.text('ballena', 'intro'), () => { MG.pending = false; whStart(); },
     { cancelable: true, onCancel: () => { MG.pending = false; if (data && typeof openProjectPopup === 'function') openProjectPopup(data); } });   // al volver, la ballena conserva su ficha original
 };
 
 function whTeardown() {
-  window.isWhaleActive = false; window.hgPose = null; WH.st = 'idle';
+  window.isWhaleActive = false; window.hgPose = null; WH.st = 'idle'; WH.view = false;
   hgCamUnbind(); whToneStop();
   whHoldTone(false);
   if (WH.keyFn) { window.removeEventListener('keydown', WH.keyFn, true); WH.keyFn = null; }
@@ -12235,15 +12378,15 @@ function whTeardown() {
   WH.saved = null; WH.choir = []; WH.plank = null; WH.holding = false; WH.whale = null; WH.ocean = null; WH.mats = null; WH.eyes = []; WH.halo = null; WH.els = {}; WH.pulses = [];
 }
 window.endWhaleGame = function() {
-  if (!window.isWhaleActive) return;
+  if (!window.isWhaleActive || WH.view) return;
   whTeardown(); MG.exit();
   colossusFound('ballena');
   setTimeout(() => { MG.reflect(MG.text('ballena', 'outro'), () => { if (window.colMaybeBestiary) window.colMaybeBestiary(); }); }, 700);
 };
 window.abortWhaleGame = function() {
   if (!window.isWhaleActive) return;
-  whTeardown(); MG.exit();
-  setTimeout(() => { MG.reflect(MG.text('ballena', 'outro'), () => {}); }, 700);
+  const v = WH.view; whTeardown(); MG.exit();
+  if (!v) setTimeout(() => { MG.reflect(MG.text('ballena', 'outro'), () => {}); }, 700);
 };
 
 // ---------- Lógica: la ballena canta, tú respondes ----------
@@ -12467,7 +12610,8 @@ function whUpdate(dt) {
         if (WH.finBurst === 1 || WH.finBurst === 3) whChoirSing(1.1);
         if (MG.fx) MG.fx.burst(WH_POS.x, 12, WH_POS.z, 40, 3, 2.6, 0xbfe6ff, 0.3, 0.9);
       }
-      if (WH.fin > 9.5) { window.endWhaleGame(); return; }
+      if (WH.view) { if (WH.fin > 9.5) { WH.vT -= dt; if (WH.vT <= 0) { WH.vT = 9; WH.vk = (WH.vk || 0) + 1; whBeat([0, 2, 4, 3][WH.vk % 4], true); whChoirSing(0.8); } } }
+      else if (WH.fin > 9.5) { window.endWhaleGame(); return; }
       break;
   }
   if (!window.isWhaleActive) return;
@@ -13104,11 +13248,22 @@ function trtBlob(mk, n, cx, cy, cz, rx, ry, rz, c, s, a) {
 }
 function trtBuild(mk, sk) {
   const R = TRT_R, H = TRT_H, GA = 2.399963, root = new THREE.Group(), B = { root, sk, plants: [], legs: [], plotPos: [], pulse: [] };
-  const surf = (x, z) => H * Math.sqrt(Math.max(0, 1 - (x * x + z * z) / (R * R)));
+  // caparazón orgánico: escudos hexagonales en relieve (como placas de verdad), surcos entre ellos, anillos de crecimiento, nódulos y púas en el borde
+  const SC = [[0, 0]]; for (let k = 0; k < 6; k++) { const q = k * Math.PI / 3 + 0.3; SC.push([Math.cos(q) * 0.52 * R, Math.sin(q) * 0.52 * R]); } for (let k = 0; k < 12; k++) { const q = k * Math.PI / 6 + 0.3; SC.push([Math.cos(q) * 0.96 * R, Math.sin(q) * 0.96 * R]); }
+  const NOD = []; for (let k = 0; k < 6; k++) { const q = k * Math.PI / 3 + 0.3 + Math.PI / 6; NOD.push([Math.cos(q) * 0.3 * R, Math.sin(q) * 0.3 * R, 0.55]); NOD.push([Math.cos(q) * 0.74 * R, Math.sin(q) * 0.74 * R, 0.7]); }
+  const vor = (x, z) => { let d1 = 1e9, d2 = 1e9; for (let i = 0; i < SC.length; i++) { const d = Math.hypot(x - SC[i][0], z - SC[i][1]); if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; } return [d1, d2]; };
+  const sstep = (a0, b0, x) => { const u = Math.max(0, Math.min(1, (x - a0) / (b0 - a0))); return u * u * (3 - 2 * u); };
+  const bump = (x, z) => { const [d1, d2] = vor(x, z), ed = d2 - d1; let b = 0.95 * sstep(0.1, 1.7, ed) + 0.3 * (1 - Math.min(1, d1 / (R * 0.3))); NOD.forEach(n => { const dd = (x - n[0]) * (x - n[0]) + (z - n[1]) * (z - n[1]); if (dd < 2) b += n[2] * 1.7 * Math.exp(-dd / 0.2); }); return b * (1 - sstep(0.85 * R, R, Math.hypot(x, z)) * 0.5); };
+  const surf = (x, z) => H * Math.sqrt(Math.max(0, 1 - (x * x + z * z) / (R * R))) + bump(x, z);
   const body = [0.5, 0.58, 0.56];
-  B.shell = mk(1500, (i, o) => { const y = (i + 0.5) / 1500, rr = Math.sqrt(1 - y * y), a = i * GA, x = Math.cos(a) * rr * R, z = Math.sin(a) * rr * R;
-    o.x = x; o.z = z; o.y = y * H; const cell = Math.sin(x * 0.9) * Math.sin(z * 0.9) + Math.sin((x + z) * 0.55) * 0.6, edge = Math.abs(cell) < 0.18;
-    o.s = (edge ? 0.12 : 0.085) * sk; o.a = edge ? 0.85 : 0.42; o.r = edge ? 0.72 : 0.36; o.g = edge ? 0.88 : 0.52; o.b = edge ? 0.78 : 0.48; });
+  B.shell = mk(3200, (i, o) => { const y = (i + 0.5) / 3200, rr = Math.sqrt(1 - y * y), a = i * GA, x = Math.cos(a) * rr * R, z = Math.sin(a) * rr * R, [d1, d2] = vor(x, z), ed = d2 - d1;
+    o.x = x; o.z = z; o.y = surf(x, z);
+    const groove = ed < 0.32, ring = !groove && Math.abs(Math.sin(d1 * 5.2)) < 0.14, nod = NOD.some(n => (x - n[0]) * (x - n[0]) + (z - n[1]) * (z - n[1]) < 0.3);
+    o.s = (groove ? 0.07 : nod ? 0.16 : ring ? 0.11 : 0.09) * sk; o.a = groove ? 0.28 : nod ? 0.95 : ring ? 0.8 : 0.5;
+    const m = 0.85 + 0.3 * Math.random(); o.r = (groove ? 0.2 : nod ? 0.9 : ring ? 0.72 : 0.4) * m; o.g = (groove ? 0.3 : nod ? 0.82 : ring ? 0.85 : 0.55) * m; o.b = (groove ? 0.28 : nod ? 0.6 : ring ? 0.64 : 0.42) * m; });
+  root.add(mk(1800, (i, o) => { let x, z, ed, g = 0; do { const a = Math.random() * 6.2832, r = Math.sqrt(Math.random()) * R * 0.99; x = Math.cos(a) * r; z = Math.sin(a) * r; const v = vor(x, z); ed = v[1] - v[0]; } while (ed > 0.3 && g++ < 80);
+    o.x = x; o.z = z; o.y = surf(x, z) + 0.05; o.s = 0.13 * sk; o.a = 0.95; o.r = 0.86; o.g = 0.92; o.b = 0.72; }));     // aristas de los escudos: la placa se lee como placa
+  root.add(mk(180, (i, o) => { const k = i % 12, q = k * Math.PI / 6 + 0.3 + Math.PI / 12, u = Math.floor(i / 12) / 14, rr2 = R * (0.97 + 0.04 * u), hh = (1 - u); o.x = Math.cos(q) * (rr2 + 0.4 * hh) * (1 - u * 0.12); o.z = Math.sin(q) * (rr2 + 0.4 * hh) * (1 - u * 0.12); o.y = 0.2 + u * 2.4; o.s = 0.12 * sk; o.a = 0.9; o.r = 0.92; o.g = 0.84; o.b = 0.6; }));   // púas del borde
   root.add(B.shell);
   root.add(mk(90, (i, o) => { const a = i / 90 * 6.2832; o.x = Math.cos(a) * R * 1.01; o.z = Math.sin(a) * R * 1.01; o.y = 0.1; o.s = 0.1 * sk; o.a = 0.7; o.r = 0.6; o.g = 0.75; o.b = 0.7; }));
   B.head = new THREE.Group(); B.head.position.set(R - 0.6, 1.5, 0); root.add(B.head);                                  // cabeza y cuello
@@ -13242,26 +13397,27 @@ function trpStart() {
   showSystemToast(trtT('toast'), '#e7e4de');
   trpSub(TRT.away ? trtT('away') : trtT('s0'), 7);
 }
-window.startTortugaGame = function(data) {
+window.startTortugaGame = function(data, view) {
   TRP.data = data || null;
   if (MG.pending || window.isTortugaActive || window.isSputnikActive || window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
+  if (view) { TRP.view = true; trpStart(); TRP.vT = 6; colViewBar(() => colVoice('tortuga', 1)); return; }
   MG.pending = true;
   MG.reflect(MG.text('tortuga', 'intro'), () => { MG.pending = false; trpStart(); },
     { cancelable: true, onCancel: () => { MG.pending = false; if (data && typeof openProjectPopup === 'function') openProjectPopup(data); } });
 };
 function trpTeardown() {
   trtSave();
-  window.isTortugaActive = false; TRP.st = 'idle';
+  window.isTortugaActive = false; TRP.st = 'idle'; TRP.view = false;
   const tg = window.travelerGroup; if (tg && TRP.tsave) { tg.position.copy(TRP.tsave.pos); tg.quaternion.copy(TRP.tsave.quat); tg.scale.copy(TRP.tsave.scale); }
   TRP.tsave = null; window.hgPose = null;
   hgCamUnbind();
   if (TRP.group) { mgDispose(TRP.group); TRP.group = null; }
   TRP.B = TRP.stars = TRP.dust = TRP.ground = TRP.sun = null; TRP.els = {};
 }
-window.endTortugaGame = function() { if (!window.isTortugaActive) return; const w = TRP.done, d = TRP.data; trpTeardown(); MG.exit(); setTimeout(() => { MG.reflect(MG.text('tortuga', 'outro'), () => colAfter(d, w)); }, 700); };
+window.endTortugaGame = function() { if (!window.isTortugaActive) return; const w = TRP.done, d = TRP.data, v = TRP.view; trpTeardown(); MG.exit(); if (!v) setTimeout(() => { MG.reflect(MG.text('tortuga', 'outro'), () => colAfter(d, w)); }, 700); };
 window.abortTortugaGame = window.endTortugaGame;
 window.trtTap = function(cx, cy) {                                                // toque: el lugar del caparazón más cercano al dedo
-  if (!window.isTortugaActive || window.isMiniIntro || !TRP.B) return;
+  if (!window.isTortugaActive || window.isMiniIntro || !TRP.B || TRP.view) return;
   camera.updateMatrixWorld(true); TRP.B.root.updateMatrixWorld(true);
   let best = -1, bd = Math.max(46, window.innerHeight * 0.075);
   TRP.B.plotPos.forEach((p, k) => {
@@ -13282,7 +13438,8 @@ function trpUpdate(dt) {
   const C = trtCounts();
   if (ev.some(e => e.step) && !calm) { shakeIntensity = Math.max(shakeIntensity, 0.06); if (MG.fx) MG.fx.burst(TRP.B.root.position.x + 3.5, -2.5, 5.6, 6, 1.4, 1.6, 0x9aa3ad, 0.2, 0.9); }
   if (!TRP.done && C.blooms >= 4) { TRP.done = true; TRP.B.finale = 1; TRP.st = 'finale'; TRP.finT = 0; colossusFound('tortuga'); colVoice('tortuga', 1); trpSub(trtT('done'), 12); MGS.arpeggio([0, 2, 3, 5, 4], 0.2, 3.4, 0.03); }
-  if (TRP.st === 'finale') { TRP.finT += dt; if (TRP.finT > 15) { window.endTortugaGame(); return; } }
+  if (TRP.view) { TRP.vT -= dt; if (TRP.vT <= 0) { TRP.vT = 12 + Math.random() * 5; colVoice('tortuga', 0.7); } }
+  else if (TRP.st === 'finale') { TRP.finT += dt; if (TRP.finT > 15) { window.endTortugaGame(); return; } }
   trtAnimate(TRP.B, t, dt, calm);
   // el mundo pasa despacio bajo la tortuga
   const GA = TRP.ground.geometry.attributes.position.array, sp = 0.35 * sw;
@@ -13370,7 +13527,7 @@ window.arTurtleTick = arTurtleTick; window.arTurtleToggle = arTurtleToggle; wind
 // 🐾 EL BESTIARIO DE COLOSOS
 //   Nueve colosos viven en el universo: tres ya estaban (la serpiente, la ballena y la tortuga) y seis se ganan en las secciones.
 //   Cada uno se «encuentra» al terminar su Juego Otro. Los encontrados quedan guardados; con el primero llega el logro «Primer coloso»;
-//   con los nueve, el logro «Bestiario de colosos» y su recompensa: el bestiario completo con el mapa de conceptos.
+//   con los nueve, el logro «Colección de colosos» y su recompensa: el bestiario completo con el mapa de conceptos.
 // ==========================================================================================
 const COLOSSI = [
   { id: 'serpiente', hex: 0xc9786b, es: ['Serpiente emplumada', 'La Hoguera de Datos', 'El Viajero, libre en el vacío'], en: ['Feathered serpent', 'The Data Bonfire', 'The Traveler, free in the void'],
@@ -13406,9 +13563,10 @@ function colossiCount() { const g = colossiGot(); return COLOSSI.filter(c => g[c
 function colossusFound(id) {                                                       // se llama al terminar el Juego Otro de cada coloso
   const c = COLOSSI.find(x => x.id === id); if (!c) return false;
   const g = colossiGot(); if (g[id]) return false;
+  window._colNewUntil = Date.now() + 25000;
   const u = readUnlocks(); u.colossi = Object.assign({}, g, { [id]: Date.now() }); writeUnlocks(u);
   const en = window.currentLang === 'en', n = colossiCount();
-  setTimeout(() => { if (typeof showSystemToast === 'function') showSystemToast((en ? '🐾 BESTIARY · ' : '🐾 BESTIARIO · ') + (en ? c.en[0] : c.es[0]) + '  ' + n + '/' + COLOSSI.length, '#e7e4de'); }, 1500);
+  setTimeout(() => { if (typeof showSystemToast === 'function') showSystemToast((en ? '🐾 COLLECTION · ' : '🐾 COLECCIÓN · ') + (en ? c.en[0] : c.es[0]) + '  ' + n + '/' + COLOSSI.length, '#e7e4de'); }, 1500);
   try { if (typeof updateAchievementsMenu === 'function') updateAchievementsMenu(); if (ACH.open && typeof renderAchievementsPanel === 'function') renderAchievementsPanel(); } catch (e) {}
   return true;
 }
@@ -13428,8 +13586,8 @@ function colBestiaryHTML() {                                                    
   const cards = COLOSSI.map(c => {
     const has = !!got[c.id];
     if (!has) return `<li class="bst-card is-locked"><div class="bst-glyph">${colGlyph(c.id, c.hex, true)}</div><strong>▒▒▒▒ ▒▒▒▒▒</strong><span class="bst-where">${achEsc(c[L][2])}</span><small>${en ? 'Not found yet.' : 'Aún sin encontrar.'}</small></li>`;
-    return `<li class="bst-card"><div class="bst-glyph">${colGlyph(c.id, c.hex, false)}</div><strong>${achEsc(c[L][0])}</strong><span class="bst-where">${achEsc(c[L][1])} · ${achEsc(c[L][2])}</span>
-      <small>${achEsc(c.tx[L])}</small><div class="bst-chips">${c.con[L].map(k => `<i>${achEsc(k)}</i>`).join('')}</div></li>`;
+    return `<li class="bst-card is-found" data-id="${c.id}" tabindex="0" role="button" aria-label="${achEsc(c[L][0])} · ${en ? 'view' : 'contemplar'}"><div class="bst-glyph">${colGlyph(c.id, c.hex, false)}</div><strong>${achEsc(c[L][0])}</strong><span class="bst-where">${achEsc(c[L][1])} · ${achEsc(c[L][2])}</span>
+      <small>${achEsc(c.tx[L])}</small><div class="bst-chips">${c.con[L].map(k => `<i>${achEsc(k)}</i>`).join('')}</div><em class="bst-visit">${en ? '◉ Look and listen' : '◉ Contemplar y escuchar'}</em><button type="button" class="bst-refl" data-refl="${c.id}">${en ? '📖 Read its reflections' : '📖 Leer sus reflexiones'}</button></li>`;
   }).join('');
   let map = '';
   if (all) {                                                                       // recompensa: el mapa de conceptos que une a los colosos
@@ -13437,8 +13595,8 @@ function colBestiaryHTML() {                                                    
     map = `<h3>${en ? 'Concept map' : 'Mapa de conceptos'}</h3><p class="bst-note">${en ? 'Nine colossi, one question: what does it mean to accompany what is bigger and slower than us?' : 'Nueve colosos, una sola pregunta: ¿qué significa acompañar lo que es más grande y más lento que nosotros?'}</p>
       <ul class="bst-map">${Object.keys(idx).map(k => `<li><b>${achEsc(k)}</b><span>${idx[k].map(achEsc).join(' · ')}</span></li>`).join('')}</ul>`;
   }
-  return `<button type="button" class="ach-close" aria-label="${en ? 'Close' : 'Cerrar'}">×</button><p class="ach-eyebrow">🐾</p><h2>${en ? 'Bestiary of colossi' : 'Bestiario de colosos'}</h2>
-    <p class="ach-sub">${en ? 'The colossi found in each section of the universe.' : 'Los colosos que viven en cada sección del universo.'}</p><p class="ach-count">${n} / ${COLOSSI.length}</p><div class="ach-bar"><i style="width:${Math.round(n / COLOSSI.length * 100)}%"></i></div>
+  return `<button type="button" class="ach-close" aria-label="${en ? 'Close' : 'Cerrar'}">×</button><p class="ach-eyebrow">🐾</p><h2>${en ? 'Colossi collection' : 'Colección de colosos'}</h2>
+    <p class="ach-sub">${en ? 'The colossi found in each section of the universe. Tap one you have found to look at it and listen.' : 'Los colosos que viven en cada sección del universo. Toca uno que ya encontraste para contemplarlo y escucharlo.'}</p><p class="ach-count">${n} / ${COLOSSI.length}</p><div class="ach-bar"><i style="width:${Math.round(n / COLOSSI.length * 100)}%"></i></div>
     <ul class="bst-grid">${cards}</ul>${map}`;
 }
 let _bstEl = null;
@@ -13449,7 +13607,7 @@ function openBestiary() {
       #bst-panel[hidden]{display:none} #bst-panel .ach-box{position:relative;width:min(94vw,720px);max-height:88vh;overflow:auto;padding:26px 22px;background:rgba(10,12,16,.92);border:1px solid rgba(231,228,222,.16);text-align:center}
       .bst-grid{list-style:none;padding:0;margin:18px 0 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;text-align:left}
       .bst-card{padding:12px;border:1px solid rgba(231,228,222,.14);background:rgba(231,228,222,.03);display:flex;flex-direction:column;gap:5px;font-weight:300}
-      .bst-card.is-locked{opacity:.55} .bst-card strong{font-weight:400;letter-spacing:.06em;font-size:.85rem} .bst-where{font-size:.62rem;letter-spacing:.14em;color:#9a968f;text-transform:uppercase}
+      .bst-card.is-found{cursor:pointer;transition:border-color .2s,background .2s} .bst-card.is-found:hover,.bst-card.is-found:focus-visible{border-color:rgba(231,228,222,.5);background:rgba(231,228,222,.08);outline:none} .bst-refl{align-self:flex-start;margin-top:6px;background:none;border:1px solid rgba(201,168,92,.4);color:#c9a85c;font:inherit;font-size:.62rem;letter-spacing:.14em;padding:5px 10px;cursor:pointer} .bst-refl:hover{background:rgba(201,168,92,.1)} .bst-visit{font-style:normal;font-size:.62rem;letter-spacing:.16em;color:#c9a85c;margin-top:4px} .bst-card.is-locked{opacity:.55} .bst-card strong{font-weight:400;letter-spacing:.06em;font-size:.85rem} .bst-where{font-size:.62rem;letter-spacing:.14em;color:#9a968f;text-transform:uppercase}
       .bst-card small{font-size:.72rem;line-height:1.55;color:#c3c8d0} .bst-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px} .bst-chips i{font-style:normal;font-size:.6rem;letter-spacing:.1em;padding:2px 7px;border:1px solid rgba(231,228,222,.22);color:#cfd3da}
       #bst-panel h3{margin:26px 0 8px;font-weight:300;letter-spacing:.3em;font-size:.72rem;color:#a8a49c} .bst-note{font-size:.8rem;line-height:1.7;color:#cfd3da;margin:0 0 12px}
       .bst-map{list-style:none;padding:0;margin:0;text-align:left;font-size:.74rem;font-weight:300} .bst-map li{padding:6px 0;border-top:1px solid rgba(231,228,222,.08);display:flex;gap:10px;flex-wrap:wrap} .bst-map b{font-weight:400;min-width:12em;letter-spacing:.05em} .bst-map span{color:#9a968f}`;
@@ -13457,13 +13615,43 @@ function openBestiary() {
   }
   if (!_bstEl) {
     _bstEl = document.createElement('div'); _bstEl.id = 'bst-panel'; _bstEl.hidden = true;
-    _bstEl.addEventListener('click', (e) => { if (e.target === _bstEl || (e.target.closest && e.target.closest('.ach-close'))) closeBestiary(); });
+    _bstEl.addEventListener('click', (e) => { if (e.target === _bstEl || (e.target.closest && e.target.closest('.ach-close'))) { closeBestiary(); return; } const rb = e.target.closest && e.target.closest('.bst-refl'); if (rb) { e.stopPropagation(); colReadRefl(rb.dataset.refl); return; } const cd = e.target.closest && e.target.closest('.bst-card.is-found'); if (cd) colVisit(cd.dataset.id); });
+    _bstEl.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('is-found')) { e.preventDefault(); colVisit(e.target.dataset.id); } });
     ['touchstart', 'touchmove', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'wheel'].forEach(evt => _bstEl.addEventListener(evt, (e) => e.stopPropagation(), { passive: true }));
     document.body.appendChild(_bstEl);
   }
   _bstEl.innerHTML = '<div class="ach-box">' + colBestiaryHTML() + '</div>'; _bstEl.hidden = false; window._bstOpen = true; isUIOpen = true;
   if (typeof playSound === 'function') playSound('ui');
 }
+function colViewBar(soundFn) {                                                     // modo contemplación: botón para oír al coloso + salida
+  const ui = MG.ui; if (!ui) return; const en = MG.isEN();
+  ui.hint.textContent = en ? 'Contemplation: drag to turn, wheel or pinch to come closer. Tap 🔊 to hear it.' : 'Contemplación: arrastra para girar, rueda o pellizco para acercarte. Toca 🔊 para oírlo.';
+  const b = document.createElement('button'); b.textContent = en ? '🔊  LISTEN' : '🔊  ESCUCHAR';
+  b.style.cssText = 'position:absolute; left:50%; transform:translateX(-50%); bottom:calc(92px + env(safe-area-inset-bottom,0px)); pointer-events:auto; background:rgba(10,10,12,0.45); border:1px solid rgba(201,168,92,0.55); color:#e7d9b4; padding:10px 24px; font-family:inherit; font-size:0.72rem; font-weight:300; letter-spacing:0.3em; cursor:pointer; border-radius:2px;';
+  b.addEventListener('click', (e) => { e.stopPropagation(); try { soundFn(); } catch (er) {} });
+  ['mousedown', 'touchstart', 'mouseup', 'touchend', 'pointerdown', 'pointerup'].forEach(ev => b.addEventListener(ev, (e) => e.stopPropagation()));
+  ui.root.appendChild(b);
+  const tag = document.createElement('div'); tag.textContent = en ? 'CONTEMPLATION' : 'CONTEMPLACIÓN';
+  tag.style.cssText = 'position:absolute; right:18px; top:calc(84px + env(safe-area-inset-top,0px)); font-size:0.6rem; letter-spacing:0.34em; color:#c9a85c; opacity:0.85; pointer-events:none;'; ui.root.appendChild(tag);
+}
+const COL_REFL_KEY = { serpiente: 'hoguera', ballena: 'ballena', tortuga: 'tortuga' };
+function colReadRefl(id) {                                                         // releer la reflexión inicial y la final de un coloso encontrado
+  if (!colossiGot()[id]) return; const k = COL_REFL_KEY[id] || id;
+  closeBestiary(); window._bstAfter = null;
+  setTimeout(() => { MG.reflect(MG.text(k, 'intro'), () => { MG.reflect(MG.text(k, 'outro'), () => { setTimeout(openBestiary, 300); }, { force: true }); }, { force: true }); }, 350);
+}
+window.colReadRefl = colReadRefl;
+function colVisit(id, force) {                                                            // volver a ver un coloso ya encontrado: relanza su escena
+  if ((!force && !colossiGot()[id]) || window.isColossusActive || window.isHogueraActive || window.isWhaleActive || window.isTortugaActive) return;
+  closeBestiary(); try { if (ACH.open && typeof closeAchievements === 'function') closeAchievements(); } catch (e) {}
+  setTimeout(() => {
+    if (id === 'serpiente' && window.startHogueraGame) window.startHogueraGame(true);
+    else if (id === 'ballena' && window.startWhaleGame) window.startWhaleGame(null, true);
+    else if (id === 'tortuga' && window.startTortugaGame) window.startTortugaGame(null, true);
+    else if (COL_DEF[id] && window.startColossusGame) window.startColossusGame(id, null, true);
+  }, 450);
+}
+window.colVisit = colVisit;
 function closeBestiary() { if (_bstEl) _bstEl.hidden = true; window._bstOpen = false; isUIOpen = !!ACH.open; if (typeof playSound === 'function') playSound('ui'); const f = window._bstAfter; window._bstAfter = null; if (f) setTimeout(f, 300); }
 document.addEventListener('keydown', (e) => { if (window._bstOpen && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeBestiary(); } }, true);
 window.openBestiary = openBestiary; window.closeBestiary = closeBestiary;
@@ -13496,13 +13684,13 @@ function colSky(g, tint) {
   COLG.dust = sptPoints(600, (i, o) => { const t = Math.pow(Math.random(), 0.7), r = 24 + t * 60, a = Math.random() * 6.283; o.x = Math.cos(a) * r; o.z = Math.sin(a) * r - 8; o.y = (Math.random() - 0.5) * 22 - 4; o.s = 0.14 + Math.random() * 0.4; o.a = 0.05 + Math.random() * 0.1; o.r = tint[0]; o.g = tint[1]; o.b = tint[2]; });
   g.add(COLG.dust);
 }
-function colStart(id) {
+function colStart(id, view) {
   const D = COL_DEF[id]; if (!D || window.isColossusActive) return;
   window.isColossusActive = true; COLG.id = id; COLG.def = D;
   MG.enter(24);
   camera.fov = D.iso.fov || 42; targetFov = camera.fov; camera.updateProjectionMatrix();
   userGroup.rotation.order = 'YXZ';
-  Object.assign(COLG, { t: 0, subT: 0, won: false, finT: 0 });
+  Object.assign(COLG, { t: 0, subT: 0, won: false, finT: 0, view: !!view });
   const g = new THREE.Group(); COLG.group = g; colSky(g, D.sky || [0.5, 0.6, 0.8]);
   COLG.S = D.build(g); scene.add(g);
   const tg = window.travelerGroup;                                                  // el Viajero siempre está: da la medida de la inmensidad del coloso
@@ -13515,26 +13703,30 @@ function colStart(id) {
   const sub = document.createElement('div');
   sub.style.cssText = 'position:absolute; left:50%; top:calc(150px + env(safe-area-inset-top,0px)); transform:translateX(-50%); width:min(90vw,640px); text-align:center; font-size:0.95rem; font-weight:300; letter-spacing:0.12em; line-height:1.8; color:#cfd8e3; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 14px rgba(0,0,0,0.9); pointer-events:none;';
   ui.root.appendChild(sub); COLG.els = { title, sub, hint: ui.hint };
+  if (D.plate) { const pl = document.createElement('div');                              // la lámina: nombre científico y número, como en un bestiario grabado
+    pl.style.cssText = 'position:absolute; left:18px; bottom:calc(22px + env(safe-area-inset-bottom,0px)); font:italic 300 0.82rem Georgia, "Times New Roman", serif; letter-spacing:0.08em; color:#c9a85c; opacity:0.85; text-shadow:0 0 10px rgba(0,0,0,0.9); pointer-events:none; border-top:1px solid rgba(201,168,92,0.45); padding-top:6px;';
+    pl.textContent = D.plate[0] + '  ·  ' + D.plate[1]; ui.root.appendChild(pl); }
   hgCamReset(); hgCamBind();
   window.__colHud = D.hud; morphHUD('coloso');
-  showSystemToast(colT('toast'), '#e7e4de');
-  colSub(colT('s0'), 7);
+  if (view) { colViewBar(() => { COLG.vk = (COLG.vk || 0) + 1; if (D.voice) colVoice(COLG.vk % 3 === 0 && D.voiceWin ? D.voiceWin : D.voice, 1); }); COLG.vT = 9; }
+  else { showSystemToast(colT('toast'), '#e7e4de'); colSub(colT('s0'), 7); }
   if (D.voice && D.voiceEvery !== undefined) setTimeout(() => { if (window.isColossusActive && COLG.id === id) colVoice(D.voice, 0.6); }, 2200);
 }
-window.startColossusGame = function(id, data) {
+window.startColossusGame = function(id, data, view) {
   COLG.data = data || null;
   if (MG.pending || window.isColossusActive || window.isTortugaActive || window.isSputnikActive || window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
+  if (view) { colStart(id, true); return; }
   MG.pending = true;
   MG.reflect(MG.text(id, 'intro'), () => { MG.pending = false; colStart(id); },
     { cancelable: true, onCancel: () => { MG.pending = false; if (data && typeof openProjectPopup === 'function') openProjectPopup(data); } });
 };
 function colTeardown() {
-  window.isColossusActive = false; hgCamUnbind();
+  window.isColossusActive = false; hgCamUnbind(); COL_INK.length = 0;
   const tg = window.travelerGroup; if (tg && COLG.tsave) { tg.position.copy(COLG.tsave.pos); tg.quaternion.copy(COLG.tsave.quat); tg.scale.copy(COLG.tsave.scale); }
   COLG.tsave = null; COLG.pose = null; COLG.pad = null; window.hgPose = null;
   if (COLG.def && COLG.def.dispose && COLG.S) { try { COLG.def.dispose(COLG.S); } catch (e) {} }
   if (COLG.group) { mgDispose(COLG.group); COLG.group = null; }
-  COLG.S = COLG.stars = COLG.dust = null; COLG.els = {};
+  COLG.S = COLG.stars = COLG.dust = null; COLG.els = {}; COLG.view = false;
 }
 function colAfter(data, found) {                                                  // al cerrar la reflexión final: (bestiario si se completó) y luego el contenido de la sección
   const open = () => { if (data && typeof openProjectPopup === 'function') openProjectPopup(data); };
@@ -13543,10 +13735,10 @@ function colAfter(data, found) {                                                
 }
 window.colAfter = colAfter;
 function colOutro(id, wasFound, data) { setTimeout(() => { MG.reflect(MG.text(id, 'outro'), () => colAfter(data, wasFound)); }, 700); }
-window.endColossusGame = function() { if (!window.isColossusActive) return; const id = COLG.id, w = COLG.won, d = COLG.data; colTeardown(); MG.exit(); colOutro(id, w, d); };
-window.abortColossusGame = function() { if (!window.isColossusActive) return; const id = COLG.id, d = COLG.data; colTeardown(); MG.exit(); colOutro(id, false, d); };
-window.colTap = function(cx, cy) { if (window.isColossusActive && !window.isMiniIntro && COLG.def && COLG.def.tap) COLG.def.tap(COLG.S, cx, cy); };
-window.colDown = function(cx, cy) { if (window.isColossusActive && !window.isMiniIntro && COLG.def && COLG.def.down) COLG.def.down(COLG.S, cx, cy); };
+window.endColossusGame = function() { if (!window.isColossusActive || COLG.view) return; const id = COLG.id, w = COLG.won, d = COLG.data; colTeardown(); MG.exit(); colOutro(id, w, d); };
+window.abortColossusGame = function() { if (!window.isColossusActive) return; const id = COLG.id, d = COLG.data, v = COLG.view; colTeardown(); MG.exit(); if (!v) colOutro(id, false, d); };
+window.colTap = function(cx, cy) { if (window.isColossusActive && !COLG.view && !window.isMiniIntro && COLG.def && COLG.def.tap) COLG.def.tap(COLG.S, cx, cy); };
+window.colDown = function(cx, cy) { if (window.isColossusActive && !COLG.view && !window.isMiniIntro && COLG.def && COLG.def.down) COLG.def.down(COLG.S, cx, cy); };
 window.colUp = function() { if (window.isColossusActive && COLG.def && COLG.def.up) COLG.def.up(COLG.S); };
 window.colMaybeBestiary = function() { const u = readUnlocks(); if (colossiCount() >= COLOSSI.length && !u.bestiarySeen) { u.bestiarySeen = true; writeUnlocks(u); setTimeout(openBestiary, 600); } };
 function colUpdate(dt) {
@@ -13555,18 +13747,21 @@ function colUpdate(dt) {
   COLG.t += dt; COLG.subT -= dt;
   if (COLG.els.sub && COLG.subT <= 0) COLG.els.sub.style.opacity = '0';
   COLG.stars.rotation.y += dt * 0.004 * sw; COLG.dust.rotation.y += dt * 0.01 * sw;
+  if (COLG.view && D.view) D.view(S, dt, t);
   D.update(S, dt, t, calm);
-  const P = COLG.pose; if (P) { const tp = D.travPos ? D.travPos(S) : (D.trav ? [Math.sin(D.trav[0]) * D.trav[1], Math.cos(D.trav[0]) * D.trav[1]] : [0, 12]); P.pos.x = tp[0]; P.pos.z = tp[1]; P.yaw = Math.atan2(-tp[0], -tp[1]); COLG.pad.position.set(tp[0], 0, tp[1]); }
-  if (D.voice && D.voiceEvery && !COLG.won) { S.vT = (S.vT === undefined ? D.voiceEvery * 0.3 : S.vT) - dt; if (S.vT <= 0) { S.vT = D.voiceEvery * (0.8 + 0.4 * Math.random()); colVoice(D.voice, 0.7); } }
-  if (S.won && !COLG.won) { COLG.won = true; COLG.finT = 0; colossusFound(COLG.id); if (D.voice) colVoice(D.voiceWin || D.voice, 1); colSub(colT('done'), 12); }
-  if (COLG.won) { COLG.finT += dt; if (COLG.finT > (D.endAfter || 14)) { window.endColossusGame(); return; } }
+  COL_INK.forEach(m => { m.uniforms.uTime.value = t; });
+  const P = COLG.pose; if (P) { const tp = D.travPos ? D.travPos(S) : (D.trav ? [Math.sin(D.trav[0]) * D.trav[1], Math.cos(D.trav[0]) * D.trav[1]] : [0, 12]); P.pos.x = tp[0]; P.pos.z = tp[1]; P.pos.y = ((typeof TRAVELER_FEET !== 'undefined') ? TRAVELER_FEET : 0.6) + (tp[2] || 0); P.yaw = Math.atan2(-tp[0], -tp[1]); COLG.pad.position.set(tp[0], tp[2] || 0, tp[1]); }
+  if (COLG.view) { COLG.vT -= dt; if (COLG.vT <= 0) { COLG.vT = 11 + Math.random() * 5; if (D.voice) colVoice(D.voice, 0.7); } }
+  else if (D.voice && D.voiceEvery && !COLG.won) { S.vT = (S.vT === undefined ? D.voiceEvery * 0.3 : S.vT) - dt; if (S.vT <= 0) { S.vT = D.voiceEvery * (0.8 + 0.4 * Math.random()); colVoice(D.voice, 0.7); } }
+  if (!COLG.view && S.won && !COLG.won) { COLG.won = true; COLG.finT = 0; colossusFound(COLG.id); if (D.voice) colVoice(D.voiceWin || D.voice, 1); colSub(colT('done'), 12); }
+  if (COLG.won && !COLG.view) { COLG.finT += dt; if (COLG.finT > (D.endAfter || 14)) { window.endColossusGame(); return; } }
   // cámara: giro libre a distancia fija + zoom (igual que Hoguera, Ballena, Sputnik y Tortuga)
   const CM = HG_CAM, I = D.iso;
   if (!CM.ptrs.size) { CM.yawT += CM.yawV * dt; CM.yawV *= Math.exp(-dt * 3.2); }
   const kc = 1 - Math.exp(-dt * 9);
   CM.yaw += (CM.yawT - CM.yaw) * kc; CM.pit += (CM.pitT - CM.pit) * kc; CM.zoom += (CM.zoomT - CM.zoom) * kc;
   const asp = window.innerWidth / window.innerHeight, fit = Math.max(1, 1.5 / asp), base = D.camDist ? D.camDist(S) : I.dist, Dd = base * fit * (D.camDist ? Math.max(0.7, Math.min(1.3, CM.zoom)) : CM.zoom);
-  const psi = I.yaw + CM.yaw + Math.sin(t * 0.05) * 0.03 * sw, phi = Math.max(0.05, Math.min(1.2, I.pitch + CM.pit)), Tg = I.tg;
+  const psi = I.yaw + CM.yaw + Math.sin(t * 0.05) * 0.03 * sw, phi = Math.max(0.05, Math.min(1.2, I.pitch + CM.pit)), Tg = D.tgFn ? D.tgFn(S) : I.tg;
   userGroup.position.set(Tg[0] + Dd * Math.sin(psi) * Math.cos(phi), Tg[1] + Dd * Math.sin(phi), Tg[2] + Dd * Math.cos(psi) * Math.cos(phi));
   userGroup.rotation.set(-phi, psi, 0);
   const v = D.hudVals(S); MG.setHUD({ 'lives-value': String(v[0]), 'level-value': String(v[1]), 'files-value': String(v[2]), 'combo-value': String(v[3]) });
@@ -13646,98 +13841,180 @@ function colEll(cx, cy, cz, Rx, Ry, Rz, az, el) {                               
   return { p: [cx + x, cy + y, cz + z], n: [x / (Rx * Rx), y / (Ry * Ry), z / (Rz * Rz)] };
 }
 
-// ---------- Modelado orgánico en puntos (pelaje, plumas, élitros, patas) ----------
+// ---------- Grabado y oro: los colosos orgánicos se dibujan con trazos de tinta (sombreado que sigue la forma) y acentos de oro ----------
+//   La tinta es el cuerpo del animal; el oro es lo que el juego va encendiendo (calma, confianza, circuito).
 const COL_LD = [0.42, 0.78, 0.46];                                                  // luz de luna
+const COL_INK = [], COL_INKC = [0.93, 0.89, 0.78], COL_GOLD = [1, 0.77, 0.3];
 function colNorm() { const u = Math.random() * 2 - 1, a = Math.random() * 6.283, s = Math.sqrt(1 - u * u); return [s * Math.cos(a), u, s * Math.sin(a)]; }
-function colPush(L, x, y, z, c, s, a, o) { L.push({ x, y, z, r: c[0], g: c[1], b: c[2], s: (s || 0.14) * (0.75 + Math.random() * 0.6), a: Math.min(1, (a || 0.85) * (0.72 + Math.random() * 0.28) * (c[3] === undefined ? 1 : c[3])) }); }
-function colShell(L, n, cx, cy, cz, rx, ry, rz, fn, o) {                           // puntos sobre un elipsoide (con pelaje opcional); fn → [r,g,b,(a)]
+function colG(c) { c.gold = true; return c; }                                       // marca un color como acento de oro
+function colUnit(v) { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; }
+function colCross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+function colPush(L, x, y, z, c, s, a, d, n) {
+  const mx = Math.max(c[0], c[1], c[2]), mn = Math.min(c[0], c[1], c[2]);
+  L.push({ x, y, z, r: c[0], g: c[1], b: c[2], s: (s || 0.14) * (0.75 + Math.random() * 0.6), a: Math.min(1, (a || 0.85) * (0.72 + Math.random() * 0.28) * (c[3] === undefined ? 1 : c[3])), gold: !!c.gold || (mx > 0.62 && (mx - mn) / mx > 0.55), d: d || null, n: n || null });
+}
+function colShell(L, n, cx, cy, cz, rx, ry, rz, fn, o) {                           // puntos sobre un elipsoide (con pelaje opcional); fn → [r,g,b]
   o = o || {}; let k = 0, guard = 0;
   while (k < n && guard++ < n * 8) {
     const v = colNorm(); if (o.keep && !o.keep(v[0], v[1], v[2])) continue;
     const f = o.fur ? Math.random() * o.fur : 0, x = cx + (rx + f) * v[0], y = cy + (ry + f) * v[1], z = cz + (rz + f) * v[2];
-    let gx = v[0] / rx, gy = v[1] / ry, gz = v[2] / rz; const gl = Math.hypot(gx, gy, gz) || 1; gx /= gl; gy /= gl; gz /= gl;
-    const lit = 0.4 + 0.8 * Math.max(0, gx * COL_LD[0] + gy * COL_LD[1] + gz * COL_LD[2]);
-    colPush(L, x, y, z, fn(x, y, z, gx, gy, gz, lit), o.s, o.a); k++;
+    let N = colUnit([v[0] / rx, v[1] / ry, v[2] / rz]);
+    const lit = 0.4 + 0.8 * Math.max(0, N[0] * COL_LD[0] + N[1] * COL_LD[1] + N[2] * COL_LD[2]);
+    let t = colCross(N, [0, 1, 0]); if (Math.hypot(t[0], t[1], t[2]) < 0.25) t = colCross(N, [1, 0, 0]); t = colUnit(t);
+    const ph = 0.5 + 0.45 * Math.sin(y * 0.55 + x * 0.2), b2 = colCross(N, t), d = colUnit([t[0] * Math.cos(ph) + b2[0] * Math.sin(ph), t[1] * Math.cos(ph) + b2[1] * Math.sin(ph), t[2] * Math.cos(ph) + b2[2] * Math.sin(ph)]);
+    colPush(L, x, y, z, fn(x, y, z, N[0], N[1], N[2], lit), o.s, o.a, d, N); k++;
   }
 }
-function colTube(L, P, n, r0, r1, fn, o) {                                         // tubo orgánico a lo largo de una curva
+function colTube(L, P, n, r0, r1, fn, o) {                                         // tubo orgánico a lo largo de una curva (los trazos corren a lo largo del miembro)
   o = o || {};
   for (let k = 0; k < n; k++) {
     const u = Math.random(), c = hgCR(P, u), a = hgCR(P, Math.max(0, u - 0.03)), b = hgCR(P, Math.min(1, u + 0.03));
-    let T = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]; const tl = Math.hypot(T[0], T[1], T[2]) || 1; T = [T[0] / tl, T[1] / tl, T[2] / tl];
-    const v = colNorm(), d = v[0] * T[0] + v[1] * T[1] + v[2] * T[2]; let N = [v[0] - d * T[0], v[1] - d * T[1], v[2] - d * T[2]]; const nl = Math.hypot(N[0], N[1], N[2]) || 1; N = [N[0] / nl, N[1] / nl, N[2] / nl];
-    const r = r0 + (r1 - r0) * u + (o.fur ? Math.random() * o.fur : 0), lit = 0.4 + 0.8 * Math.max(0, N[0] * COL_LD[0] + N[1] * COL_LD[1] + N[2] * COL_LD[2]);
-    colPush(L, c[0] + N[0] * r, c[1] + N[1] * r, c[2] + N[2] * r, fn(c[0] + N[0] * r, c[1] + N[1] * r, c[2] + N[2] * r, N[0], N[1], N[2], lit, u), o.s, o.a);
+    const T = colUnit([b[0] - a[0], b[1] - a[1], b[2] - a[2]]), v = colNorm(), d0 = v[0] * T[0] + v[1] * T[1] + v[2] * T[2];
+    const N = colUnit([v[0] - d0 * T[0], v[1] - d0 * T[1], v[2] - d0 * T[2]]), B = colCross(T, N), sp = (Math.random() - 0.5) * 0.5;
+    const r = r0 + (r1 - r0) * u + (o.fur ? Math.random() * o.fur : 0), lit = 0.4 + 0.8 * Math.max(0, N[0] * COL_LD[0] + N[1] * COL_LD[1] + N[2] * COL_LD[2]), x = c[0] + N[0] * r, y = c[1] + N[1] * r, z = c[2] + N[2] * r;
+    colPush(L, x, y, z, fn(x, y, z, N[0], N[1], N[2], lit, u), o.s, o.a, colUnit([T[0] + B[0] * sp, T[1] + B[1] * sp, T[2] + B[2] * sp]), N);
   }
 }
 function colLine(L, A, B, n, c, s, a, jit) {                                         // trazo fino (garras, antenas, trazos de circuito)
-  for (let i = 0; i < n; i++) { const u = n > 1 ? i / (n - 1) : 0, j = jit || 0; colPush(L, A[0] + (B[0] - A[0]) * u + (Math.random() - 0.5) * j, A[1] + (B[1] - A[1]) * u + (Math.random() - 0.5) * j, A[2] + (B[2] - A[2]) * u + (Math.random() - 0.5) * j, c, s, a); }
+  const d = colUnit([B[0] - A[0], B[1] - A[1], B[2] - A[2]]);
+  for (let i = 0; i < n; i++) { const u = n > 1 ? i / (n - 1) : 0, j = jit || 0; colPush(L, A[0] + (B[0] - A[0]) * u + (Math.random() - 0.5) * j, A[1] + (B[1] - A[1]) * u + (Math.random() - 0.5) * j, A[2] + (B[2] - A[2]) * u + (Math.random() - 0.5) * j, c, s, a, d); }
 }
 function colFeather(L, root, dir, len, wid, n, fn, s) {                              // pluma: raquis con barbas que se abren y vuelven a cerrarse
-  const T = Math.hypot(dir[0], dir[1], dir[2]) || 1, d = [dir[0] / T, dir[1] / T, dir[2] / T];
-  let w = [-d[2], 0, d[0]]; const wl = Math.hypot(w[0], w[1], w[2]) || 1; w = [w[0] / wl, 0, w[2] / wl];
+  const d = colUnit(dir); let w = [-d[2], 0, d[0]]; const wl = Math.hypot(w[0], w[1], w[2]) || 1; w = [w[0] / wl, 0, w[2] / wl];
   for (let i = 0; i < n; i++) { const u = Math.random(), sp = (Math.random() * 2 - 1) * wid * Math.pow(Math.sin(Math.min(1, u * 1.1) * Math.PI), 0.7) * (0.35 + 0.65 * u);
-    colPush(L, root[0] + d[0] * len * u + w[0] * sp, root[1] + d[1] * len * u + (Math.random() - 0.5) * 0.12, root[2] + d[2] * len * u + w[2] * sp, fn(u, sp / (wid || 1)), s, 0.9); }
+    colPush(L, root[0] + d[0] * len * u + w[0] * sp, root[1] + d[1] * len * u + (Math.random() - 0.5) * 0.12, root[2] + d[2] * len * u + w[2] * sp, fn(u, sp / (wid || 1)), s, 0.9, colUnit([d[0] + w[0] * sp * 0.25, d[1], d[2] + w[2] * sp * 0.25])); }
 }
-function colCloud(L, pivot, parent) {                                                // convierte la lista en una nube de puntos con su pivote
-  const g = new THREE.Group(), par = parent || [0, 0, 0];
+const COL_INK_VS = `
+  attribute vec3 aCol; attribute float aAlpha; uniform float uTime; uniform float uJit; varying vec3 vC; varying float vA;
+  float h(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+  void main() {
+    vC = aCol; vA = aAlpha; vec3 p = position; float k = floor(uTime * 9.0);
+    p += (vec3(h(p * 7.1 + k), h(p * 5.3 + k * 1.7), h(p * 3.9 + k * 2.3)) - 0.5) * uJit;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  }`;
+const COL_INK_FS = `uniform vec3 uTint; uniform float uOpacity; varying vec3 vC; varying float vA; void main() { gl_FragColor = vec4(vC * uTint, vA * uOpacity); }`;
+function colCloud(L, pivot, parent) {                                                // convierte la lista en trazos de tinta + puntos de oro, con su pivote
+  const g = new THREE.Group(), par = parent || [0, 0, 0], ink = [], gold = [], V = [], C = [], A = [];
   if (!L.length) colPush(L, pivot[0], pivot[1], pivot[2], [0, 0, 0], 0.01, 0);
-  g.pts = sptPoints(L.length, (i, o) => { const p = L[i]; o.x = p.x - pivot[0]; o.y = p.y - pivot[1]; o.z = p.z - pivot[2]; o.r = p.r; o.g = p.g; o.b = p.b; o.s = p.s; o.a = p.a; });
-  g.add(g.pts); g.position.set(pivot[0] - par[0], pivot[1] - par[1], pivot[2] - par[2]); return g;
+  L.forEach(p => (p.gold ? gold : ink).push(p));
+  const seg = (p, d, len, k, al) => { const lum = Math.max(p.r, p.g, p.b), c = 0.38 + 0.85 * Math.pow(lum, 0.8), hx = d[0] * len / 2, hy = d[1] * len / 2, hz = d[2] * len / 2, x = p.x - pivot[0], y = p.y - pivot[1], z = p.z - pivot[2];
+    V.push(x - hx, y - hy, z - hz, x + hx, y + hy, z + hz); for (let i = 0; i < 2; i++) { C.push(COL_INKC[0] * c, COL_INKC[1] * c, COL_INKC[2] * c); A.push(Math.min(1, p.a * al * (0.5 + 0.6 * lum))); } };
+  ink.forEach(p => { const lum = Math.max(p.r, p.g, p.b); if (Math.random() > Math.min(1, 0.25 + 1.5 * lum)) return;
+    const d = p.d || [0, 1, 0], len = Math.max(0.32, p.s * 3.6) * (0.65 + 0.8 * Math.random()); seg(p, d, len, 0, 1);
+    if (p.n && lum < 0.36 && Math.random() < 0.6) seg(p, colUnit(colCross(d, p.n)), len * 0.8, 1, 0.7); });                                           // sombreado cruzado en lo oscuro
+  if (!V.length) { V.push(0, 0, 0, 0, 0, 0); C.push(0, 0, 0, 0, 0, 0); A.push(0, 0); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(V), 3)); geo.setAttribute('aCol', new THREE.BufferAttribute(new Float32Array(C), 3)); geo.setAttribute('aAlpha', new THREE.BufferAttribute(new Float32Array(A), 1));
+  const mat = new THREE.ShaderMaterial({ uniforms: { uTint: { value: new THREE.Color(1, 1, 1) }, uOpacity: { value: 1 }, uTime: { value: 0 }, uJit: { value: 0.03 } }, vertexShader: COL_INK_VS, fragmentShader: COL_INK_FS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  g.pts = new THREE.LineSegments(geo, mat); g.pts.frustumCulled = false; g.add(g.pts); COL_INK.push(mat);
+  g.gold = gold.length ? sptPoints(gold.length, (i, o) => { const p = gold[i], lum = Math.max(p.r, p.g, p.b); o.x = p.x - pivot[0]; o.y = p.y - pivot[1]; o.z = p.z - pivot[2]; o.r = COL_GOLD[0] * (0.55 + 0.6 * lum); o.g = COL_GOLD[1] * (0.55 + 0.6 * lum); o.b = COL_GOLD[2] * (0.55 + 0.6 * lum); o.s = p.s * 1.5; o.a = Math.min(1, p.a * 1.1); }) : null;
+  if (g.gold) g.add(g.gold);
+  g.position.set(pivot[0] - par[0], pivot[1] - par[1], pivot[2] - par[2]); return g;
 }
-function colTint(g, r, gg, b) { if (g && g.pts) g.pts.material.uniforms.uTint.value.setRGB(r, gg, b); }
+function colTint(g, r, gg, b) { if (g && g.pts) g.pts.material.uniforms.uTint.value.setRGB(r, gg, b); if (g && g.gold) g.gold.material.uniforms.uTint.value.setRGB(1 + (r - 1) * 0.3, 1, 1 + (b - 1) * 0.3); }
+function colOp(g, ink, gold) { if (!g) return; if (g.pts) g.pts.material.uniforms.uOpacity.value = ink; if (g.gold) g.gold.material.uniforms.uOpacity.value = gold === undefined ? ink : gold; }
+function colJit(g, v) { if (g && g.pts) g.pts.material.uniforms.uJit.value = v; }
 const colMix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 // ---------- 4 · EL CÓNDOR DE CENIZA (Docencia en Diseño) — pedir permiso ----------
 COL_DEF.condor = {
-  iso: { yaw: 0.9, pitch: 0.18, dist: 46, tg: [0, 7, 0] }, travPos(S) { const d = 4.5 + Math.max(0, S.D - 8) / 38 * 4.5; return [Math.sin(0.9) * d, Math.cos(0.9) * d]; }, sky: [0.75, 0.62, 0.55], hud: ['DISTANCIA', 'CONFIANZA', 'MIRADA', 'PLUMA'], endAfter: 13, voice: 'condor', voiceEvery: 0,
+  iso: { yaw: 0.9, pitch: 0.2, dist: 46, tg: [0, 7, 0] }, travPos(S) { return S.path ? S.path(Math.max(0, Math.min(1, (S.D - 8) / 38))) : [4, 3, 0]; },
+  tgFn(S) { const p = this.travPos(S); return [0.5 + (p[0] - 0.5) * 0.45, 6 + (p[2] - 6) * 0.45, p[1] * 0.45]; }, sky: [0.75, 0.62, 0.55], hud: ['DISTANCIA', 'CONFIANZA', 'MIRADA', 'PLUMA'], endAfter: 13, voice: 'condor', voiceEvery: 0, plate: ['Vultur gryphus', 'Lám. IV'],
   txt: {
     es: { title: 'EL CÓNDOR DE CENIZA', toast: 'Un maestro posado en un risco.',
-      h: 'Mantén pulsado para acercarte, pero solo cuando mire a otro lado. Suelta y espera cuando te mire: la confianza crece quieta. Arrastra el espacio vacío para girar.',
-      s0: '…te observa desde lejos…', watch: '…te mira. Suelta y baja la mirada…', away: '…mira a otro lado. Ahora puedes avanzar…', back: '…aún no. La confianza se espera, no se empuja…', bow: '…inclina la cabeza. Tócalo…', gift: '…te deja una pluma…', done: '…una pluma de ceniza. Aprender también es que te lo permitan.' },
+      h: 'Sube la montaña manteniendo pulsado, pero solo cuando el cóndor mire a otro lado. Si te mira, suelta y espera: la confianza crece quieta. Cada mojón que se enciende es un permiso concedido. Arrastra el espacio vacío para girar.',
+      s0: '…te observa desde la cumbre…', cairn: '…un mojón se enciende: un permiso concedido…', watch: '…te mira. Suelta y baja la mirada…', away: '…mira a otro lado. Ahora puedes avanzar…', back: '…aún no. La confianza se espera, no se empuja…', bow: '…inclina la cabeza. Tócalo…', gift: '…te deja una pluma…', done: '…una pluma de ceniza. Aprender también es que te lo permitan.' },
     en: { title: 'THE ASH CONDOR', toast: 'A teacher perched on a cliff.',
-      h: 'Hold to approach, but only when it looks away. Let go and wait when it looks at you: trust grows in stillness. Drag empty space to turn.',
-      s0: '…it watches from afar…', watch: '…it looks at you. Let go and lower your gaze…', away: '…it looks away. Now you may advance…', back: '…not yet. Trust is waited for, not pushed…', bow: '…it bows its head. Touch it…', gift: '…it leaves you a feather…', done: '…a feather of ash. To learn is also to be allowed.' }
+      h: 'Climb the mountain by holding, but only when the condor looks away. If it looks at you, let go and wait: trust grows in stillness. Each cairn that lights up is a permission granted. Drag empty space to turn.',
+      s0: '…it watches from the summit…', cairn: '…a cairn lights up: a permission granted…', watch: '…it looks at you. Let go and lower your gaze…', away: '…it looks away. Now you may advance…', back: '…not yet. Trust is waited for, not pushed…', bow: '…it bows its head. Touch it…', gift: '…it leaves you a feather…', done: '…a feather of ash. To learn is also to be allowed.' }
   },
   build(g) {
     const S = { D: 46, trust: 0, cycle: 0, watch: false, hold: false, stage: 'approach', ruffle: 0, hy: 0, bow: 0, open: 0, feather: 0, giftT: 0, msgT: 0, won: false, lastWatch: false };
-    g.add(sptPoints(700, (i, o) => { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * 15; o.x = Math.cos(a) * r - 4; o.z = Math.sin(a) * r * 0.8; o.y = -0.2 - Math.random() * 0.3; o.s = 0.12 + Math.random() * 0.12; o.a = 0.28 + Math.random() * 0.3; o.r = 0.5; o.g = 0.46; o.b = 0.44; }));   // la cornisa
-    g.add(sptPoints(500, (i, o) => { o.x = -16 + Math.random() * 16; o.y = -Math.random() * 18; o.z = (Math.random() - 0.5) * 16; o.s = 0.16 + Math.random() * 0.2; o.a = 0.1 + Math.random() * 0.2; o.r = 0.42; o.g = 0.4; o.b = 0.44; }));       // el risco que cae
+    // la montaña: un macizo andino imponente; el cóndor reina en una cornisa de la cumbre y el Viajero sube por un sendero de mojones
+    const UX = Math.sin(0.9), UZ = Math.cos(0.9), rr = Math.random;
+    const sm = (a, b, x) => { const u = Math.max(0, Math.min(1, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
+    const H = (x, z) => {
+      const sl = x * UX + z * UZ, w = -x * UZ + z * UX, r = Math.hypot(x, z);
+      let h = sl > 0 ? -0.72 * sl : 1.55 * (-sl) * (1 + 0.15 * Math.sin(w * 0.18));
+      h += 0.9 * Math.max(0, Math.abs(w) - 8) * (sl > -4 ? 1 : 1.2);
+      h += (2.4 * Math.sin(x * 0.21 + 1) * Math.sin(z * 0.17 + 0.5) + 1.2 * Math.sin(x * 0.5 + z * 0.43) + 0.6 * Math.sin(x * 1.1 - z * 0.9)) * (0.25 + sm(0, 14, Math.abs(sl)));
+      h += 15 * Math.max(0, 1 - Math.hypot(sl + 30, w - 7) / 15);
+      h += 8 * (1 - Math.abs(Math.sin(w * 0.14 + Math.sin(sl * 0.06) * 2.2))) * sm(-2, -14, sl) + 3.5 * Math.abs(Math.sin(sl * 0.11 + w * 0.05)) * sm(-4, -20, sl);   // contrafuertes y barrancos
+      h = Math.min(h, 64); const t = sm(11, 7, r); return h * (1 - t) - 0.05 * t;
+    };
+    S.H = H;
+    const SUN = [-0.4, 0.8, 0.45], SL = Math.hypot(...SUN);
+    const TP = [], EYE = [34, 16, 28];                                              // puntos del macizo: curvas de nivel (grabado topográfico) y sombreado; los lejanos son más grandes para que la montaña pese
+    const shade = (x, z) => { const gx = (H(x + 1, z) - H(x - 1, z)) / 2, gz = (H(x, z + 1) - H(x, z - 1)) / 2, nl = Math.hypot(gx, 1, gz); return Math.max(0, (-gx * SUN[0] + SUN[1] - gz * SUN[2]) / (nl * SL)); };
+    const addP = (x, z, h, ct) => { const lt = shade(x, z), snow = h > 18 + 3 * Math.sin(x * 0.3 + z * 0.2), dist = Math.hypot(x - EYE[0], h - EYE[1], z - EYE[2]), fade = 1 - Math.min(1, Math.hypot(x, z) / 140) * 0.45, v = 0.35 + 0.8 * lt, sz = Math.max(0.22, Math.min(1.5, dist / 70));
+      TP.push([x, h, z, ct ? sz * 0.8 : sz, (ct ? 0.9 : 0.16 + 0.14 * lt) * fade, snow ? 0.85 * v : (0.62 * v + (ct ? 0.28 : 0)), snow ? 0.92 * v : (0.5 * v + (ct ? 0.2 : 0)), snow ? v + 0.1 : (0.46 * v + (ct ? 0.12 : 0))]); };
+    { const X0 = -80, Z0 = -86, ST = 0.9, NX = Math.ceil(138 / ST), NZ = Math.ceil(140 / ST), G = []; for (let i = 0; i <= NX; i++) { const col = new Float32Array(NZ + 1); for (let k = 0; k <= NZ; k++) col[k] = H(X0 + i * ST, Z0 + k * ST); G.push(col); }
+      for (let lev = -34; lev <= 62; lev += 2.6) for (let i = 0; i <= NX; i++) for (let k = 0; k <= NZ; k++) { const h0 = G[i][k] - lev;
+        if (i < NX) { const h1 = G[i + 1][k] - lev; if ((h0 < 0) !== (h1 < 0)) addP(X0 + (i + h0 / (h0 - h1)) * ST, Z0 + k * ST, lev, true); }
+        if (k < NZ) { const h1 = G[i][k + 1] - lev; if ((h0 < 0) !== (h1 < 0)) addP(X0 + i * ST, Z0 + (k + h0 / (h0 - h1)) * ST, lev, true); } } }
+    for (let i = 0; i < 9000; i++) { const x = -78 + rr() * 134, z = -84 + rr() * 136; addP(x, z, H(x, z), false); }
+    g.add(sptPoints(TP.length, (i, o) => { const q = TP[i]; o.x = q[0]; o.y = q[1]; o.z = q[2]; o.s = q[3]; o.a = q[4]; o.r = q[5]; o.g = q[6]; o.b = q[7]; }));
+    for (let L = 0; L < 3; L++) g.add(sptPoints(560, (i, o) => { const x = -190 + 380 * (i / 560); o.x = x; o.z = -118 - L * 18; o.y = 28 + L * 7 + 16 * Math.abs(Math.sin(x * 0.02 + L * 1.7)) + 6 * Math.sin(x * 0.07 + L) + 3 * Math.sin(x * 0.19); o.s = 0.6; o.a = 0.3; o.r = 0.34 + L * 0.04; o.g = 0.4 + L * 0.04; o.b = 0.55 + L * 0.04; }));   // cordillera lejana
+    S.sea = sptPoints(900, (i, o) => { const a = rr() * 6.283, r = Math.sqrt(rr()) * 110; o.x = Math.cos(a) * r; o.z = Math.sin(a) * r - 10; o.y = -33 + rr() * 5; o.s = 2 + rr() * 2.4; o.a = 0.05 + rr() * 0.06; o.r = 0.78; o.g = 0.8; o.b = 0.88; }); g.add(S.sea);   // mar de nubes
+    S.snow = sptPoints(300, (i, o) => { o.x = (rr() - 0.5) * 70; o.y = (rr() - 0.5) * 34; o.z = (rr() - 0.5) * 70; o.s = 0.12; o.a = 0.5; o.r = 0.9; o.g = 0.94; o.b = 1; }); g.add(S.snow);   // ventisca
+    // el sendero y sus mojones: cada uno es un permiso
+    S.path = (q) => { const r = 4.5 + q * 36, wig = 2.6 * Math.sin(q * 13) * sm(0, 0.12, q), x = UX * r - UZ * wig, z = UZ * r + UX * wig; return [x, z, H(x, z)]; };
+    S.trail = sptPoints(220, (i, o) => { const p = S.path(1 - i / 219 * 0.985); o.x = p[0]; o.z = p[1]; o.y = p[2] + 0.12; o.s = 0.2; o.a = 0.22; o.r = 1; o.g = 0.82; o.b = 0.45; }); g.add(S.trail);
+    S.cairns = [0.86, 0.66, 0.47, 0.3, 0.14].map((q) => { const p = S.path(q), cg = new THREE.Group(); cg.position.set(p[0] + 1.1, p[2], p[1] + 0.5);
+      cg.add(sptPoints(34, (i, o) => { const k = i % 4, rad = 0.62 - k * 0.12, a = rr() * 6.283, u = rr(); o.x = Math.cos(a) * rad * Math.sqrt(u); o.z = Math.sin(a) * rad * Math.sqrt(u); o.y = 0.12 + k * 0.32 + rr() * 0.1; o.s = 0.14; o.a = 0.8; o.r = 0.6; o.g = 0.55; o.b = 0.5; }));
+      const hl = mkHalo(0xffd27a, 3.2, 0.0); hl.position.y = 1.2; cg.add(hl); g.add(cg); return { q, g: cg, halo: hl, on: 0, said: false }; });
     const root = new THREE.Group(); g.add(root); S.bird = root;
-    const ash = (x, y, z, nx, ny, nz, lit) => { const v = 0.18 + 0.42 * Math.pow(lit, 1.2) + Math.random() * 0.05; return [v * 0.95, v * 0.97, v * 1.08]; };
-    const down = (x, y, z, nx, ny, nz, lit) => { const v = 0.3 + 0.5 * lit + Math.random() * 0.08; return [v, v * 0.98, v * 0.95]; };
+    const rn = Math.random;
+    const ash = (x, y, z, nx, ny, nz, lit) => { const v = 0.16 + 0.44 * Math.pow(lit, 1.2) + rn() * 0.05 + 0.03 * Math.sin(y * 3.1 + z * 2); return [v * 0.95, v * 0.97, v * 1.1]; };
+    const silver = (x, y, z, nx, ny, nz, lit) => { const v = 0.36 + 0.5 * lit + rn() * 0.05; return [v * 0.95, v * 0.97, v * 1.05]; };
+    // ---- el torso encorvado (se inclina hacia delante como un cóndor posado), con alas plegadas, pantalones de plumas y cola ----
     let c = [];
-    colShell(c, 2600, -0.2, 5.0, 0, 2.3, 3.6, 1.9, ash, { fur: 0.35, s: 0.2, a: 0.85 });                                                             // cuerpo con plumaje en capas
-    colShell(c, 340, 0.9, 6.2, 0, 1.4, 2.2, 1.5, (x, y, z, nx, ny, nz, lit) => ash(x, y, z, nx, ny, nz, lit * 1.25), { fur: 0.25, s: 0.14, keep: (nx) => nx > 0.1 });   // pecho
-    [-1, 1].forEach(s => { colTube(c, [[s * 0.9, 1.9, 0], [s * 0.95, 0.9, 0.2], [s * 0.95, 0.1, 0.5]], 130, 0.34, 0.24, (x, y, z) => [0.72, 0.6, 0.56], { s: 0.11 });          // patas escamosas
-      for (let k = -1; k <= 1; k++) colLine(c, [s * 0.95, 0.1, 0.5], [s * 0.95 + 0.9, 0.05, 0.5 + k * 0.5], 5, [0.15, 0.14, 0.14], 0.12, 0.95); });                           // garras
-    for (let k = 0; k < 9; k++) { const a = -0.5 + k * 0.1; colFeather(c, [-1.2, 2.2, (k - 4) * 0.3], [-0.45, -1, 0.05 * (k - 4)], 3.4 + (k % 3) * 0.3, 0.35, 34, (u) => ash(0, 0, 0, 0, 0, 0, 0.6 + 0.6 * u), 0.11); }   // cola
-    colTube(c, [[0.3, 7.0, 0], [0.7, 8.4, 0], [1.2, 9.7, 0], [1.3, 10.5, 0]], 340, 0.85, 0.58, (x, y, z) => [0.82 + Math.random() * 0.06, 0.56, 0.5], { s: 0.11, a: 0.9 });                  // cuello pelado
+    colShell(c, 2600, -0.2, 5.1, 0, 2.5, 3.8, 2.4, ash, { fur: 0.4, s: 0.18, a: 0.7 });                                                              // cuerpo
+    colShell(c, 360, 1.0, 5.0, 0, 1.5, 2.6, 1.8, (x, y, z, nx, ny, nz, lit) => ash(x, y, z, nx, ny, nz, lit * 1.3), { fur: 0.3, s: 0.14, keep: (nx) => nx > 0.0 });    // pecho más claro
+    [-1, 1].forEach(s => {
+      colShell(c, 380, 0.2, 2.9, s * 1.6, 1.3, 1.7, 0.95, ash, { fur: 0.3, s: 0.14 });                                                                // pantalones de plumas
+      colShell(c, 320, -0.5, 5.4, s * 2.35, 1.6, 2.9, 0.7, silver, { fur: 0.28, s: 0.14, keep: (nx, ny, nz) => nz * s > 0.1 });                       // hombro (coberteras plegadas)
+      for (let k = 0; k < 16; k++) colFeather(c, [0.4 - k * 0.07, 7.4 - k * 0.1, s * (2.2 + k * 0.07)], [-0.42 - k * 0.012, -1, s * 0.02], 5.2 + (k % 4) * 0.5 + k * 0.1, 0.62, 40, (u, e) => (k >= 4 && k <= 11 && u > 0.2 ? silver(0, 0, 0, 0, 0, 0, 0.7 + 0.2 * u) : ash(0, 0, 0, 0, 0, 0, 0.35 + 0.7 * u)), 0.12);   // alas plegadas: plumas largas que caen hacia atrás
+    });
+    for (let k = 0; k < 11; k++) colFeather(c, [-1.4, 2.0, (k - 5) * 0.28], [-0.42, -1, 0.07 * (k - 5)], 4.6 + (k % 3) * 0.35, 0.4, 36, (u) => ash(0, 0, 0, 0, 0, 0, 0.3 + 0.8 * u), 0.11);   // cola
+    const torso = colCloud(c, [-0.6, 2.2, 0]); torso.rotation.z = -0.62; root.add(torso); S.torso = torso;
+    // ---- patas escamosas con garras ----
+    c = [];
+    [-1, 1].forEach(s => { colTube(c, [[0.9, 2.3, s * 1.3], [1.0, 1.2, s * 1.4], [1.0, 0.12, s * 1.4]], 200, 0.5, 0.34, (x, y, z, nx, ny, nz, lit) => { const v = 0.55 + 0.3 * lit + 0.12 * Math.sin(y * 14); return [v * 0.85, v * 0.74, v * 0.7]; }, { s: 0.11, a: 0.95 });
+      for (let k = -1; k <= 1; k++) { colTube(c, [[1.0, 0.12, s * 1.4], [1.7 + (k === 0 ? 0.4 : 0), 0.1, s * (1.4 + k * 0.55)], [2.2 + (k === 0 ? 0.6 : 0), 0.0, s * (1.4 + k * 0.85)]], 50, 0.2, 0.16, () => [0.6, 0.52, 0.5], { s: 0.1 }); colLine(c, [2.2 + (k === 0 ? 0.6 : 0), 0.0, s * (1.4 + k * 0.85)], [2.55 + (k === 0 ? 0.6 : 0), -0.18, s * (1.4 + k * 0.95)], 5, [0.12, 0.1, 0.1], 0.13, 0.95); }   // dedos y garras
+      colLine(c, [1.0, 0.12, s * 1.4], [0.2, 0.05, s * 1.5], 6, [0.55, 0.48, 0.46], 0.12, 0.9); });
     root.add(colCloud(c, [0, 0, 0]));
-    // gorguera de plumón blanco
-    c = []; for (let k = 0; k < 520; k++) { const a = Math.random() * 6.283, r = 1.0 + Math.random() * 0.9, y = 8.6 + (Math.random() - 0.5) * 0.9 + Math.sin(a * 3) * 0.1; colPush(c, 0.5 + Math.cos(a) * r, y, Math.sin(a) * r, [0.9 + Math.random() * 0.1, 0.9, 0.88], 0.17, 0.85); }
-    S.ruff = colCloud(c, [0.5, 8.7, 0]); root.add(S.ruff);
-    // cabeza calva con cresta, pico de marfil en gancho y ojos
-    const HC = [1.3, 11.1, 0], HP = [0.9, 10.2, 0];
-    c = []; colShell(c, 380, HC[0], HC[1], HC[2], 1.4, 1.2, 1.15, (x, y, z, nx, ny, nz, lit) => [(0.55 + 0.4 * lit) * 0.95, (0.36 + 0.3 * lit) * 0.8, (0.34 + 0.28 * lit) * 0.78], { fur: 0.06, s: 0.1, a: 0.9 });
-    colShell(c, 60, 1.5, 12.35, 0, 0.9, 0.5, 0.2, () => [0.62, 0.3, 0.3], { s: 0.1, a: 0.95 });                                                      // cresta
-    colTube(c, [[2.3, 11.2, 0], [3.2, 10.9, 0], [3.8, 10.3, 0], [3.8, 9.6, 0]], 120, 0.42, 0.1, (x, y, z, nx, ny, nz, lit) => { const v = 0.55 + 0.45 * lit; return [v, v * 0.97, v * 0.86]; }, { s: 0.1, a: 0.95 });   // pico
+    // ---- peñasco donde se posa ----
+    c = []; [[1.0, -0.4, 0, 3.6, 1.1, 3.2], [-3.2, -0.5, 1.8, 2.2, 1.0, 1.6], [3.4, -0.5, -1.7, 1.8, 0.8, 1.5], [-1.5, -0.4, -2.6, 2.0, 0.9, 1.5]].forEach(r => colShell(c, 280, r[0], r[1], r[2], r[3], r[4], r[5], (x, y, z, nx, ny, nz, lit) => { const v = 0.24 + 0.4 * lit + rn() * 0.05; return [v * 1.05, v * 0.95, v * 0.9]; }, { fur: 0.1, s: 0.18, a: 0.8 }));
+    root.add(colCloud(c, [0, 0, 0]));
+    // ---- cuello pelado, con arrugas, y cabeza calva con cresta carnosa, ojo dorado y pico de marfil en gancho (todo gira junto al inclinarse) ----
+    const HP = [2.0, 6.9, 0];
+    c = [];
+    colTube(c, [[2.0, 6.9, 0], [2.5, 8.1, 0], [3.2, 9.0, 0], [3.8, 9.7, 0]], 800, 1.55, 1.0, (x, y, z, nx, ny, nz, lit, u) => { const w = 0.5 + 0.5 * Math.sin(y * 7 + z * 2); const v = 0.45 + 0.4 * lit + 0.12 * w; return [v * 1.0, v * 0.62, v * 0.58]; }, { s: 0.1, a: 0.9 });
+    colShell(c, 700, 4.7, 10.5, 0, 1.95, 1.45, 1.35, (x, y, z, nx, ny, nz, lit) => [(0.52 + 0.4 * lit), (0.36 + 0.3 * lit) * 0.85, (0.34 + 0.28 * lit) * 0.82], { fur: 0.06, s: 0.1, a: 0.9 });          // cabeza
+    colShell(c, 240, 4.8, 12.1, 0, 1.6, 0.8, 0.26, (x, y, z, nx, ny, nz, lit) => colG([0.92, 0.62, 0.26]), { s: 0.1, a: 0.95 });                                                // cresta carnosa (macho)
+    colShell(c, 90, 3.7, 8.7, 0, 0.5, 1.1, 0.7, (x, y, z, nx, ny, nz, lit) => [0.7 + 0.2 * lit, 0.3, 0.3], { s: 0.1, a: 0.9 });                                                  // papada
+    colTube(c, [[6.1, 10.5, 0], [7.5, 10.3, 0], [8.3, 9.6, 0], [8.2, 8.7, 0]], 200, 0.6, 0.09, (x, y, z, nx, ny, nz, lit) => { const v = 0.55 + 0.45 * lit; return [v, v * 0.97, v * 0.86]; }, { s: 0.1, a: 0.95 });   // pico en gancho
+    colLine(c, [6.3, 10.3, 0], [7.7, 10.1, 0], 8, [0.2, 0.18, 0.17], 0.09, 0.9);                                                                                                       // comisura
     S.head = colCloud(c, HP); root.add(S.head); S.headY0 = S.head.position.y;
-    S.eyeHalo = mkHalo(0xffe0a0, 2.2, 0.1); S.eyeHalo.position.set(2.2 - HP[0], 11.5 - HP[1], 0); S.head.add(S.eyeHalo);
-    S.head.add(sptPoints(2, (i, o) => { o.x = 2.2 - HP[0]; o.y = 11.4 - HP[1]; o.z = i ? -1.0 : 1.0; o.s = 0.28; o.a = 1; o.r = 1; o.g = 0.9; o.b = 0.55; }));
-    // alas: coberteras, plumas secundarias con parches blancos y primarias en dedos; se pliegan y se abren al inclinarse
+    S.eyeHalo = mkHalo(0xffd890, 2.4, 0.1); S.eyeHalo.position.set(5.6 - HP[0], 11.0 - HP[1], 0); S.head.add(S.eyeHalo);
+    S.head.add(S.eyeP = sptPoints(2, (i, o) => { o.x = 5.6 - HP[0]; o.y = 10.9 - HP[1]; o.z = i ? -1.2 : 1.2; o.s = 0.3; o.a = 1; o.r = 1; o.g = 0.8; o.b = 0.4; }));
+    // ---- gorguera de plumón blanco alrededor de la base del cuello ----
+    c = []; for (let k = 0; k < 760; k++) { const a = rn() * 6.283, r = 1.7 + rn() * 1.5, y = 7.3 + (rn() - 0.5) * 1.2 + 0.3 * Math.sin(a * 3) + 0.4 * rn(); colPush(c, 2.0 + Math.cos(a) * r, y, Math.sin(a) * r, [0.92 + rn() * 0.08, 0.92, 0.9], 0.18, 0.88); }
+    S.ruff = colCloud(c, [2.0, 7.0, 0]); root.add(S.ruff);
+    // ---- alas abiertas: brazo con coberteras en tres filas, secundarias con parche blanco y diez primarias en dedos separados ----
     S.wingG = [-1, 1].map(s => {
-      const wc = [], P0 = [0, 8, s * 2.0];
-      colShell(wc, 520, -0.2, 8, s * 3.6, 1.6, 0.5, 3.0, (x, y, z, nx, ny, nz, lit) => ash(x, y, z, nx, ny, nz, lit * 1.1), { fur: 0.2, s: 0.13, keep: (nx, ny) => ny > -0.4 });                // coberteras
-      for (let k = 0; k < 8; k++) { const zr = s * (1.2 + k * 0.5); colFeather(wc, [-0.9, 7.9, zr], [-1, -0.02, s * 0.12 * k * 0.1], 3.0 - Math.abs(k - 3) * 0.04, 0.5, 52, (u, e) => (k >= 1 && k <= 6 ? [0.8 - 0.2 * u, 0.8 - 0.2 * u, 0.82 - 0.2 * u] : ash(0, 0, 0, 0, 0, 0, 0.55 + 0.7 * u)), 0.12); }   // secundarias (parche blanco)
-      for (let k = 0; k < 9; k++) { const zr = s * (4.4 + k * 0.4), a = k * 0.13; colFeather(wc, [-0.6, 8, zr], [-Math.cos(a), -0.03, s * Math.sin(a) * 1.1], 3.6 + k * 0.12, 0.42, 52, (u) => ash(0, 0, 0, 0, 0, 0, 0.4 + 1.0 * Math.pow(u, 2)), 0.12); }  // primarias
-      const wg = colCloud(wc, P0); wg.rotation.x = s * 1.3; root.add(wg); return wg; });
+      const wc = [], P0 = [1.6, 6.8, s * 2.3];
+      colTube(wc, [[0.3, 0.1, 0], [0.5, 0.3, s * 3.8], [0.2, 0.2, s * 7.5]], 320, 1.0, 0.55, (x, y, z, nx, ny, nz, lit) => ash(x, y, z, nx, ny, nz, lit * 1.2), { fur: 0.3, s: 0.14, a: 0.85 });                // brazo y muñeca
+      for (let row = 0; row < 3; row++) for (let k = 0; k < 12; k++) colFeather(wc, [-0.2 - row * 0.5, 0.1, s * (0.6 + k * 0.62)], [-1, -0.03, s * 0.04], 1.5 + row * 0.9, 0.5, 20, (u) => silver(0, 0, 0, 0, 0, 0, 0.5 + 0.3 * u), 0.1);   // coberteras
+      for (let k = 0; k < 12; k++) { const zr = s * (0.8 + k * 0.6); colFeather(wc, [-1.2, 0.0, zr], [-1, -0.02, s * 0.1 * k * 0.1], 3.4 - Math.abs(k - 5) * 0.03, 0.62, 52, (u) => (k >= 2 && k <= 10 ? [0.86 - 0.18 * u, 0.86 - 0.18 * u, 0.88 - 0.18 * u] : ash(0, 0, 0, 0, 0, 0, 0.55 + 0.6 * u)), 0.12); }   // secundarias (parche blanco)
+      for (let k = 0; k < 10; k++) { const zr = s * (7.4 + k * 0.62), a = k * 0.12; colFeather(wc, [-0.4, 0.1, zr], [-Math.cos(a), 0.0, s * Math.sin(a) * 1.15], 4.4 + k * 0.13, 0.5, 56, (u) => (u > 0.82 ? colG([0.9, 0.7, 0.3]) : ash(0, 0, 0, 0, 0, 0, 0.35 + 1.0 * Math.pow(u, 2))), 0.12); }   // primarias en dedos
+      const wg = colCloud(wc, [0, 0, 0]); wg.position.set(P0[0], P0[1], P0[2]); wg.rotation.x = s * 1.3; wg.scale.z = 0.3; wg.visible = false; root.add(wg); return wg; });
     S.mist = sptPoints(120, (i, o) => { o.x = (Math.random() - 0.5) * 50; o.y = -1 + Math.random() * 4; o.z = (Math.random() - 0.5) * 30; o.s = 0.4 + Math.random() * 0.5; o.a = 0.06 + Math.random() * 0.06; o.r = 0.75; o.g = 0.74; o.b = 0.78; }); g.add(S.mist);
     S.feather = sptPoints(28, (i, o) => { const u = i / 27; o.x = u * 2.6; o.y = Math.sin(u * 3) * 0.12; o.z = 0; o.s = 0.1 + Math.sin(u * 3.14) * 0.1; o.a = 1; o.r = 0.95; o.g = 0.92; o.b = 0.86; });
     S.feather.material.uniforms.uOpacity.value = 0; g.add(S.feather);
     return S;
   },
-  camDist(S) { return S.D; },
+  camDist(S) { const p = this.travPos(S), e = Math.hypot(p[0] - 0.5, p[2] - 6, p[1]); return Math.min(66, Math.max(24, e * 1.25 + 16)); },
   update(S, dt, t, calm) {
     const sw = calm ? 0 : 1; S.cycle += dt; S.msgT -= dt;
     const win = Math.max(1.4, 4.2 - 2.8 * S.trust), per = 7.5;
@@ -13762,10 +14039,14 @@ COL_DEF.condor = {
     S.ruffle = Math.max(0, S.ruffle - dt * 0.8); S.ruff.scale.setScalar(1 + 0.3 * S.ruffle);
     const bowT = S.stage === 'bow' || S.stage === 'gift' ? 1 : 0; S.bow += (bowT - S.bow) * Math.min(1, dt * 1.5);
     const tgt = colFace() + (S.watch || bowT ? 0 : 1.75);
-    S.hy += (tgt - S.hy) * Math.min(1, dt * 3); S.head.rotation.y = S.hy; S.head.rotation.z = -0.55 * S.bow; S.head.position.y = S.headY0 - 2.6 * S.bow;
+    S.hy += (tgt - S.hy) * Math.min(1, dt * 3); S.head.rotation.y = S.hy; S.head.rotation.z = -0.62 * S.bow; S.head.position.y = S.headY0 - 0.5 * S.bow;
     S.open += ((bowT ? 0.6 : 0) - S.open) * Math.min(1, dt * 1.2); S.wingG.forEach((w, k) => { const q = Math.min(1, S.open / 0.6); w.rotation.x = (k ? 1 : -1) * (1.3 - 1.85 * q); w.scale.z = 0.3 + 0.7 * q; });
+    { const qo = Math.min(1, S.open / 0.6); S.wingG.forEach(w => { w.visible = qo > 0.02; colOp(w, 1, (0.1 + 0.9 * S.trust) * qo); }); } colOp(S.head, 1, 0.1 + 0.9 * S.trust); if (S.eyeP) S.eyeP.material.uniforms.uOpacity.value = 0.25 + 0.75 * S.trust;
     S.eyeHalo.material.opacity += (((S.watch || bowT) ? 0.5 : 0.08) - S.eyeHalo.material.opacity) * Math.min(1, dt * 4);
     S.bird.position.y = Math.sin(t * 0.6) * 0.04 * sw;
+    S.cairns.forEach(C => { const on = S.D <= 8 + 38 * C.q + 0.5 ? 1 : 0; C.on += (on - C.on) * Math.min(1, dt * 3); C.halo.material.opacity = 0.5 * C.on; if (on && !C.said) { C.said = true; if (S.msgT <= 0) { colSub(colT('cairn'), 3); S.msgT = 3; } MGS.bell(MGS.NOTES[(S.cairns.indexOf(C) + 1) % 6], 0, 2.4, 0.03); } if (!on) C.said = false; });
+    { const TA = S.trail.geometry.attributes.aAlpha.array, qT = Math.max(0, Math.min(1, (S.D - 8) / 38)); for (let i = 0; i < TA.length; i++) { const q = 1 - i / 219 * 0.985; TA[i] = q >= qT ? 0.9 : 0.2; } S.trail.geometry.attributes.aAlpha.needsUpdate = true; }
+    { const sp = S.snow.geometry.attributes.position.array, wd = (6 + 8 * (1 - Math.min(1, (S.D - 6) / 40))) * sw; for (let i = 0; i < sp.length; i += 3) { sp[i] += dt * wd * 0.8; sp[i + 1] -= dt * 0.6 * sw; sp[i + 2] += dt * wd * 0.4; if (sp[i] > 35) sp[i] = -35; if (sp[i + 2] > 35) sp[i + 2] = -35; if (sp[i + 1] < -17) sp[i + 1] = 17; } S.snow.geometry.attributes.position.needsUpdate = true; S.snow.position.set(0.5, 6, 0); S.sea.rotation.y += dt * 0.004 * sw; }
     const mp = S.mist.geometry.attributes.position.array; for (let i = 0; i < mp.length; i += 3) { mp[i] += dt * 0.5 * sw; if (mp[i] > 26) mp[i] = -26; } S.mist.geometry.attributes.position.needsUpdate = true;
   },
   tap(S) { if (S.stage === 'bow') { S.stage = 'gift'; S.giftT = 0; colSub(colT('gift'), 6); MGS.bell(MGS.NOTES[2], 0, 3, 0.04); MGS.arpeggio([0, 3, 5], 0.2, 3.4, 0.03); } },
@@ -13775,13 +14056,13 @@ COL_DEF.condor = {
 
 // ---------- 1 · EL ÁRBOL-SERVIDOR (GameLab Tadeo) — una red de cuidado ----------
 COL_DEF.arbol = {
-  iso: { yaw: 0.6, pitch: 0.12, dist: 68, tg: [0, 15, 0] }, trav: [0.1, 9], sky: [0.45, 0.8, 0.65], hud: ['ENERGÍA', 'RAMAS', 'ESPORAS', 'RED'], endAfter: 13, voice: 'arbol', voiceEvery: 20,
+  iso: { yaw: 0.6, pitch: 0.12, dist: 68, tg: [0, 15, 0] }, trav: [0.1, 9], sky: [0.45, 0.8, 0.65], hud: ['ENERGÍA', 'RAMAS', 'ESPORAS', 'RED'], endAfter: 13, voice: 'arbol', voiceEvery: 20, plate: ['Araucaria araucana', 'Lám. I'],
   txt: {
     es: { title: 'EL PEWEN-SERVIDOR', toast: 'El árbol sagrado mapuche: se apaga si nadie lo cuida.',
-      h: 'Toca una rama apagada para enviarle una espora desde las raíces. La energía se recarga despacio. Las ramas se apagan solas: reparte el cuidado. Arrastra el espacio vacío para girar.',
+      h: 'Toca una rama apagada para enviarle una espora desde las raíces. La energía se recarga despacio. Las ramas se apagan despacio y las vecinas comparten su luz: reparte el cuidado. Arrastra el espacio vacío para girar.',
       s0: '…sus ramas se apagan despacio…', send: '…una espora sube por la red…', lit: '…una rama vuelve a encenderse…', empty: '…esperar también es cuidar…', done: '…todas brillan y caen los piñones. Nada brilla solo.' },
     en: { title: 'THE PEWEN SERVER-TREE', toast: 'The sacred Mapuche tree: it goes dark if nobody tends it.',
-      h: 'Tap a dark branch to send it a spore from the roots. Energy recharges slowly. Branches dim on their own: spread the care. Drag empty space to turn.',
+      h: 'Tap a dark branch to send it a spore from the roots. Energy recharges slowly. Branches dim slowly and neighbours share their light: spread the care. Drag empty space to turn.',
       s0: '…its branches slowly go dark…', send: '…a spore climbs the network…', lit: '…a branch lights up again…', empty: '…waiting is also caring…', done: '…they all shine and the piñones fall. Nothing shines alone.' }
   },
   build(g) {
@@ -13798,15 +14079,15 @@ COL_DEF.arbol = {
     edgesDef.forEach(([a, b, lv]) => { const ls = lv.length ? lv : (b === 1 ? S.leaves.map((_, i) => i) : mainLeaves[b] || []); S.edges.push({ a, b, ls }); });
     const PE = 20, total = S.edges.length * PE;
     S.lines = sptPoints(total, (i, o) => { const e = S.edges[Math.floor(i / PE)], u = (i % PE) / (PE - 1), A = nodes[e.a], B = nodes[e.b];
-      o.x = A[0] + (B[0] - A[0]) * u + (Math.random() - 0.5) * 0.12; o.y = A[1] + (B[1] - A[1]) * u; o.z = A[2] + (B[2] - A[2]) * u + (Math.random() - 0.5) * 0.12; o.s = 0.22; o.a = 0.3; o.r = 0.55; o.g = 0.9; o.b = 0.72; });
+      o.x = A[0] + (B[0] - A[0]) * u + (Math.random() - 0.5) * 0.12; o.y = A[1] + (B[1] - A[1]) * u; o.z = A[2] + (B[2] - A[2]) * u + (Math.random() - 0.5) * 0.12; o.s = 0.22; o.a = 0.3; o.r = 0.95; o.g = 0.78; o.b = 0.4; });
     g.add(S.lines); S.PE = PE;
-    g.add(trtBlob(sptPoints, 760, 0, 12.5, 0, 1.8, 15, 1.8, [0.52, 0.42, 0.34], 0.2, 0.6));                                     // el tronco: una columna de racks
-    S.racks = sptPoints(46, (i, o) => { const row = Math.floor(i / 2); o.x = (i % 2 ? 0.9 : -0.9); o.y = -1 + row * 1.15; o.z = 1.75; o.s = 0.2; o.a = 0.6; o.r = 0.4; o.g = 1; o.b = 0.7; }); g.add(S.racks);
+    g.add((() => { const c = []; colTube(c, [[0, -2.2, 0], [0.3, 12, 0.2], [0, 27, 0]], 1600, 1.9, 1.5, (x, y, z, nx, ny, nz, lit) => { const v = 0.25 + 0.55 * lit; return [v, v * 0.9, v * 0.75]; }, { fur: 0.5, s: 0.2 }); return colCloud(c, [0, 0, 0]); })());                                     // el tronco: una columna de racks
+    S.racks = sptPoints(46, (i, o) => { const row = Math.floor(i / 2); o.x = (i % 2 ? 0.9 : -0.9); o.y = -1 + row * 1.15; o.z = 1.75; o.s = 0.2; o.a = 0.6; o.r = 1; o.g = 0.8; o.b = 0.4; }); g.add(S.racks);
     for (let r = 0; r < 6; r++) { const a = r * 1.047, rp = sptPoints(60, (i, o) => { const u = i / 59; o.x = Math.cos(a) * u * 11 + (Math.random() - 0.5) * 0.2; o.y = -2.2 - Math.sin(u * 2.4) * 2.6; o.z = Math.sin(a) * u * 11 + (Math.random() - 0.5) * 0.2; o.s = 0.1; o.a = 0.35 * (1 - u * 0.5); o.r = 0.5; o.g = 0.65; o.b = 0.55; }); g.add(rp); }   // raíces
-    S.srcHalo = mkHalo(0x9fe8c0, 9, 0.25); S.srcHalo.position.copy(S.nodes[0]); g.add(S.srcHalo);
+    S.srcHalo = mkHalo(0xe8c070, 9, 0.25); S.srcHalo.position.copy(S.nodes[0]); g.add(S.srcHalo);
     S.leaves.forEach(L => { const p = S.nodes[L.node]; L.pos = p;
-      L.canopy = trtBlob(sptPoints, 130, p.x, p.y + 0.8, p.z, 3.1, 1.8, 3.1, [0.38, 0.8, 0.58], 0.28, 0.9); g.add(L.canopy);
-      L.halo = mkHalo(0x9fe8c0, 8, 0); L.halo.position.set(p.x, p.y + 0.8, p.z); g.add(L.halo); });
+      L.canopy = trtBlob(sptPoints, 130, p.x, p.y + 0.8, p.z, 3.1, 1.8, 3.1, [0.95, 0.78, 0.4], 0.28, 0.9); g.add(L.canopy);
+      L.halo = mkHalo(0xe8c070, 8, 0); L.halo.position.set(p.x, p.y + 0.8, p.z); g.add(L.halo); });
     // verticilos de ramas viejas a lo largo del tronco (la silueta del pewen) y los piñones de la copa
     S.old = sptPoints(5 * 6 * 14, (i, o) => { const k = Math.floor(i / 84), m = Math.floor(i % 84 / 14), u = (i % 14) / 13, a = m * 1.047 + k * 0.5; o.x = Math.cos(a) * u * 5.5; o.z = Math.sin(a) * u * 5.5; o.y = 7 + k * 3.6 - Math.sin(u * 1.5) * 1.6 + u * 0.6; o.s = 0.22; o.a = 0.3 - k * 0.03; o.r = 0.4; o.g = 0.45; o.b = 0.36; }); g.add(S.old);
     S.pin = sptPoints(S.leaves.length * 5, (i, o) => { const L = S.leaves[Math.floor(i / 5)], a = i * 2.4; o.x = L.pos.x + Math.cos(a) * 2.2; o.z = L.pos.z + Math.sin(a) * 2.2; o.y = L.pos.y - 0.4 - (i % 3) * 0.5; o.s = 0.5; o.a = 1; o.r = 1; o.g = 0.78; o.b = 0.4; });
@@ -13815,17 +14096,19 @@ COL_DEF.arbol = {
     return S;
   },
   update(S, dt, t, calm) {
-    S.energy = Math.min(5, S.energy + dt * 0.65); S.msgT -= dt;
+    S.energy = Math.min(5, S.energy + dt * 0.95); S.msgT -= dt;
     let all = true, litN = 0;
-    S.leaves.forEach(L => { L.lit = Math.max(0, L.lit - dt / 70); if (L.lit < 0.8) all = false; else litN++; });
-    S.lit = litN; S.allT = all ? S.allT + dt : 0; if (S.allT > 5 && !S.won) S.won = true;
+    // la red micorrícica comparte: las hojas de una misma rama se igualan despacio y las encendidas se apagan más lento
+    for (const m in S.mainG || (S.mainG = (() => { const o = {}; S.leaves.forEach(L => { (o[L.main] = o[L.main] || []).push(L); }); return o; })())) { const G = S.mainG[m], avg = G.reduce((x, L) => x + L.lit, 0) / G.length; G.forEach(L => { L.lit += (avg - L.lit) * Math.min(1, dt * 0.12); }); }
+    S.leaves.forEach(L => { L.lit = Math.max(0, L.lit - dt / (L.lit > 0.7 ? 260 : 150)); if (L.lit < 0.7) all = false; else litN++; });
+    S.lit = litN; S.allT = all ? S.allT + dt : Math.max(0, S.allT - dt * 0.4); if (S.allT > 4 && !S.won) S.won = true;
     if (S.won) S.leaves.forEach(L => { L.lit = Math.min(1, L.lit + dt * 0.5); });
     // pulsos: cada uno recorre el camino raíz → tronco → rama → hoja
     for (let k = S.pulses.length - 1; k >= 0; k--) {
       const p = S.pulses[k]; p.d += dt * 15;
       let seg = 0, rem = p.d; while (seg < p.lens.length && rem > p.lens[seg]) { rem -= p.lens[seg]; seg++; }
       if (seg >= p.lens.length) {
-        const L = S.leaves[p.leaf]; L.lit = Math.min(1, L.lit + 0.34); MGS.bell(MGS.NOTES[p.leaf % 6], 0, 2, 0.03); L.halo.material.opacity = 0.7; if (L.lit >= 0.8 && S.msgT <= 0) { colSub(colT('lit'), 3); S.msgT = 3; }
+        const L = S.leaves[p.leaf]; L.lit = Math.min(1, L.lit + 0.45); MGS.bell(MGS.NOTES[p.leaf % 6], 0, 2, 0.03); L.halo.material.opacity = 0.7; if (L.lit >= 0.7 && S.msgT <= 0) { colSub(colT('lit'), 3); S.msgT = 3; }
         S.pulses.splice(k, 1); continue;
       }
       p.pos.lerpVectors(S.nodes[p.path[seg]], S.nodes[p.path[seg + 1]], rem / p.lens[seg]);
@@ -13858,7 +14141,7 @@ COL_DEF.arbol = {
 // ---------- 2 · EL AUTÓMATA-ESCARABAJO (Consola Arduino) — cerrar el circuito ----------
 const COL_PH = [[1, 0.55, 0.45], [1, 0.85, 0.4], [0.5, 0.95, 0.65], [0.55, 0.75, 1]];       // un color por fase de cada pata
 COL_DEF.escarabajo = {
-  iso: { yaw: 0.7, pitch: 0.42, dist: 42, tg: [0, 3, 0] }, trav: [2.4, 22], sky: [0.9, 0.7, 0.4], hud: ['COMPÁS', 'PATAS', 'PASOS', 'LED'], endAfter: 13, voice: 'escarabajo', voiceEvery: 15,
+  iso: { yaw: 0.7, pitch: 0.42, dist: 42, tg: [0, 3, 0] }, trav: [2.4, 22], sky: [0.9, 0.7, 0.4], hud: ['COMPÁS', 'PATAS', 'PASOS', 'LED'], endAfter: 13, voice: 'escarabajo', voiceEvery: 15, plate: ['Dynastes automaton', 'Lám. II'],
   txt: {
     es: { title: 'EL AUTÓMATA-ESCARABAJO', toast: 'Viene sin manual: se aprende probando.',
       h: 'Toca una pata para cambiar su fase (cada color es un instante del paso). Prueba hasta que todas encuentren un compás común. Arrastra el espacio vacío para girar.',
@@ -13885,7 +14168,7 @@ COL_DEF.escarabajo = {
         while (x > EC[0] - ER[0] * 0.8) { const nx = x - 0.5, yy = (xx, zz) => EC[1] + ER[1] * Math.sqrt(Math.max(0, 1 - Math.pow((xx - EC[0]) / ER[0], 2) - Math.pow(zz / ER[2], 2))) + 0.18; colLine(tr, [x, yy(x, z), z], [nx, yy(nx, z), z], 2, GOLD, 0.1, 0.95); x = nx;
           if (rn() < 0.08) { const nz = z + s * (rn() < 0.5 ? 0.5 : -0.5); colLine(tr, [x, yy(x, z), z], [x, yy(x, nz), nz], 3, GOLD, 0.1, 0.95); z = nz; }
           if (rn() < 0.03) tr.push({ x, y: yy(x, z) + 0.05, z, r: 1, g: 0.95, b: 0.7, s: 0.3, a: 1 }); } }
-      const cc = colCloud(tr, [EC[0], EC[1] + ER[1], s * 0.3], [EC[0], EC[1] + ER[1], s * 0.3]); el.add(cc); cc.pts.material.uniforms.uOpacity.value = 0.1; S.circ.push(cc.pts);
+      const cc = colCloud(tr, [EC[0], EC[1] + ER[1], s * 0.3], [EC[0], EC[1] + ER[1], s * 0.3]); el.add(cc); colOp(cc, 0.1); S.circ.push(cc);
     });
     // cuerpo: abdomen, protórax, cabeza y el gran cuerno curvo
     const dark = (x, y, z, nx, ny, nz, lit) => { const v = 0.12 + 0.42 * Math.pow(lit, 1.3); return [v * 0.85, v * 0.7, v * 0.45]; };
@@ -13933,7 +14216,7 @@ COL_DEF.escarabajo = {
       const c = COL_PH[S.ph[i]]; L.lamp.material.color.setRGB(c[0], c[1], c[2]); colTint(L.cloud, 0.55 + 0.7 * c[0], 0.55 + 0.7 * c[1], 0.55 + 0.7 * c[2]);
     });
     const cyc = Math.floor(S.clock * 3.77 / 6.283); if (cyc > S.lastTick) { S.lastTick = cyc; S.steps++; if (!S.won) MGS.ping(150 + 90 * coh, 0, 0.14, 0.012 + 0.02 * coh); }
-    S.circ.forEach(p => { p.material.uniforms.uOpacity.value = 0.08 + 0.92 * coh * coh; });
+    S.circ.forEach(p => colOp(p, 0.08 + 0.92 * coh * coh));
     S.body.rotation.z = (1 - coh) * Math.sin(t * 9) * 0.045 * sw; S.body.rotation.x = (1 - coh) * Math.sin(t * 7.3) * 0.03 * sw;
     if (coh < 1 && !calm && Math.random() < dt * (1 - coh) * 2 && MG.fx) MG.fx.burst(0, 3, 0, 3, 1.2, 0.6, 0xe0b45c, 0.14, 0.5);
     const sp = 4 * Math.pow(coh, 3) * (S.won ? 0.4 : 1), gp = S.ground.geometry.attributes.position.array;
@@ -13957,7 +14240,7 @@ COL_DEF.escarabajo = {
 const COL_TONES = [0xf2c799, 0xea9f95, 0xd1b3e0, 0xbfe6ff, 0xf0e08a, 0xb8d9ad];
 const COL_SPOTS = [[-1.45, 1.25], [1.45, 1.25], [-1.7, -0.55], [1.7, -0.55], [-0.95, -1.9], [0.95, -1.9], [0, 0.15]];
 COL_DEF.mariquita = {
-  iso: { yaw: 0.5, pitch: 0.12, dist: 34, tg: [0, 6, 0] }, trav: [1.4, 11], sky: [0.85, 0.55, 0.55], hud: ['FOTOGRAMAS', 'TONOS', 'MOTAS', 'VUELO'], endAfter: 12, voice: 'mariquita', voiceEvery: 0,
+  iso: { yaw: 0.55, pitch: 0.27, dist: 34, tg: [0, 6.5, 0] }, trav: [1.4, 11], sky: [0.85, 0.55, 0.55], hud: ['FOTOGRAMAS', 'TONOS', 'MOTAS', 'VUELO'], endAfter: 12, voice: 'mariquita', voiceEvery: 0, plate: ['Coccinella cinematographica', 'Lám. III'],
   txt: {
     es: { title: 'LA CATARINA DE PANTALLAS', toast: 'Un enjambre de fotogramas que decide su rumbo.',
       h: 'Toca los fotogramas que quieras invitar al enjambre. Cada uno le pinta una mota con su tono: necesita variedad para tomar forma. Tú no la diriges: ella decide a dónde va. Arrastra el espacio vacío para girar.',
@@ -13967,23 +14250,45 @@ COL_DEF.mariquita = {
       s0: '…a shapeless swarm, searching…', join: '…a frame joins…', tone: '…a new tone paints a spot…', wings: '…it begins to be a ladybug…', done: '…it opens its shell, takes flight and goes. To curate is to invite, and also to let go.' }
   },
   build(g) {
-    const N = 480, S = { N, joined: 0, pool: [], frames: [], spawnT: 0.5, tonePick: 0, fly: 0, flap: 0, cx: 0, cy: 6, cz: 0, f: 0, won: false, msgT: 0, wingsMsg: false, ang: [], rad: [], home: [], cat: [], spot: [], ord: [], open: 0 };
-    const add = (x, y, cat, sp) => { S.home.push([x * 2.5, y * 2.5]); S.cat.push(cat); S.spot.push(sp === undefined ? -1 : sp); };
-    COL_SPOTS.forEach((p, k) => { for (let j = 0; j < 13; j++) { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * 0.42; add(p[0] + Math.cos(a) * r, p[1] + Math.sin(a) * r, 1, k); } });
-    for (let j = 0; j < 70; j++) { const a = j / 70 * 6.283; add(Math.cos(a) * 2.75, -0.3 + Math.sin(a) * 3.1, 2); }                                   // contorno
-    for (let j = 0; j < 26; j++) { const a = -0.1 + j / 25 * 3.34; add(Math.cos(a) * 1.35, 2.75 + Math.sin(a) * 0.95, 2); }                                // cabeza
-    for (let j = 0; j < 16; j++) { const u = (j % 8) / 7, s = j < 8 ? -1 : 1; add(s * (0.5 + u * 1.2), 3.6 + u * 1.3, 2); }                                // antenas
-    for (let j = 0; j < 18; j++) { const lg = j % 3, s = j < 9 ? -1 : 1, u = Math.floor(j % 9 / 3) / 2; add(s * (2.7 + u * 0.7), 1.4 - lg * 1.7 + u * 0.3 * (lg - 1), 2); }   // patas
-    while (S.home.length < N) { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()), x = Math.cos(a) * r * 2.6, y = -0.3 + Math.sin(a) * r * 2.95; if (Math.abs(x) < 0.1) continue; add(x, y, 0); }   // élitros
-    for (let i = 0; i < N; i++) { S.ord.push(Math.random()); S.ang.push(Math.random() * 6.283); S.rad.push(4 + Math.random() * 9); }
-    S.swarm = sptPoints(N, (i, o) => { o.x = (Math.random() - 0.5) * 20; o.y = 6 + (Math.random() - 0.5) * 8; o.z = (Math.random() - 0.5) * 20; o.s = 0.17; o.a = 0.5; o.r = 0.7; o.g = 0.72; o.b = 0.78; }); g.add(S.swarm);
-    S.hw = sptPoints(120, (i, o) => { const s = i % 2 ? 1 : -1, u = Math.random(), a = Math.random() * 6.283; S.hwh = S.hwh || []; S.hwh.push([s * (2.2 + u * 3.4), -1 + Math.sin(a) * 2.2 * (1 - u * 0.5)]); o.x = o.y = o.z = 0; o.s = 0.12; o.a = 0.7; o.r = 0.75; o.g = 0.9; o.b = 1; });
+    const N = 900, rnd = Math.random;
+    const S = { N, joined: 0, pool: [], frames: [], spawnT: 0.5, tonePick: 0, fly: 0, flap: 0, f: 0, won: false, msgT: 0, wingsMsg: false, ang: [], rad: [], H: new Float32Array(N * 3), cat: [], spot: [], side: [], ord: [], open: 0, cx: 0, cy: 6, cz: 0, M: new THREE.Matrix4(), TILT: 0.13, HEAD: 0.95 };
+    // la hoja: una lámina grande, curva, con nervaduras y rocío, sobre un tallo; la catarina se posa encima
+    const leaf = new THREE.Group(); leaf.position.set(0, 6, 0); leaf.rotation.z = S.TILT; g.add(leaf); S.leaf = leaf;
+    const LY = (u, v) => 0.9 * v * v - 1.1 * u * u, LW = (u) => Math.sqrt(Math.max(0, 1 - u * u)) * (1 - 0.18 * u);
+    const lp = (n, fn) => leaf.add(sptPoints(n, fn));
+    lp(900, (i, o) => { const u = rnd() * 2 - 1, v = (rnd() * 2 - 1) * LW(u); o.x = u * 9; o.z = v * 5.6; o.y = LY(u, v / Math.max(0.2, LW(u))) - 0.05; o.s = 0.12; o.a = 0.12 + 0.18 * (1 - Math.abs(v)); o.r = 0.3; o.g = 0.58 + rnd() * 0.12; o.b = 0.42; });
+    lp(60, (i, o) => { const u = i / 59 * 2 - 1; o.x = u * 9; o.y = LY(u, 0) + 0.02; o.z = 0; o.s = 0.2; o.a = 0.8; o.r = 0.6; o.g = 0.95; o.b = 0.7; });                       // nervadura central
+    lp(8 * 2 * 16, (i, o) => { const k = Math.floor(i / 32), sd = (i % 32) < 16 ? 1 : -1, j = i % 16 / 15, u0 = -0.8 + k * 0.2, w = LW(u0 + j * 0.28) * 0.92 * j; o.x = (u0 + j * 0.28) * 9; o.z = sd * w * 5.6; o.y = LY(u0 + j * 0.28, sd * w) + 0.02; o.s = 0.14; o.a = 0.55; o.r = 0.5; o.g = 0.88; o.b = 0.62; });   // nervaduras laterales
+    lp(220, (i, o) => { const a = i / 220 * 6.283, u = Math.cos(a), v = Math.sin(a) * LW(u); o.x = u * 9; o.z = v * 5.6; o.y = LY(u, Math.sin(a)) + 0.02; o.s = 0.16; o.a = 0.6; o.r = 0.75; o.g = 1; o.b = 0.8; });                  // borde
+    lp(9, (i, o) => { const a = i * 2.4, r = 1 + (i % 4) * 0.9; o.x = 2.5 + Math.cos(a) * r * 1.8; o.z = Math.sin(a) * r * 0.9; o.y = 0.12; o.s = 0.42; o.a = 0.9; o.r = 0.8; o.g = 0.95; o.b = 1; });     // rocío
+    g.add(sptPoints(80, (i, o) => { const u = i / 79; o.x = -9.5 * u - 0.5 * Math.sin(u * 3.1) * 2; o.y = 6 - u * 6.2 + 1.5 * Math.sin(u * 3.14) * 0.4 - 0.2; o.z = 0.8 * Math.sin(u * 3); o.s = 0.28; o.a = 0.8; o.r = 0.45; o.g = 0.8; o.b = 0.5; }));      // tallo
+    for (let k = 0; k < 2; k++) { const lf = new THREE.Group(); lf.position.set(k ? 14 : -15, k ? 1.4 : 2.2, k ? -6 : -3); lf.rotation.set(0.2, k ? 2.3 : 0.7, k ? -0.3 : 0.25); lf.scale.setScalar(0.55); g.add(lf);
+      lf.add(sptPoints(260, (i, o) => { const u = rnd() * 2 - 1, v = (rnd() * 2 - 1) * LW(u); o.x = u * 9; o.z = v * 5.6; o.y = LY(u, v / Math.max(0.2, LW(u))); o.s = 0.16; o.a = 0.2; o.r = 0.28; o.g = 0.55; o.b = 0.42; }));
+      lf.add(sptPoints(40, (i, o) => { const u = i / 39 * 2 - 1; o.x = u * 9; o.y = LY(u, 0); o.z = 0; o.s = 0.24; o.a = 0.55; o.r = 0.5; o.g = 0.9; o.b = 0.65; })); }
+    // la catarina en coordenadas locales (x ancho, y alto, z hacia la cabeza): élitros en cúpula con motas, pronoto, cabeza, antenas y seis patas
+    const ax = 2.6, ay = 1.9, az = 3.0, yc = 0.9, cz = -0.3; let n = 0;
+    const put = (x, y, z, cat, sp, sd) => { if (n >= N) return; S.H[n * 3] = x; S.H[n * 3 + 1] = y; S.H[n * 3 + 2] = z; S.cat.push(cat); S.spot.push(sp === undefined ? -1 : sp); S.side.push(sd || 0); n++; };
+    const dome = (X, Z) => { const q = 1 - (X / ax) * (X / ax) - ((Z - cz) / az) * ((Z - cz) / az); return q > 0 ? yc + ay * Math.sqrt(q) : -1; };
+    COL_SPOTS.forEach((p, k) => { const X0 = p[0] * 1.15, Z0 = p[1] * 1.2 - 0.2; for (let j = 0; j < 22; j++) { const a = rnd() * 6.283, r = Math.sqrt(rnd()) * 0.5, X = X0 + Math.cos(a) * r, Z = Z0 + Math.sin(a) * r, y = dome(X, Z); if (y < 0) { j--; continue; } put(X, y + 0.06, Z, 1, k, X < 0 ? -1 : 1); } });
+    for (let j = 0; j < 400; j++) { const X = (rnd() * 2 - 1) * ax, Z = cz + (rnd() * 2 - 1) * az, y = dome(X, Z); if (y < 0 || Math.abs(X) < 0.08 || Z > 1.3) continue; put(X, y, Z, 0, undefined, X < 0 ? -1 : 1); }
+    for (let j = 0; j < 40; j++) { const Z = cz + (j / 39 * 2 - 1) * az * 0.93, y = dome(0, Z); if (Z < 1.3 && y > 0) put(0, y + 0.03, Z, 2, undefined, 0); }                                  // sutura central
+    for (let j = 0; j < 90; j++) { const a = j / 90 * 6.283, X = Math.cos(a) * ax * 0.98, Z = cz + Math.sin(a) * az * 0.98; if (Z < 1.3) put(X, yc + 0.05, Z, 2, undefined, 0); }              // reborde de los élitros
+    for (let j = 0; j < 110; j++) { const a = rnd() * 6.283, b = rnd() * 1.4; put(Math.cos(a) * Math.cos(b) * 1.75, 1.7 + Math.sin(b) * 1.05, 2.15 + Math.sin(a) * Math.cos(b) * 0.95, 2); }       // pronoto
+    for (let k = 0; k < 2; k++) for (let j = 0; j < 8; j++) { const a = rnd() * 6.283, r = rnd() * 0.3; put((k ? 1 : -1) * 1.05 + Math.cos(a) * r, 2.25 + Math.sin(a) * r * 0.5, 2.5 + Math.sin(a) * r, 3); }                // manchas blancas del pronoto
+    for (let j = 0; j < 90; j++) { const a = rnd() * 6.283, b = rnd() * 3.14; put(Math.sin(b) * Math.cos(a) * 1.05, 1.35 + Math.cos(b) * 0.85, 3.45 + Math.sin(b) * Math.sin(a) * 0.9, 2); }  // cabeza
+    for (let k = 0; k < 2; k++) for (let j = 0; j < 6; j++) { const a = rnd() * 6.283, r = rnd() * 0.22; put((k ? 1 : -1) * 0.62 + Math.cos(a) * r, 1.75 + Math.sin(a) * r, 4.15 + rnd() * 0.15, 3); }                    // ojos
+    for (let k = 0; k < 2; k++) for (let j = 0; j < 16; j++) { const u = j / 15, s = k ? 1 : -1; put(s * (0.35 + u * 1.2 + Math.sin(u * 3) * 0.2), 1.7 + u * 1.5 - u * u * 0.3, 4.1 + u * 2.4, 2, undefined, 0); S.ant = S.ant || {}; S.ant[n - 1] = s; }   // antenas
+    for (let k = 0; k < 6; k++) { const s = k < 3 ? -1 : 1, li = k % 3, hz = 1.6 - li * 1.5; for (let j = 0; j < 11; j++) { const u = j / 10, kx = s * 3.1, ky = 1.5, kz = hz + (li - 1) * 0.35, fx = s * 3.5, fz = hz + (li - 1) * 1.1 + 0.8, x = u < 0.5 ? (s * 1.5 + (kx - s * 1.5) * u * 2) : (kx + (fx - kx) * (u - 0.5) * 2), y = u < 0.5 ? (0.9 + (ky - 0.9) * u * 2) : (ky * (1 - (u - 0.5) * 2)), z = u < 0.5 ? (hz + (kz - hz) * u * 2) : (kz + (fz - kz) * (u - 0.5) * 2); put(x, y, z, 2, undefined, 0); } }   // patas
+    while (n < N) { const X = (rnd() * 2 - 1) * ax * 0.9, Z = cz + (rnd() * 2 - 1) * az * 0.9, y0 = dome(X, Z); if (y0 < 0 || Math.abs(X) < 0.08 || Z > 1.2) continue; put(X, yc + (y0 - yc) * (0.35 + rnd() * 0.6), Z, 0, undefined, X < 0 ? -1 : 1); }   // volumen interior
+    for (let i = 0; i < N; i++) { S.ord.push(rnd()); S.ang.push(rnd() * 6.283); S.rad.push(3.5 + rnd() * 9); }
+    S.swarm = sptPoints(N, (i, o) => { o.x = (rnd() - 0.5) * 20; o.y = 6 + (rnd() - 0.5) * 8; o.z = (rnd() - 0.5) * 20; o.s = 0.15; o.a = 0.5; o.r = 0.7; o.g = 0.72; o.b = 0.78; }); { const SZ = S.swarm.geometry.attributes.aSize.array; for (let i = 0; i < N; i++) SZ[i] = [0.15, 0.27, 0.18, 0.26][S.cat[i]]; } g.add(S.swarm);
+    S.hwh = []; S.hw = sptPoints(160, (i, o) => { const s = i % 2 ? 1 : -1, u = rnd(), a = rnd() * 6.283; S.hwh.push([s, u, a]); o.x = o.y = o.z = 0; o.s = 0.11; o.a = 0.7; o.r = 0.75; o.g = 0.9; o.b = 1; });
     S.hw.material.uniforms.uOpacity.value = 0; g.add(S.hw);
-    S.proj = sptPoints(60, (i, o) => { o.x = (Math.random() - 0.5) * 70; o.y = Math.random() * 20; o.z = -20 - Math.random() * 20; o.s = 0.3 + Math.random() * 0.4; o.a = 0.05; o.r = 0.8; o.g = 0.8; o.b = 0.9; }); g.add(S.proj);
+    S.proj = sptPoints(60, (i, o) => { o.x = (rnd() - 0.5) * 70; o.y = rnd() * 20; o.z = -20 - rnd() * 20; o.s = 0.3 + rnd() * 0.4; o.a = 0.05; o.r = 0.8; o.g = 0.8; o.b = 0.9; }); g.add(S.proj);
     return S;
   },
   spawn(S, g) {
-    const tone = this.nextTone(S), fr = new THREE.Group(), a = Math.random() * 6.283, r = 10 + Math.random() * 6, hex = COL_TONES[tone], [cr, cg, cb] = arRGB(hex);
+    const tone = this.nextTone(S), fr = new THREE.Group(), a = Math.random() * 6.283, r = 11 + Math.random() * 6, hex = COL_TONES[tone], [cr, cg, cb] = arRGB(hex);
     fr.add(sptPoints(26, (i, o) => { const u = i / 26 * 4; const side = Math.floor(u), w = u - side, W = 1.5, H = 1.0; if (side === 0) { o.x = -W + 2 * W * w; o.y = -H; } else if (side === 1) { o.x = W; o.y = -H + 2 * H * w; } else if (side === 2) { o.x = W - 2 * W * w; o.y = H; } else { o.x = -W; o.y = H - 2 * H * w; } o.z = 0; o.s = 0.17; o.a = 0.95; o.r = cr; o.g = cg; o.b = cb; }));
     fr.add(sptPoints(30, (i, o) => { o.x = (Math.random() - 0.5) * 2.6; o.y = (Math.random() - 0.5) * 1.8; o.z = 0; o.s = 0.12; o.a = 0.25; o.r = cr; o.g = cg; o.b = cb; }));
     const halo = mkHalo(hex, 4.2, 0.25); fr.add(halo);
@@ -13997,26 +14302,33 @@ COL_DEF.mariquita = {
     const distinct = new Set(S.pool).size, tf = Math.min(1, S.joined / 7);
     S.f += (tf - S.f) * Math.min(1, dt * 0.8);
     if (S.won) { S.fly += dt; S.open = Math.min(1, S.open + dt * 0.7); }
-    const bx = Math.sin(t * 0.21) * 5 + S.fly * S.fly * 1.4, by = 6 + Math.sin(t * 0.33) * 2 + S.fly * 1.2, bz = Math.cos(t * 0.17) * 5 - S.fly * S.fly * 3.2;
-    S.cx += (bx - S.cx) * Math.min(1, dt * 1.5); S.cy += (by - S.cy) * Math.min(1, dt * 1.5); S.cz += (bz - S.cz) * Math.min(1, dt * 1.5);
-    const psi = Math.atan2(userGroup.position.x - S.cx, userGroup.position.z - S.cz), rx = Math.cos(psi), rz = -Math.sin(psi);                  // el plano de la catarina mira a la cámara
-    const A = S.swarm.geometry.attributes, pa = A.position.array, co = A.aCol.array, al = A.aAlpha.array, flut = 1 + 0.025 * Math.sin(S.flap * 5) * sw;
-    const pool = S.pool.length ? S.pool : null, spread = 1 + 0.45 * S.open;
+    const fl = Math.max(0, S.fly - 1.8), ox = fl * fl * 1.4, oy = fl * 1.6 + fl * fl * 0.3, oz = -fl * fl * 3.2;
+    // la catarina vive sobre la hoja; el enjambre sin forma flota alrededor y se desvanece al posarse
+    const ch = Math.cos(S.HEAD), sh = Math.sin(S.HEAD), ct = Math.cos(S.TILT), st = Math.sin(S.TILT);
+    const sx = (X, Y, Z) => { X *= 1.3; Y *= 1.3; Z *= 1.3; const x1 = X * ch + Z * sh + 0.8, y1 = Y + 0.02, z1 = -X * sh + Z * ch; return [x1 * ct - y1 * st + ox, x1 * st + y1 * ct + 6 + oy, z1 + oz]; };
+    S.cx = 0.8 * ct + ox; S.cy = 0.8 * st + 8 + oy; S.cz = oz;
+    const A = S.swarm.geometry.attributes, pa = A.position.array, co = A.aCol.array, al = A.aAlpha.array, breath = 1 + 0.012 * Math.sin(S.flap * 2.2) * sw;
+    const th = S.open * 1.15, cT = Math.cos(th), sT = Math.sin(th), HY = 0.9 + 1.9 * 0.95;
     for (let i = 0; i < S.N; i++) {
       let tx, ty, tz; const inF = S.ord[i] < S.f, cat = S.cat[i];
-      if (inF) { const hx = S.home[i][0] * flut * (cat === 0 && S.open ? spread : 1), hy = S.home[i][1]; tx = S.cx + hx * rx; tz = S.cz + hx * rz; ty = S.cy + hy; }
-      else { const a = S.ang[i] + t * 0.15 * (i % 2 ? 1 : -1) * sw, r = S.rad[i]; tx = S.cx + Math.cos(a) * r; ty = S.cy + Math.sin(a * 1.3 + i) * (r * 0.5); tz = S.cz + Math.sin(a) * r; }
+      if (inF) {
+        let x = S.H[i * 3], y = S.H[i * 3 + 1] * breath, z = S.H[i * 3 + 2]; const sd = S.side[i];
+        if (sd && S.open > 0) { const dx = x - sd * 0.15, dy = y - HY, c = cT, s2 = sd * sT; x = sd * 0.15 + dx * c - dy * s2; y = HY + dx * s2 + dy * c; }
+        if (S.ant && S.ant[i]) x += Math.sin(t * 3 + i) * 0.12 * sw;
+        [tx, ty, tz] = sx(x, y, z);
+      } else { const a = S.ang[i] + t * 0.15 * (i % 2 ? 1 : -1) * sw, r = S.rad[i]; tx = S.cx + Math.cos(a) * r; ty = S.cy + 1 + Math.sin(a * 1.3 + i) * (r * 0.45); tz = S.cz + Math.sin(a) * r; }
       pa[i * 3] += (tx - pa[i * 3]) * Math.min(1, dt * 2.2); pa[i * 3 + 1] += (ty - pa[i * 3 + 1]) * Math.min(1, dt * 2.2); pa[i * 3 + 2] += (tz - pa[i * 3 + 2]) * Math.min(1, dt * 2.2);
       if (inF) {
-        if (cat === 0) { co[i * 3] = 0.95; co[i * 3 + 1] = 0.2; co[i * 3 + 2] = 0.17; al[i] = 0.85; }                                       // élitros rojos
-        else if (cat === 1) { const k = S.spot[i]; if (k < S.pool.length) { const [cr, cg, cb] = arRGB(COL_TONES[S.pool[k]]); co[i * 3] = cr; co[i * 3 + 1] = cg; co[i * 3 + 2] = cb; al[i] = 1; } else { co[i * 3] = 0.12; co[i * 3 + 1] = 0.1; co[i * 3 + 2] = 0.14; al[i] = 0.55; } }   // cada mota toma el tono de un fotograma
-        else { co[i * 3] = 0.82; co[i * 3 + 1] = 0.86; co[i * 3 + 2] = 0.95; al[i] = 0.9; }
-      } else if (pool) { const [cr, cg, cb] = arRGB(COL_TONES[pool[i % pool.length]]); co[i * 3] = cr; co[i * 3 + 1] = cg; co[i * 3 + 2] = cb; al[i] = 0.5; } else al[i] = 0.4;
+        if (cat === 0) { const sh = 0.75 + 0.25 * Math.min(1, Math.max(0, (S.H[i * 3 + 1] - 0.9) / 1.9)); co[i * 3] = 0.95 * sh; co[i * 3 + 1] = 0.16 * sh; co[i * 3 + 2] = 0.14 * sh; al[i] = 0.9; }                      // élitros rojos, más claros en la cima
+        else if (cat === 1) { const k = S.spot[i]; if (k < S.pool.length) { const [cr, cg, cb] = arRGB(COL_TONES[S.pool[k]]); co[i * 3] = cr; co[i * 3 + 1] = cg; co[i * 3 + 2] = cb; al[i] = 1; } else { co[i * 3] = 0.1; co[i * 3 + 1] = 0.08; co[i * 3 + 2] = 0.12; al[i] = 0.7; } }
+        else if (cat === 2) { co[i * 3] = 0.55; co[i * 3 + 1] = 0.62; co[i * 3 + 2] = 0.85; al[i] = 1; }
+        else { co[i * 3] = 0.95; co[i * 3 + 1] = 0.97; co[i * 3 + 2] = 1; al[i] = 1; }
+      } else if (S.pool.length) { const [cr, cg, cb] = arRGB(COL_TONES[S.pool[i % S.pool.length]]); co[i * 3] = cr; co[i * 3 + 1] = cg; co[i * 3 + 2] = cb; al[i] = 0.5; } else al[i] = 0.4;
     }
     A.position.needsUpdate = A.aCol.needsUpdate = A.aAlpha.needsUpdate = true;
-    // alas membranosas que asoman al abrir los élitros
-    const hp = S.hw.geometry.attributes.position.array, flapW = Math.sin(S.flap * 9) * 0.25 * S.open * sw;
-    for (let i = 0; i < S.hwh.length; i++) { const hx = S.hwh[i][0] * (1 + flapW * Math.sign(S.hwh[i][0])), hy = S.hwh[i][1]; hp[i * 3] = S.cx + hx * rx; hp[i * 3 + 1] = S.cy + hy + Math.abs(hx) * 0.15 * S.open; hp[i * 3 + 2] = S.cz + hx * rz; }
+    // alas membranosas que asoman al abrir los élitros y baten al despegar
+    const hp = S.hw.geometry.attributes.position.array, flapW = Math.sin(S.flap * 9) * (0.25 + 0.5 * Math.min(1, fl)) * S.open * sw;
+    for (let i = 0; i < S.hwh.length; i++) { const [s, u, a] = S.hwh[i], len = 0.6 + u * 4.6, X = s * len * Math.cos(flapW), Y = 2.2 + len * Math.sin(flapW) * 0.9 * S.open + Math.sin(a) * 0.5 * (1 - u * 0.5), Z = -0.4 - Math.sin(u * 3.14) * 1.6 + Math.cos(a) * 0.6 * (1 - u * 0.5); const q = sx(X, Y, Z); hp[i * 3] = q[0]; hp[i * 3 + 1] = q[1]; hp[i * 3 + 2] = q[2]; }
     S.hw.geometry.attributes.position.needsUpdate = true; S.hw.material.uniforms.uOpacity.value = S.open * 0.9;
     // fotogramas a la deriva y los que se unen
     for (let k = S.frames.length - 1; k >= 0; k--) {
@@ -14043,7 +14355,7 @@ COL_DEF.mariquita = {
 // ---------- 5 · EL BARBUDITO DEL PÁRAMO (Games for Change) — escuchar el conflicto, en el páramo ----------
 const COL_FIG = [Math.PI / 2, Math.PI * 7 / 6, Math.PI * 11 / 6];
 COL_DEF.colibri = {
-  iso: { yaw: 0.35, pitch: 0.2, dist: 56, tg: [0, 17, 0], fov: 42 }, trav: [0.15, 12], sky: [0.5, 0.62, 0.55], hud: ['TENSIÓN', 'ESCUCHA', 'VOCES CALMAS', 'COLIBRÍ'], endAfter: 13, voice: 'colibri', voiceEvery: 0, voiceWin: 'colibri_song',
+  iso: { yaw: 0.35, pitch: 0.2, dist: 70, tg: [0, 21, 0], fov: 42 }, trav: [0.15, 15], sky: [0.5, 0.62, 0.55], hud: ['TENSIÓN', 'ESCUCHA', 'VOCES CALMAS', 'COLIBRÍ'], endAfter: 13, voice: 'colibri', voiceEvery: 0, plate: ['Oxypogon guerinii  ×  Espeletia', 'Lám. V'], voiceWin: 'colibri_song',
   txt: {
     es: { title: 'EL BARBUDITO DEL PÁRAMO', toast: 'Un colibrí colosal en el páramo: tres voces que no se oyen.',
       h: 'Mantén pulsada una figura para escucharla: se calma. Pero las otras se tensan donde no miras. Reparte la atención. Arrastra el espacio vacío para girar.',
@@ -14056,34 +14368,55 @@ COL_DEF.colibri = {
     const S = { a: [0.85, 0.7, 0.8], listen: -1, calmT: 0, won: false, msgT: 0, breath: 0, rumT: 0, agit: 1, down: 0, figs: [], heardMsg: false, neglMsg: false, roarT: 2.5, rear: 0, rp: 0, jx: 0, hy: 0 };
     const rnd = Math.random;
     // --- el páramo: pajonal, frailejones, laguna, cordilleras y niebla ---
-    g.add(sptPoints(900, (i, o) => { const a = rnd() * 6.283, r = Math.sqrt(rnd()) * 50; o.x = Math.cos(a) * r; o.z = Math.sin(a) * r; o.y = -0.1 + Math.sin(o.x * 0.3) * Math.cos(o.z * 0.25) * 0.35; o.s = 0.1 + rnd() * 0.14; o.a = 0.12 + rnd() * 0.25; o.r = 0.45; o.g = 0.52 + rnd() * 0.1; o.b = 0.38; }));
-    const PL = []; for (let k = 0; k < 30; k++) { const a = rnd() * 6.283, r = 24 + rnd() * 24; PL.push({ x: Math.cos(a) * r, z: Math.sin(a) * r * 0.9, h: 2.2 + rnd() * 3.4 }); }
-    const PER = 52;
-    S.fr = sptPoints(PL.length * PER, (i, o) => { const p = PL[Math.floor(i / PER)], j = i % PER;
-      if (j < 8) { o.x = p.x; o.z = p.z; o.y = p.h * j / 7; o.s = 0.2; o.a = 0.8; o.r = 0.5; o.g = 0.42; o.b = 0.3; }
-      else { const L = (j - 8) % 11, a = Math.floor((j - 8) / 11) * 1.57 + L * 0.02 + p.x, u = 0.3 + L / 10 * 1.3; o.x = p.x + Math.cos(a) * u * 1.2; o.z = p.z + Math.sin(a) * u * 1.2; o.y = p.h + 0.2 + Math.sin(L / 10 * 2.2) * 0.9 - u * 0.1; o.s = 0.16; o.a = 0.75; o.r = 0.72; o.g = 0.8; o.b = 0.7; } });
+    // suelo: pajonal denso con macollas y charcos de turba
+    g.add(sptPoints(2600, (i, o) => { const a = rnd() * 6.283, r = 6 + Math.sqrt(rnd()) * 70; o.x = Math.cos(a) * r; o.z = Math.sin(a) * r; o.y = -0.1 + Math.sin(o.x * 0.3) * Math.cos(o.z * 0.25) * 0.35; o.s = 0.1 + rnd() * 0.16; o.a = 0.1 + rnd() * 0.28; o.r = 0.4 + rnd() * 0.1; o.g = 0.5 + rnd() * 0.14; o.b = 0.34 + rnd() * 0.06; }));
+    g.add(sptPoints(700, (i, o) => { const c = Math.floor(rnd() * 70), a = c * 2.4, r = 10 + (c % 7) * 8 + rnd() * 2, h = rnd(); o.x = Math.cos(a) * r + (rnd() - 0.5) * 1.6; o.z = Math.sin(a) * r * 0.9 + (rnd() - 0.5) * 1.6; o.y = h * 0.9; o.s = 0.12; o.a = 0.5; o.r = 0.5; o.g = 0.62 + h * 0.15; o.b = 0.4; }));      // macollas de paja
+    // bosque de frailejones: muchos, de tres tamaños, más densos hacia el fondo
+    const PL = []; for (let k = 0; k < 150; k++) { const a = rnd() * 6.283, r = 17 + Math.pow(rnd(), 0.7) * 44; if (Math.abs(Math.sin(a)) > 0.6 && Math.cos(a) < 0 && r < 28) { k--; continue; } const big = rnd(); PL.push({ x: Math.cos(a) * r, z: Math.sin(a) * r * 0.9, h: big < 0.15 ? 4.6 + rnd() * 2.2 : big < 0.5 ? 2.4 + rnd() * 1.6 : 0.8 + rnd() * 1.2 }); }
+    const PER = 40;
+    S.fr = sptPoints(PL.length * PER, (i, o) => { const p = PL[Math.floor(i / PER)], j = i % PER, k = p.h / 4;
+      if (j < 7) { o.x = p.x; o.z = p.z; o.y = p.h * j / 6; o.s = 0.18; o.a = 0.8; o.r = 0.5; o.g = 0.42; o.b = 0.3; }
+      else if (j < 14) { const a = j * 2.2 + p.x; o.x = p.x + Math.cos(a) * 0.22 * (0.5 + k); o.z = p.z + Math.sin(a) * 0.22 * (0.5 + k); o.y = p.h * (j - 7) / 7; o.s = 0.14; o.a = 0.55; o.r = 0.45; o.g = 0.36; o.b = 0.25; }   // hojas muertas del tronco
+      else { const L = (j - 14) % 9, a = Math.floor((j - 14) / 9) * 1.57 + L * 0.02 + p.x, u = (0.3 + L / 8 * 1.3) * (0.55 + k * 0.6); o.x = p.x + Math.cos(a) * u * 1.2; o.z = p.z + Math.sin(a) * u * 1.2; o.y = p.h + 0.2 + Math.sin(L / 8 * 2.2) * 0.9 * (0.5 + k * 0.5) - u * 0.1; o.s = 0.16; o.a = 0.75; o.r = 0.72; o.g = 0.8; o.b = 0.7; } });
     g.add(S.fr);
-    S.flow = sptPoints(PL.length * 3, (i, o) => { const p = PL[Math.floor(i / 3)], j = i % 3; o.x = p.x + (j - 1) * 0.35; o.z = p.z + (j === 1 ? 0.3 : -0.2); o.y = p.h + 1.6 + (j === 1 ? 0.5 : 0); o.s = 0.4; o.a = 1; o.r = 1; o.g = 0.86; o.b = 0.25; });
+    const BIG = PL.filter(p => p.h > 2.4);
+    S.flow = sptPoints(BIG.length * 3, (i, o) => { const p = BIG[Math.floor(i / 3)], j = i % 3; o.x = p.x + (j - 1) * 0.35; o.z = p.z + (j === 1 ? 0.3 : -0.2); o.y = p.h + 1.6 + (j === 1 ? 0.5 : 0); o.s = 0.4; o.a = 1; o.r = 1; o.g = 0.86; o.b = 0.25; });
     S.flow.material.uniforms.uOpacity.value = 0; g.add(S.flow);
-    g.add(sptPoints(300, (i, o) => { const a = rnd() * 6.283, r = Math.sqrt(rnd()); o.x = -6 + Math.cos(a) * r * 14; o.z = -36 + Math.sin(a) * r * 7; o.y = 0.02; o.s = 0.2; o.a = 0.22; o.r = 0.4; o.g = 0.6; o.b = 0.8; }));      // laguna
-    for (let L = 0; L < 3; L++) g.add(sptPoints(420, (i, o) => { const x = -95 + 190 * (i / 420); o.x = x; o.z = -64 - L * 12; o.y = 8 + L * 3 + 6 * Math.sin(x * 0.045 + L * 2) + 3 * Math.sin(x * 0.13 + L); o.s = 0.5; o.a = 0.3; o.r = 0.26 + L * 0.03; o.g = 0.34 + L * 0.03; o.b = 0.42 + L * 0.03; }));
+    // laguna: espejo de agua con anillos y un reflejo del coloso que tiembla con la tensión
+    const LX = -10, LZ = -34;
+    g.add(sptPoints(700, (i, o) => { const a = rnd() * 6.283, r = Math.sqrt(rnd()); o.x = LX + Math.cos(a) * r * 17; o.z = LZ + Math.sin(a) * r * 8; o.y = 0.02; o.s = 0.18; o.a = 0.16 + rnd() * 0.12; o.r = 0.4; o.g = 0.62; o.b = 0.82; }));
+    g.add(sptPoints(260, (i, o) => { const a = i / 260 * 6.283; o.x = LX + Math.cos(a) * 17.5; o.z = LZ + Math.sin(a) * 8.4; o.y = 0.05; o.s = 0.2; o.a = 0.5; o.r = 0.7; o.g = 0.85; o.b = 0.9; }));
+    S.ghost = sptPoints(520, (i, o) => { const t = rnd(), k = i % 4; if (k === 0) { o.x = LX + 0.25 * t; o.y = -t * 8.6; o.z = LZ; o.s = 0.2; } else if (k === 1) { const a = rnd() * 6.283, b = rnd() * 3.14; o.x = LX + 2 + Math.sin(b) * Math.cos(a) * 2.4; o.y = -9.4 - Math.cos(b) * 2.6; o.z = LZ + Math.sin(b) * Math.sin(a) * 2.2; o.s = 0.16; } else if (k === 2) { const a = rnd() * 6.283; o.x = LX + 4.4 + Math.cos(a) * 1; o.y = -12.6 + Math.sin(a) * 1; o.z = LZ + (rnd() - 0.5); o.s = 0.16; } else { o.x = LX - 1.5 + t * 2; o.y = -9 - t * 2.4; o.z = LZ + (rnd() - 0.5) * 1.5; o.s = 0.14; } o.a = 0.45; o.r = 0.55; o.g = 0.78; o.b = 0.95; });
+    g.add(S.ghost); S.ghost.userData.y0 = 0;
+    // cordilleras: cinco capas con contornos y cumbres, en paralaje
+    S.ridges = []; for (let L = 0; L < 5; L++) { const R = sptPoints(560, (i, o) => { const x = -130 + 260 * (i / 560); o.x = x; o.z = -62 - L * 14; const top = 9 + L * 3.2 + 7 * Math.sin(x * 0.04 + L * 2) + 3.5 * Math.sin(x * 0.12 + L) + 1.4 * Math.sin(x * 0.31 + L * 3); o.y = (i % 3 === 0) ? top - (i % 9) * 0.7 : top; o.s = 0.5; o.a = (i % 3 === 0) ? 0.1 : 0.34; o.r = 0.24 + L * 0.03; o.g = 0.34 + L * 0.03; o.b = 0.44 + L * 0.03; }); R.userData.L = L; S.ridges.push(R); g.add(R); }
+    // bandas de niebla a tres profundidades + niebla suelta
+    S.bands = []; for (let L = 0; L < 3; L++) { const B = sptPoints(150, (i, o) => { o.x = (rnd() - 0.5) * 130; o.y = 1.5 + L * 3.4 + rnd() * 2.2; o.z = -8 - L * 20 - rnd() * 8; o.s = 2.4 + rnd() * 2.2; o.a = 0.05 + rnd() * 0.05; o.r = 0.72; o.g = 0.8; o.b = 0.84; }); B.userData.v = 0.35 + 0.25 * (2 - L); S.bands.push(B); g.add(B); }
     S.mist = sptPoints(170, (i, o) => { o.x = (Math.random() - 0.5) * 90; o.y = Math.random() * 12; o.z = (Math.random() - 0.5) * 70; o.s = 1.2 + Math.random() * 1.6; o.a = 0.07 + Math.random() * 0.07; o.r = 0.7; o.g = 0.78; o.b = 0.82; }); g.add(S.mist);
-    // --- el frailejón colosal: tronco forrado de hojas muertas, roseta plateada y flores amarillas ---
+    // llovizna: solo aparece con la tensión
+    S.rain = sptPoints(420, (i, o) => { o.x = (rnd() - 0.5) * 70; o.y = rnd() * 36; o.z = (rnd() - 0.5) * 60; o.s = 0.1; o.a = 0.5; o.r = 0.7; o.g = 0.82; o.b = 0.95; }); S.rain.material.uniforms.uOpacity.value = 0; g.add(S.rain);
+    // --- el frailejón milenario: un tronco ancho forrado por siglos de hojas muertas, cicatrices, líquenes, dos coronas laterales y una roseta plateada enorme ---
     S.root = new THREE.Group(); g.add(S.root);
-    const rn = Math.random, YEL = [1, 0.84, 0.28];
+    const rn = Math.random, YEL = [1, 0.84, 0.28], TOP = 27.5;
     let c = [];
-    colTube(c, [[0, 0, 0], [0.25, 9, 0.2], [0, 17.2, 0]], 1100, 1.8, 1.55, (x, y, z, nx, ny, nz, lit) => { const v = 0.22 + 0.5 * lit; return [v * (0.95 + rn() * 0.15), v * 0.72, v * 0.42]; }, { fur: 0.8, s: 0.22, a: 0.8 });
-    for (let k = 0; k < 90; k++) { const a = rn() * 6.283, y0 = 16.5 - rn() * 4; colLine(c, [Math.cos(a) * 2.2, y0, Math.sin(a) * 2.2], [Math.cos(a) * (2.7 + rn() * 0.6), y0 - 3 - rn() * 9, Math.sin(a) * (2.7 + rn() * 0.6)], 12, [0.5 + rn() * 0.12, 0.38, 0.22], 0.17, 0.75, 0.15); }   // faldas de hojas secas
-    for (let k = 0; k < 22; k++) { const a = k / 22 * 6.283 + rn() * 0.1, ca = Math.cos(a), sa = Math.sin(a), len = 6.6 + rn() * 2.2;
-      for (let i = 0; i < 90; i++) { const u = Math.pow(rn(), 0.85), w = (rn() * 2 - 1) * 1.15 * Math.pow(Math.sin(Math.min(1, u * 1.05) * Math.PI), 0.55) * (0.4 + 0.6 * (1 - u)), r = len * u, y = 17.3 + 2.8 * Math.sin(u * 1.7) - 2.4 * u * u;
-        const f = 0.62 + 0.3 * rn(), sil = rn() < 0.2; colPush(c, ca * r - sa * w, y + (rn() - 0.5) * 0.15, sa * r + ca * w, sil ? [0.85, 0.92, 0.85] : [0.5 * f, 0.7 * f, 0.5 * f], 0.19, 0.85); } }                    // roseta de hojas aterciopeladas
+    colTube(c, [[0, 0, 0], [0.5, 13, 0.4], [-0.2, TOP, 0]], 3200, 3.5, 2.7, (x, y, z, nx, ny, nz, lit) => { const v = 0.2 + 0.5 * lit; return [v * (0.95 + rn() * 0.15), v * 0.72, v * 0.42]; }, { fur: 0.85, s: 0.24, a: 0.8 });
+    for (let k = 0; k < 14; k++) { const y = 1.8 + k * 1.8, r = 3.45 - 0.7 * (y / TOP); for (let j = 0; j < 20; j++) { const a1 = j / 20 * 6.283, a2 = (j + 1) / 20 * 6.283; colLine(c, [Math.cos(a1) * r, y + Math.sin(a1 * 3 + k) * 0.15, Math.sin(a1) * r], [Math.cos(a2) * r, y + Math.sin(a2 * 3 + k) * 0.15, Math.sin(a2) * r], 3, [0.13, 0.09, 0.07], 0.14, 0.75, 0.06); } }   // cicatrices de las hojas de cada año
+    for (let k = 0; k < 420; k++) { const a = rn() * 6.283, y0 = TOP - 0.8 - rn() * 3, len = 6 + rn() * 18, r1 = 3.6 + rn() * 1.6 + len / 24 * 1.2;
+      colLine(c, [Math.cos(a) * 3.0, y0, Math.sin(a) * 3.0], [Math.cos(a) * r1, y0 - len, Math.sin(a) * r1], 14, [0.5 + rn() * 0.14, 0.38, 0.22], 0.18, 0.75, 0.2); }                                  // la falda de hojas secas
+    for (let k = 0; k < 360; k++) { const a = rn() * 6.283, y = 2 + rn() * (TOP - 7), r = 3.5 - 0.7 * (y / TOP) + 0.9; colPush(c, Math.cos(a) * r, y, Math.sin(a) * r, rn() < 0.5 ? [0.35, 0.62, 0.38] : [0.7, 0.72, 0.5], 0.17, 0.75); }   // líquenes y musgo
+    const ros = (cx, cy, cz, n, len, per) => { for (let k = 0; k < n; k++) { const a = k / n * 6.283 + rn() * 0.1, ca = Math.cos(a), sa = Math.sin(a), ln = len * (0.75 + rn() * 0.3);
+      for (let i = 0; i < per; i++) { const u = Math.pow(rn(), 0.85), w = (rn() * 2 - 1) * ln * 0.17 * Math.pow(Math.sin(Math.min(1, u * 1.05) * Math.PI), 0.55) * (0.4 + 0.6 * (1 - u)), r = ln * u, y = cy + (len / 9) * (2.8 * Math.sin(u * 1.7) - 2.4 * u * u);
+        const f = 0.62 + 0.3 * rn(), sil = rn() < 0.22; colPush(c, cx + ca * r - sa * w, y + (rn() - 0.5) * 0.18, cz + sa * r + ca * w, sil ? [0.86, 0.93, 0.86] : [0.5 * f, 0.7 * f, 0.5 * f], 0.2, 0.85); } } };
+    ros(0, TOP, 0, 34, 13, 110);
+    [[[1.5, 16, 0.5], [6, 21, 2.5], [8.5, 24.5, 3.5], 6.2], [[-1, 18, -0.5], [-5.5, 22, -3], [-8, 25, -4.5], 5.6]].forEach(br => { colTube(c, [br[0], br[1], br[2]], 520, 1.4, 0.9, (x, y, z, nx, ny, nz, lit) => { const v = 0.2 + 0.5 * lit; return [v * 0.98, v * 0.72, v * 0.42]; }, { fur: 0.8, s: 0.2, a: 0.8 }); ros(br[2][0], br[2][1], br[2][2], 16, br[3], 70);
+      for (let k = 0; k < 40; k++) { const a = rn() * 6.283, y0 = br[2][1] - 0.4 - rn() * 1.5, len = 3 + rn() * 7; colLine(c, [br[2][0] + Math.cos(a) * 1.0, y0, br[2][2] + Math.sin(a) * 1.0], [br[2][0] + Math.cos(a) * (1.6 + rn()), y0 - len, br[2][2] + Math.sin(a) * (1.6 + rn())], 10, [0.5, 0.38, 0.22], 0.17, 0.7, 0.15); } });   // coronas laterales con su propia falda
     S.root.add(colCloud(c, [0, 0, 0]));
-    c = []; colShell(c, 520, 0, 18.1, 0, 3.6, 1.7, 3.6, (x, y, z, nx, ny, nz, lit) => YEL.map(v => v * (0.55 + 0.55 * lit)), { fur: 0.55, s: 0.2, a: 0.9 });            // la flor donde se posa
+    c = []; colShell(c, 900, 0, TOP + 0.8, 0, 4.3, 1.7, 4.3, (x, y, z, nx, ny, nz, lit) => YEL.map(v => v * (0.55 + 0.55 * lit)), { fur: 0.55, s: 0.2, a: 0.9 });            // la flor donde se posa
     S.root.add(colCloud(c, [0, 0, 0]));
-    c = []; [[-5.5, 21.5, 2], [4.5, 22.5, -2.5], [1.5, 20.6, 5.5], [-3, 20.8, -5], [6.2, 20, 3.4]].forEach(p => { colLine(c, [0, 17.3, 0], p, 16, [0.55, 0.6, 0.35], 0.14, 0.8, 0.1); colShell(c, 170, p[0], p[1], p[2], 1.5, 1.1, 1.5, (x, y, z, nx, ny, nz, lit) => YEL.map(v => v * (0.6 + 0.6 * lit)), { fur: 0.4, s: 0.2, a: 0.9 }); });
-    S.bloom = colCloud(c, [0, 0, 0]); S.root.add(S.bloom); S.bloom.pts.material.uniforms.uOpacity.value = 0.15;
+    c = []; [[-9, TOP + 6.5, 3], [8, TOP + 8, -4], [2.5, TOP + 6, 9.5], [-5, TOP + 6.8, -8.5], [10.5, TOP + 5.5, 5.5], [-11, TOP + 4.5, -3], [4.5, TOP + 9.5, -9.5]].forEach(p => { colLine(c, [0, TOP + 1.5, 0], p, 22, [0.55, 0.6, 0.35], 0.15, 0.8, 0.1); colShell(c, 230, p[0], p[1], p[2], 2.1, 1.5, 2.1, (x, y, z, nx, ny, nz, lit) => YEL.map(v => v * (0.6 + 0.6 * lit)), { fur: 0.4, s: 0.2, a: 0.9 }); });
+    S.bloom = colCloud(c, [0, 0, 0]); S.root.add(S.bloom); colOp(S.bloom, 0.25, 0.1);
     // --- el barbudito del páramo (Oxypogon): cresta erizada, antifaz oscuro, collar blanco y barba iridiscente ---
-    S.bird = new THREE.Group(); S.bird.position.set(0, 18.9, 0); S.bird.rotation.y = -0.5; S.root.add(S.bird); S.by0 = 18.9;
+    S.bird = new THREE.Group(); S.bird.position.set(0, TOP + 2.3, 0); S.bird.rotation.y = -0.5; S.bird.scale.setScalar(0.45); S.root.add(S.bird); S.by0 = TOP + 2.3;
     const WH = [0.95, 0.94, 0.9];
     const body = (x, y, z, nx, ny, nz, lit) => { const e = rn();
       if (y > 5.4 && nx > -0.25 && e > 0.12) return WH.map(v => v * (0.55 + 0.5 * lit));                              // el collar blanco que baja por el pecho
@@ -14120,7 +14453,7 @@ COL_DEF.colibri = {
       for (let k = 0; k < 13; k++) { const zr = s * (1.4 + k * 0.5), a = k * 0.05; colFeather(wc, [-0.7, 7.5, zr], [-Math.cos(a), -0.02, s * Math.sin(a) * 1.2], 3.2 + k * 0.1, 0.4, 40, (u) => dk(u), 0.13); }
       const wg = colCloud(wc, [-0.3, 7.5, s * 2.7], [0, 0, 0]); wg.rotation.x = s * 1.35; wg.scale.z = 0.35; S.bird.add(wg); return wg; });
     S.eyes = [-1, 1].map(s => { const h = mkHalo(0xbfe6ff, 1.6, 0.0); h.position.set(2.8 - NP[0], 11 - NP[1], s * 1.45); S.head.add(h); return h; });
-    S.sig = mkHalo(0xbfe6ff, 30, 0.08); S.sig.position.set(0, 24, 0); S.root.add(S.sig);
+    S.sig = mkHalo(0xbfe6ff, 36, 0.08); S.sig.position.set(0, TOP + 7, 0); S.root.add(S.sig);
     // --- las tres voces: la familia, el agua y la máquina ---
     const FIGP = [[0, 0, -20], [-17.5, 0, 10], [17.5, 0, 10]];
     for (let i = 0; i < 3; i++) {
@@ -14167,15 +14500,20 @@ COL_DEF.colibri = {
     S.beard.rotation.z = Math.sin(t * 1.3) * 0.05 * sw + 0.25 * rp; S.beard.scale.setScalar(1 + 0.1 * rp * Math.sin(t * 30) * sw);
     S.body.scale.set(1 + 0.05 * S.agit + 0.015 * Math.sin(S.breath), 1 + 0.05 * S.agit + 0.025 * Math.sin(S.breath), 1 + 0.05 * S.agit);
     S.bird.position.y = S.by0 + 1.2 * rp + Math.sin(t * 0.8) * 0.12 * sw - 0.5 * S.down; S.bird.rotation.z = -0.1 * rp;
-    S.root.position.x = (Math.random() - 0.5) * 0.25 * S.agit * sw; S.root.position.z = (Math.random() - 0.5) * 0.25 * S.agit * sw;
-    [S.body, S.head, S.crest, S.beard].concat(S.wings).forEach(p => colTint(p, 1 + 0.16 * S.agit - 0.06 * calmK, 1 - 0.06 * S.agit + 0.04 * calmK, 1 - 0.14 * S.agit + 0.14 * calmK));
-    S.bloom.pts.material.uniforms.uOpacity.value = 0.12 + 0.88 * Math.pow(calmK, 1.2);
+    S.bird.position.x = (Math.random() - 0.5) * 0.25 * S.agit * sw; S.bird.position.z = (Math.random() - 0.5) * 0.25 * S.agit * sw;
+    [S.body, S.head, S.crest, S.beard].concat(S.wings).forEach(p => { colTint(p, 1 + 0.16 * S.agit - 0.06 * calmK, 1 - 0.06 * S.agit + 0.04 * calmK, 1 - 0.14 * S.agit + 0.14 * calmK); colOp(p, 1, 0.22 + 0.78 * calmK); colJit(p, 0.03 + 0.16 * S.agit); });
+    colOp(S.bloom, 0.25 + 0.75 * Math.pow(calmK, 1.2), 0.08 + 0.92 * Math.pow(calmK, 1.4));
     S.eyes.forEach(e => { e.material.opacity = 0.05 + 0.25 * calmK; });
     S.sig.material.opacity = 0.04 + 0.12 * calmK;
     if (S.agit > 0.45 && S.rumT <= 0) { S.rumT = 2.6; MGS.ping(1600 + 500 * S.agit, 0, 0.12, 0.012 * S.agit); }
     // el páramo responde: la niebla se espesa con la tensión y los frailejones florecen con la calma
     S.mist.material.uniforms.uOpacity.value = 0.45 + 1.4 * S.agit; S.flow.material.uniforms.uOpacity.value = Math.pow(calmK, 1.5);
     const mp = S.mist.geometry.attributes.position.array; for (let i = 0; i < mp.length; i += 3) { mp[i] += dt * (0.5 + 1.5 * S.agit) * sw; if (mp[i] > 45) mp[i] = -45; } S.mist.geometry.attributes.position.needsUpdate = true;
+    S.bands.forEach(B => { B.material.uniforms.uOpacity.value = 0.5 + 1.1 * S.agit; const q = B.geometry.attributes.position.array; for (let i = 0; i < q.length; i += 3) { q[i] += dt * B.userData.v * (0.4 + S.agit) * sw; if (q[i] > 65) q[i] = -65; } B.geometry.attributes.position.needsUpdate = true; });
+    S.ridges.forEach(R => { R.position.x = Math.sin(t * 0.03 + R.userData.L) * (1 + R.userData.L) * 0.6; R.material.uniforms.uOpacity.value = 0.6 + 0.5 * calmK; });
+    S.rain.material.uniforms.uOpacity.value = Math.max(0, S.agit - 0.35) * 1.2;
+    { const q = S.rain.geometry.attributes.position.array, fall = 22 + 14 * S.agit; for (let i = 0; i < q.length; i += 3) { q[i + 1] -= dt * fall * sw; q[i] -= dt * 3 * sw; if (q[i + 1] < 0) { q[i + 1] = 30 + Math.random() * 6; q[i] = (Math.random() - 0.5) * 70; } } S.rain.geometry.attributes.position.needsUpdate = true; }
+    S.ghost.material.uniforms.uOpacity.value = 0.3 + 0.7 * calmK; S.ghost.position.x = Math.sin(t * 2.4) * 0.35 * S.agit * sw; S.ghost.scale.x = 1 + Math.sin(t * 3.1) * 0.06 * S.agit;
     S.figs.forEach((f, i) => {
       const a = S.a[i], c = a < 0.35 ? [0.6, 0.85, 1] : [1, 0.6 - 0.2 * a, 0.45 - 0.2 * a];
       f.ps.forEach(p => p.material.uniforms.uTint.value.setRGB(c[0], c[1], c[2]));
@@ -14198,7 +14536,7 @@ COL_DEF.colibri = {
 // ---------- 6 · LA MEDUSA-LEVIATÁN (TouchDesigner & VR) — explorar un espacio paramétrico ----------
 const COL_DIAL = [{ x: -6, hex: 0x8fe0ff }, { x: 0, hex: 0xffd28a }, { x: 6, hex: 0xe6a0d0 }];
 COL_DEF.medusa = {
-  iso: { yaw: 0.25, pitch: 0.2, dist: 38, tg: [0, 7, 0] }, trav: [1.55, 12], sky: [0.8, 0.6, 0.85], hud: ['FRECUENCIA', 'DENSIDAD', 'FASE', 'RESONANCIAS'], endAfter: 13, voice: 'medusa', voiceEvery: 24,
+  iso: { yaw: 0.25, pitch: 0.2, dist: 38, tg: [0, 7, 0] }, trav: [1.55, 12], sky: [0.8, 0.6, 0.85], hud: ['FRECUENCIA', 'DENSIDAD', 'FASE', 'RESONANCIAS'], endAfter: 13, voice: 'medusa', voiceEvery: 24, plate: ['Medusa parametrica', 'Lám. VI'],
   txt: {
     es: { title: 'LA MEDUSA-LEVIATÁN', toast: 'Su cuerpo es una función de tres perillas.',
       h: 'Toca una perilla (cian, ámbar, rosa) para girarla. Su cuerpo cambia con cada valor; cuando una combinación resuena, canta. Hay tres. Arrastra el espacio vacío para girar.',
@@ -14264,4 +14602,12 @@ COL_DEF.medusa = {
   },
   hudVals(S) { return [S.v[0] + 1 + '/5', S.v[1] + 1 + '/5', S.v[2] + 1 + '/5', S.found.filter(Boolean).length + '/3']; }
 };
+
+// estados de vitrina del modo contemplación: cada coloso muestra su mejor momento, sin juego ni final
+COL_DEF.arbol.view = function(S, dt) { S.energy = 5; S.allT = 0; S.leaves.forEach(L => { L.lit += (0.95 - L.lit) * Math.min(1, dt * 0.6); }); };
+COL_DEF.escarabajo.view = function(S, dt) { if (!S.vOk) { S.vOk = 1; const a = S.ph[0]; S.ph = [a, (a + 2) % 4, (a + 2) % 4, a, a, (a + 2) % 4]; } S.holdT = 0; };
+COL_DEF.mariquita.view = function(S, dt) { if (!S.vOk) { S.vOk = 1; S.pool = [0, 1, 2, 3, 4, 5, 0]; } S.joined = 6.99; S.frames.forEach(F => { }); };
+COL_DEF.condor.view = function(S, dt) { S.stage = 'bow'; S.hold = false; S.back = false; S.trust += (0.9 - S.trust) * Math.min(1, dt * 0.8); S.D += (9 - S.D) * Math.min(1, dt * 1.2); };
+COL_DEF.colibri.view = function(S, dt) { for (let i = 0; i < 3; i++) S.a[i] += (0.12 - S.a[i]) * Math.min(1, dt * 0.7); S.listen = -1; };
+COL_DEF.medusa.view = function(S, dt) { S.vT = (S.vT === undefined ? 0 : S.vT) - dt; if (S.vT <= 0) { S.vT = 8; S.vi = ((S.vi === undefined ? -1 : S.vi) + 1) % 3; S.v = S.targets[S.vi].slice(); S.lock = 1; S.lockHex = COL_DIAL[S.vi].hex; MGS.bell(MGS.NOTES[S.vi * 2], 0.1, 3, 0.04); } };
 
