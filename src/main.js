@@ -96,7 +96,15 @@ try {
 }
 const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#bg-canvas'), antialias: true, alpha: true });
 renderer.setClearColor(0x000000, 0); // 🔥 ARREGLO AR: Fondo 100% transparente
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); renderer.setSize(window.innerWidth, window.innerHeight);
+// ---------- Rendimiento: resolución adaptativa ----------
+//   En pantallas táctiles el tope de resolución es 1.5 y un regulador baja o sube la resolución según los cuadros por segundo reales.
+//   Modos (menú «Calidad»): AUTO (regula), ALTA (sin regular) y BAJA (resolución ≤ 1). Lo elegido se guarda.
+const PERF_TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+const PERF = { touch: PERF_TOUCH, base: Math.min(window.devicePixelRatio || 1, PERF_TOUCH ? 1.5 : 2), pr: 1, lowS: 0, hiS: 0, mode: 'auto', maxPx: { value: PERF_TOUCH ? 320 : 100000 } };
+try { const q = localStorage.getItem('gamelab_quality'); if (q === 'auto' || q === 'high' || q === 'low') PERF.mode = q; } catch (e) {}
+PERF.cap = () => PERF.mode === 'low' ? Math.min(PERF.base, 1) : PERF.base;
+PERF.pr = PERF.cap();
+renderer.setPixelRatio(PERF.pr); renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
 
 // ==========================================
@@ -604,8 +612,8 @@ renderer.xr.addEventListener('sessionend', () => {
         renderer.setRenderTarget(null);
         renderer.autoClear = true;
         renderer.setClearColor(0x000000, 0);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        try { if (typeof composer !== 'undefined') composer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); } catch (e) {}
+        renderer.setPixelRatio(PERF.pr);
+        try { if (typeof composer !== 'undefined') composer.setPixelRatio(PERF.pr); } catch (e) {}
         
         camera.fov = 75;
         camera.quaternion.identity();
@@ -1001,7 +1009,9 @@ function toggleCombatDimming(isCombat) {
 // FUNCIÓN DE GLITCH SUTIL Y PARCIAL (CORREGIDA)
 // ========================================================
 const reduceMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
+function miniBusy() { return !!(window.isColossusActive || window.isHogueraActive || window.isWhaleActive || window.isSputnikActive || window.isTortugaActive || window.isTuningGameActive || window.isWiringGameActive); }
 function triggerSubtleGlitch() {
+  if (miniBusy()) return;                                                         // nada de bloques de glitch sobre un coloso
   if (reduceMotionMQ.matches) return; // los destellos son JS, el CSS de movimiento reducido no los alcanza
   if (!isGameStarted || isPaused || isUIOpen || renderer.xr.isPresenting) return;
 
@@ -2314,7 +2324,7 @@ function checkLevelUp() {
 }
 const fighters = []; // Lista de naves menores
 function spawnFighter() {
-  if(!isCombatActive || isPaused || isUIOpen || isBossBattle) return;
+  if(!isCombatActive || isPaused || isUIOpen || isBossBattle || miniBusy()) return;
   const fMat = new THREE.ShaderMaterial({ 
     uniforms: { color: { value: new THREE.Color(0xff0000) }, lightDir: { value: new THREE.Vector3(1, 1, 1).normalize() } }, 
     vertexShader: ditherShader.vertexShader, fragmentShader: ditherShader.fragmentShader, transparent: true 
@@ -2336,7 +2346,7 @@ spawnAsteroid = function() {
 const asteroids = []; const explosionParticles = [];
 function spawnAsteroid() { 
   // 1. Quitamos "isBossBattle" de aquí para que el sistema siga funcionando durante el jefe
-  if(isPaused || isUIOpen || renderer.xr.isPresenting || !isCombatActive) return; 
+  if(isPaused || isUIOpen || renderer.xr.isPresenting || !isCombatActive || miniBusy()) return; 
   
   let isBounty = Math.random() > 0.85; 
   
@@ -3060,6 +3070,7 @@ function openProjectPopup(data) {
       document.getElementById('project-title').style.color = '#ffffff';
 
       let finalGallery = data.gallery || (data.mediaSrc ? [data.mediaSrc] : []); // ballena y gatos usan mediaSrc
+      finalGallery = finalGallery.map(src => pjIsPh(src) ? pjPlate(data, isEn) : src);   // los rellenos de color plano pasan a ser una lámina
       let finalVideos = data.videos || [];
       if (data.videoSrc && finalVideos.length === 0) finalVideos = [data.videoSrc]; 
       
@@ -3241,6 +3252,7 @@ mediaContainer.innerHTML = finalGallery.length === 0 ? '' : `<img id="gallery-im
   } else {
     navBar.style.display = 'none';
   }
+  try { pjAfter(data); } catch (e) {}
 }
 
 const keys = { left: false, right: false }; const projectiles = []; 
@@ -5592,7 +5604,7 @@ function updateTraveler() {
     tg.position.copy(window.hgPose.pos);
     tg.quaternion.setFromEuler(_hgEuler.set(0, window.hgPose.yaw, 0));
     const hb = 1 + Math.sin(t * 1.8) * 0.012;
-    tg.scale.set(1, hb, 1); tg.visible = true; flareTarget = 0.12;
+    const hsc = window.hgPose.scale || 1; tg.scale.set(hsc, hb * hsc, hsc); tg.visible = true; flareTarget = 0.12;
   } else if (dragging) {
     // ---- EN LA MANO DEL USUARIO ----
     st.anchoredPlanet = null;
@@ -5876,6 +5888,20 @@ if (/[?&]domo=1\b/.test(location.search)) { let kicked = false; const waitDome =
   if (!kicked && sb && sb.style.display === 'block' && !isGameStarted && typeof initSystem === 'function') { kicked = true; try { initSystem(true); } catch (e) {} }
   if (isGameStarted) { clearInterval(waitDome); setTimeout(() => domeToggle(true), 1200); } }, 600); }
 
+function perfApply(pr) {
+  PERF.pr = pr; PERF.lowS = PERF.hiS = 0;
+  try { renderer.setPixelRatio(pr); renderer.setSize(window.innerWidth, window.innerHeight); if (typeof composer !== 'undefined') composer.setPixelRatio(pr); } catch (e) {}
+  console.info('[calidad] resolución ×' + pr.toFixed(2) + ' (' + PERF.mode + ')');
+}
+function perfGovern(fps, isXR) {                                                  // se llama una vez por segundo con los cuadros por segundo reales
+  if (isXR || window.__dome || PERF.mode !== 'auto' || document.hidden) return;
+  const floor = Math.max(0.7, PERF.base * 0.5);
+  if (fps < 38) { PERF.hiS = 0; if (++PERF.lowS >= 2 && PERF.pr > floor + 0.01) perfApply(Math.max(floor, PERF.pr - 0.15)); }
+  else if (fps >= 56) { PERF.lowS = 0; if (++PERF.hiS >= 8 && PERF.pr < PERF.cap() - 0.01) perfApply(Math.min(PERF.cap(), PERF.pr + 0.1)); }
+  else { PERF.lowS = 0; PERF.hiS = 0; }
+}
+window.perfInfo = () => ({ modo: PERF.mode, resolucion: PERF.pr, base: PERF.base, tactil: PERF.touch });
+window.perfSetMode = (m) => { PERF.mode = m; try { localStorage.setItem('gamelab_quality', m); } catch (e) {} perfApply(PERF.cap()); try { muiMenu(); } catch (e) {} };
 renderer.setAnimationLoop((timestamp, frame) => {
   // 🛟 Red de seguridad: three.js solo programa el SIGUIENTE cuadro si el actual termina sin lanzar. Un solo error
   // (p. ej. leer un elemento que ya se borró de una lista) dejaba el juego congelado para siempre.
@@ -5921,7 +5947,7 @@ renderer.setAnimationLoop((timestamp, frame) => {
   // 🎮 Motor de los minijuegos (Sintonización y Telar de circuitos)
   if ((window.isWiringGameActive || window.isTuningGameActive || (window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) && window.updateMiniGames) window.updateMiniGames();
   const now = performance.now(); frames++;
-  if (now >= lastTime + 1000) { if((frames * 1000 / (now - lastTime)) < 30) lowFPSCount++; else lowFPSCount = 0;
+  if (now >= lastTime + 1000) { perfGovern(frames * 1000 / (now - lastTime), isXR); if((frames * 1000 / (now - lastTime)) < 30) lowFPSCount++; else lowFPSCount = 0;
     // 🔥 ACTUALIZADOR DEL HUD DE COMBO EN TIEMPO REAL
   const comboUi = document.getElementById('combo-value');
   if (comboUi && !window.isTuningGameActive && !window.isWiringGameActive && !(window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) comboUi.innerText = 'x' + (typeof combatCombo !== 'undefined' ? combatCombo : 0);
@@ -8674,6 +8700,35 @@ function exBar(leftHTML) {
   return `<header class="ex-bar">${leftHTML}<button type="button" class="ex-lang" data-ex="lang" aria-label="Language / Idioma">${lang === 'es' ? 'EN' : 'ES'}</button><button type="button" class="ex-lang" data-ex="sound" aria-pressed="${snd}">${snd ? T.soundOn : T.soundOff}</button></header>`;
 }
 
+// ---------- Juegos otros en el archivo ejecutivo: los nueve colosos como fichas de lectura (sin explorar, sin sonido) ----------
+function exRenderColossi(lang) {
+  if (typeof COLOSSI === 'undefined') return '';
+  const en = lang === 'en', L = en ? 'en' : 'es';
+  if (!document.getElementById('ex-col-style')) {
+    const st = document.createElement('style'); st.id = 'ex-col-style';
+    st.textContent = `.ex-col-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr));gap:1rem;margin-top:1.6rem;align-items:start}
+      .ex-col{display:flex;flex-direction:column;gap:.55rem}.ex-col .ex-card-kicker{color:#c9a85c}.ex-col strong{margin-bottom:0}
+      .ex-col-theme{font-size:.9rem;color:#d3cfc6;letter-spacing:.03em}.ex-col-plate{font:italic 300 .82rem Georgia,"Times New Roman",serif;letter-spacing:.06em;color:#c9a85c;border-top:1px solid rgba(201,168,92,.35);padding-top:.45rem;margin-top:.2rem}
+      .ex-col-plate b{font-weight:300;color:#bfe6ff}.ex-col-chips{display:flex;flex-wrap:wrap;gap:.35rem}.ex-col-chips i{font-style:normal;font-size:.62rem;letter-spacing:.12em;padding:2px 8px;border:1px solid rgba(255,255,255,.2);color:#cfd3da}
+      .ex-col details{margin-top:.2rem;font-size:.86rem;line-height:1.65;color:#bdb9b1}.ex-col summary{cursor:pointer;font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:#8a867f;padding:.3rem 0}.ex-col details p{margin:.4rem 0 !important;font-size:.86rem !important}
+      .ex-col details h4{margin:.8rem 0 .2rem;font-weight:400;font-size:.9rem;letter-spacing:.06em;color:#e7e4de}.ex-col-btn{align-self:flex-start;margin-top:.5rem;font-size:.68rem !important;letter-spacing:.16em !important;padding:8px 16px !important}`;
+    document.head.appendChild(st);
+  }
+  const T = en ? { h: 'Other games', sub: 'Nine colossi live in the universe, one for each question of the research. Here they can be read and contemplated without exploring.', see: '◉ Contemplate', refl: 'Reflections', intro: 'Opening', outro: 'Closing', note: 'Contemplation opens the 3D scene (with sound).' }
+                   : { h: 'Juegos otros', sub: 'Nueve colosos viven en el universo, uno por cada pregunta de la investigación. Aquí se pueden leer y contemplar sin explorar.', see: '◉ Contemplar', refl: 'Reflexiones', intro: 'Apertura', outro: 'Cierre', note: 'Contemplar abre la escena 3D (con sonido).' };
+  const showMu = !window.muiOn || window.muiOn();
+  const cards = COLOSSI.map(c => {
+    const key = (typeof COL_REFL_KEY !== 'undefined' && COL_REFL_KEY[c.id]) || c.id; let refl = '';
+    try { const I = MG.text(key, 'intro'), O = MG.text(key, 'outro');
+      refl = `<details><summary>${T.refl}</summary><h4>${exEsc(I.t)}</h4>${I.p.map(x => `<p>${exEsc(x)}</p>`).join('')}<h4>${exEsc(O.t)}</h4>${O.p.map(x => `<p>${exEsc(x)}</p>`).join('')}</details>`; } catch (e) {}
+    const pl = (typeof COL_DEF !== 'undefined' && COL_DEF[c.id] && COL_DEF[c.id].plate) || null, sci = c.sci || (pl && pl[0]) || '';
+    const plate = sci || (showMu && c.mu) ? `<div class="ex-col-plate">${exEsc(sci)}${pl ? ' · ' + exEsc(pl[1]) : ''}${showMu && c.mu ? `${sci ? '  ·  ' : ''}<b>${exEsc(c.mu)}</b>` : ''}</div>` : '';
+    return `<article class="ex-card ex-col"><span class="ex-card-kicker">${exEsc(c[L][2])}</span><strong>${exEsc(c[L][0])}</strong><span class="ex-col-theme">${exEsc(c[L][1])}</span>${plate}
+      <p>${exEsc(c.tx[L])}</p><div class="ex-col-chips">${c.con[L].map(k => `<i>${exEsc(k)}</i>`).join('')}</div>${refl}
+      <button type="button" class="ex-col-btn" data-ex="col-view" data-id="${exEsc(c.id)}">${T.see}</button></article>`;
+  }).join('');
+  return `<section class="ex-section" id="ex-games" aria-labelledby="ex-h-games"><h2 class="ex-label" id="ex-h-games">${T.h}</h2><p class="ex-text">${T.sub}</p><div class="ex-col-grid">${cards}</div><p class="ex-note" style="margin-top:1.2rem">${T.note}</p></section>`;
+}
 function exRenderIndex() {
   const lang = exLang(), T = EX_TEXT[lang], P = EX_PROFILE, list = exProjects();
   const rows = list.map((p, i) => {
@@ -8706,6 +8761,7 @@ function exRenderIndex() {
       <h2 class="ex-label" id="ex-h-projects">${T.projects}</h2>
       <ol class="ex-list">${rows}</ol>
     </section>
+    ${exRenderColossi(lang)}
     <section class="ex-section" id="ex-contact">
       <h2 class="ex-label">${T.contact}</h2>
       <p class="ex-text">${T.contactSub}</p>
@@ -8730,13 +8786,17 @@ function exRenderDetail(id) {
   const prev = list[(idx - 1 + n) % n], next = list[(idx + 1) % n];
   const title = exTr(p.title, lang), role = exTr(p.role, lang), desc = exTr(p.desc, lang);
   const tech = exTr(p.tech, lang) || [], longDesc = exTr(p.longDesc, lang) || '';
-  const imgs = (p.gallery || []).filter(exIsRealImg), vids = exVideos(p);
+  let imgs = (p.gallery || []).filter(s => exIsRealImg(s) && !pjIsPh(s)), vids = exVideos(p);
+  if (!imgs.length && (p.gallery || []).some(pjIsPh)) imgs = [pjPlate(p, lang === 'en')];
+  let epi = ''; try { if (typeof MUI_PROJ !== 'undefined' && MUI_PROJ[p.id] && window.muiOn && window.muiOn()) epi = muiText(MUI_PROJ[p.id]); } catch (e) {}
+  pjCss();
 
   return `<div class="ex-wrap">
     ${exBar(`<button type="button" class="ex-back" data-ex="back">← ${T.back}</button>`)}
     <article aria-labelledby="ex-d-title">
       <p class="ex-label">${String(idx + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}</p>
       <h1 class="ex-d-title" id="ex-d-title" tabindex="-1">${exEsc(title)}</h1>
+      ${epi ? `<p class="ex-epi">${exEsc(epi)}</p>` : ''}
       ${role ? `<p class="ex-role" style="margin-bottom:.6rem">${exEsc(role)}</p>` : ''}
       ${tech.length ? `<p class="ex-skills" style="margin-top:0">${tech.map(exEsc).join(' · ')}</p>` : ''}
       ${desc ? `<p class="ex-lead">${exEsc(desc)}</p>` : ''}
@@ -8748,6 +8808,7 @@ function exRenderDetail(id) {
           ${imgs.map((s, imgIdx) => `
             <div class="ex-schema-card" data-src="${exEsc(s)}" style="background: #0d0d10; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; padding: 10px; cursor: zoom-in;" title="${lang === 'en' ? 'Click to expand' : 'Clic para ampliar imagen'}">
               <img src="${exEsc(s)}" alt="${exEsc(title)} - Imagen ${imgIdx + 1}" loading="lazy" style="width: 100%; height: auto; pointer-events: none;">
+              <div class="ex-cap">${lang === 'en' ? 'Plate ' : 'Lám. '}${PJ_ROM[p.id] || p.id || ''}  ·  ${exEsc(title)}${imgs.length > 1 ? '  ·  fig. ' + (imgIdx + 1) + '/' + imgs.length : ''}</div>
             </div>
           `).join('')}
         </div>
@@ -8998,6 +9059,7 @@ function initTerminalMode() {
       const act = el.dataset.ex;
       if (act === 'open') window.openProjectFromTerminal(el.dataset.id);
       else if (act === 'back') exBack();
+      else if (act === 'col-view') { e.preventDefault(); const cid = el.dataset.id; if (isTerminalMode) { window._exReturn = true; window.toggleTerminalMode(); setTimeout(() => { if (!document.body.classList.contains('mg-active')) window._exReturn = false; }, 4000); } setTimeout(() => { if (window.colVisit) window.colVisit(cid, true); }, 600); }
       else if (act === 'lang') {
         const gameLangBtn = document.getElementById('lang-toggle-btn');
         if (gameLangBtn) gameLangBtn.click(); 
@@ -9262,21 +9324,22 @@ const _wp = new THREE.Vector3();
 
 // ---------- Partículas: puntos de luz con caída suave (tamaño y alfa por partícula) ----------
 const GLOW_SCALE = { value: 400 };
-const GLOW_MODE = { value: 1 };                                                  // 0 suave · 1 mixto (tinta pequeña, destello grande) · 2 todo destello · 3 todo tinta
-try { const v = parseInt(localStorage.getItem('gamelab_glow'), 10); if (v >= 0 && v <= 3) GLOW_MODE.value = v; } catch (e) {}
-const GLOW_NAMES = [['SUAVE', 'SOFT'], ['MIXTO', 'MIXED'], ['DESTELLO', 'FLARE'], ['TINTA', 'INK']];
+const GLOW_TIME = { value: 0 };
+const GLOW_MODE = { value: 4 };                                                  // 0 suave · 1 mixto (tinta pequeña, destello grande) · 2 todo destello · 3 todo tinta
+try { const v = parseInt(localStorage.getItem('gamelab_glow2'), 10); if (v >= 0 && v <= 4) GLOW_MODE.value = v; } catch (e) {}
+const GLOW_NAMES = [['SUAVE', 'SOFT'], ['MIXTO', 'MIXED'], ['DESTELLO', 'FLARE'], ['TINTA', 'INK'], ['ANILLO', 'RING']];
 const GLOW_VS = `
   attribute vec3 aCol; attribute float aSize; attribute float aAlpha;
-  uniform float uScale; varying vec3 vC; varying float vA; varying float vPx;
+  uniform float uScale; uniform float uMaxPx; varying vec3 vC; varying float vA; varying float vPx; varying float vPh;
   void main() {
-    vC = aCol; vA = aAlpha;
+    vC = aCol; vA = aAlpha; vPh = fract(sin(dot(position, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     float px = aSize * uScale / max(0.1, -mv.z);
-    gl_PointSize = px; vPx = px;
+    gl_PointSize = min(px, uMaxPx); vPx = px;
     gl_Position = projectionMatrix * mv;
   }`;
 const GLOW_FS = `
-  uniform vec3 uTint; uniform float uOpacity; uniform float uMode; varying vec3 vC; varying float vA; varying float vPx;
+  uniform vec3 uTint; uniform float uOpacity; uniform float uMode; uniform float uTime; varying vec3 vC; varying float vA; varying float vPx; varying float vPh;
   void main() {
     vec2 p = gl_PointCoord - vec2(0.5); float d = length(p);
     float a = smoothstep(0.5, 0.0, d); a *= a;                                   // modo 0: punto blando redondo (el de siempre)
@@ -9288,6 +9351,14 @@ const GLOW_FS = `
       float big = step(26.0, vPx), mid = step(7.0, vPx);                         // lo enorme (niebla) sigue siendo blando
       float mixd = mix(mix(ink, flare, mid), soft, big);
       a = uMode < 1.5 ? mixd : (uMode < 2.5 ? mix(flare, soft, big) : mix(ink, soft, big));
+      if (uMode > 3.5) {                                                           // anillo fino + estrella de cuatro puntas: el anillo nace en el centro y se abre como un pulso
+        float tt = fract(uTime * 0.38 + vPh), rr = 0.07 + 0.40 * tt;
+        float ring = smoothstep(w * 1.6, 0.0, abs(d - rr)) * (1.0 - tt) * 1.4;
+        float star = clamp(smoothstep(0.12, 0.0, d) * 1.2 + cr * 0.9, 0.0, 1.0);
+        float ink4 = smoothstep(0.26, 0.26 - max(0.05, 1.0 / px), d);
+        float mid4 = clamp(star + ring * step(9.0, vPx), 0.0, 1.0);
+        a = mix(mix(ink4, mid4, mid), soft, big);
+      }
     }
     gl_FragColor = vec4(vC * uTint, a * vA * uOpacity);
   }`;
@@ -9299,12 +9370,12 @@ function mkGlowPoints(n) {
   g.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(n), 1));
   g.setAttribute('aAlpha', new THREE.BufferAttribute(new Float32Array(n), 1));
   const m = new THREE.ShaderMaterial({
-    uniforms: { uScale: GLOW_SCALE, uMode: GLOW_MODE, uTint: { value: new THREE.Color(1, 1, 1) }, uOpacity: { value: 1 } },
+    uniforms: { uScale: GLOW_SCALE, uMaxPx: PERF.maxPx, uMode: GLOW_MODE, uTime: GLOW_TIME, uTint: { value: new THREE.Color(1, 1, 1) }, uOpacity: { value: 1 } },
     vertexShader: GLOW_VS, fragmentShader: GLOW_FS,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
   });
   const p = new THREE.Points(g, m);
-  p.frustumCulled = false;
+  p.frustumCulled = false; p.onBeforeRender = () => { GLOW_TIME.value = performance.now() * 0.001; };
   return p;
 }
 
@@ -9324,7 +9395,7 @@ function glowTex() {
 const _haloTex = {};
 function haloTex() {                                                              // textura del resplandor según el modo: suave, destello (núcleo + cruz fina) o anillo de grabado
   const mode = GLOW_MODE.value; if (mode === 0) return glowTex();
-  const k = mode === 3 ? 'ring' : 'flare'; if (_haloTex[k]) return _haloTex[k];
+  const k = mode === 4 ? 'ringstar' : mode === 3 ? 'ring' : 'flare'; if (_haloTex[k]) return _haloTex[k];
   try {
     const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
     if (k === 'flare') {
@@ -9332,6 +9403,12 @@ function haloTex() {                                                            
       const hl = g.createLinearGradient(0, 0, 128, 0), vl = g.createLinearGradient(0, 0, 0, 128);
       [hl, vl].forEach(l => { l.addColorStop(0, 'rgba(255,255,255,0)'); l.addColorStop(0.5, 'rgba(255,255,255,0.95)'); l.addColorStop(1, 'rgba(255,255,255,0)'); });
       g.fillStyle = hl; g.fillRect(0, 63, 128, 2); g.fillStyle = vl; g.fillRect(63, 0, 2, 128);
+    } else if (k === 'ringstar') {                                                // anillo fino + estrella de cuatro puntas
+      g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 1.1; g.beginPath(); g.arc(64, 64, 40, 0, Math.PI * 2); g.stroke();
+      const hl = g.createLinearGradient(0, 0, 128, 0), vl = g.createLinearGradient(0, 0, 0, 128);
+      [hl, vl].forEach(l => { l.addColorStop(0, 'rgba(255,255,255,0)'); l.addColorStop(0.5, 'rgba(255,255,255,0.9)'); l.addColorStop(1, 'rgba(255,255,255,0)'); });
+      g.fillStyle = hl; g.fillRect(0, 63.3, 128, 1.4); g.fillStyle = vl; g.fillRect(63.3, 0, 1.4, 128);
+      const gr = g.createRadialGradient(64, 64, 0, 64, 64, 9); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
     } else {
       g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1.6; g.beginPath(); g.arc(64, 64, 46, 0, Math.PI * 2); g.stroke();
       g.strokeStyle = 'rgba(255,255,255,0.3)'; g.beginPath(); g.arc(64, 64, 58, 0, Math.PI * 2); g.stroke();
@@ -9341,15 +9418,30 @@ function haloTex() {                                                            
   } catch (e) { return glowTex(); }
 }
 function glowSetMode(m, quiet) {
-  GLOW_MODE.value = ((m % 4) + 4) % 4; try { localStorage.setItem('gamelab_glow', String(GLOW_MODE.value)); } catch (e) {}
+  GLOW_MODE.value = ((m % 5) + 5) % 5; try { localStorage.setItem('gamelab_glow2', String(GLOW_MODE.value)); } catch (e) {}
   const tex = haloTex();
-  try { scene.traverse(o => { if (o.isSprite && o.material && o.material.userData && o.material.userData.halo) { o.material.map = tex; o.material.needsUpdate = true; } }); } catch (e) {}
+  try { scene.traverse(o => { if (o.isSprite && o.material && o.material.userData && o.material.userData.halo && !o.material.userData.big) { o.material.map = tex; o.material.needsUpdate = true; } }); } catch (e) {}
   try { updateCollectionMenu(); } catch (e) {}
   if (!quiet && typeof showSystemToast === 'function') showSystemToast((window.currentLang === 'en' ? 'Glow: ' : 'Resplandor: ') + GLOW_NAMES[GLOW_MODE.value][window.currentLang === 'en' ? 1 : 0], '#e7e4de');
 }
 window.glowCycle = () => glowSetMode(GLOW_MODE.value + 1);
+(function () {                                                                    // durante un juego/coloso: se oculta lo que estorba (banner, AR, botones flotantes, puntaje) y en móvil se reordena lo de abajo
+  try {
+    const st = document.createElement('style'); st.id = 'mg-active-style';
+    st.textContent = 'body.mg-active #wip-banner, body.mg-active #ar-desktop-msg, body.mg-active #btn-sword, body.mg-active #btn-recenter, body.mg-active #helpBtn, body.mg-active #btn-collection, body.mg-active #unified-hud, body.mg-active #scroll-hint { display:none !important; }' +
+      '@media (max-width:700px){ body.mg-active #combat-toggle-btn, body.mg-active #ARButton, body.mg-active #VRButton, body.mg-active #lang-toggle-btn, body.mg-active #mode-toggle-btn, body.mg-active #portfolio-header, body.mg-active #menu-toggle, body.mg-active #universe-legend, body.mg-active #legend-toggle-btn, body.mg-active #legend-sidebar { display:none !important; }' +
+      ' #minigame-ui .mg-extra { top:calc(16px + env(safe-area-inset-top,0px)) !important; }' +
+      ' #minigame-ui .mg-tag { right:auto !important; left:50% !important; transform:translateX(-50%); top:calc(58px + env(safe-area-inset-top,0px)) !important; white-space:nowrap; }' +
+      ' body.mg-active #mui-amb { display:none !important; }' +
+      ' #minigame-ui .mg-listen { bottom:calc(140px + env(safe-area-inset-bottom,0px)) !important; }' +
+      ' #minigame-ui .mg-plate { left:50% !important; transform:translateX(-50%); bottom:calc(196px + env(safe-area-inset-bottom,0px)) !important; white-space:nowrap; } }';
+    (document.head || document.documentElement).appendChild(st);
+  } catch (e) {}
+})();
+const HALO_BIG = 9;
 function mkHalo(hex, size, opacity) {
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: hex, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false })); s.material.userData.halo = 1;
+  const big = size > HALO_BIG;                                                    // los halos grandes llevan resplandor suave: el anillo y la cruz solo se ven bien en lo pequeño
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: big ? glowTex() : haloTex(), color: hex, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false })); s.material.userData.halo = 1; if (big) s.material.userData.big = 1;
   s.scale.set(size, size, 1);
   return s;
 }
@@ -9528,15 +9620,16 @@ const MG = window.MG = {
   },
 
   enter(camZ) {
-    this.lastT = 0; this.time = 0;
+    this.lastT = 0; this.time = 0; try { document.body.classList.add('mg-active'); } catch (e) {}
     if (!this.plane) this.plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-    const objs = this._targets();
+    const objs = this._targets(), prevSaved = this.saved;
     this.saved = {
       objs: objs.map(o => [o, o.visible]),
       pos: userGroup.position.clone(), rot: userGroup.rotation.clone(),
       fov: camera.fov, targetFov: targetFov, zoomed: isMobileZoomed,
       hud: ['lives-value', 'level-value', 'files-value', 'combo-value'].reduce((o, id) => { const el = document.getElementById(id); o[id] = el ? el.innerText : ''; return o; }, {})
     };
+    if (this.saved && prevSaved) { Object.assign(this.saved, { objs: prevSaved.objs, pos: prevSaved.pos, rot: prevSaved.rot, fov: prevSaved.fov, targetFov: prevSaved.targetFov, zoomed: prevSaved.zoomed }); }   // entrar dos veces no debe sobrescribir la vista original
     objs.forEach(o => { o.visible = false; });
     userGroup.rotation.set(0, 0, 0);          // la vista podía estar girada: los juegos asumen cámara de frente
     userGroup.position.set(0, 0, camZ);
@@ -9585,6 +9678,7 @@ const MG = window.MG = {
     const s = this.saved; if (!s) return;
     s.objs.forEach(([o, v]) => { o.visible = v; });
     userGroup.position.copy(s.pos); userGroup.rotation.copy(s.rot);
+    if (![s.pos.x, s.pos.y, s.pos.z].every(Number.isFinite) || s.pos.length() > 400) { userGroup.position.set(0, 0, (window.innerWidth < 600) ? 30 : 50); userGroup.rotation.set(0, 0, 0); }   // red de seguridad: nunca volver a un punto perdido
     camera.fov = s.fov; targetFov = s.targetFov; camera.updateProjectionMatrix();
     isMobileZoomed = s.zoomed;
     for (const id in s.hud) { const el = document.getElementById(id); if (el) el.innerText = s.hud[id]; }   // devuelve los valores reales del HUD
@@ -9593,7 +9687,8 @@ const MG = window.MG = {
     if (this.dust) { scene.remove(this.dust.pts); this.dust.dispose(); this.dust = null; }
     this.rings.forEach(r => { scene.remove(r.mesh); r.mesh.geometry.dispose(); r.mesh.material.dispose(); });
     this.rings = [];
-    this.removeUI();
+    this.removeUI(); try { document.body.classList.remove('mg-active'); } catch (e) {}
+    if (window._exReturn) { window._exReturn = false; setTimeout(() => { try { if (!isTerminalMode) window.toggleTerminalMode(); } catch (e) {} }, 700); }   // si venías del modo ejecutivo, vuelves a él
     morphHUD('normal');
     shakeIntensity = 0;
   },
@@ -9607,7 +9702,7 @@ const MG = window.MG = {
       'font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif; ' +
       'background:radial-gradient(ellipse at center, rgba(5,5,10,0) 45%, rgba(5,5,10,0.45) 100%);';
 
-    const extra = document.createElement('div');
+    const extra = document.createElement('div'); extra.className = 'mg-extra';
     extra.style.cssText = 'position:absolute; top:78px; left:50%; transform:translateX(-50%); text-align:center; width:min(92vw,520px);';
 
     const bottom = document.createElement('div');
@@ -9836,6 +9931,7 @@ const REFL = {
     es: {
       intro: { k: 'JUEGO OTRO  ·  ANCLAJE Y TIEMPO LENTO', t: 'Un jardín a cuestas',
         p: ['Anclar es hacer que algo digital se quede en un lugar. En AR se hace con una superficie y una cámara; aquí, con tiempo. Una tortuga-planeta camina un paso cada treinta segundos y lleva un jardín en el caparazón.',
+            'Aquí es una tortuga del río Magdalena (Podocnemis lewyana), especie propia de Colombia que puede superar el medio metro de largo. En muisca, tortuga es kwewí.',
             'No se puede acelerar. Se siembra, se da un sorbo de agua y se espera: demasiada agua también detiene. Lo que crece, crece también mientras no se mira, y es la misma tortuga que puede quedarse un rato sobre tu mesa.'] },
       outro: { k: 'DISEÑO DE SUFICIENCIA  ·  CUIDADO', t: 'Lo que crece sin prisa',
         p: ['Anclar una geometría al mundo no es clavarla: es acompañarla el tiempo que necesita. El cuidado es una mecánica de espera.',
@@ -9844,6 +9940,7 @@ const REFL = {
     en: {
       intro: { k: 'OTHER GAME  ·  ANCHORING AND SLOW TIME', t: 'A garden on its back',
         p: ['To anchor is to make something digital stay in a place. In AR it takes a surface and a camera; here, it takes time. A turtle-planet takes one step every thirty seconds and carries a garden on its shell.',
+            'Here she is a Magdalena River turtle (Podocnemis lewyana), a species found only in Colombia that can grow longer than half a metre. In Muisca, turtle is kwewí.',
             'It cannot be hurried. You sow, give a sip of water and wait: too much water also stops it. What grows, grows even when nobody looks, and it is the same turtle that can rest for a while on your table.'] },
       outro: { k: 'DESIGN OF SUFFICIENCY  ·  CARE', t: 'What grows without hurry',
         p: ['Anchoring a geometry to the world is not nailing it down: it is keeping it company for as long as it needs. Care is a mechanic of waiting.',
@@ -11631,21 +11728,25 @@ function hgNoise(kind, vol, freq, dur) {
 }
 
 // ---------- Ofrendas: tus propios puntos, arrastrables y lanzables ----------
-const HG_CHIP_W = 116, HG_CHIP_H = 52;
+const HG_CHIP_W = 96, HG_CHIP_H = 74;
+const HG_ORB = { score: '255,196,110', combo: '255,112,84', files: '176,212,255' };      // color de cada ofrenda: oro, brasa roja y luz pálida
 function hgChipValue(kind) {
   if (kind === 'score') return String(score);
   if (kind === 'combo') return 'x' + combatCombo;
   return HG.files + ' / 13';
 }
 function hgMakeChip(kind, label, root) {
-  const el = document.createElement('div');
-  el.style.cssText = `position:absolute; left:0; top:0; width:${HG_CHIP_W}px; height:${HG_CHIP_H}px; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; ` +
-    'border:1px solid rgba(231,228,222,0.28); background:rgba(10,10,12,0.5); backdrop-filter:blur(8px); pointer-events:auto; touch-action:none; cursor:grab; user-select:none; will-change:transform; transition:opacity .6s;';
-  const l = document.createElement('div'); l.textContent = label;
-  l.style.cssText = 'font-size:0.55rem; font-weight:300; letter-spacing:0.32em; color:#8a867f;';
+  const el = document.createElement('div'), rgb = HG_ORB[kind] || '255,196,110';
+  el.style.cssText = `position:absolute; left:0; top:0; width:${HG_CHIP_W}px; height:${HG_CHIP_H}px; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:6px; ` +
+    'pointer-events:auto; touch-action:none; cursor:grab; user-select:none; will-change:transform; transition:opacity .6s;';
+  const orb = document.createElement('div');                                      // una brasa: sin caja, solo luz que late
+  orb.style.cssText = `width:54px; height:54px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 50% 50%, rgba(${rgb},0.8) 0%, rgba(${rgb},0.38) 45%, rgba(${rgb},0) 72%); box-shadow:0 0 22px rgba(${rgb},0.35); animation:hgOrb 2.4s ease-in-out infinite alternate;`;
+  if (!document.getElementById('hg-orb-style')) { const st = document.createElement('style'); st.id = 'hg-orb-style'; st.textContent = '@keyframes hgOrb { from { transform: scale(0.94); opacity: .82; } to { transform: scale(1.06); opacity: 1; } }'; document.head.appendChild(st); }
   const v = document.createElement('div');
-  v.style.cssText = 'font-size:1.05rem; font-weight:300; letter-spacing:0.12em; color:#e7e4de;';
-  el.appendChild(l); el.appendChild(v); root.appendChild(el);
+  v.style.cssText = 'font-size:0.74rem; font-weight:300; letter-spacing:0.08em; color:#fff4e0; text-shadow:0 0 8px rgba(0,0,0,0.8);';
+  const l = document.createElement('div'); l.textContent = label;
+  l.style.cssText = 'font-size:0.5rem; font-weight:300; letter-spacing:0.3em; color:#a8a49c; text-shadow:0 0 8px rgba(0,0,0,0.9);';
+  orb.appendChild(v); el.appendChild(orb); el.appendChild(l); root.appendChild(el);
   const c = { kind, el, valEl: v, w: HG_CHIP_W, h: HG_CHIP_H, state: 'idle', pos: { x: -999, y: -999 }, slot: { x: 0, y: 0 }, target: { x: 0, y: 0 }, vel: { x: 0, y: 0 }, rot: 0, hist: [], burnT: 0, cool: 0 };
   v.textContent = hgChipValue(kind);
   ['mousedown', 'touchstart'].forEach(ev => el.addEventListener(ev, (e) => e.stopPropagation()));
@@ -11726,8 +11827,8 @@ function hgGrowl(kind) {
     HG.fx.burst(_hgV.x, _hgV.y, _hgV.z, kind === 'sigh' ? 10 : menace ? 34 : 18, menace ? 2.4 : 1.6, 2.0, menace ? 0x7a828c : 0x59616b, 0.32, 0.5);        // aliento de ceniza
     if (kind === 'click' || kind === 'angry' || menace) MG.pulse(HG_COLOSSUS.x, 0.05, 0xd64a3a, 2, 16, 1.8, 0.35, HG_COLOSSUS.z);   // onda sobre el suelo
   }
-  if (!calm && (kind === 'click' || kind === 'angry' || menace)) { shakeIntensity = Math.max(shakeIntensity, menace ? 0.3 : 0.1); HG.flashV = Math.max(HG.flashV, menace ? 1 : 0.5); }
-  if (menace) { vibrateDevice(220); [0, 450, 900].forEach(d => setTimeout(() => { if (window.isHogueraActive) MG.pulse(HG_COLOSSUS.x, 0.05, 0xd64a3a, 2, 22, 1.6, 0.4, HG_COLOSSUS.z); }, d)); }
+  if (!calm && !HG.view && (kind === 'click' || kind === 'angry' || menace)) { shakeIntensity = Math.max(shakeIntensity, menace ? 0.3 : 0.1); HG.flashV = Math.max(HG.flashV, menace ? 1 : 0.5); }
+  if (menace && !HG.view) { vibrateDevice(220); } if (menace) { [0, 450, 900].forEach(d => setTimeout(() => { if (window.isHogueraActive) MG.pulse(HG_COLOSSUS.x, 0.05, 0xd64a3a, 2, 22, 1.6, 0.4, HG_COLOSSUS.z); }, d)); }
   if (menace) { setTimeout(hgHiss, 700); setTimeout(() => hgRattle(1), 1300); }
   if (!MGS.ok()) return;
   if (menace) { hgRoar(dur); for (let i = 0; i < 14; i++) setTimeout(() => hgNoise('bandpass', 0.016, 1400 + Math.random() * 2600, 0.06), Math.random() * dur * 700); return; }
@@ -11955,7 +12056,7 @@ function hgStart() {
 }
 window.startHogueraGame = function(view) {
   if (MG.pending || window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive) || window.isTuningGameActive || window.isWiringGameActive) return;
-  if (view) { HG.view = true; hgStart(); HG.phase = 'won'; HG.winT = 0; HG.listen = HG.listenS = 1; hgGrowl('sigh'); HG.vT = 7; colViewBar(() => { HG.vk = (HG.vk || 0) + 1; hgGrowl(['sigh', 'idle', 'click'][HG.vk % 3]); }); return; }
+  if (view) { HG.view = true; hgStart(); HG.phase = 'won'; HG.winT = 0; HG.listen = HG.listenS = 1; HG.vT = 3; colViewBar(() => { hgGrowl('menace'); }); return; }
   MG.pending = true;
   MG.reflect(MG.text('hoguera', 'intro'), () => { MG.pending = false; hgStart(); }, { cancelable: true, onCancel: () => { MG.pending = false; } });
 };
@@ -12015,6 +12116,17 @@ function hgUpdateChips(dt) {
       op = 0; c.cool -= dt;
       if (c.cool <= 0) { c.valEl.textContent = hgChipValue(c.kind); c.pos.x = c.slot.x; c.pos.y = c.slot.y; c.state = 'idle'; c.el.style.pointerEvents = 'auto'; }
     }
+    if ((c.state === 'drag' || c.state === 'fly') && !reduceMotionMQ.matches) {                 // al arrastrar: la brasa deja una estela de chispas que suben, y el fuego crepita al acercarla
+      c.trT = (c.trT || 0) - dt; c.fxT = (c.fxT || 0) - dt;
+      if (c.trT <= 0 && c.el.parentNode) {
+        c.trT = 0.035; const rgb = HG_ORB[c.kind] || '255,196,110', dot = document.createElement('div'), sz = 4 + Math.random() * 4;
+        dot.style.cssText = `position:absolute; left:0; top:0; width:${sz}px; height:${sz}px; border-radius:50%; pointer-events:none; background:rgba(${rgb},0.9); box-shadow:0 0 8px rgba(${rgb},0.8); opacity:0.9; transition:transform 0.8s ease-out, opacity 0.8s ease-out; transform:translate(${c.pos.x + (Math.random() - 0.5) * 22}px, ${c.pos.y - 8 + (Math.random() - 0.5) * 14}px);`;
+        c.el.parentNode.insertBefore(dot, c.el);
+        requestAnimationFrame(() => { dot.style.transform = `translate(${c.pos.x + (Math.random() - 0.5) * 40}px, ${c.pos.y - 46 - Math.random() * 26}px)`; dot.style.opacity = '0'; });
+        setTimeout(() => { if (dot.parentNode) dot.parentNode.removeChild(dot); }, 850);
+      }
+      if (c.fxT <= 0 && HG.fx && Math.hypot(c.pos.x - fx, c.pos.y - fy) < R * 2.4) { c.fxT = 0.1; const f = HG.fire; HG.fx.burst(f.x, f.y - 0.3, f.z, 3, 1.5, 1.0, 0xffb066, 0.2 * HG_FS, 0.9); }
+    }
     c.el.style.opacity = String(op);
     c.el.style.transform = `translate(${c.pos.x - c.w / 2}px, ${c.pos.y - c.h / 2}px) rotate(${c.rot}rad) scale(${scale})`;
   });
@@ -12040,7 +12152,7 @@ function hgUpdate(dt) {
   } else if (HG.phase === 'won') {
     HG.winT += dt; HG.cold = Math.max(0, HG.cold - dt * 0.6);
     HG.heat = Math.min(1, HG.heat + dt * 0.25);
-    if (HG.view) { HG.vT -= dt; if (HG.vT <= 0) { HG.vT = 9 + Math.random() * 6; hgGrowl(Math.random() < 0.5 ? 'sigh' : 'idle'); } }
+    if (HG.view) { HG.vT -= dt; if (HG.vT <= 0) { HG.vT = 13 + Math.random() * 8; hgGrowl('menace'); } }
     else if (HG.winT > 4.2) { window.endHogueraGame(); return; }
   }
   HG.calmV += ((HG.phase === 'won' ? 1 : 0) - HG.calmV) * Math.min(1, dt * 1.5);
@@ -12439,11 +12551,11 @@ function whBuildUI() {
   ui.root.insertBefore(cold, ui.root.firstChild);
   const bars = [['top'], ['bottom']].map(([pos]) => { const b = document.createElement('div'); b.style.cssText = `position:absolute; left:0; right:0; ${pos}:0; height:0; background:#000; pointer-events:none; transition:height 3s ease;`; ui.root.insertBefore(b, ui.root.firstChild); return b; });
   requestAnimationFrame(() => requestAnimationFrame(() => bars.forEach(b => { b.style.height = '4.5vh'; })));
-  const pl = document.createElement('div');                                      // la lámina: la ballena es una jorobada
+  const pl = document.createElement('div'); pl.className = 'mg-plate';                                      // la lámina: la ballena es una jorobada
   pl.style.cssText = 'position:absolute; left:18px; bottom:calc(22px + env(safe-area-inset-bottom,0px)); font:italic 300 0.82rem Georgia, "Times New Roman", serif; letter-spacing:0.08em; color:#c9a85c; opacity:0.85; text-shadow:0 0 10px rgba(0,0,0,0.9); pointer-events:none; border-top:1px solid rgba(201,168,92,0.45); padding-top:6px;';
   pl.textContent = 'Megaptera novaeangliae  ·  ' + (en ? 'Pl. VII' : 'Lám. VII'); ui.root.appendChild(pl);
   const gl = document.createElement('div');                                      // glosa en muisca (Saravia): una palabra a la vez
-  gl.style.cssText = 'position:absolute; right:18px; bottom:calc(22px + env(safe-area-inset-bottom,0px)); text-align:right; font:italic 300 0.95rem Georgia, "Times New Roman", serif; letter-spacing:0.08em; color:#bfe6ff; opacity:0; transition:opacity 1.6s ease; text-shadow:0 0 12px rgba(0,0,0,0.9); pointer-events:none;';
+  gl.className = 'mui-corner'; gl.style.cssText = 'position:absolute; right:18px; bottom:calc(22px + env(safe-area-inset-bottom,0px)); text-align:right; font:italic 300 0.95rem Georgia, "Times New Roman", serif; letter-spacing:0.08em; color:#bfe6ff; opacity:0; transition:opacity 1.6s ease; text-shadow:0 0 12px rgba(0,0,0,0.9); pointer-events:none;';
   ui.root.appendChild(gl);
   WH.els = { title, dots, fill, sub, cold, gl }; WH.lastSt = ''; WH.glT = 0;
 }
@@ -13312,7 +13424,7 @@ window.sptStart = sptStart;
 //   en AR, sobre la mesa: la tortuga es una sola. Demasiada agua también detiene. No se pierde nada, solo se espera.
 // ==========================================
 window.isTortugaActive = false;
-const TRT_ISO = { yaw: 0.6, pitch: 0.34, dist: 27, fov: 42, target: new THREE.Vector3(0, 1.2, 0) };
+const TRT_ISO = { yaw: 0.6, pitch: 0.34, dist: 17, fov: 42, target: new THREE.Vector3(0, 3.2, 0) };     // más cerca: la tortuga llena la escena
 const TRT_KEY = 'dac_tortuga_v1';
 const TRT_ST = { sprout: 14, stem: 38, bud: 66, bloom: 96 };                       // segundos de crecimiento de cada etapa
 const TRT_R = 7, TRT_H = 4.6, TRT_STEP = 30;                                        // radio y altura del caparazón; segundos por paso
@@ -13393,24 +13505,24 @@ function trtBuild(mk, sk) {
   const sstep = (a0, b0, x) => { const u = Math.max(0, Math.min(1, (x - a0) / (b0 - a0))); return u * u * (3 - 2 * u); };
   const bump = (x, z) => { const [d1, d2] = vor(x, z), ed = d2 - d1; let b = 0.95 * sstep(0.1, 1.7, ed) + 0.3 * (1 - Math.min(1, d1 / (R * 0.3))); NOD.forEach(n => { const dd = (x - n[0]) * (x - n[0]) + (z - n[1]) * (z - n[1]); if (dd < 2) b += n[2] * 1.7 * Math.exp(-dd / 0.2); }); return b * (1 - sstep(0.85 * R, R, Math.hypot(x, z)) * 0.5); };
   const surf = (x, z) => H * Math.sqrt(Math.max(0, 1 - (x * x + z * z) / (R * R))) + bump(x, z);
-  const body = [0.5, 0.58, 0.56];
+  const body = [0.5, 0.58, 0.56], headC = [0.98, 0.62, 0.16], legC = [0.8, 0.74, 0.28];      // Podocnemis lewyana: cabeza amarillo-naranja, patas amarillentas
   B.shell = mk(3200, (i, o) => { const y = (i + 0.5) / 3200, rr = Math.sqrt(1 - y * y), a = i * GA, x = Math.cos(a) * rr * R, z = Math.sin(a) * rr * R, [d1, d2] = vor(x, z), ed = d2 - d1;
     o.x = x; o.z = z; o.y = surf(x, z);
     const groove = ed < 0.32, ring = !groove && Math.abs(Math.sin(d1 * 5.2)) < 0.14, nod = NOD.some(n => (x - n[0]) * (x - n[0]) + (z - n[1]) * (z - n[1]) < 0.3);
     o.s = (groove ? 0.07 : nod ? 0.16 : ring ? 0.11 : 0.09) * sk; o.a = groove ? 0.28 : nod ? 0.95 : ring ? 0.8 : 0.5;
-    const m = 0.85 + 0.3 * Math.random(); o.r = (groove ? 0.2 : nod ? 0.9 : ring ? 0.72 : 0.4) * m; o.g = (groove ? 0.3 : nod ? 0.82 : ring ? 0.85 : 0.55) * m; o.b = (groove ? 0.28 : nod ? 0.6 : ring ? 0.64 : 0.42) * m; });
+    const m = 0.85 + 0.3 * Math.random(); o.r = (groove ? 0.2 : nod ? 0.95 : ring ? 0.82 : 0.56) * m; o.g = (groove ? 0.12 : nod ? 0.74 : ring ? 0.6 : 0.36) * m; o.b = (groove ? 0.06 : nod ? 0.38 : ring ? 0.3 : 0.17) * m; });   // caparazón pardo oscuro, liso y ovalado
   root.add(mk(1800, (i, o) => { let x, z, ed, g = 0; do { const a = Math.random() * 6.2832, r = Math.sqrt(Math.random()) * R * 0.99; x = Math.cos(a) * r; z = Math.sin(a) * r; const v = vor(x, z); ed = v[1] - v[0]; } while (ed > 0.3 && g++ < 80);
-    o.x = x; o.z = z; o.y = surf(x, z) + 0.05; o.s = 0.13 * sk; o.a = 0.95; o.r = 0.86; o.g = 0.92; o.b = 0.72; }));     // aristas de los escudos: la placa se lee como placa
-  root.add(mk(180, (i, o) => { const k = i % 12, q = k * Math.PI / 6 + 0.3 + Math.PI / 12, u = Math.floor(i / 12) / 14, rr2 = R * (0.97 + 0.04 * u), hh = (1 - u); o.x = Math.cos(q) * (rr2 + 0.4 * hh) * (1 - u * 0.12); o.z = Math.sin(q) * (rr2 + 0.4 * hh) * (1 - u * 0.12); o.y = 0.2 + u * 2.4; o.s = 0.12 * sk; o.a = 0.9; o.r = 0.92; o.g = 0.84; o.b = 0.6; }));   // púas del borde
+    o.x = x; o.z = z; o.y = surf(x, z) + 0.05; o.s = 0.13 * sk; o.a = 0.95; o.r = 0.92; o.g = 0.74; o.b = 0.42; }));     // aristas de los escudos: la placa se lee como placa
+  root.add(mk(180, (i, o) => { const k = i % 12, q = k * Math.PI / 6 + 0.3 + Math.PI / 12, u = Math.floor(i / 12) / 14, rr2 = R * (0.97 + 0.04 * u), hh = (1 - u); o.x = Math.cos(q) * (rr2 + 0.4 * hh) * (1 - u * 0.12); o.z = Math.sin(q) * (rr2 + 0.4 * hh) * (1 - u * 0.12); o.y = 0.2 + u * 0.5; o.s = 0.1 * sk; o.a = 0.7; o.r = 0.8; o.g = 0.6; o.b = 0.32; }));   // borde liso del caparazón (la especie no tiene púas)
   root.add(B.shell);
-  root.add(mk(90, (i, o) => { const a = i / 90 * 6.2832; o.x = Math.cos(a) * R * 1.01; o.z = Math.sin(a) * R * 1.01; o.y = 0.1; o.s = 0.1 * sk; o.a = 0.7; o.r = 0.6; o.g = 0.75; o.b = 0.7; }));
+  root.add(mk(90, (i, o) => { const a = i / 90 * 6.2832; o.x = Math.cos(a) * R * 1.01; o.z = Math.sin(a) * R * 1.01; o.y = 0.1; o.s = 0.1 * sk; o.a = 0.7; o.r = 0.7; o.g = 0.62; o.b = 0.34; }));
   B.head = new THREE.Group(); B.head.position.set(R - 0.6, 1.5, 0); root.add(B.head);                                  // cabeza y cuello
-  B.head.add(trtBlob(mk, 150, 3.5, 0.35, 0, 1.6, 1.1, 1.0, body, 0.11 * sk, 0.6));
-  B.head.add(trtBlob(mk, 70, 1.0, 0.1, 0, 1.6, 0.7, 0.7, body, 0.1 * sk, 0.5));
+  B.head.add(trtBlob(mk, 150, 3.5, 0.35, 0, 1.6, 1.1, 1.0, headC, 0.11 * sk, 0.65));
+  B.head.add(trtBlob(mk, 110, 1.0, 0.1, 0, 2.0, 0.7, 0.7, legC, 0.1 * sk, 0.5));           // cuello largo
   [-0.55, 0.55].forEach(z => B.head.add(mk(1, (i, o) => { o.x = 4.5; o.y = 0.7; o.z = z; o.s = 0.2 * sk; o.a = 1; o.r = 1; o.g = 0.95; o.b = 0.8; })));
   B.eyeHalo = mkHalo(0xffe9c0, 1.0, 0.0); B.eyeHalo.position.set(4.5, 0.7, 0); B.head.add(B.eyeHalo);
   [[3.5, 5.6], [3.5, -5.6], [-3.5, 5.6], [-3.5, -5.6]].forEach(([x, z], i) => {                                       // patas que cuelgan y se balancean
-    const lg = new THREE.Group(); lg.position.set(x, 0.6, z); lg.add(trtBlob(mk, 110, 0, -1.4, 0, 1.0, 1.7, 1.0, body, 0.1 * sk, 0.55)); root.add(lg); B.legs.push(lg);
+    const lg = new THREE.Group(); lg.position.set(x, 0.6, z); lg.add(trtBlob(mk, 110, 0, -1.4, 0, 1.0, 1.7, 1.0, legC, 0.1 * sk, 0.55)); root.add(lg); B.legs.push(lg);
   });
   root.add(trtBlob(mk, 50, -R - 1.4, 0.6, 0, 1.3, 0.5, 0.5, body, 0.09 * sk, 0.5));                                   // cola
   TRT_PLOTS.forEach(([x, z], k) => {                                                                                  // el jardín
@@ -13516,6 +13628,10 @@ function trpBuildUI() {
   const sub = document.createElement('div');
   sub.style.cssText = 'position:absolute; left:50%; top:calc(150px + env(safe-area-inset-top,0px)); transform:translateX(-50%); width:min(90vw,640px); text-align:center; font-size:0.95rem; font-weight:300; letter-spacing:0.12em; line-height:1.8; color:#cfd8e3; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 14px rgba(0,0,0,0.9); pointer-events:none;';
   ui.root.appendChild(sub);
+  const pl = document.createElement('div'); pl.className = 'mg-plate';                                      // la lámina: la tortuga del río Magdalena
+  pl.style.cssText = 'position:absolute; left:18px; bottom:calc(22px + env(safe-area-inset-bottom,0px)); font:italic 300 0.82rem Georgia, "Times New Roman", serif; letter-spacing:0.08em; color:#c9a85c; opacity:0.85; text-shadow:0 0 10px rgba(0,0,0,0.9); pointer-events:none; border-top:1px solid rgba(201,168,92,0.45); padding-top:6px;';
+  pl.textContent = 'Podocnemis lewyana  ·  ' + (MG.isEN() ? 'Pl. VIII' : 'Lám. VIII'); ui.root.appendChild(pl);
+  if (window.muiColGloss) window.muiColGloss('tortuga', ui.root);
   TRP.els = { title, sub, hint: ui.hint };
 }
 function trpStart() {
@@ -13527,18 +13643,19 @@ function trpStart() {
   Object.assign(TRP, { st: 'tend', t: 0, subT: 0, finT: 0, done: false });
   const tg = window.travelerGroup;
   TRP.tsave = tg ? { pos: tg.position.clone(), quat: tg.quaternion.clone(), scale: tg.scale.clone() } : null;
-  if (tg) { tg.visible = true; window.hgPose = { pos: new THREE.Vector3(9, -2.7 + ((typeof TRAVELER_FEET !== 'undefined') ? TRAVELER_FEET : 0.6), -0.3), yaw: Math.atan2(-9, 0.3) }; }   // el Viajero, al pie del coloso
+  if (tg) { tg.visible = true; window.hgPose = { pos: new THREE.Vector3(9, -2.7 + 0.5 * ((typeof TRAVELER_FEET !== 'undefined') ? TRAVELER_FEET : 0.6), -0.3), yaw: Math.atan2(-9, 0.3), scale: 0.5 }; }   // el Viajero, al pie del coloso
   trtInit();
   trpBuildScene(); trpBuildUI();
   hgCamReset(); hgCamBind();
   morphHUD('tortuga');
   showSystemToast(trtT('toast'), '#e7e4de');
   trpSub(TRT.away ? trtT('away') : trtT('s0'), 7);
+  setTimeout(() => { if (window.isTortugaActive) colVoice('tortuga_roar', 0.7); }, 2600);                 // al llegar, la tortuga ruge despacio
 }
 window.startTortugaGame = function(data, view) {
   TRP.data = data || null;
   if (MG.pending || window.isTortugaActive || window.isSputnikActive || window.isWhaleActive || window.isTuningGameActive || window.isWiringGameActive || window.isHogueraActive) return;
-  if (view) { TRP.view = true; trpStart(); TRP.vT = 6; colViewBar(() => colVoice('tortuga', 1)); return; }
+  if (view) { TRP.view = true; trpStart(); TRP.vT = 6; colViewBar(() => colVoice('tortuga_roar', 1)); return; }
   MG.pending = true;
   MG.reflect(MG.text('tortuga', 'intro'), () => { MG.pending = false; trpStart(); },
     { cancelable: true, onCancel: () => { MG.pending = false; if (data && typeof openProjectPopup === 'function') openProjectPopup(data); } });
@@ -13575,8 +13692,8 @@ function trpUpdate(dt) {
   const ev = trtGrow(dt); trtEvents(ev, TRP.B, trpOnSub);
   const C = trtCounts();
   if (ev.some(e => e.step) && !calm) { shakeIntensity = Math.max(shakeIntensity, 0.06); if (MG.fx) MG.fx.burst(TRP.B.root.position.x + 3.5, -2.5, 5.6, 6, 1.4, 1.6, 0x9aa3ad, 0.2, 0.9); }
-  if (!TRP.done && C.blooms >= 4) { TRP.done = true; TRP.B.finale = 1; TRP.st = 'finale'; TRP.finT = 0; colossusFound('tortuga'); colVoice('tortuga', 1); trpSub(trtT('done'), 12); MGS.arpeggio([0, 2, 3, 5, 4], 0.2, 3.4, 0.03); }
-  if (TRP.view) { TRP.vT -= dt; if (TRP.vT <= 0) { TRP.vT = 12 + Math.random() * 5; colVoice('tortuga', 0.7); } }
+  if (!TRP.done && C.blooms >= 4) { TRP.done = true; TRP.B.finale = 1; TRP.st = 'finale'; TRP.finT = 0; colossusFound('tortuga'); colVoice('tortuga_roar', 1); trpSub(trtT('done'), 12); MGS.arpeggio([0, 2, 3, 5, 4], 0.2, 3.4, 0.03); }
+  if (TRP.view) { TRP.vT -= dt; if (TRP.vT <= 0) { TRP.vT = 14 + Math.random() * 6; colVoice('tortuga_roar', 0.8); } }
   else if (TRP.st === 'finale') { TRP.finT += dt; if (TRP.finT > 15) { window.endTortugaGame(); return; } }
   trtAnimate(TRP.B, t, dt, calm);
   // el mundo pasa despacio bajo la tortuga
@@ -13765,12 +13882,12 @@ function openBestiary() {
 function colViewBar(soundFn) {                                                     // modo contemplación: botón para oír al coloso + salida
   const ui = MG.ui; if (!ui) return; const en = MG.isEN();
   ui.hint.textContent = en ? 'Contemplation: drag to turn, wheel or pinch to come closer. Tap 🔊 to hear it.' : 'Contemplación: arrastra para girar, rueda o pellizco para acercarte. Toca 🔊 para oírlo.';
-  const b = document.createElement('button'); b.textContent = en ? '🔊  LISTEN' : '🔊  ESCUCHAR';
+  const b = document.createElement('button'); b.className = 'mg-listen'; b.textContent = en ? '🔊  LISTEN' : '🔊  ESCUCHAR';
   b.style.cssText = 'position:absolute; left:50%; transform:translateX(-50%); bottom:calc(92px + env(safe-area-inset-bottom,0px)); pointer-events:auto; background:rgba(10,10,12,0.45); border:1px solid rgba(201,168,92,0.55); color:#e7d9b4; padding:10px 24px; font-family:inherit; font-size:0.72rem; font-weight:300; letter-spacing:0.3em; cursor:pointer; border-radius:2px;';
   b.addEventListener('click', (e) => { e.stopPropagation(); try { soundFn(); } catch (er) {} });
   ['mousedown', 'touchstart', 'mouseup', 'touchend', 'pointerdown', 'pointerup'].forEach(ev => b.addEventListener(ev, (e) => e.stopPropagation()));
   ui.root.appendChild(b);
-  const tag = document.createElement('div'); tag.textContent = en ? 'CONTEMPLATION' : 'CONTEMPLACIÓN';
+  const tag = document.createElement('div'); tag.className = 'mg-tag'; tag.textContent = en ? 'CONTEMPLATION' : 'CONTEMPLACIÓN';
   tag.style.cssText = 'position:absolute; right:18px; top:calc(84px + env(safe-area-inset-top,0px)); font-size:0.6rem; letter-spacing:0.34em; color:#c9a85c; opacity:0.85; pointer-events:none;'; ui.root.appendChild(tag);
 }
 const COL_REFL_KEY = { serpiente: 'hoguera', ballena: 'ballena', tortuga: 'tortuga' };
@@ -13831,7 +13948,8 @@ function colStart(id, view) {
   userGroup.rotation.order = 'YXZ';
   Object.assign(COLG, { t: 0, subT: 0, won: false, finT: 0, view: !!view });
   const g = new THREE.Group(); COLG.group = g; colSky(g, D.sky || [0.5, 0.6, 0.8]);
-  COLG.S = D.build(g); scene.add(g);
+  try { COLG.S = D.build(g); } catch (err) { console.error('coloso', id, err); COLG.S = null; colTeardown(); MG.exit(); return; }   // si algo falla al construir, se vuelve limpio
+  scene.add(g);
   const tg = window.travelerGroup;                                                  // el Viajero siempre está: da la medida de la inmensidad del coloso
   COLG.tsave = tg ? { pos: tg.position.clone(), quat: tg.quaternion.clone(), scale: tg.scale.clone() } : null;
   COLG.pose = { pos: new THREE.Vector3(0, (typeof TRAVELER_FEET !== 'undefined') ? TRAVELER_FEET : 0.6, 0), yaw: 0 };
@@ -13842,7 +13960,7 @@ function colStart(id, view) {
   const sub = document.createElement('div');
   sub.style.cssText = 'position:absolute; left:50%; top:calc(150px + env(safe-area-inset-top,0px)); transform:translateX(-50%); width:min(90vw,640px); text-align:center; font-size:0.95rem; font-weight:300; letter-spacing:0.12em; line-height:1.8; color:#cfd8e3; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 14px rgba(0,0,0,0.9); pointer-events:none;';
   ui.root.appendChild(sub); COLG.els = { title, sub, hint: ui.hint };
-  if (D.plate) { const pl = document.createElement('div');                              // la lámina: nombre científico y número, como en un bestiario grabado
+  if (D.plate) { const pl = document.createElement('div'); pl.className = 'mg-plate';                              // la lámina: nombre científico y número, como en un bestiario grabado
     pl.style.cssText = 'position:absolute; left:18px; bottom:calc(22px + env(safe-area-inset-bottom,0px)); font:italic 300 0.82rem Georgia, "Times New Roman", serif; letter-spacing:0.08em; color:#c9a85c; opacity:0.85; text-shadow:0 0 10px rgba(0,0,0,0.9); pointer-events:none; border-top:1px solid rgba(201,168,92,0.45); padding-top:6px;';
     pl.textContent = D.plate[0] + '  ·  ' + D.plate[1]; ui.root.appendChild(pl); }
   if (window.muiColGloss) window.muiColGloss(id, ui.root);
@@ -13862,7 +13980,7 @@ window.startColossusGame = function(id, data, view) {
 };
 function colTeardown() {
   window.isColossusActive = false; colMachineStop(); hgCamUnbind(); COL_INK.length = 0;
-  const tg = window.travelerGroup; if (tg && COLG.tsave) { tg.position.copy(COLG.tsave.pos); tg.quaternion.copy(COLG.tsave.quat); tg.scale.copy(COLG.tsave.scale); }
+  const tg = window.travelerGroup; if (tg && COLG.tsave) { tg.position.copy(COLG.tsave.pos); tg.quaternion.copy(COLG.tsave.quat); tg.scale.copy(COLG.tsave.scale); if (tg.userData) { tg.userData.baseX = undefined; tg.userData.baseY = undefined; } }   // la levitación recalcula su base desde donde quedó
   COLG.tsave = null; COLG.pose = null; COLG.pad = null; window.hgPose = null;
   if (COLG.def && COLG.def.dispose && COLG.S) { try { COLG.def.dispose(COLG.S); } catch (e) {} }
   if (COLG.group) { mgDispose(COLG.group); COLG.group = null; }
@@ -13931,7 +14049,7 @@ function colUpdate(dt) {
   if (!CM.ptrs.size) { CM.yawT += CM.yawV * dt; CM.yawV *= Math.exp(-dt * 3.2); }
   const kc = 1 - Math.exp(-dt * 9);
   CM.yaw += (CM.yawT - CM.yaw) * kc; CM.pit += (CM.pitT - CM.pit) * kc; CM.zoom += (CM.zoomT - CM.zoom) * kc;
-  const asp = window.innerWidth / window.innerHeight, fit = Math.max(1, 1.5 / asp), base = D.camDist ? D.camDist(S) : I.dist, Dd = base * fit * (D.camDist ? Math.max(0.7, Math.min(1.3, CM.zoom)) : CM.zoom);
+  const asp = window.innerWidth / window.innerHeight, fit = Math.max(1, 1.5 / asp * (D.fitK || 1)), base = D.camDist ? D.camDist(S) : I.dist, Dd = base * fit * (D.camDist ? Math.max(0.7, Math.min(1.3, CM.zoom)) : CM.zoom);
   const psi = I.yaw + CM.yaw + Math.sin(t * 0.05) * 0.03 * sw, phi = Math.max(0.05, Math.min(1.2, I.pitch + CM.pit)), Tg = D.tgFn ? D.tgFn(S) : I.tg;
   userGroup.position.set(Tg[0] + Dd * Math.sin(psi) * Math.cos(phi), Tg[1] + Dd * Math.sin(phi), Tg[2] + Dd * Math.cos(psi) * Math.cos(phi));
   userGroup.rotation.set(-phi, psi, 0);
@@ -13954,9 +14072,9 @@ function colVoice(kind, k) {                                                    
     const lowpass = (hz) => { const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = hz; lp.connect(out); return lp; };
     const am = (node, hz, depth) => { const l = ctx.createOscillator(); l.frequency.value = hz; const g = ctx.createGain(); g.gain.value = depth; l.connect(g); g.connect(node.gain); l.start(t); l.stop(t + 4); };
     if (kind === 'condor') {                                                       // chillido de rapaz: aire áspero y armónicos que caen
-      env(1.15, 0.34 * k, 0.04); noise('bandpass', 3300, 1300, 2.2, 1.15, 0.9); osc('sawtooth', 2100, 880, 1.0, 0.22); osc('square', 1450, 640, 0.9, 0.1); noise('highpass', 5200, 4200, 0.7, 0.18, 0.7);
+      env(1.15, 0.2 * k, 0.04); noise('bandpass', 3300, 1300, 2.2, 1.15, 0.9); osc('sawtooth', 2100, 880, 1.0, 0.22); osc('square', 1450, 640, 0.9, 0.1); noise('highpass', 5200, 4200, 0.7, 0.18, 0.7);
     } else if (kind === 'condor_coo') {                                            // arrullo grave y corto, cuando se inclina
-      env(1.7, 0.16 * k, 0.25); const o = osc('sine', 330, 270, 1.6, 0.6); osc('triangle', 660, 540, 1.6, 0.12); am(out, 5, 0.04);
+      env(1.7, 0.1 * k, 0.25); const o = osc('sine', 330, 270, 1.6, 0.6); osc('triangle', 660, 540, 1.6, 0.12); am(out, 5, 0.04);
     } else if (kind === 'arbol') {                                                 // crujido de madera con un zumbido de racks
       env(3.0, 0.34 * k, 0.6); const lp = lowpass(300); osc('sawtooth', 54, 46, 3.0, 0.3, lp); osc('sine', 98, 92, 3.0, 0.3); osc('sine', 147, 139, 3.0, 0.16); noise('bandpass', 420, 240, 7, 2.2, 0.5);
     } else if (kind === 'escarabajo') {                                            // zumbido mecánico con chasquidos
@@ -13972,7 +14090,7 @@ function colVoice(kind, k) {                                                    
       const f0 = 62 + Math.random() * 14; [1, 1.013, 0.5].forEach((m, i) => osc(i === 2 ? 'square' : 'sawtooth', f0 * m * 0.8, f0 * m * 0.6, dur, i === 2 ? 0.2 : 0.5, amp));
       osc('sine', 52, 26, dur, 0.6); noise('bandpass', 900, 260, 0.9, dur, 0.3);
     } else if (kind === 'colibri') {                                                // chillido y castañeteo de un colibrí colosal (dos octavas de cuerpo)
-      const n = 6 + Math.round(9 * k), gap = 0.07, tot = n * gap + 0.5; env(tot, 0.4 * k, 0.01);
+      const n = 6 + Math.round(9 * k), gap = 0.07, tot = n * gap + 0.5; env(tot, 0.22 * k, 0.01);
       const hi = ctx.createOscillator(), lo = ctx.createOscillator(), gh = ctx.createGain(), gl = ctx.createGain(); hi.type = 'sawtooth'; lo.type = 'triangle'; gh.gain.value = 0; gl.gain.value = 0;
       hi.connect(gh); lo.connect(gl); gh.connect(out); gl.connect(out); hi.start(t); lo.start(t); hi.stop(t + tot + 0.1); lo.stop(t + tot + 0.1);
       for (let i = 0; i < n; i++) { const t0 = t + i * gap, f = 5200 + Math.random() * 1200 + (i % 3) * 250;
@@ -13980,13 +14098,20 @@ function colVoice(kind, k) {                                                    
         [gh, gl].forEach((gn, j) => { gn.gain.setValueAtTime(0.0001, t0); gn.gain.linearRampToValueAtTime(j ? 0.8 : 0.35, t0 + 0.008); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + gap * 0.92); }); }
       noise('bandpass', 4200, 3000, 1.5, tot, 0.35); am(out, 38, 0.18);
     } else if (kind === 'colibri_song') {                                           // canto bajito: tres notas que descienden, con eco
-      env(3.4, 0.2 * k, 0.05); [[3300, 2500, 0], [2900, 2200, 0.5], [2500, 1900, 1.1]].forEach(([f0, f1, d]) => { const o = ctx.createOscillator(), gn = ctx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f0, t + d); o.frequency.exponentialRampToValueAtTime(f1, t + d + 0.35);
+      env(3.4, 0.11 * k, 0.05); [[3300, 2500, 0], [2900, 2200, 0.5], [2500, 1900, 1.1]].forEach(([f0, f1, d]) => { const o = ctx.createOscillator(), gn = ctx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f0, t + d); o.frequency.exponentialRampToValueAtTime(f1, t + d + 0.35);
         gn.gain.setValueAtTime(0.0001, t + d); gn.gain.linearRampToValueAtTime(0.7, t + d + 0.03); gn.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.45); o.connect(gn); gn.connect(out); o.start(t); o.stop(t + 3);
         const l2 = ctx.createOscillator(), g2 = ctx.createGain(); l2.type = 'sine'; l2.frequency.setValueAtTime(f0 / 4, t + d); l2.frequency.exponentialRampToValueAtTime(f1 / 4, t + d + 0.35); g2.gain.setValueAtTime(0.0001, t + d); g2.gain.linearRampToValueAtTime(0.4, t + d + 0.05); g2.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.7); l2.connect(g2); g2.connect(out); l2.start(t); l2.stop(t + 3); });
     } else if (kind === 'oso_sigh') {                                              // suspiro largo de quien por fin descansa
       env(2.6, 0.14 * k, 0.5); noise('lowpass', 520, 140, 0.8, 2.6, 0.9); osc('sine', 96, 58, 2.6, 0.5);
     } else if (kind === 'medusa') {                                                // canto etéreo: tres voces que suben despacio
       env(3.4, 0.16 * k, 1.1); [392, 494, 587].forEach((f, i) => { const o = osc(i ? 'triangle' : 'sine', f * 0.5, f * 0.52, 3.4, 0.5 - i * 0.1); const v = ctx.createOscillator(); v.frequency.value = 4.5 + i; const vg = ctx.createGain(); vg.gain.value = 3 + i; v.connect(vg); vg.connect(o.frequency); v.start(t); v.stop(t + 3.6); });
+    } else if (kind === 'tortuga_roar') {                                          // rugido hondo y lento de un coloso antiguo
+      const dur = 2.6 + 1.0 * k; env(dur, 0.4 * k, 0.3);
+      const sh = ctx.createWaveShaper(), cv = new Float32Array(512); for (let i = 0; i < 512; i++) cv[i] = Math.tanh((i / 511 * 2 - 1) * 3.6); sh.curve = cv;
+      [[300, 110, 3, 1.0], [620, 240, 4, 0.7], [1300, 520, 5, 0.28]].forEach(([f0, f1, q, g]) => { const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = q; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur); const gg = ctx.createGain(); gg.gain.value = g; sh.connect(f); f.connect(gg); gg.connect(out); });
+      const amp = ctx.createGain(); amp.gain.value = 0.6; amp.connect(sh); am(amp, 13, 0.45);
+      const f0 = 42 + Math.random() * 8; [1, 1.011, 0.5].forEach((m, i) => osc(i === 2 ? 'square' : 'sawtooth', f0 * m * 1.1, f0 * m * 0.62, dur, i === 2 ? 0.22 : 0.5, amp));
+      osc('sine', 40, 22, dur, 0.55); noise('bandpass', 520, 150, 0.9, dur, 0.3);
     } else if (kind === 'tortuga') {                                               // exhalación profunda de un coloso lento
       env(3.4, 0.34 * k, 0.8); osc('sine', 48, 35, 3.4, 0.8); noise('lowpass', 220, 90, 0.7, 3.4, 0.25);
     }
@@ -14898,7 +15023,7 @@ COL_DEF.colibri = {
 // ---------- 6 · LA MEDUSA-LEVIATÁN (TouchDesigner & VR) — explorar un espacio paramétrico ----------
 const COL_DIAL = [{ x: -6, hex: 0x8fe0ff }, { x: 0, hex: 0xffd28a }, { x: 6, hex: 0xe6a0d0 }];
 COL_DEF.medusa = {
-  iso: { yaw: 0.25, pitch: 0.2, dist: 38, tg: [0, 7, 0] }, trav: [1.55, 12], sky: [0.8, 0.6, 0.85], hud: ['FRECUENCIA', 'DENSIDAD', 'FASE', 'RESONANCIAS'], endAfter: 13, voice: 'medusa', voiceEvery: 24, plate: ['Medusa parametrica', 'Lám. VI'],
+  iso: { yaw: 0.25, pitch: 0.2, dist: 38, tg: [0, 7, 0] }, trav: [1.55, 12], sky: [0.8, 0.6, 0.85], hud: ['FRECUENCIA', 'DENSIDAD', 'FASE', 'RESONANCIAS'], endAfter: 13, voice: 'medusa', voiceEvery: 24, fitK: 0.72, plate: ['Medusa parametrica', 'Lám. VI'],
   txt: {
     es: { title: 'LA MEDUSA-LEVIATÁN', toast: 'Su cuerpo es una función de tres perillas.',
       h: 'Toca una perilla (cian, ámbar, rosa) para girarla. Su cuerpo cambia con cada valor; cuando una combinación resuena, canta. Hay tres. Arrastra el espacio vacío para girar.',
@@ -14996,7 +15121,7 @@ function cpPulse(i) {
 function cpPlay(deg) {
   if (!CP.open || CP.exp) return;
   const m = cpMidiOf(deg);
-  MGS.bell(cpFreq(m), 0, 2.4, 0.05); cpPulse(deg);
+  MGS.bell(cpFreq(m), 0, 2.4, 0.034); cpPulse(deg);
   if (CP.rec && CP.run) { const t = cpQ(CP.t); if (!CP.cur.some(e => e.t === t && e.n === m)) CP.cur.push({ t, n: m, d: deg }); }
 }
 function cpDrone() { MGS.bell(cpFreq(CP_ROOT - 24), 0, 7, 0.022); MGS.bell(cpFreq(CP_ROOT - 17), 0.4, 7, 0.012); }
@@ -15005,7 +15130,7 @@ function cpEndLayer() {                                                         
   if (CP.armed) { CP.armed = false; if (CP.layers.length < CP_MAXL) { CP.rec = true; CP.cur = []; } }
 }
 function cpFire(a, b, off) {
-  CP.layers.forEach(L => L.forEach(e => { if (e.t >= a && e.t < b) { MGS.bell(cpFreq(e.n), Math.max(0, e.t - a + off), 2.4, 0.034); const dl = Math.max(0, e.t - a + off); if (dl < 0.05) cpPulse(e.d); } }));
+  CP.layers.forEach(L => L.forEach(e => { if (e.t >= a && e.t < b) { MGS.bell(cpFreq(e.n), Math.max(0, e.t - a + off), 2.4, 0.024); const dl = Math.max(0, e.t - a + off); if (dl < 0.05) cpPulse(e.d); } }));
 }
 function cpTick(S, dt) {
   if (!CP.open) return;
@@ -15273,7 +15398,7 @@ window.muiText = muiText;
 // Un elemento de glosa por superficie: se apaga con el interruptor y se redibuja al cambiar de idioma
 const MUI_CSS = 'font:italic 300 0.9rem Georgia,"Times New Roman",serif; letter-spacing:0.08em; color:#bfe6ff; text-shadow:0 0 12px rgba(0,0,0,0.9); pointer-events:none;';
 function muiMount(parent, keys, css, every) {
-  const el = document.createElement('div'); el.className = 'mui-gloss'; el.style.cssText = MUI_CSS + (css || '') + 'transition:opacity 1.4s ease;';
+  const el = document.createElement('div'); el.className = 'mui-gloss' + (css && css.indexOf('position:absolute') >= 0 ? ' mui-corner' : ''); el.style.cssText = MUI_CSS + (css || '') + 'transition:opacity 1.4s ease;';
   let i = 0; const show = () => { if (!MUI.on) { el.style.opacity = '0'; return; } el.textContent = muiText(keys[i % keys.length]); el.style.opacity = '0.85'; };
   show(); parent.appendChild(el);
   const iv = keys.length > 1 ? setInterval(() => { if (!el.isConnected) { clearInterval(iv); return; } el.style.opacity = '0'; setTimeout(() => { i++; show(); }, 1400); }, (every || 8) * 1000) : 0;
@@ -15283,7 +15408,7 @@ function muiRefresh() { document.querySelectorAll('.mui-gloss').forEach(e => e._
 
 // ----- Inicio y carga -----
 function muiStart() {
-  const sc = document.querySelector('#start-screen .ethereal-float'); if (sc && !sc.querySelector('.mui-gloss')) muiMount(sc, ['kyba', 'zha', 'chie'], 'margin-top:14px; font-size:1.05rem; animation:driftText2 12s ease-in-out infinite alternate;', 7);
+  const sc = document.querySelector('#start-screen .ethereal-float'); if (sc && !sc.querySelector('.mui-gloss')) muiMount(sc, ['kyba', 'zha', 'chie'], 'margin-top:64px; font-size:1.05rem; animation:driftText2 12s ease-in-out infinite alternate;', 7);
   const ld = document.getElementById('loading-screen'); if (ld && !ld.querySelector('.mui-gloss')) muiMount(ld, ['chie'], 'margin-top:18px;');
 }
 
@@ -15294,7 +15419,7 @@ function muiProject() {
   const txt = (t.textContent || '').trim(), p = categoryPlanetData.find(d => d.title && (d.title.es === txt || d.title.en === txt));
   let g = document.getElementById('mui-proj');
   if (!p || !MUI_PROJ[p.id]) { if (g) g.style.display = 'none'; return; }
-  if (!g) { g = document.createElement('div'); g.id = 'mui-proj'; g.className = 'mui-gloss'; g.style.cssText = MUI_CSS + 'text-align:center; margin:-14px 0 14px; transition:opacity 1s ease;'; t.parentNode.parentNode.insertBefore(g, t.parentNode.nextSibling); }
+  if (!g) { g = document.createElement('div'); g.id = 'mui-proj'; g.className = 'mui-gloss'; g.style.cssText = MUI_CSS + 'text-align:center; margin:0 0 14px; transition:opacity 1s ease;'; t.parentNode.insertBefore(g, t.nextSibling); }
   const k = MUI_PROJ[p.id]; g._redo = () => { g.style.display = MUI.on ? 'block' : 'none'; if (MUI.on) g.textContent = muiText(k); }; g._redo();
 }
 
@@ -15314,13 +15439,17 @@ function muiMenu() {
     li2.firstChild.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); const sm = document.getElementById('side-menu'); if (sm) sm.classList.remove('open'); muiGlossary(); });
   }
   a.textContent = '◈ ' + (en ? 'Muisca glosses: ' : 'Glosas muiscas: ') + (MUI.on ? 'ON' : 'OFF'); a.style.color = '#bfe6ff';
+  let q = document.getElementById('menu-quality');
+  if (!q) { const li3 = document.createElement('li'); li3.innerHTML = '<a href="#" id="menu-quality" class="social-item"></a>'; ul.insertBefore(li3, m.closest('li')); q = li3.firstChild;
+    q.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); const order = ['auto', 'high', 'low']; window.perfSetMode(order[(order.indexOf(PERF.mode) + 1) % 3]); }); }
+  q.textContent = '◐ ' + (en ? 'Quality: ' : 'Calidad: ') + ({ auto: en ? 'AUTO' : 'AUTO', high: en ? 'HIGH' : 'ALTA', low: en ? 'LOW' : 'BAJA' })[PERF.mode];
   const g = document.getElementById('menu-muisca-gl'); const n = Object.keys(MUI.seen).filter(k => MUI_W[k]).length;
   g.textContent = '◈ ' + (en ? 'Muisca glossary' : 'Glosario muisca') + ' · ' + n + '/' + Object.keys(MUI_W).length; g.style.color = '#bfe6ff';
 }
 function muiGlossaryHTML() {
   const en = muiEN(), keys = Object.keys(MUI_W), n = keys.filter(k => MUI.seen[k]).length;
-  const rows = keys.map(k => { const w = MUI_W[k], s = MUI.seen[k]; return s
-    ? `<li><b>${w[0]}</b><span>${en ? w[2] : w[1]}</span></li>` : `<li class="mui-off"><b>· · ·</b><span>${en ? 'not seen yet' : 'aún sin ver'}</span></li>`; }).join('');
+  const rows = keys.filter(k => MUI.seen[k]).map(k => { const w = MUI_W[k]; return `<li><b>${w[0]}</b><span>${en ? w[2] : w[1]}</span></li>`; }).join('')
+    + (n < keys.length ? `<li class="mui-off" style="grid-column:1/-1;justify-content:center"><span>${en ? (keys.length - n) + ' more words waiting in the universe' : 'faltan ' + (keys.length - n) + ' palabras por encontrar en el universo'}</span></li>` : '');
   return `<button type="button" class="ach-close" aria-label="${en ? 'Close' : 'Cerrar'}" style="position:absolute;top:8px;right:12px;background:none;border:0;color:#e7e4de;font-size:1.6rem;cursor:pointer">×</button>
     <h2 style="font-weight:300;letter-spacing:.2em;margin:0 0 6px">${en ? 'Muisca glossary' : 'Glosario muisca'}</h2>
     <p style="font-size:.8rem;color:#cfd3da;line-height:1.7;margin:0 0 10px">${en ? 'Words scattered through the universe. Each one appears with its meaning; the ones you have seen are kept here.' : 'Palabras repartidas por el universo. Cada una aparece con su significado; las que ya viste quedan guardadas aquí.'}</p>
@@ -15353,12 +15482,174 @@ function muiAmbient() {
 }
 
 function muiInit() {
+  const st = document.createElement('style'); st.id = 'mui-corner-style';                       // en pantallas estrechas el pie del juego ya está lleno: la glosa de esquina se oculta
+  st.textContent = '@media (max-width:700px){ .mui-corner{ display:none !important; } #mui-amb{ bottom:calc(96px + env(safe-area-inset-bottom,0px)) !important; max-width:58vw; font-size:0.78rem !important; } }'; (document.head || document.documentElement).appendChild(st);
   muiStart(); muiMenu(); muiAmbient();
   const t = document.getElementById('project-title'); if (t) new MutationObserver(muiProject).observe(t, { childList: true, characterData: true, subtree: true });
   document.getElementById('lang-toggle-btn')?.addEventListener('click', () => setTimeout(muiRefresh, 60));
   // etiquetas del bestiario: nombre científico y una palabra muisca bajo cada coloso
+  COLOSSI.forEach(c => { if (c.id === 'tortuga') c.sci = 'Podocnemis lewyana'; });
   const mu = { serpiente: 'myso (culebra)', ballena: 'ty (canto) · sié (agua)', tortuga: 'kwewí (tortuga)', arbol: 'kye (árbol)', escarabajo: 'chumny (escarabajo)', mariquita: 'mysy (soñar)', condor: 'swe (pájaro)', colibri: 'kynzha (colibrí)', medusa: 'simky (ola)' };
   COLOSSI.forEach(c => { if (!c.sci && COL_DEF[c.id] && COL_DEF[c.id].plate) c.sci = COL_DEF[c.id].plate[0]; if (mu[c.id]) c.mu = mu[c.id]; });
   if (!MUI.on) return;
 }
 muiInit();
+
+// ============================================================================
+//  MENÚ LATERAL ORDENADO — grupos plegables, un solo acento, ajustes compactos
+//  (la lista sigue plana: otros módulos insertan <li> con insertBefore sobre el <ul>)
+// ============================================================================
+(function menuTidy() {
+  const GROUPS = [
+    { k: 'ex', es: 'Explorar', en: 'Explore', open: true },
+    { k: 'yo', es: 'Yo', en: 'About me', open: true },
+    { k: 'co', es: 'Colección', en: 'Collection', open: false },
+    { k: 'aj', es: 'Ajustes', en: 'Settings', open: false },
+    { k: 'ln', es: 'Enlaces', en: 'Links', open: false }
+  ];
+  const ORD = {
+    yo: ['menu-about', 'menu-contact', 'menu-blog', 'menu-faq', 'menu-leaderboard'],
+    co: ['menu-achievements', 'menu-collection'],
+    aj: ['menu-align', 'menu-bloom', 'menu-glow', 'menu-quality', 'menu-mute', 'menu-muisca', 'menu-muisca-gl', 'menu-dome', 'menu-inverted', 'menu-retro']
+  };
+  let state = {}; try { state = JSON.parse(localStorage.getItem('mt_open') || '{}') || {}; } catch (e) {}
+  const heads = {}; let busy = false, timer = 0;
+  const en = () => window.currentLang === 'en';
+  function css() {
+    if (document.getElementById('mt-style')) return;
+    const st = document.createElement('style'); st.id = 'mt-style';
+    st.textContent = `
+      #side-menu { overflow-y:auto; }
+      body:not(.retro-mode) #side-menu h2 { color:#e7e4de !important; font-weight:300 !important; letter-spacing:.34em !important; font-size:.9rem !important; }
+      #side-menu ul li { border-top:0 !important; margin-top:0 !important; padding-top:0 !important; list-style:none; }
+      body:not(.retro-mode) #side-menu .menu-item, body:not(.retro-mode) #side-menu .social-item { color:#cfcbc2 !important; font-weight:300 !important; letter-spacing:.05em; font-size:.84rem !important; padding-top:8px !important; padding-bottom:8px !important; text-shadow:none !important; }
+      body:not(.retro-mode) #side-menu li.mt-aj .menu-item, body:not(.retro-mode) #side-menu li.mt-aj .social-item { color:#a8a49c !important; font-size:.76rem !important; padding-top:5px !important; padding-bottom:5px !important; }
+      body:not(.retro-mode) #side-menu #menu-leaderboard { color:#c98a7a !important; }
+      body:not(.retro-mode) #side-menu li.mt-ln { display:inline-block; }
+      body:not(.retro-mode) #side-menu li.mt-ln .social-item { padding-left:14px !important; padding-right:6px !important; font-size:.76rem !important; color:#a8a49c !important; }
+      #side-menu li.mt-head { margin-top:14px !important; padding:6px 22px 6px !important; font-size:.6rem; letter-spacing:.34em; text-transform:uppercase; color:#c9a85c; border-bottom:1px solid rgba(201,168,92,0.25) !important; cursor:pointer; display:flex; justify-content:space-between; user-select:none; }
+      #side-menu li.mt-head:first-child { margin-top:0 !important; }
+      #side-menu li.mt-head:hover { color:#e7d9b4; }
+      #side-menu li.mt-head i { font-style:normal; opacity:.7; }`;
+    (document.head || document.documentElement).appendChild(st);
+  }
+  function gid(li) {
+    if (li.classList.contains('mt-head')) return null;
+    const a = li.querySelector('a'); if (!a) return 'hide';
+    if (a.hasAttribute('data-id')) return 'ex';
+    for (const k in ORD) if (ORD[k].indexOf(a.id) >= 0) return k;
+    if (a.target === '_blank' && /^https?:/.test(a.getAttribute('href') || '')) return 'ln';
+    return 'aj';
+  }
+  function head(g) {
+    if (heads[g.k]) return heads[g.k];
+    const li = document.createElement('li'); li.className = 'mt-head'; li.dataset.g = g.k;
+    li.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); state[g.k] = !isOpen(g); try { localStorage.setItem('mt_open', JSON.stringify(state)); } catch (er) {} run(); });
+    return (heads[g.k] = li);
+  }
+  const isOpen = (g) => (g.k in state ? !!state[g.k] : g.open);
+  function run() {
+    if (busy) return; busy = true;
+    try {
+      const ul = document.querySelector('#side-menu ul'); if (!ul) return; css();
+      const lis = Array.from(ul.children).filter(l => !l.classList.contains('mt-head'));
+      const by = {}; GROUPS.forEach(g => by[g.k] = []);
+      lis.forEach(li => { const g = gid(li); if (g === 'hide') { li.style.display = 'none'; return; } by[g].push(li); });
+      by.ex.sort((a, b) => (+a.querySelector('a').dataset.id) - (+b.querySelector('a').dataset.id));
+      for (const k in ORD) by[k].sort((a, b) => { const ia = ORD[k].indexOf(a.querySelector('a').id), ib = ORD[k].indexOf(b.querySelector('a').id); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
+      const want = [];
+      GROUPS.forEach(g => { if (!by[g.k].length) return; const h = head(g); want.push(h); by[g.k].forEach(li => { li.classList.remove('mt-ex', 'mt-yo', 'mt-co', 'mt-aj', 'mt-ln'); li.classList.add('mt-' + g.k); want.push(li); }); });
+      lis.filter(li => li.style.display === 'none' && gid(li) === 'hide').forEach(li => want.push(li));
+      const cur = Array.from(ul.children);
+      if (cur.length !== want.length || cur.some((c, i) => c !== want[i])) want.forEach(el => ul.appendChild(el));
+      GROUPS.forEach(g => { const h = heads[g.k]; if (!h) return; const o = isOpen(g); h.innerHTML = '<span>' + (en() ? g.en : g.es) + '</span><i>' + (o ? '−' : '+') + '</i>';
+        by[g.k].forEach(li => { li.style.display = o ? (g.k === 'ln' ? 'inline-block' : '') : 'none'; }); });
+    } catch (e) {} finally { busy = false; }
+  }
+  const later = () => { clearTimeout(timer); timer = setTimeout(run, 60); };
+  function init() {
+    const ul = document.querySelector('#side-menu ul'); if (!ul) { setTimeout(init, 500); return; }
+    run(); setTimeout(run, 900); setTimeout(run, 2800);
+    try { new MutationObserver(later).observe(ul, { childList: true }); } catch (e) {}
+    ['menu-toggle', 'lang-toggle-btn'].forEach(id => { const b = document.getElementById(id); if (b) b.addEventListener('click', () => { setTimeout(run, 80); setTimeout(run, 500); }); });
+  }
+  window.menuTidy = run;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else setTimeout(init, 300);
+})();
+
+// ============================================================================
+//  FICHA DE PROYECTO — mismo lenguaje que los colosos y el archivo ejecutivo
+//  (título en versal fino, etiquetas como líneas, epígrafe muisca, lámina con pie de figura, una barra discreta)
+// ============================================================================
+const PJ_ROM = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+function pjPlate(p, en) {                                                         // lámina grabada que sustituye a los rellenos de color plano
+  const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const tt = p.title && typeof p.title === 'object' ? (p.title[en ? 'en' : 'es'] || p.title.es) : (p.title || '');
+  let gl = ''; try { if (typeof MUI_PROJ !== 'undefined' && MUI_PROJ[p.id] && typeof MUI_W !== 'undefined' && MUI_W[MUI_PROJ[p.id]]) { const w = MUI_W[MUI_PROJ[p.id]]; gl = w[0] + '  —  ' + (en ? w[2] : w[1]); } } catch (e) {}
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500"><rect width="800" height="500" fill="#08080c"/>'
+    + '<rect x="24" y="24" width="752" height="452" fill="none" stroke="#c9a85c" stroke-opacity=".45"/><rect x="34" y="34" width="732" height="432" fill="none" stroke="#c9a85c" stroke-opacity=".16"/>'
+    + '<g text-anchor="middle" font-family="Georgia,\'Times New Roman\',serif">'
+    + '<text x="400" y="170" font-size="15" letter-spacing="7" fill="#c9a85c" opacity=".85">' + (en ? 'PLATE ' : 'LÁM. ') + (PJ_ROM[p.id] || p.id || '') + '</text>'
+    + '<text x="400" y="246" font-size="30" letter-spacing="6" fill="#e7e4de" font-family="Helvetica,Arial,sans-serif" font-weight="300">' + esc(String(tt).toUpperCase()) + '</text>'
+    + (gl ? '<text x="400" y="296" font-size="20" font-style="italic" letter-spacing="2" fill="#bfe6ff" opacity=".9">' + esc(gl) + '</text>' : '')
+    + '<line x1="340" x2="460" y1="332" y2="332" stroke="#c9a85c" stroke-opacity=".5"/>'
+    + '<text x="400" y="372" font-size="12" letter-spacing="5" fill="#8a867f" font-family="Helvetica,Arial,sans-serif">' + (en ? 'IMAGE IN PREPARATION' : 'IMAGEN EN PREPARACIÓN') + '</text></g></svg>';
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+window.pjPlate = pjPlate;
+function pjCss() {
+  if (document.getElementById('pj-style')) return;
+  const st = document.createElement('style'); st.id = 'pj-style';
+  const P = 'body:not(.retro-mode) #portfolio-ui';
+  st.textContent = `
+    ${P} { border-radius:2px !important; }
+    ${P} .close-btn { border:0 !important; border-radius:0 !important; background:none !important; box-shadow:none !important; outline:none !important; width:28px !important; height:28px !important; font-size:.95rem !important; color:#8a867f !important; top:6px !important; right:8px !important; }
+    ${P} .close-btn:hover { color:#e7e4de !important; background:none !important; transform:none !important; }
+    ${P} #project-nav-bar { display:flex; align-items:center; gap:14px; border-top:0 !important; border-bottom:1px solid rgba(255,255,255,0.1) !important; padding:0 0 10px 0 !important; margin:18px 0 22px !important; }
+    ${P} #project-nav-bar button { border:0 !important; background:none !important; color:#8a867f !important; font-size:.78rem !important; letter-spacing:.22em !important; padding:4px 6px !important; text-decoration:none !important; text-transform:uppercase; font-family:-apple-system,"Helvetica Neue",Arial,sans-serif !important; }
+    ${P} #project-nav-bar button:hover { color:#e7e4de !important; }
+    ${P} #pj-count { flex:1; text-align:center; font-size:.62rem; letter-spacing:.34em; color:#c9a85c; }
+    ${P} #btn-restore-planet { font-size:.6rem !important; letter-spacing:.14em !important; white-space:nowrap; }
+    ${P} #pj-count { white-space:nowrap; }
+    @media (max-width:520px){ ${P} #project-nav-bar { gap:6px; } ${P} #pj-count { flex:0 0 auto; letter-spacing:.2em; } ${P} #btn-restore-planet { font-size:.5rem !important; letter-spacing:.08em !important; margin-left:auto; } ${P} #project-media { height:260px !important; } }
+    ${P} #project-title { font-size:clamp(1.05rem,3.6vw,1.45rem) !important; letter-spacing:.3em !important; text-align:center !important; border-bottom:0 !important; padding:0 !important; margin:6px 0 10px !important; line-height:1.35; }
+    ${P} #mui-proj { font:italic 300 .86rem Georgia,"Times New Roman",serif !important; letter-spacing:.08em !important; color:#c9a85c !important; text-align:center !important; margin:0 0 16px !important; text-shadow:none !important; }
+    ${P} #project-role { text-align:center; font-size:.62rem !important; letter-spacing:.34em !important; color:#8a867f !important; margin-bottom:12px !important; }
+    ${P} #project-tech-stack { justify-content:center; gap:6px 18px !important; }
+    ${P} #project-tech-stack span { background:none !important; border:0 !important; border-bottom:1px solid rgba(201,168,92,.4) !important; border-radius:0 !important; padding:2px 0 !important; font-size:.64rem !important; letter-spacing:.2em !important; text-transform:uppercase; color:#a8a49c !important; }
+    ${P} #project-media { border-radius:0 !important; background:transparent !important; border:1px solid rgba(255,255,255,.14) !important; padding:10px; box-sizing:border-box; margin-bottom:6px !important; }
+    ${P} #project-media img { border-radius:0; }
+    ${P} #project-media.pj-plate { border-color:transparent !important; padding:0 !important; }
+    ${P} .carousel-btn { border-radius:0 !important; width:30px !important; height:30px !important; background:rgba(8,8,12,.7) !important; border-color:rgba(201,168,92,.4) !important; font-size:.8rem !important; }
+    ${P} #pj-cap { font:italic 300 .76rem Georgia,"Times New Roman",serif; letter-spacing:.06em; color:#c9a85c; text-align:center; margin:0 0 20px; opacity:.9; }
+    ${P} #project-desc { font-size:1rem !important; color:#d3cfc6 !important; line-height:1.7 !important; }
+    ${P} #project-expand-btn, ${P} #project-link { border-radius:0 !important; background:transparent !important; border:1px solid rgba(201,168,92,.35) !important; color:#c9c3b3 !important; font-size:.66rem !important; letter-spacing:.22em !important; text-transform:uppercase; padding:11px !important; }
+    ${P} #project-expand-btn:hover, ${P} #project-link:hover { border-color:#c9a85c !important; color:#fff !important; }
+    .ex-epi { font:italic 300 .95rem Georgia,"Times New Roman",serif; letter-spacing:.08em; color:#c9a85c; margin:-.2rem 0 1rem; }
+    .ex-cap { font:italic 300 .78rem Georgia,"Times New Roman",serif; letter-spacing:.06em; color:#c9a85c; text-align:center; padding-top:8px; }`;
+  (document.head || document.documentElement).appendChild(st);
+}
+function pjAfter(data) {                                                          // se llama al final de openProjectPopup
+  pjCss();
+  const ui = document.getElementById('portfolio-ui'), nav = document.getElementById('project-nav-bar'), h = document.getElementById('project-title'); if (!ui || !nav || !h) return;
+  const en = window.currentLang === 'en';
+  if (h.parentNode === nav) nav.parentNode.insertBefore(h, nav.nextSibling);      // el título sale de la barra: queda solo, centrado
+  const ep = document.getElementById('mui-proj'); if (ep && ep.previousSibling !== h) h.parentNode.insertBefore(ep, h.nextSibling);
+  let c = document.getElementById('pj-count'); if (!c) { c = document.createElement('span'); c.id = 'pj-count'; const nx = document.getElementById('btn-next-project'); nav.insertBefore(c, nx); }
+  const list = (typeof categoryPlanetData !== 'undefined' ? categoryPlanetData : []).filter(p => p && p.id !== 999), i = list.findIndex(p => p.id === data.id);
+  c.textContent = i >= 0 ? String(i + 1).padStart(2, '0') + ' / ' + String(list.length).padStart(2, '0') : '';
+  const rs = document.getElementById('btn-restore-planet'); if (rs && c.nextSibling !== rs) nav.insertBefore(rs, document.getElementById('btn-next-project'));
+  const m = document.getElementById('project-media'); if (!m) return;
+  let cap = document.getElementById('pj-cap'); if (!cap) { cap = document.createElement('div'); cap.id = 'pj-cap'; m.parentNode.insertBefore(cap, m.nextSibling); }
+  const upd = () => {
+    const n = (window.currentGallery && m.querySelector('.carousel-btn')) ? window.currentGallery.length : (m.querySelector('img') ? 1 : 0), k = n > 1 ? (window.currentGalleryIndex || 0) + 1 : 1;
+    const tt = data.title && typeof data.title === 'object' ? (data.title[en ? 'en' : 'es'] || data.title.es) : (data.title || '');
+    cap.style.display = n ? 'block' : 'none'; const im = m.querySelector('img'); m.classList.toggle('pj-plate', !!(im && /^data:image\/svg/.test(im.getAttribute('src') || '')));
+    cap.textContent = (en ? 'Plate ' : 'Lám. ') + (PJ_ROM[data.id] || data.id || '') + '  ·  ' + tt + (n > 1 ? '  ·  ' + (en ? 'fig. ' : 'fig. ') + k + '/' + n : '');
+  };
+  upd();
+  if (m._pjObs) m._pjObs.disconnect();
+  try { m._pjObs = new MutationObserver(upd); m._pjObs.observe(m, { attributes: true, attributeFilter: ['src'], subtree: true }); } catch (e) {}
+}
+window.pjAfter = pjAfter;
+function pjIsPh(s) { try { return typeof s === 'string' && s.indexOf('data:image/svg+xml;utf8,') === 0 && decodeURIComponent(s.slice(24)).indexOf('font-family="monospace"') >= 0; } catch (e) { return false; } }
