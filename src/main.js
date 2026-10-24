@@ -815,6 +815,76 @@ function playSound(type, targetPosition = null) {
   } catch(e) { console.log(e); }
 }
 
+// ==========================================================================================
+// ICONOS PROPIOS — trazo lineal único (24×24, 1.5 px, currentColor) en lugar de emoticones y símbolos del sistema.
+//   · ico('nombre') devuelve el SVG para usarlo en innerHTML.
+//   · Un observador sustituye automáticamente cualquier glifo conocido (🔊 ⚔ 🐾 ✦ …) que aparezca en el DOM, también el de index.html/data.js.
+// ==========================================================================================
+const ICO_P = {
+  vol: '<path d="M4 9.5h3l4.5-3.5v12L7 14.5H4z"/><path d="M15 9.2a4 4 0 010 5.6M17.6 6.6a7.7 7.7 0 010 10.8"/>',
+  mute: '<path d="M4 9.5h3l4.5-3.5v12L7 14.5H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
+  pause: '<path d="M9 6v12M15 6v12"/>',
+  play: '<path d="M8.5 5.5v13l10-6.5z"/>',
+  stop: '<rect x="7" y="7" width="10" height="10" rx="1.4" fill="currentColor"/>',
+  rec: '<circle cx="12" cy="12" r="5.2" fill="currentColor"/>',
+  spark: '<path d="M12 3c.6 5 2.4 7 7 9-4.6 2-6.4 4-7 9-.6-5-2.4-7-7-9 4.6-2 6.4-4 7-9z"/>',
+  star: '<path d="M12 3c.6 5 2.4 7 7 9-4.6 2-6.4 4-7 9-.6-5-2.4-7-7-9 4.6-2 6.4-4 7-9z" fill="currentColor"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  invert: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a4.25 4.25 0 010 8.5 4.25 4.25 0 000 8.5"/><circle cx="12" cy="7.75" r="1" fill="currentColor"/><circle cx="12" cy="16.25" r="1"/>',
+  moon: '<path d="M19.5 14.5A8 8 0 019.5 4.5a8 8 0 1010 10z"/>',
+  sword: '<path d="M20 4L9 15M6.5 12.5l5 5M8.2 15.8L4.5 19.5"/><circle cx="4.2" cy="19.8" r=".9" fill="currentColor"/>',
+  colossus: '<path d="M2.5 19.5l6.2-11 3.8 6.3 2.4-3.8 6.6 8.5z"/><circle cx="17.4" cy="6" r="1.3"/>',
+  doc: '<path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4M9.5 12h6M9.5 15.5h6"/>',
+  planet: '<circle cx="12" cy="12" r="5"/><ellipse cx="12" cy="12" rx="10" ry="3.4" transform="rotate(-22 12 12)"/>',
+  mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="1.5"/><path d="M4 7l8 6 8-6"/>',
+  book: '<path d="M3.5 5.5c3-1 6-.5 8.5 1.5 2.5-2 5.5-2.5 8.5-1.5v12c-3-1-6-.5-8.5 1.5-2.5-2-5.5-2.5-8.5-1.5z"/><path d="M12 7v12"/>',
+  eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
+  dome: '<path d="M3.5 17.5a8.5 8.5 0 0117 0z"/><path d="M12 9v8.5M8 17.5c0-3.4 1.6-6.3 4-8.5 2.4 2.2 4 5.1 4 8.5"/>',
+  neon: '<circle cx="12" cy="12" r="3.5"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/>',
+  target: '<circle cx="12" cy="12" r="6"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>',
+  carousel: '<rect x="3.5" y="6" width="5" height="12" rx="1"/><rect x="9.5" y="4.5" width="5" height="15" rx="1"/><rect x="15.5" y="6" width="5" height="12" rx="1"/>',
+  warn: '<path d="M12 4l9 16H3z"/><path d="M12 10v4.5M12 17.3v.2"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  undo: '<path d="M8.5 5.5L4 10l4.5 4.5"/><path d="M4 10h10a5.5 5.5 0 010 11h-3"/>',
+  dl: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/>',
+  ext: '<path d="M9.5 5.5h-4v13h13v-4M13.5 5.5h5v5M18.5 5.5L11 13"/>',
+  signal: '<circle cx="12" cy="17.5" r="1.3" fill="currentColor"/><path d="M8.6 14.2a4.8 4.8 0 016.8 0M5.6 11.2a9 9 0 0112.8 0M2.8 8.2a13 13 0 0118.4 0"/>',
+  note: '<path d="M9 17.5V5.5l10-2v12"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',
+  down: '<path d="M6 9.5l6 6 6-6"/>',
+  up: '<path d="M6 14.5l6-6 6 6"/>',
+  contrast: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor"/>'
+};
+const ICO_CH = { '🔊': 'vol', '🔇': 'mute', '⏸': 'pause', '▶': 'play', '■': 'stop', '▤': 'contrast', '✧': 'spark', '✦': 'star', '✓': 'check', '✔': 'check', '✅': 'check', '☯': 'invert', '☾': 'moon', '⚔': 'sword', '🐾': 'colossus', '📄': 'doc', '🌌': 'planet', '✉': 'mail', '📖': 'book', '◉': 'eye', '◐': 'dome', '✨': 'neon', '⌖': 'target', '☷': 'carousel', '⚠': 'warn', '❌': 'x', '✕': 'x', '↺': 'undo', '↶': 'undo', '⬇': 'dl', '↗': 'ext', '📡': 'signal', '♪': 'note', '↓': 'down', '↑': 'up' };
+const ICO_LBL = { vol: ['Sonido activado', 'Sound on'], mute: ['Sonido silenciado', 'Sound muted'], pause: ['Pausar', 'Pause'], play: ['Iniciar', 'Start'], target: ['Centrar vista', 'Recenter view'], x: ['Cerrar', 'Close'], colossus: ['Colección de colosos', 'Colossi collection'] };
+function ico(name, cls) { return '<span class="ico' + (cls ? ' ' + cls : '') + '" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" focusable="false">' + (ICO_P[name] || '') + '</svg></span>'; }
+const ICO_RE = new RegExp('(' + Object.keys(ICO_CH).join('|') + ')\\uFE0F?', 'gu'), ICO_TEST = new RegExp('(' + Object.keys(ICO_CH).join('|') + ')', 'u');
+const ICO_SKIP = /^(SCRIPT|STYLE|TEXTAREA|INPUT|SELECT|OPTION|TITLE|SVG|NOSCRIPT)$/i;
+function icoText(n) {
+  const p = n.parentNode; if (!p || p.nodeType !== 1 || p.namespaceURI !== 'http://www.w3.org/1999/xhtml' || ICO_SKIP.test(p.tagName) || (p.closest && p.closest('[data-noico],[contenteditable="true"]')) || !ICO_TEST.test(n.nodeValue)) return;
+  const s = n.nodeValue, fr = document.createDocumentFragment(); let last = 0, m, first = null; ICO_RE.lastIndex = 0;
+  while ((m = ICO_RE.exec(s))) {
+    if (m.index > last) fr.appendChild(document.createTextNode(s.slice(last, m.index)));
+    const t = document.createElement('template'); t.innerHTML = ico(ICO_CH[m[1]]); const sp = t.content.firstChild; fr.appendChild(sp); if (!first) first = ICO_CH[m[1]]; last = m.index + m[0].length;
+  }
+  if (last < s.length) fr.appendChild(document.createTextNode(s.slice(last)));
+  p.replaceChild(fr, n);
+  try { if (first && /^(BUTTON|A)$/i.test(p.tagName) && (!p.getAttribute('aria-label') || p.dataset.icolbl) && !p.title && !p.textContent.trim() && ICO_LBL[first]) { p.setAttribute('aria-label', ICO_LBL[first][window.currentLang === 'en' ? 1 : 0]); p.dataset.icolbl = '1'; } } catch (e) {}
+}
+function icoWalk(root) {
+  if (!root) return;
+  if (root.nodeType === 3) { icoText(root); return; }
+  if (root.nodeType !== 1 || ICO_SKIP.test(root.tagName)) return;
+  const w = document.createTreeWalker(root, 4, null), list = []; let n; while ((n = w.nextNode())) if (ICO_TEST.test(n.nodeValue)) list.push(n);
+  list.forEach(icoText);
+}
+(function icoBoot() {
+  try {
+    if (!document.getElementById('ico-style')) { const st = document.createElement('style'); st.id = 'ico-style'; st.textContent = '.ico{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.2em;line-height:1;flex:none}.ico svg{display:block;width:100%;height:100%;overflow:visible}'; document.head.appendChild(st); }
+    const start = () => { icoWalk(document.body); new MutationObserver((ms) => { ms.forEach(m => { if (m.type === 'characterData') icoText(m.target); else m.addedNodes.forEach(icoWalk); }); }).observe(document.body, { childList: true, subtree: true, characterData: true }); };
+    if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+  } catch (e) {}
+})();
+
 function showSystemToast(msg, color) {
   const toast = document.getElementById('system-toast');
   if(!toast) return;
@@ -1486,7 +1556,8 @@ planet.userData = {
         if (child.isMesh) child.material = gbMat;
       });
       
-      planet.add(gameboy); 
+      planet.add(gameboy);
+      try { planet.updateMatrixWorld(true); const sz = new THREE.Box3().setFromObject(gameboy).getSize(new THREE.Vector3()); planet.userData.traceRatio = Math.max(3, Math.max(sz.x, sz.y, sz.z) / 2 / Math.max(0.01, planet.scale.x)); } catch (e) {}
     }, 
     undefined, (error) => console.error(error));
   }
@@ -4879,6 +4950,8 @@ function ensureCollectionMenu() {
   li.firstChild.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); if (typeof sideMenu !== 'undefined') sideMenu.classList.remove('open'); if (window.openBestiary) window.openBestiary(); });
   const dm = document.createElement('li'); dm.innerHTML = '<a href="#" id="menu-dome" class="social-item"></a>'; m.ul.insertBefore(dm, li.nextSibling);
   dm.firstChild.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); if (typeof sideMenu !== 'undefined') sideMenu.classList.remove('open'); if (window.domeToggle) window.domeToggle(true); });
+  const gm = document.createElement('li'); gm.innerHTML = '<a href="#" id="menu-glow" class="social-item"></a>'; m.ul.insertBefore(gm, dm.nextSibling);
+  gm.firstChild.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); if (window.glowCycle) window.glowCycle(); });
   updateCollectionMenu();
 }
 function ensureCollectionButton() {                                                   // botón directo en la pantalla principal: aparece al encontrar el primer coloso
@@ -4899,7 +4972,7 @@ function ensureCollectionButton() {                                             
   }
   b.title = en ? 'Colossi collection' : 'Colección de colosos'; b.setAttribute('aria-label', b.title); b.innerHTML = '🐾<small>' + n + '/9</small>';
 }
-function updateCollectionMenu() { try { ensureCollectionButton(); } catch (e) {} const dm = document.getElementById('menu-dome'); if (dm) dm.textContent = (window.currentLang === 'en' ? '◐ Dome mode' : '◐ Modo Domo') + '  ·  Ctrl+Shift+D'; const a = document.getElementById('menu-collection'); if (a) a.textContent = `🐾 ${window.currentLang === 'en' ? 'Colossi collection' : 'Colección de colosos'} · ${typeof colossiCount === 'function' ? colossiCount() : 0}/9`; }
+function updateCollectionMenu() { try { ensureCollectionButton(); } catch (e) {} const dm = document.getElementById('menu-dome'); if (dm) dm.textContent = (window.currentLang === 'en' ? '◐ Dome mode' : '◐ Modo Domo') + '  ·  Ctrl+Shift+D'; const gl = document.getElementById('menu-glow'); if (gl && typeof GLOW_NAMES !== 'undefined') gl.textContent = '✧ ' + (window.currentLang === 'en' ? 'Glow: ' : 'Resplandor: ') + GLOW_NAMES[GLOW_MODE.value][window.currentLang === 'en' ? 1 : 0] + '  ·  Ctrl+Shift+G'; const a = document.getElementById('menu-collection'); if (a) a.textContent = `🐾 ${window.currentLang === 'en' ? 'Colossi collection' : 'Colección de colosos'} · ${typeof colossiCount === 'function' ? colossiCount() : 0}/9`; }
 function ensureInvertedMenu() {
   const m = menuList(); if (!m || !m.ul || document.getElementById('menu-inverted')) return;
   const li = document.createElement('li');
@@ -5791,6 +5864,7 @@ window.addEventListener('touchstart', () => { if (DOME.on) domeUIShow(); }, { pa
 setInterval(() => { if (!DOME.on) return; DOME.idleT += 0.5; if (DOME.idleT > 4 && DOME.ui && !DOME.ui.matches(':hover')) { DOME.ui.classList.add('hide'); document.body.classList.add('dome-idle'); } }, 500);
 window.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) { e.preventDefault(); e.stopImmediatePropagation(); domeToggle(); return; }
+  if (e.ctrlKey && e.shiftKey && (e.key === 'G' || e.key === 'g')) { e.preventDefault(); e.stopImmediatePropagation(); glowCycle(); return; }
   if (!DOME.on || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
   if (e.key === 'g' || e.key === 'G') { DOME.grid = !DOME.grid; if (DOME.ui) DOME.ui.querySelectorAll('button').forEach(b => { if (/^(CUADR|GRID)/.test(b.textContent)) b.classList.toggle('on', DOME.grid); }); domeUIShow(); }
   else if (e.key === 'm' || e.key === 'M') { DOME.flip = !DOME.flip; if (DOME.ui) DOME.ui.querySelectorAll('button').forEach(b => { if (/^(ESPEJO|MIRROR)/.test(b.textContent)) b.classList.toggle('on', DOME.flip); }); domeUIShow(); }
@@ -5812,6 +5886,7 @@ renderer.setAnimationLoop((timestamp, frame) => {
   const isXR = renderer.xr.isPresenting;
   const session = isXR ? renderer.xr.getSession() : null;
   const isAR = isXR && window.isARSession; 
+  try { if (window.planetTracesTick) { window.planetTracesTick(Math.min(0.1, Math.max(0, (timestamp - (window.__ptrT || timestamp)) / 1000))); window.__ptrT = timestamp; } } catch (e) {}
   if (isAR && window.arQuipuTick) window.arQuipuTick();
   if (isAR && window.arTurtleTick) window.arTurtleTick();
 
@@ -5971,7 +6046,7 @@ if (isAR && frame && hitTestSource) {
       // 3. Efecto Fricción: Temblor constante en la cámara y rotación densa
       lunaFriccion.rotation.x += 0.004;
       lunaFriccion.rotation.y += 0.002;
-      if (isFriccionActive) {
+      if (isFriccionActive && !(window.isColossusActive || window.isHogueraActive || window.isWhaleActive || window.isSputnikActive || window.isTortugaActive)) {
         shakeIntensity = 0.08; // Micro-temblor constante
       }
       // ===============================================
@@ -6207,7 +6282,7 @@ if (isAR && frame && hitTestSource) {
       // ===============================================
       // 🔥 POTENCIA CREADORA: PINTAR EL UNIVERSO
       // ===============================================
-      if (window.isPainting && !isUIOpen && (isPoeticaActive || isErraticaActive || isFriccionActive)) {
+      if (window.isPainting && !(window.isColossusActive || window.isHogueraActive || window.isWhaleActive || window.isSputnikActive || window.isTortugaActive) && !isUIOpen && (isPoeticaActive || isErraticaActive || isFriccionActive)) {
         raycaster.setFromCamera(mouseNDC, camera);
         let globalPos = new THREE.Vector3();
         
@@ -9187,20 +9262,33 @@ const _wp = new THREE.Vector3();
 
 // ---------- Partículas: puntos de luz con caída suave (tamaño y alfa por partícula) ----------
 const GLOW_SCALE = { value: 400 };
+const GLOW_MODE = { value: 1 };                                                  // 0 suave · 1 mixto (tinta pequeña, destello grande) · 2 todo destello · 3 todo tinta
+try { const v = parseInt(localStorage.getItem('gamelab_glow'), 10); if (v >= 0 && v <= 3) GLOW_MODE.value = v; } catch (e) {}
+const GLOW_NAMES = [['SUAVE', 'SOFT'], ['MIXTO', 'MIXED'], ['DESTELLO', 'FLARE'], ['TINTA', 'INK']];
 const GLOW_VS = `
   attribute vec3 aCol; attribute float aSize; attribute float aAlpha;
-  uniform float uScale; varying vec3 vC; varying float vA;
+  uniform float uScale; varying vec3 vC; varying float vA; varying float vPx;
   void main() {
     vC = aCol; vA = aAlpha;
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = aSize * uScale / max(0.1, -mv.z);
+    float px = aSize * uScale / max(0.1, -mv.z);
+    gl_PointSize = px; vPx = px;
     gl_Position = projectionMatrix * mv;
   }`;
 const GLOW_FS = `
-  uniform vec3 uTint; uniform float uOpacity; varying vec3 vC; varying float vA;
+  uniform vec3 uTint; uniform float uOpacity; uniform float uMode; varying vec3 vC; varying float vA; varying float vPx;
   void main() {
-    float d = length(gl_PointCoord - vec2(0.5));
-    float a = smoothstep(0.5, 0.0, d); a *= a;
+    vec2 p = gl_PointCoord - vec2(0.5); float d = length(p);
+    float a = smoothstep(0.5, 0.0, d); a *= a;                                   // modo 0: punto blando redondo (el de siempre)
+    if (uMode > 0.5) {
+      float soft = a, px = max(vPx, 1.0), w = max(0.02, 1.1 / px);
+      float cr = max(smoothstep(w, 0.0, abs(p.x)) * smoothstep(0.5, 0.04, abs(p.y)), smoothstep(w, 0.0, abs(p.y)) * smoothstep(0.5, 0.04, abs(p.x)));
+      float flare = clamp(smoothstep(0.17, 0.0, d) * 1.2 + cr * 0.9, 0.0, 1.0);   // destello de grabado: núcleo + cruz fina
+      float ink = smoothstep(0.30, 0.30 - max(0.05, 1.0 / px), d);                // tinta: punto nítido de borde duro
+      float big = step(26.0, vPx), mid = step(7.0, vPx);                         // lo enorme (niebla) sigue siendo blando
+      float mixd = mix(mix(ink, flare, mid), soft, big);
+      a = uMode < 1.5 ? mixd : (uMode < 2.5 ? mix(flare, soft, big) : mix(ink, soft, big));
+    }
     gl_FragColor = vec4(vC * uTint, a * vA * uOpacity);
   }`;
 
@@ -9211,7 +9299,7 @@ function mkGlowPoints(n) {
   g.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(n), 1));
   g.setAttribute('aAlpha', new THREE.BufferAttribute(new Float32Array(n), 1));
   const m = new THREE.ShaderMaterial({
-    uniforms: { uScale: GLOW_SCALE, uTint: { value: new THREE.Color(1, 1, 1) }, uOpacity: { value: 1 } },
+    uniforms: { uScale: GLOW_SCALE, uMode: GLOW_MODE, uTint: { value: new THREE.Color(1, 1, 1) }, uOpacity: { value: 1 } },
     vertexShader: GLOW_VS, fragmentShader: GLOW_FS,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
   });
@@ -9233,8 +9321,35 @@ function glowTex() {
   } catch (e) { _glowTex = null; }
   return _glowTex;
 }
+const _haloTex = {};
+function haloTex() {                                                              // textura del resplandor según el modo: suave, destello (núcleo + cruz fina) o anillo de grabado
+  const mode = GLOW_MODE.value; if (mode === 0) return glowTex();
+  const k = mode === 3 ? 'ring' : 'flare'; if (_haloTex[k]) return _haloTex[k];
+  try {
+    const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+    if (k === 'flare') {
+      const gr = g.createRadialGradient(64, 64, 0, 64, 64, 14); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+      const hl = g.createLinearGradient(0, 0, 128, 0), vl = g.createLinearGradient(0, 0, 0, 128);
+      [hl, vl].forEach(l => { l.addColorStop(0, 'rgba(255,255,255,0)'); l.addColorStop(0.5, 'rgba(255,255,255,0.95)'); l.addColorStop(1, 'rgba(255,255,255,0)'); });
+      g.fillStyle = hl; g.fillRect(0, 63, 128, 2); g.fillStyle = vl; g.fillRect(63, 0, 2, 128);
+    } else {
+      g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1.6; g.beginPath(); g.arc(64, 64, 46, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.3)'; g.beginPath(); g.arc(64, 64, 58, 0, Math.PI * 2); g.stroke();
+      const gr = g.createRadialGradient(64, 64, 0, 64, 64, 7); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    }
+    const t = new THREE.CanvasTexture(c); t.userData.shared = true; return (_haloTex[k] = t);
+  } catch (e) { return glowTex(); }
+}
+function glowSetMode(m, quiet) {
+  GLOW_MODE.value = ((m % 4) + 4) % 4; try { localStorage.setItem('gamelab_glow', String(GLOW_MODE.value)); } catch (e) {}
+  const tex = haloTex();
+  try { scene.traverse(o => { if (o.isSprite && o.material && o.material.userData && o.material.userData.halo) { o.material.map = tex; o.material.needsUpdate = true; } }); } catch (e) {}
+  try { updateCollectionMenu(); } catch (e) {}
+  if (!quiet && typeof showSystemToast === 'function') showSystemToast((window.currentLang === 'en' ? 'Glow: ' : 'Resplandor: ') + GLOW_NAMES[GLOW_MODE.value][window.currentLang === 'en' ? 1 : 0], '#e7e4de');
+}
+window.glowCycle = () => glowSetMode(GLOW_MODE.value + 1);
 function mkHalo(hex, size, opacity) {
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hex, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false }));
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: hex, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false })); s.material.userData.halo = 1;
   s.scale.set(size, size, 1);
   return s;
 }
@@ -9678,32 +9793,31 @@ const REFL = {
   },
   mariquita: {
     es: {
-      intro: { k: 'JUEGO OTRO  ·  CURADURÍA Y EMERGENCIA', t: 'Curar sin controlar',
-        p: ['Un enjambre de fotogramas toma forma de catarina cuando recibe variedad de tonos: cada fotograma le pinta una mota. Tú invitas, pero no diriges: ella decide su rumbo y, cuando está completa, abre los élitros y se va.', 'Curar es elegir qué entra, y aceptar que lo curado ya no te pertenece.'] },
-      outro: { k: 'CO-CREACIÓN  ·  SUFICIENCIA', t: 'Dejar ir',
-        p: ['Una cinemateca guarda imágenes para que sigan vivas fuera de ella. La curaduría termina cuando la obra vuela.', 'Co-crear es dar forma junto a otros sin decidir el vuelo.'] }
+      intro: { k: 'JUEGO OTRO  ·  CREAR CON UNA IA', t: 'Sugerir y dejar que el otro interprete',
+        p: ['Una pantalla de ruido imagina lo que le dibujas: tu boceto es solo una pista, y el modelo completa con lo que cree que hay detrás. A veces inventa detalles que no pediste.', 'Experimentar con medios nuevos es trabajar con algo que responde, se equivoca y, a veces, acierta de maneras que no esperabas.'] },
+      outro: { k: 'CO-CREACIÓN  ·  ALUCINACIÓN', t: 'El error también crea',
+        p: ['En la Cinemateca, experimentar con nuevos medios fue aprender a dialogar con lo que no controlas: un trazo, un ruido, una máquina que imagina.', 'Co-crear con una IA es sugerir, conservar lo inesperado y dejar que la obra vuele sola.'] }
     },
     en: {
-      intro: { k: 'OTHER GAME  ·  CURATION AND EMERGENCE', t: 'Curating without controlling',
-        p: ['A swarm of frames takes the shape of a ladybug when it receives a variety of tones: each frame paints it a spot. You invite, but you do not steer: it chooses its course and, when whole, it opens its shell and leaves.', 'To curate is to choose what comes in, and to accept that what is curated no longer belongs to you.'] },
-      outro: { k: 'CO-CREATION  ·  SUFFICIENCY', t: 'Letting go',
-        p: ['A film archive keeps images so that they stay alive outside it. Curation ends when the work flies.', 'To co-create is to shape together with others without deciding the flight.'] }
+      intro: { k: 'OTHER GAME  ·  CREATING WITH AN AI', t: 'To suggest, and let the other interpret',
+        p: ['A screen of noise imagines what you draw: your sketch is only a hint, and the model fills in with what it believes lies behind it. Sometimes it invents details you did not ask for.', 'To experiment with new media is to work with something that answers, makes mistakes and, sometimes, gets it right in ways you did not expect.'] },
+      outro: { k: 'CO-CREATION  ·  HALLUCINATION', t: 'Error creates too',
+        p: ['At the Cinemateca, experimenting with new media meant learning to talk with what you do not control: a stroke, a noise, a machine that imagines.', 'To co-create with an AI is to suggest, to keep the unexpected, and to let the work fly on its own.'] }
     }
   },
   colibri: {
     es: {
-      intro: { k: 'JUEGO OTRO  ·  EMPATÍA Y MEDIACIÓN', t: 'Escuchar el conflicto',
-        p: ['Un barbudito del páramo —colibrí de cresta erizada, tan pequeño en la vida real como colosal aquí— chilla entre la niebla porque tres voces a su alrededor no se oyen: la familia, el agua y la máquina. No se le vence: se escucha a cada voz, una a la vez, y mientras escuchas a una, las otras se tensan donde no miras.', 'Resolver un conflicto es repartir la atención de forma justa, y confiar en que quien es escuchado empieza a escuchar.'] },
-      outro: { k: 'GAMES FOR CHANGE  ·  ATENCIÓN EQUITATIVA', t: 'Nadie fue vencido',
-        p: ['Los juegos para el cambio no ganan contra el conflicto: lo acompañan hasta que cada parte puede descansar.', 'Un colibrí que canta bajito sobre un frailejón en flor es una regla que aprendiste a cumplir con cuidado.'] }
+      intro: { k: 'JUEGO OTRO  ·  SEMBRAR Y CUIDAR', t: 'Sembrar para que otros cuiden',
+        p: ['Un barbudito del páramo —colibrí de cresta erizada, tan pequeño en la vida real como colosal aquí— está posado en el corazón de un frailejón milenario. El páramo está seco, y solo el viento de sus alas puede llevar las semillas del gigante. Pero las semillas no prenden donde tú quieras: solo en suelo húmedo, o a la sombra de otro frailejón.', 'Un frailejón crece un centímetro al año: sembrar es apostar por un tiempo que quizá no veas. Aquí pasa en segundos, pero la lógica es la misma: quien cuida hoy da sombra a quien llega mañana.'] },
+      outro: { k: 'GAMES FOR CHANGE  ·  SEMBRAR FUTURO', t: 'Nadie sembró solo',
+        p: ['Los juegos para el cambio no imponen: siembran las condiciones para que otros puedan cuidar.', 'Un colibrí que canta bajito sobre un frailejón en flor, mientras otras aves siembran por su cuenta, es el final de un trabajo que ya no necesita que estés.'] }
     },
     en: {
-      intro: { k: 'OTHER GAME  ·  EMPATHY AND MEDIATION', t: 'Listening to the conflict',
-        p: ['A páramo helmetcrest —a hummingbird with a bristling crest, as tiny in life as it is colossal here— shrieks in the mist because three voices around it cannot hear each other: the family, the water and the machine. He is not defeated: each voice is listened to, one at a time, and while you listen to one, the others tense where you are not looking.', 'To resolve a conflict is to share attention fairly, and to trust that whoever is heard begins to listen.'] },
-      outro: { k: 'GAMES FOR CHANGE  ·  EQUITABLE ATTENTION', t: 'No one was defeated',
-        p: ['Games for change do not win against conflict: they accompany it until each party can rest.', 'A hummingbird that sings softly on a blooming frailejón is a rule you learned to keep with care.'] }
-    }
-  },
+      intro: { k: 'OTHER GAME  ·  SOWING AND CARING', t: 'Sowing so that others may care',
+        p: ['A páramo helmetcrest —a hummingbird with a bristling crest, as tiny in life as it is colossal here— is perched in the heart of a thousand-year frailejón. The páramo is dry, and only the wind of its wings can carry the giant\'s seeds. But seeds do not root wherever you wish: only in damp soil, or in the shade of another frailejón.', 'A frailejón grows a centimetre a year: to sow is to bet on a time you may never see. Here it happens in seconds, but the logic is the same: whoever cares today gives shade to whoever arrives tomorrow.'] },
+      outro: { k: 'GAMES FOR CHANGE  ·  SOWING THE FUTURE', t: 'Nobody sowed alone',
+        p: ['Games for change do not impose: they sow the conditions for others to be able to care.', 'A hummingbird singing softly on a blooming frailejón, while other birds sow on their own, is the end of work that no longer needs you to be there.'] }
+    }  },
   medusa: {
     es: {
       intro: { k: 'JUEGO OTRO  ·  ESPACIO PARAMÉTRICO', t: 'Explorar un cuerpo posible',
@@ -9740,18 +9854,22 @@ const REFL = {
     es: {
       intro: { k: 'JUEGO OTRO  ·  ECO Y ALTERIDAD', t: 'Un canto sin respuesta',
         p: ['Se habló de una ballena que cantaba a 52 hercios, una frecuencia distinta a la de las demás, y se la llamó «la más solitaria del mundo». Quizá no estaba sola: estaba mal escuchada.',
-            'La empatía no es parecerse al otro ni adivinarlo: es sintonía, un acoplamiento en el que ambos cambian. Una máquina puede simular consuelo; escuchar, en cambio, exige un cuerpo que espera.'] },
+            'La empatía no es parecerse al otro ni adivinarlo: es sintonía, un acoplamiento en el que ambos cambian. Una máquina puede simular consuelo; escuchar, en cambio, exige un cuerpo que espera.',
+            'Aquí la ballena es una jorobada (Megaptera novaeangliae): sus machos cantan frases que se repiten y cambian de un año a otro. Entre sus pulsos aparecerán algunas palabras en muisca, tomadas del diccionario de Saravia: sié, el agua; ty, el canto.'] },
       outro: { k: 'ALTERIDAD  ·  SINTONÍA', t: 'Hacer lugar',
         p: ['Lo que sonó entre ustedes no fue una traducción: fue un ritmo compartido. La ballena no se volvió humana, ni tú ballena.',
-            'Escuchar de verdad es aceptar que el otro seguirá siendo otro, y aun así responder.'] }
+            'Escuchar de verdad es aceptar que el otro seguirá siendo otro, y aun así responder.',
+            'Las palabras en muisca no son adorno: son una lengua que otros pueblos aún recuperan. Nómbralas con cuidado, y pregunta a quienes la enseñan hoy.'] }
     },
     en: {
       intro: { k: 'OTHER GAME  ·  ECHO AND ALTERITY', t: 'A song without an answer',
         p: ['There was talk of a whale that sang at 52 hertz, a frequency unlike the others\', and it was called "the loneliest whale in the world". Perhaps it was not alone: it was poorly listened to.',
-            'Empathy is not resembling the other or guessing them: it is attunement, a coupling in which both change. A machine can simulate comfort; listening, instead, demands a body that waits.'] },
+            'Empathy is not resembling the other or guessing them: it is attunement, a coupling in which both change. A machine can simulate comfort; listening, instead, demands a body that waits.',
+            'Here the whale is a humpback (Megaptera novaeangliae): its males sing phrases that repeat and change from one year to the next. Between the pulses a few Muisca words will appear, taken from Saravia\'s dictionary: sié, water; ty, song.'] },
       outro: { k: 'ALTERITY  ·  ATTUNEMENT', t: 'Making room',
         p: ['What sounded between you was not a translation: it was a shared rhythm. The whale did not become human, nor you a whale.',
-            'To truly listen is to accept that the other will remain other, and still answer.'] }
+            'To truly listen is to accept that the other will remain other, and still answer.',
+            'The Muisca words are not decoration: they belong to a language that its peoples are still recovering. Speak them with care, and ask those who teach it today.'] }
     }
   }
 };
@@ -9834,7 +9952,7 @@ function mgDispose(o) {
   scene.remove(o);
   o.traverse(c => {
     if (c.geometry) c.geometry.dispose();
-    if (c.material) { if (c.material.map && c.material.map !== _glowTex) c.material.map.dispose(); c.material.dispose(); }
+    if (c.material) { if (c.material.map && c.material.map !== _glowTex && !(c.material.map.userData && c.material.map.userData.shared)) c.material.map.dispose(); c.material.dispose(); }
   });
 }
 
@@ -11400,6 +11518,7 @@ function hgCamBind() {
       if (C.pinchD > 1 && d > 1) C.zoomT = hgCamClampZ(C.zoomT * (C.pinchD / d));
       C.pinchD = d; return;
     }
+    if (C.ptrs.size === 1 && window.isColossusActive && window.colMove && window.colMove(e.clientX, e.clientY)) { C.tapOK = false; return; }       // un coloso que se dibuja (catarina): el arrastre es un trazo, no un giro
     C.moved += Math.abs(dx) + Math.abs(dy);
     if (C.moved < 8) return;                                                       // todavía es un toque
     const k = 5.2 / Math.max(320, window.innerWidth);
@@ -11938,7 +12057,7 @@ function hgUpdate(dt) {
   // ----- Cámara isométrica: casi ortográfica; se retira y gira apenas mientras escuchas (el final es el plano más amplio) -----
   const sw = calm ? 0 : 1, L = HG.listenS, W = Math.min(1, HG.winT / 4.2) * (HG.phase === 'won' ? 1 : 0), CM = HG_CAM;
   if (!CM.ptrs.size) { CM.yawT += CM.yawV * dt; CM.yawV *= Math.exp(-dt * 3.2); }                  // inercia al soltar
-  const kc = 1 - Math.exp(-dt * 9);
+  const kc = 1 - Math.exp(-dt * (isFriccionActive ? 3.2 : 9));
   CM.yaw += (CM.yawT - CM.yaw) * kc; CM.pit += (CM.pitT - CM.pit) * kc; CM.zoom += (CM.zoomT - CM.zoom) * kc;
   const asp = window.innerWidth / window.innerHeight, fit = Math.max(1, 1.5 / asp);        // en vertical se aleja para que quepa toda la maqueta
   const D = (HG_ISO.dist + 14 * L + 8 * W) * fit * CM.zoom;                                // la distancia solo cambia con el zoom, nunca al girar
@@ -12320,7 +12439,24 @@ function whBuildUI() {
   ui.root.insertBefore(cold, ui.root.firstChild);
   const bars = [['top'], ['bottom']].map(([pos]) => { const b = document.createElement('div'); b.style.cssText = `position:absolute; left:0; right:0; ${pos}:0; height:0; background:#000; pointer-events:none; transition:height 3s ease;`; ui.root.insertBefore(b, ui.root.firstChild); return b; });
   requestAnimationFrame(() => requestAnimationFrame(() => bars.forEach(b => { b.style.height = '4.5vh'; })));
-  WH.els = { title, dots, fill, sub, cold };
+  const pl = document.createElement('div');                                      // la lámina: la ballena es una jorobada
+  pl.style.cssText = 'position:absolute; left:18px; bottom:calc(22px + env(safe-area-inset-bottom,0px)); font:italic 300 0.82rem Georgia, "Times New Roman", serif; letter-spacing:0.08em; color:#c9a85c; opacity:0.85; text-shadow:0 0 10px rgba(0,0,0,0.9); pointer-events:none; border-top:1px solid rgba(201,168,92,0.45); padding-top:6px;';
+  pl.textContent = 'Megaptera novaeangliae  ·  ' + (en ? 'Pl. VII' : 'Lám. VII'); ui.root.appendChild(pl);
+  const gl = document.createElement('div');                                      // glosa en muisca (Saravia): una palabra a la vez
+  gl.style.cssText = 'position:absolute; right:18px; bottom:calc(22px + env(safe-area-inset-bottom,0px)); text-align:right; font:italic 300 0.95rem Georgia, "Times New Roman", serif; letter-spacing:0.08em; color:#bfe6ff; opacity:0; transition:opacity 1.6s ease; text-shadow:0 0 12px rgba(0,0,0,0.9); pointer-events:none;';
+  ui.root.appendChild(gl);
+  WH.els = { title, dots, fill, sub, cold, gl }; WH.lastSt = ''; WH.glT = 0;
+}
+// Palabras en muisca (diccionario de Saravia, alfabeto práctico): una por estado del juego
+const WH_MUISCA = {
+  arrive: ['sié', 'agua · mar', 'water · sea'], call: ['nypkwa', 'oír', 'to hear'], answer: ['btý', 'cantar', 'to sing'],
+  verdict: ['chywa', 'eco', 'echo'], hcall: ['fiba', 'aire', 'air'], hanswer: ['fiba', 'aire', 'air'], free: ['chyzha', 'voz', 'voice'],
+  echo: ['chywa', 'eco', 'echo'], finale: ['achkisá', 'solo', 'alone']
+};
+function whGloss(st) {
+  const g = WH.els && WH.els.gl, w = WH_MUISCA[st]; if (!g || !w || (window.muiOn && !window.muiOn())) return;
+  g.textContent = w[0] + '  —  ' + (MG.isEN() ? w[2] : w[1]); g.style.opacity = '0.9'; WH.glT = 6;
+  const key = { 'sié': 'sie', 'nypkwa': 'nypkwa', 'btý': 'bty', 'chywa': 'chywa', 'fiba': 'fiba', 'chyzha': 'chyzha', 'achkisá': 'achkisa' }[w[0]]; if (key && window.muiText) window.muiText(key);
 }
 
 // ---------- Inicio y fin ----------
@@ -12528,6 +12664,8 @@ function whVerdict(res) {                                                       
 function whUpdate(dt) {
   const en = MG.isEN(), calm = reduceMotionMQ.matches, t = MG.time, E = WH.els;
   WH.t += dt; WH.sing = Math.max(0, WH.sing - dt / 1.6);
+  if (WH.st !== WH.lastSt) { WH.lastSt = WH.st; if (WH.st === 'verdict' && !WH.ok && WH.fails < 3) { /* sin glosa en el fallo */ } else whGloss(WH.st); }
+  if (WH.glT > 0) { WH.glT -= dt; if (WH.glT <= 0 && E.gl) E.gl.style.opacity = '0'; }
   WH.halo.material.opacity += (0.2 + 0.3 * WH.attS - WH.halo.material.opacity) * Math.min(1, dt * 2);
 
   // ----- Máquina de estados -----
@@ -13533,7 +13671,7 @@ const COLOSSI = [
   { id: 'serpiente', hex: 0xc9786b, es: ['Serpiente emplumada', 'La Hoguera de Datos', 'El Viajero, libre en el vacío'], en: ['Feathered serpent', 'The Data Bonfire', 'The Traveler, free in the void'],
     con: { es: ['Suficiencia', 'Renuncia', 'Calor compartido'], en: ['Sufficiency', 'Renunciation', 'Shared warmth'] },
     tx: { es: 'Un coloso de monitores que ruge cuando se le da la espalda. Se calma con fuego pequeño: aprender cuánto es suficiente.', en: 'A colossus of monitors that roars when ignored. It calms with a small fire: learning how much is enough.' } },
-  { id: 'ballena', hex: 0x9fd0ff, es: ['Ballena cósmica', 'Un canto sin respuesta', 'Cualquier ballena del universo'], en: ['Cosmic whale', 'A song without answer', 'Any whale of the universe'],
+  { id: 'ballena', sci: 'Megaptera novaeangliae', mu: 'ty (canto) · sié (agua)', hex: 0x9fd0ff, es: ['Ballena cósmica', 'Un canto sin respuesta', 'Cualquier ballena del universo'], en: ['Cosmic whale', 'A song without answer', 'Any whale of the universe'],
     con: { es: ['Alteridad', 'Eco', 'Escucha'], en: ['Otherness', 'Echo', 'Listening'] },
     tx: { es: 'Canta en pulsos y espera. No pide que la entiendas, pide que respondas con el mismo aliento.', en: 'She sings in pulses and waits. She does not ask to be understood, only to be answered with the same breath.' } },
   { id: 'tortuga', hex: 0xb8d9ad, es: ['Tortuga-planeta', 'Un jardín a cuestas', 'Módulo WebAR'], en: ['Turtle-planet', 'A garden on its back', 'WebAR Module'],
@@ -13548,12 +13686,12 @@ const COLOSSI = [
   { id: 'escarabajo', hex: 0xe0b45c, es: ['Autómata-escarabajo', 'Cerrar el circuito', 'Consola Arduino'], en: ['Automaton beetle', 'Closing the circuit', 'Arduino Console'],
     con: { es: ['Prueba y error', 'Hardware como lenguaje', 'Ritmo de marcha'], en: ['Trial and error', 'Hardware as language', 'Gait'] },
     tx: { es: 'No trae manual. Aprende a caminar cuando sus patas encuentran, probando, un compás común.', en: 'It comes without a manual. It learns to walk when its legs find, by trying, a shared beat.' } },
-  { id: 'mariquita', hex: 0xe8756a, es: ['Catarina de pantallas', 'Curar sin controlar', 'MediaLab Cinemateca'], en: ['Screen ladybug', 'Curating without controlling', 'Cinemateca MediaLab'],
-    con: { es: ['Curaduría', 'Co-creación', 'Emergencia'], en: ['Curation', 'Co-creation', 'Emergence'] },
-    tx: { es: 'Un enjambre de fotogramas que se pinta de motas y decide su rumbo. Curar es invitar, y también dejar ir.', en: 'A swarm of film frames that paints itself with spots and chooses its course. To curate is to invite, and also to let go.' } },
-  { id: 'colibri', hex: 0x7fd4c0, es: ['Barbudito del páramo', 'Escuchar el conflicto', 'Games for Change'], en: ['Páramo helmetcrest', 'Listening to the conflict', 'Games for Change'],
-    con: { es: ['Empatía', 'Mediación', 'Atención equitativa'], en: ['Empathy', 'Mediation', 'Equitable attention'] },
-    tx: { es: 'Un colibrí colosal que eriza la cresta cuando nadie lo escucha. Se calma cuando cada voz es oída, y el frailejón florece.', en: 'A colossal hummingbird that bristles its crest when nobody listens. It calms when each voice is heard, and the frailejón blooms.' } },
+  { id: 'mariquita', hex: 0xe8756a, es: ['Catarina que se sueña', 'Crear con una IA', 'MediaLab Cinemateca'], en: ['The ladybug that dreams itself', 'Creating with an AI', 'Cinemateca MediaLab'],
+    con: { es: ['Co-creación', 'IA generativa', 'Alucinación'], en: ['Co-creation', 'Generative AI', 'Hallucination'] },
+    tx: { es: 'Una pantalla de ruido que imagina una catarina a partir de tu boceto, y que inventa detalles que no pediste. Crear con una IA es sugerir, y dejar que el otro interprete.', en: 'A screen of noise that imagines a ladybug from your sketch, and invents details you did not ask for. To create with an AI is to suggest, and to let the other interpret.' } },
+  { id: 'colibri', hex: 0x7fd4c0, es: ['Barbudito del páramo', 'Sembrar futuro', 'Games for Change'], en: ['Páramo helmetcrest', 'Sowing the future', 'Games for Change'],
+    con: { es: ['Cuidado', 'Tiempo largo', 'Ecosistema'], en: ['Care', 'Long time', 'Ecosystem'] },
+    tx: { es: 'Un colibrí colosal posado en un frailejón milenario: su aleteo lleva las semillas, pero solo prenden donde hay agua y sombra. Al final, otros siembran por su cuenta.', en: 'A colossal hummingbird perched on a thousand-year frailejón: its wingbeats carry the seeds, but they only take root where there is water and shade. In the end, others sow on their own.' } },
   { id: 'medusa', hex: 0xcfa3c4, es: ['Medusa-leviatán', 'Espacio paramétrico', 'TouchDesigner & VR'], en: ['Leviathan jellyfish', 'Parametric space', 'TouchDesigner & VR'],
     con: { es: ['Parámetro', 'Resonancia', 'Exploración'], en: ['Parameter', 'Resonance', 'Exploration'] },
     tx: { es: 'Su cuerpo es una función de tres perillas. Entre muchas formas posibles, algunas resuenan.', en: 'Her body is a function of three dials. Among many possible shapes, a few resonate.' } }
@@ -13568,6 +13706,7 @@ function colossusFound(id) {                                                    
   const en = window.currentLang === 'en', n = colossiCount();
   setTimeout(() => { if (typeof showSystemToast === 'function') showSystemToast((en ? '🐾 COLLECTION · ' : '🐾 COLECCIÓN · ') + (en ? c.en[0] : c.es[0]) + '  ' + n + '/' + COLOSSI.length, '#e7e4de'); }, 1500);
   try { if (typeof updateAchievementsMenu === 'function') updateAchievementsMenu(); if (ACH.open && typeof renderAchievementsPanel === 'function') renderAchievementsPanel(); } catch (e) {}
+  try { if (window.planetTracesRefresh) window.planetTracesRefresh(); } catch (e) {}
   return true;
 }
 function colGlyph(id, hex, locked) {                                                // silueta de puntos y trazos de cada coloso (24×16)
@@ -13586,7 +13725,7 @@ function colBestiaryHTML() {                                                    
   const cards = COLOSSI.map(c => {
     const has = !!got[c.id];
     if (!has) return `<li class="bst-card is-locked"><div class="bst-glyph">${colGlyph(c.id, c.hex, true)}</div><strong>▒▒▒▒ ▒▒▒▒▒</strong><span class="bst-where">${achEsc(c[L][2])}</span><small>${en ? 'Not found yet.' : 'Aún sin encontrar.'}</small></li>`;
-    return `<li class="bst-card is-found" data-id="${c.id}" tabindex="0" role="button" aria-label="${achEsc(c[L][0])} · ${en ? 'view' : 'contemplar'}"><div class="bst-glyph">${colGlyph(c.id, c.hex, false)}</div><strong>${achEsc(c[L][0])}</strong><span class="bst-where">${achEsc(c[L][1])} · ${achEsc(c[L][2])}</span>
+    return `<li class="bst-card is-found" data-id="${c.id}" tabindex="0" role="button" aria-label="${achEsc(c[L][0])} · ${en ? 'view' : 'contemplar'}"><div class="bst-glyph">${colGlyph(c.id, c.hex, false)}</div><strong>${achEsc(c[L][0])}</strong><span class="bst-where">${achEsc(c[L][1])} · ${achEsc(c[L][2])}</span>${(c.sci || c.mu) ? `<em class="bst-sci">${achEsc(c.sci || '')}${c.sci && c.mu && (!window.muiOn || window.muiOn()) ? ' · ' : ''}${c.mu && (!window.muiOn || window.muiOn()) ? achEsc(c.mu) : ''}</em>` : ''}
       <small>${achEsc(c.tx[L])}</small><div class="bst-chips">${c.con[L].map(k => `<i>${achEsc(k)}</i>`).join('')}</div><em class="bst-visit">${en ? '◉ Look and listen' : '◉ Contemplar y escuchar'}</em><button type="button" class="bst-refl" data-refl="${c.id}">${en ? '📖 Read its reflections' : '📖 Leer sus reflexiones'}</button></li>`;
   }).join('');
   let map = '';
@@ -13607,7 +13746,7 @@ function openBestiary() {
       #bst-panel[hidden]{display:none} #bst-panel .ach-box{position:relative;width:min(94vw,720px);max-height:88vh;overflow:auto;padding:26px 22px;background:rgba(10,12,16,.92);border:1px solid rgba(231,228,222,.16);text-align:center}
       .bst-grid{list-style:none;padding:0;margin:18px 0 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;text-align:left}
       .bst-card{padding:12px;border:1px solid rgba(231,228,222,.14);background:rgba(231,228,222,.03);display:flex;flex-direction:column;gap:5px;font-weight:300}
-      .bst-card.is-found{cursor:pointer;transition:border-color .2s,background .2s} .bst-card.is-found:hover,.bst-card.is-found:focus-visible{border-color:rgba(231,228,222,.5);background:rgba(231,228,222,.08);outline:none} .bst-refl{align-self:flex-start;margin-top:6px;background:none;border:1px solid rgba(201,168,92,.4);color:#c9a85c;font:inherit;font-size:.62rem;letter-spacing:.14em;padding:5px 10px;cursor:pointer} .bst-refl:hover{background:rgba(201,168,92,.1)} .bst-visit{font-style:normal;font-size:.62rem;letter-spacing:.16em;color:#c9a85c;margin-top:4px} .bst-card.is-locked{opacity:.55} .bst-card strong{font-weight:400;letter-spacing:.06em;font-size:.85rem} .bst-where{font-size:.62rem;letter-spacing:.14em;color:#9a968f;text-transform:uppercase}
+      .bst-card.is-found{cursor:pointer;transition:border-color .2s,background .2s} .bst-card.is-found:hover,.bst-card.is-found:focus-visible{border-color:rgba(231,228,222,.5);background:rgba(231,228,222,.08);outline:none} .bst-refl{align-self:flex-start;margin-top:6px;background:none;border:1px solid rgba(201,168,92,.4);color:#c9a85c;font:inherit;font-size:.62rem;letter-spacing:.14em;padding:5px 10px;cursor:pointer} .bst-refl:hover{background:rgba(201,168,92,.1)} .bst-visit{font-style:normal;font-size:.62rem;letter-spacing:.16em;color:#c9a85c;margin-top:4px} .bst-card.is-locked{opacity:.55} .bst-card strong{font-weight:400;letter-spacing:.06em;font-size:.85rem} .bst-sci{font:italic 300 .72rem Georgia,serif;color:#c9a85c;letter-spacing:.04em} .bst-where{font-size:.62rem;letter-spacing:.14em;color:#9a968f;text-transform:uppercase}
       .bst-card small{font-size:.72rem;line-height:1.55;color:#c3c8d0} .bst-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px} .bst-chips i{font-style:normal;font-size:.6rem;letter-spacing:.1em;padding:2px 7px;border:1px solid rgba(231,228,222,.22);color:#cfd3da}
       #bst-panel h3{margin:26px 0 8px;font-weight:300;letter-spacing:.3em;font-size:.72rem;color:#a8a49c} .bst-note{font-size:.8rem;line-height:1.7;color:#cfd3da;margin:0 0 12px}
       .bst-map{list-style:none;padding:0;margin:0;text-align:left;font-size:.74rem;font-weight:300} .bst-map li{padding:6px 0;border-top:1px solid rgba(231,228,222,.08);display:flex;gap:10px;flex-wrap:wrap} .bst-map b{font-weight:400;min-width:12em;letter-spacing:.05em} .bst-map span{color:#9a968f}`;
@@ -13706,9 +13845,10 @@ function colStart(id, view) {
   if (D.plate) { const pl = document.createElement('div');                              // la lámina: nombre científico y número, como en un bestiario grabado
     pl.style.cssText = 'position:absolute; left:18px; bottom:calc(22px + env(safe-area-inset-bottom,0px)); font:italic 300 0.82rem Georgia, "Times New Roman", serif; letter-spacing:0.08em; color:#c9a85c; opacity:0.85; text-shadow:0 0 10px rgba(0,0,0,0.9); pointer-events:none; border-top:1px solid rgba(201,168,92,0.45); padding-top:6px;';
     pl.textContent = D.plate[0] + '  ·  ' + D.plate[1]; ui.root.appendChild(pl); }
-  hgCamReset(); hgCamBind();
+  if (window.muiColGloss) window.muiColGloss(id, ui.root);
+  hgCamReset(); hgCamBind(); colMachineStart();
   window.__colHud = D.hud; morphHUD('coloso');
-  if (view) { colViewBar(() => { COLG.vk = (COLG.vk || 0) + 1; if (D.voice) colVoice(COLG.vk % 3 === 0 && D.voiceWin ? D.voiceWin : D.voice, 1); }); COLG.vT = 9; }
+  if (view) { colViewBar(() => { COLG.vk = (COLG.vk || 0) + 1; if (D.voice) colVoice(COLG.vk % 3 === 0 && D.voiceWin ? D.voiceWin : D.voice, 1); }); COLG.vT = 9; if (D.viewExtra) { try { D.viewExtra(COLG.S); } catch (e) {} } }
   else { showSystemToast(colT('toast'), '#e7e4de'); colSub(colT('s0'), 7); }
   if (D.voice && D.voiceEvery !== undefined) setTimeout(() => { if (window.isColossusActive && COLG.id === id) colVoice(D.voice, 0.6); }, 2200);
 }
@@ -13721,7 +13861,7 @@ window.startColossusGame = function(id, data, view) {
     { cancelable: true, onCancel: () => { MG.pending = false; if (data && typeof openProjectPopup === 'function') openProjectPopup(data); } });
 };
 function colTeardown() {
-  window.isColossusActive = false; hgCamUnbind(); COL_INK.length = 0;
+  window.isColossusActive = false; colMachineStop(); hgCamUnbind(); COL_INK.length = 0;
   const tg = window.travelerGroup; if (tg && COLG.tsave) { tg.position.copy(COLG.tsave.pos); tg.quaternion.copy(COLG.tsave.quat); tg.scale.copy(COLG.tsave.scale); }
   COLG.tsave = null; COLG.pose = null; COLG.pad = null; window.hgPose = null;
   if (COLG.def && COLG.def.dispose && COLG.S) { try { COLG.def.dispose(COLG.S); } catch (e) {} }
@@ -13737,10 +13877,41 @@ window.colAfter = colAfter;
 function colOutro(id, wasFound, data) { setTimeout(() => { MG.reflect(MG.text(id, 'outro'), () => colAfter(data, wasFound)); }, 700); }
 window.endColossusGame = function() { if (!window.isColossusActive || COLG.view) return; const id = COLG.id, w = COLG.won, d = COLG.data; colTeardown(); MG.exit(); colOutro(id, w, d); };
 window.abortColossusGame = function() { if (!window.isColossusActive) return; const id = COLG.id, d = COLG.data, v = COLG.view; colTeardown(); MG.exit(); if (!v) colOutro(id, false, d); };
-window.colTap = function(cx, cy) { if (window.isColossusActive && !COLG.view && !window.isMiniIntro && COLG.def && COLG.def.tap) COLG.def.tap(COLG.S, cx, cy); };
+window.colTap = function(cx, cy) { if (window.isColossusActive && (!COLG.view || COLG.comp) && !window.isMiniIntro && COLG.def && COLG.def.tap) COLG.def.tap(COLG.S, cx, cy); };
 window.colDown = function(cx, cy) { if (window.isColossusActive && !COLG.view && !window.isMiniIntro && COLG.def && COLG.def.down) COLG.def.down(COLG.S, cx, cy); };
+window.colMove = function(cx, cy) { if (window.isColossusActive && !COLG.view && !window.isMiniIntro && COLG.def && COLG.def.drag && COLG.S) return !!COLG.def.drag(COLG.S, cx, cy); return false; };
 window.colUp = function() { if (window.isColossusActive && COLG.def && COLG.def.up) COLG.def.up(COLG.S); };
 window.colMaybeBestiary = function() { const u = readUnlocks(); if (colossiCount() >= COLOSSI.length && !u.bestiarySeen) { u.bestiarySeen = true; writeUnlocks(u); setTimeout(openBestiary, 600); } };
+// ---------- Las máquinas creativas (poética, errática, friccional) dentro de los colosos ----------
+//   Si una está encendida al entrar, el coloso la hereda como un clima: poética = velo de luz blanca; errática = viñeta roja, temblor de los trazos y glitches; fricción = tono ocre pesado y cámara lenta.
+//   Nunca cambian las reglas del juego, y el temblor constante de la fricción y el modo pintura quedan apagados mientras dura la escena.
+const COLMX = { mode: '', el: null, gT: 4 };
+const COLMX_CSS = {
+  poetica: 'background:radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.13), rgba(235,240,255,0.04) 58%, rgba(255,255,255,0) 100%); mix-blend-mode:screen;',
+  erratica: 'background:radial-gradient(ellipse at center, rgba(255,40,20,0) 38%, rgba(255,32,12,0.26) 100%); mix-blend-mode:screen;',
+  friccion: 'background:radial-gradient(ellipse at center, rgba(205,160,90,0.16) 20%, rgba(70,42,8,0.5) 100%); mix-blend-mode:multiply;'
+};
+function colMachineMode() { return isPoeticaActive ? 'poetica' : isErraticaActive ? 'erratica' : isFriccionActive ? 'friccion' : ''; }
+function colMachineStart() {
+  window.isPainting = false; const pt = document.getElementById('paint-tools'); if (pt) pt.style.display = 'none';
+  COLMX.mode = ''; COLMX.gT = 3 + Math.random() * 3; colMachineFx(0, false);
+  const m = COLMX.mode, en = window.currentLang === 'en';
+  if (m && !COLG.view) { const T = { poetica: ['La Máquina Poética sigue encendida: el coloso se vuelve luz.', 'The Poetic Machine is still on: the colossus turns to light.'], erratica: ['La Máquina Errática sigue encendida: nada se queda quieto.', 'The Erratic Machine is still on: nothing holds still.'], friccion: ['La Fricción sigue encendida: todo pesa más.', 'Friction is still on: everything weighs more.'] }; setTimeout(() => { if (window.isColossusActive) showSystemToast(T[m][en ? 1 : 0], m === 'erratica' ? '#ff6655' : m === 'friccion' ? '#ddbb66' : '#ffffff'); }, 1600); }
+}
+function colMachineStop() { if (COLMX.el) { COLMX.el.remove(); COLMX.el = null; } COLMX.mode = ''; }
+function colMachineFx(dt, calm) {
+  const m = window.isColossusActive ? colMachineMode() : '';
+  if (m !== COLMX.mode) {
+    COLMX.mode = m;
+    if (!m) { if (COLMX.el) { const e = COLMX.el; COLMX.el = null; e.style.opacity = '0'; setTimeout(() => e.remove(), 1300); } }
+    else { if (!COLMX.el) { const e = document.createElement('div'); e.setAttribute('aria-hidden', 'true'); document.body.appendChild(e); COLMX.el = e; e.style.cssText = 'position:fixed; inset:0; z-index:100010; pointer-events:none; opacity:0; transition:opacity 1.2s ease;'; requestAnimationFrame(() => { if (COLMX.el === e) e.style.opacity = '1'; }); }
+      COLMX.el.style.cssText = 'position:fixed; inset:0; z-index:100010; pointer-events:none; transition:opacity 1.2s ease; opacity:' + (COLMX.el.style.opacity || '0') + '; ' + COLMX_CSS[m]; }
+  }
+  if (m === 'erratica') {
+    COL_INK.forEach(x => { if (x.uniforms.uJit.value < 0.075) x.uniforms.uJit.value = 0.075; });
+    if (!calm && !COLG.view) { COLMX.gT -= dt; if (COLMX.gT <= 0) { COLMX.gT = 3.5 + Math.random() * 5; if (typeof triggerSubtleGlitch === 'function') triggerSubtleGlitch(); } }
+  }
+}
 function colUpdate(dt) {
   const D = COLG.def, S = COLG.S; if (!D || !S) return;
   const calm = reduceMotionMQ.matches, t = MG.time, sw = calm ? 0 : 1;
@@ -13748,7 +13919,7 @@ function colUpdate(dt) {
   if (COLG.els.sub && COLG.subT <= 0) COLG.els.sub.style.opacity = '0';
   COLG.stars.rotation.y += dt * 0.004 * sw; COLG.dust.rotation.y += dt * 0.01 * sw;
   if (COLG.view && D.view) D.view(S, dt, t);
-  D.update(S, dt, t, calm);
+  D.update(S, dt, t, calm); colMachineFx(dt, calm);
   COL_INK.forEach(m => { m.uniforms.uTime.value = t; });
   const P = COLG.pose; if (P) { const tp = D.travPos ? D.travPos(S) : (D.trav ? [Math.sin(D.trav[0]) * D.trav[1], Math.cos(D.trav[0]) * D.trav[1]] : [0, 12]); P.pos.x = tp[0]; P.pos.z = tp[1]; P.pos.y = ((typeof TRAVELER_FEET !== 'undefined') ? TRAVELER_FEET : 0.6) + (tp[2] || 0); P.yaw = Math.atan2(-tp[0], -tp[1]); COLG.pad.position.set(tp[0], tp[2] || 0, tp[1]); }
   if (COLG.view) { COLG.vT -= dt; if (COLG.vT <= 0) { COLG.vT = 11 + Math.random() * 5; if (D.voice) colVoice(D.voice, 0.7); } }
@@ -13921,15 +14092,15 @@ COL_DEF.condor = {
   tgFn(S) { const p = this.travPos(S); return [0.5 + (p[0] - 0.5) * 0.45, 6 + (p[2] - 6) * 0.45, p[1] * 0.45]; }, sky: [0.75, 0.62, 0.55], hud: ['DISTANCIA', 'CONFIANZA', 'MIRADA', 'PLUMA'], endAfter: 13, voice: 'condor', voiceEvery: 0, plate: ['Vultur gryphus', 'Lám. IV'],
   txt: {
     es: { title: 'EL CÓNDOR DE CENIZA', toast: 'Un maestro posado en un risco.',
-      h: 'Sube la montaña manteniendo pulsado, pero solo cuando el cóndor mire a otro lado. Si te mira, suelta y espera: la confianza crece quieta. Cada mojón que se enciende es un permiso concedido. Arrastra el espacio vacío para girar.',
-      s0: '…te observa desde la cumbre…', cairn: '…un mojón se enciende: un permiso concedido…', watch: '…te mira. Suelta y baja la mirada…', away: '…mira a otro lado. Ahora puedes avanzar…', back: '…aún no. La confianza se espera, no se empuja…', bow: '…inclina la cabeza. Tócalo…', gift: '…te deja una pluma…', done: '…una pluma de ceniza. Aprender también es que te lo permitan.' },
+      h: 'Sube la montaña manteniendo pulsado, pero solo cuando el cóndor mire a otro lado. Si te mira, suelta y espera: la confianza crece quieta. Cada apacheta que se enciende es un permiso concedido. Arrastra el espacio vacío para girar.',
+      s0: '…te observa desde la cumbre…', cairn: '…una apacheta se enciende: un permiso concedido…', watch: '…te mira. Suelta y baja la mirada…', away: '…mira a otro lado. Ahora puedes avanzar…', back: '…aún no. La confianza se espera, no se empuja…', bow: '…inclina la cabeza. Tócalo…', gift: '…te deja una pluma…', done: '…una pluma de ceniza. Aprender también es que te lo permitan.' },
     en: { title: 'THE ASH CONDOR', toast: 'A teacher perched on a cliff.',
-      h: 'Climb the mountain by holding, but only when the condor looks away. If it looks at you, let go and wait: trust grows in stillness. Each cairn that lights up is a permission granted. Drag empty space to turn.',
-      s0: '…it watches from the summit…', cairn: '…a cairn lights up: a permission granted…', watch: '…it looks at you. Let go and lower your gaze…', away: '…it looks away. Now you may advance…', back: '…not yet. Trust is waited for, not pushed…', bow: '…it bows its head. Touch it…', gift: '…it leaves you a feather…', done: '…a feather of ash. To learn is also to be allowed.' }
+      h: 'Climb the mountain by holding, but only when the condor looks away. If it looks at you, let go and wait: trust grows in stillness. Each apacheta (stone cairn) that lights up is a permission granted. Drag empty space to turn.',
+      s0: '…it watches from the summit…', cairn: '…an apacheta lights up: a permission granted…', watch: '…it looks at you. Let go and lower your gaze…', away: '…it looks away. Now you may advance…', back: '…not yet. Trust is waited for, not pushed…', bow: '…it bows its head. Touch it…', gift: '…it leaves you a feather…', done: '…a feather of ash. To learn is also to be allowed.' }
   },
   build(g) {
     const S = { D: 46, trust: 0, cycle: 0, watch: false, hold: false, stage: 'approach', ruffle: 0, hy: 0, bow: 0, open: 0, feather: 0, giftT: 0, msgT: 0, won: false, lastWatch: false };
-    // la montaña: un macizo andino imponente; el cóndor reina en una cornisa de la cumbre y el Viajero sube por un sendero de mojones
+    // la montaña: un macizo andino imponente; el cóndor reina en una cornisa de la cumbre y el Viajero sube por un sendero de apachetas
     const UX = Math.sin(0.9), UZ = Math.cos(0.9), rr = Math.random;
     const sm = (a, b, x) => { const u = Math.max(0, Math.min(1, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
     const H = (x, z) => {
@@ -13956,7 +14127,7 @@ COL_DEF.condor = {
     for (let L = 0; L < 3; L++) g.add(sptPoints(560, (i, o) => { const x = -190 + 380 * (i / 560); o.x = x; o.z = -118 - L * 18; o.y = 28 + L * 7 + 16 * Math.abs(Math.sin(x * 0.02 + L * 1.7)) + 6 * Math.sin(x * 0.07 + L) + 3 * Math.sin(x * 0.19); o.s = 0.6; o.a = 0.3; o.r = 0.34 + L * 0.04; o.g = 0.4 + L * 0.04; o.b = 0.55 + L * 0.04; }));   // cordillera lejana
     S.sea = sptPoints(900, (i, o) => { const a = rr() * 6.283, r = Math.sqrt(rr()) * 110; o.x = Math.cos(a) * r; o.z = Math.sin(a) * r - 10; o.y = -33 + rr() * 5; o.s = 2 + rr() * 2.4; o.a = 0.05 + rr() * 0.06; o.r = 0.78; o.g = 0.8; o.b = 0.88; }); g.add(S.sea);   // mar de nubes
     S.snow = sptPoints(300, (i, o) => { o.x = (rr() - 0.5) * 70; o.y = (rr() - 0.5) * 34; o.z = (rr() - 0.5) * 70; o.s = 0.12; o.a = 0.5; o.r = 0.9; o.g = 0.94; o.b = 1; }); g.add(S.snow);   // ventisca
-    // el sendero y sus mojones: cada uno es un permiso
+    // el sendero y sus apachetas: cada uno es un permiso
     S.path = (q) => { const r = 4.5 + q * 36, wig = 2.6 * Math.sin(q * 13) * sm(0, 0.12, q), x = UX * r - UZ * wig, z = UZ * r + UX * wig; return [x, z, H(x, z)]; };
     S.trail = sptPoints(220, (i, o) => { const p = S.path(1 - i / 219 * 0.985); o.x = p[0]; o.z = p[1]; o.y = p[2] + 0.12; o.s = 0.2; o.a = 0.22; o.r = 1; o.g = 0.82; o.b = 0.45; }); g.add(S.trail);
     S.cairns = [0.86, 0.66, 0.47, 0.3, 0.14].map((q) => { const p = S.path(q), cg = new THREE.Group(); cg.position.set(p[0] + 1.1, p[2], p[1] + 0.5);
@@ -14054,9 +14225,70 @@ COL_DEF.condor = {
   hudVals(S) { return [Math.round(S.D) + ' m', Math.round(S.trust * 100) + '%', S.watch ? '●' : '○', S.stage === 'gift' ? '1' : '0']; }
 };
 
+// ---------- la red micorrícica del pewen: raíces cálidas envueltas por hifas frías, un hongo tan grande como la copa (o más) ----------
+//   El bosque bajo el suelo: miles de hifas ramifican desde las raíces, se tocan entre sí (anastomosis) y llevan el cuidado de un árbol a otro.
+//   Respira con ondas suaves; cuando envías una espora, una ola de luz recorre la red hacia el tronco; los hongos del suelo fructifican según cuánto cuidado hay.
+function colMycelium(g, rx, rz) {
+  const rn = Math.random, P = [], Cc = [], Zs = [], Dd = [], Bs = [], Kd = [], tips = [], BUDGET = 8400, q = [];
+  const norm = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; v[0] /= l; v[1] /= l; v[2] /= l; return v; };
+  const add = (x, y, z, d, kind, depth, sh) => {
+    P.push(x, y, z); Dd.push(d); Kd.push(kind);
+    if (kind === 0) { Cc.push(0.9 * sh, 0.66 * sh, 0.4 * sh); Zs.push(0.2); Bs.push(0.6); }                                  // raíz del árbol: cálida
+    else if (kind === 1) { const k = Math.min(1, depth / 5); Cc.push((0.3 + 0.35 * k) * sh, (0.92 - 0.12 * k) * sh, (0.82 + 0.15 * k) * sh); Zs.push(Math.max(0.065, 0.17 - 0.022 * depth)); Bs.push(0.52 - 0.065 * depth); }   // hifa: turquesa → violeta
+    else { Cc.push(0.72 * sh, 0.76 * sh, 1 * sh); Zs.push(0.07); Bs.push(0.24); }                                              // hifa fina que une a las otras
+  };
+  const NR = 12; for (let r = 0; r < NR; r++) { const a = r / NR * 6.283 + rn() * 0.3; q.push({ p: [rx, -2.4, rz], dir: norm([Math.cos(a), -0.2 - 0.18 * rn(), Math.sin(a)]), len: 27 + rn() * 9, depth: 0, d: 0, kind: 0 }); }
+  while (q.length && P.length / 3 < BUDGET) {
+    const s = q.shift(), p = s.p.slice(), dir = s.dir, step = s.depth === 0 ? 0.36 : 0.3, n = Math.floor(s.len / step); let d = s.d;
+    for (let i = 0; i < n && P.length / 3 < BUDGET; i++) {
+      dir[0] += (rn() - 0.5) * 0.34; dir[1] += (rn() - 0.5) * 0.34; dir[2] += (rn() - 0.5) * 0.34;
+      if (p[1] < -22) dir[1] += 0.2; if (p[1] > -2.9) dir[1] -= 0.3; const rr = Math.hypot(p[0] - rx, p[2] - rz); if (rr > 34) { dir[0] -= (p[0] - rx) / rr * 0.12; dir[2] -= (p[2] - rz) / rr * 0.12; }
+      norm(dir); p[0] += dir[0] * step; p[1] += dir[1] * step; p[2] += dir[2] * step; d += step;
+      add(p[0] + (rn() - 0.5) * 0.05, p[1], p[2] + (rn() - 0.5) * 0.05, d, s.kind, s.depth, 0.75 + 0.25 * rn());
+      if (s.depth < 5 && rn() < (s.depth === 0 ? 0.055 : 0.075)) q.push({ p: p.slice(), dir: norm([dir[0] + (rn() - 0.5) * 1.9, dir[1] + (rn() - 0.5) * 1.5, dir[2] + (rn() - 0.5) * 1.9]), len: s.len * (0.55 + 0.14 * rn()), depth: s.depth + 1, d, kind: 1 });
+    }
+    if (s.depth >= 2) tips.push({ p: p.slice(), d });
+  }
+  const nMain = P.length / 3;
+  // anastomosis: las puntas cercanas se buscan y se unen con hifas finas que cuelgan en curva
+  let links = 0; for (let i = 0; i < tips.length && links < 320; i++) { let bj = -1, bd = 7.5; for (let j = i + 1; j < tips.length; j++) { const a = tips[i].p, b = tips[j].p, dd = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); if (dd < bd && dd > 1.2) { bd = dd; bj = j; } }
+    if (bj < 0) continue; links++; const A = tips[i], B = tips[bj], n = Math.ceil(bd / 0.3), sag = bd * 0.22 + rn() * 0.5;
+    for (let k = 0; k <= n; k++) { const u = k / n, x = A.p[0] + (B.p[0] - A.p[0]) * u, y = A.p[1] + (B.p[1] - A.p[1]) * u - Math.sin(u * 3.1416) * sag, z = A.p[2] + (B.p[2] - A.p[2]) * u; add(x, y, z, A.d + (B.d - A.d) * u, 2, 5, 1); } }
+  const N = P.length / 3, net = { N, dmax: 0 }; for (let i = 0; i < N; i++) net.dmax = Math.max(net.dmax, Dd[i]);
+  net.pts = sptPoints(N, (i, o) => { o.x = P[i * 3]; o.y = P[i * 3 + 1]; o.z = P[i * 3 + 2]; o.r = Cc[i * 3]; o.g = Cc[i * 3 + 1]; o.b = Cc[i * 3 + 2]; o.s = Zs[i]; o.a = Bs[i]; }); g.add(net.pts);
+  net.D = Float32Array.from(Dd); net.B = Float32Array.from(Bs); net.K = Uint8Array.from(Kd); net.ph = new Float32Array(N); for (let i = 0; i < N; i++) net.ph[i] = rn() * 6.283;
+  // nódulos: perlas de luz en algunas puntas
+  const nods = tips.filter((_, i) => i % 3 === 0).slice(0, 110);
+  net.nod = sptPoints(nods.length, (i, o) => { o.x = nods[i].p[0]; o.y = nods[i].p[1]; o.z = nods[i].p[2]; o.s = 0.34; o.a = 0.6; o.r = 0.7; o.g = 1; o.b = 0.92; }); g.add(net.nod); net.nd = nods.map(t => t.d);
+  // el suelo: anillos tenues a nivel del terreno, que separan los dos mundos
+  g.add(sptPoints(6 * 150, (i, o) => { const k = Math.floor(i / 150), a = (i % 150) / 150 * 6.283, r = 7 + k * 5.5; o.x = rx + Math.cos(a) * r; o.z = rz + Math.sin(a) * r; o.y = -0.15; o.s = 0.08; o.a = 0.16 - k * 0.018; o.r = 0.6; o.g = 0.8; o.b = 0.75; }));
+  // hongos que fructifican en la superficie (más con más cuidado): tallo, sombrero y esporas
+  const NM = 9; net.NM = NM; const mush = []; for (let m = 0; m < NM; m++) { const a = m * 2.4 + 0.5, r = 6 + (m % 4) * 3.2 + rn() * 2, h = 1.6 + rn() * 2, cr = 1.1 + rn() * 0.9; mush.push({ x: rx + Math.cos(a) * r, z: rz + Math.sin(a) * r, h, cr }); }
+  net.mush = mush; const PM = 56; net.PM = PM;
+  net.caps = sptPoints(NM * PM, (i, o) => { const M = mush[Math.floor(i / PM)], k = i % PM; if (k < 10) { o.x = M.x; o.z = M.z; o.y = M.h * k / 9; o.s = 0.12; o.r = 0.92; o.g = 0.9; o.b = 0.85; o.a = 0.9; } else { const a = rn() * 6.283, b = Math.sqrt(rn()) * 1.5708, rr = Math.cos(b) * M.cr; o.x = M.x + Math.cos(a) * rr; o.z = M.z + Math.sin(a) * rr; o.y = M.h + Math.sin(b) * M.cr * 0.55; o.s = 0.2; o.a = 0.95; o.r = 1; o.g = 0.55 + 0.2 * rn(); o.b = 0.85; } }); g.add(net.caps);
+  net.spo = sptPoints(380, (i, o) => { o.x = rx + (rn() - 0.5) * 60; o.y = -2 - rn() * 20; o.z = rz + (rn() - 0.5) * 60; o.s = 0.1 + rn() * 0.08; o.a = 0.28 + rn() * 0.3; o.r = 0.7; o.g = 1; o.b = 0.9; }); g.add(net.spo); net.spv = new Float32Array(380).map(() => 0.25 + rn() * 0.5);
+  net.halo = mkHalo(0x6fe8d0, 26, 0.05); net.halo.position.set(rx, -10, rz); g.add(net.halo);
+  net.flows = []; net.waveT = 0; net.care = 0;
+  net.flow = function (inward) { net.flows.push(inward ? { x: net.dmax, v: -62, w: 5, a: 1 } : { x: 0, v: 12, w: 3.6, a: 0.55 }); if (net.flows.length > 8) net.flows.shift(); };
+  net.tick = function (t, dt, care, calm) {
+    const sw = calm ? 0 : 1; net.care += (care - net.care) * Math.min(1, dt * 1.5); const c = net.care;
+    net.waveT -= dt; if (net.waveT <= 0) { net.waveT = 4.2; net.flow(false); }
+    for (let k = net.flows.length - 1; k >= 0; k--) { const f = net.flows[k]; f.x += f.v * dt; if (f.x > net.dmax + 14 || f.x < -14) net.flows.splice(k, 1); }
+    const A = net.pts.geometry.attributes.aAlpha.array, fl = net.flows, nf = fl.length, gl = 0.55 + 0.45 * c; net.fr = (net.fr || 0) ^ 1;
+    for (let i = net.fr; i < N; i += 2) { const d = net.D[i]; let w = 0; for (let k = 0; k < nf; k++) { const f = fl[k], z = (d - f.x) / f.w; if (z < 3 && z > -3) w += f.a * Math.exp(-0.5 * z * z); }
+      const tw = 0.86 + 0.14 * Math.sin(t * 1.6 + net.ph[i]) * sw; A[i] = Math.min(1, net.B[i] * gl * tw * (1 + (net.K[i] === 0 ? 0.6 : 1.4) * w) + (net.K[i] === 2 ? 0.1 : 0.2) * w); }
+    net.pts.geometry.attributes.aAlpha.needsUpdate = true;
+    const NA = net.nod.geometry.attributes.aAlpha.array; for (let i = 0; i < NA.length; i++) { let w = 0; for (let k = 0; k < nf; k++) { const z = (net.nd[i] - fl[k].x) / fl[k].w; if (z < 3 && z > -3) w += fl[k].a * Math.exp(-0.5 * z * z); } NA[i] = Math.min(1, (0.25 + 0.5 * c) * (0.7 + 0.3 * Math.sin(t * 2.1 + i * 1.3) * sw) + w); } net.nod.geometry.attributes.aAlpha.needsUpdate = true;
+    const CA = net.caps.geometry.attributes.aAlpha.array; for (let m = 0; m < NM; m++) { const on = Math.max(0, Math.min(1, (c * 1.12 - m / NM * 0.85) * 3)); for (let k = 0; k < PM; k++) CA[m * PM + k] = (k < 10 ? 0.9 : 0.95) * on * (0.8 + 0.2 * Math.sin(t * 1.5 + m) * sw); } net.caps.geometry.attributes.aAlpha.needsUpdate = true;
+    const SP = net.spo.geometry.attributes.position.array; for (let i = 0; i < 380; i++) { SP[i * 3 + 1] += dt * net.spv[i] * sw; SP[i * 3] += Math.sin(t * 0.5 + i) * dt * 0.3 * sw; if (SP[i * 3 + 1] > -0.5) SP[i * 3 + 1] = -22; } net.spo.geometry.attributes.position.needsUpdate = true;
+    net.halo.material.opacity = 0.04 + 0.07 * c;
+  };
+  return net;
+}
+
 // ---------- 1 · EL ÁRBOL-SERVIDOR (GameLab Tadeo) — una red de cuidado ----------
 COL_DEF.arbol = {
-  iso: { yaw: 0.6, pitch: 0.12, dist: 68, tg: [0, 15, 0] }, trav: [0.1, 9], sky: [0.45, 0.8, 0.65], hud: ['ENERGÍA', 'RAMAS', 'ESPORAS', 'RED'], endAfter: 13, voice: 'arbol', voiceEvery: 20, plate: ['Araucaria araucana', 'Lám. I'],
+  iso: { yaw: 0.6, pitch: 0.1, dist: 90, tg: [0, 5.5, 0] }, trav: [0.1, 9], sky: [0.45, 0.8, 0.65], hud: ['ENERGÍA', 'RAMAS', 'ESPORAS', 'RED'], endAfter: 13, voice: 'arbol', voiceEvery: 20, plate: ['Araucaria araucana', 'Lám. I'],
   txt: {
     es: { title: 'EL PEWEN-SERVIDOR', toast: 'El árbol sagrado mapuche: se apaga si nadie lo cuida.',
       h: 'Toca una rama apagada para enviarle una espora desde las raíces. La energía se recarga despacio. Las ramas se apagan despacio y las vecinas comparten su luz: reparte el cuidado. Arrastra el espacio vacío para girar.',
@@ -14083,7 +14315,7 @@ COL_DEF.arbol = {
     g.add(S.lines); S.PE = PE;
     g.add((() => { const c = []; colTube(c, [[0, -2.2, 0], [0.3, 12, 0.2], [0, 27, 0]], 1600, 1.9, 1.5, (x, y, z, nx, ny, nz, lit) => { const v = 0.25 + 0.55 * lit; return [v, v * 0.9, v * 0.75]; }, { fur: 0.5, s: 0.2 }); return colCloud(c, [0, 0, 0]); })());                                     // el tronco: una columna de racks
     S.racks = sptPoints(46, (i, o) => { const row = Math.floor(i / 2); o.x = (i % 2 ? 0.9 : -0.9); o.y = -1 + row * 1.15; o.z = 1.75; o.s = 0.2; o.a = 0.6; o.r = 1; o.g = 0.8; o.b = 0.4; }); g.add(S.racks);
-    for (let r = 0; r < 6; r++) { const a = r * 1.047, rp = sptPoints(60, (i, o) => { const u = i / 59; o.x = Math.cos(a) * u * 11 + (Math.random() - 0.5) * 0.2; o.y = -2.2 - Math.sin(u * 2.4) * 2.6; o.z = Math.sin(a) * u * 11 + (Math.random() - 0.5) * 0.2; o.s = 0.1; o.a = 0.35 * (1 - u * 0.5); o.r = 0.5; o.g = 0.65; o.b = 0.55; }); g.add(rp); }   // raíces
+    S.net = colMycelium(g, 0, 0);                                                                                   // la red micorrícica bajo el suelo
     S.srcHalo = mkHalo(0xe8c070, 9, 0.25); S.srcHalo.position.copy(S.nodes[0]); g.add(S.srcHalo);
     S.leaves.forEach(L => { const p = S.nodes[L.node]; L.pos = p;
       L.canopy = trtBlob(sptPoints, 130, p.x, p.y + 0.8, p.z, 3.1, 1.8, 3.1, [0.95, 0.78, 0.4], 0.28, 0.9); g.add(L.canopy);
@@ -14125,6 +14357,7 @@ COL_DEF.arbol = {
     S.leaves.forEach((L, i) => { L.canopy.material.uniforms.uOpacity.value = 0.12 + 0.88 * L.lit; L.canopy.position.y = Math.sin(t * 0.7 + i) * 0.08 * (calm ? 0 : 1); L.halo.material.opacity += ((0.5 * L.lit * L.lit) - L.halo.material.opacity) * Math.min(1, dt * 2); });
     S.srcHalo.material.opacity = 0.12 + 0.05 * S.energy;
     S.pin.material.uniforms.uOpacity.value = Math.pow(S.leaves.reduce((m, L) => m + L.lit, 0) / S.leaves.length, 2);
+    S.net.tick(t, dt, S.leaves.reduce((m, L) => m + L.lit, 0) / S.leaves.length, calm);
   },
   tap(S, cx, cy) {
     const k = colPick(S.leaves.map(L => colW(COLG.group, L.pos.x, L.pos.y + 0.8, L.pos.z)), cx, cy, Math.max(52, window.innerHeight * 0.09));
@@ -14133,6 +14366,7 @@ COL_DEF.arbol = {
     S.energy -= 1; S.sent++;
     const path = S.leaves[k].path, lens = []; for (let i = 0; i < path.length - 1; i++) lens.push(S.nodes[path[i]].distanceTo(S.nodes[path[i + 1]]));
     S.pulses.push({ leaf: k, path, lens, d: 0, pos: new THREE.Vector3().copy(S.nodes[0]) }); if (S.pulses.length > 12) S.pulses.shift();
+    S.net.flow(true);
     MGS.ping(MGS.NOTES[k % 6] * 2, 0, 0.8, 0.02); vibrateDevice(10); if (S.sent === 1) colSub(colT('send'), 4);
   },
   hudVals(S) { return [S.energy.toFixed(1), S.lit + '/8', S.sent, Math.round(S.leaves.reduce((a, L) => a + L.lit, 0) / 8 * 100) + '%']; }
@@ -14236,164 +14470,266 @@ COL_DEF.escarabajo = {
   hudVals(S) { const n = Math.round((S.coh || 0) * 6); return [Math.round((S.coh || 0) * 100) + '%', n + '/6', S.steps, S.won ? '1' : '0']; }
 };
 
-// ---------- 3 · LA CATARINA DE PANTALLAS (MediaLab Cinemateca) — curar sin controlar ----------
-const COL_TONES = [0xf2c799, 0xea9f95, 0xd1b3e0, 0xbfe6ff, 0xf0e08a, 0xb8d9ad];
+// ---------- 3 · LA CATARINA QUE SE SUEÑA (MediaLab Cinemateca) — crear con una IA: sugerir y dejar que el otro interprete ----------
+//   Una nube de ruido en el aire, sobre la hoja. Dibujas un boceto torpe a través de ella y, donde trazas, el ruido se condensa: el modelo imagina una catarina en volumen.
+//   Inventa detalles que no pediste (alucinaciones): se tocan para conservarlos o borrarlos. Al terminar, ella baja a la hoja, abre los élitros y se va volando.
 const COL_SPOTS = [[-1.45, 1.25], [1.45, 1.25], [-1.7, -0.55], [1.7, -0.55], [-0.95, -1.9], [0.95, -1.9], [0, 0.15]];
+const MQ_HALLS = ['spot', 'leg', 'ant', 'gold', 'crown'], MQ_HCAT = { 4: 'spot', 5: 'leg', 6: 'ant', 7: 'crown' };
+const MQ_CH = Math.cos(0.95), MQ_SH = Math.sin(0.95), MQ_CT = Math.cos(0.13), MQ_ST = Math.sin(0.13);
+const _mqQ = new THREE.Quaternion(), _mqO = new THREE.Vector3(), _mqD = new THREE.Vector3(), _mqC = new THREE.Vector3(), _mqA = [0, 0, 0];
+function mqSx(S, X, Y, Z, o) { X *= 1.3; Y *= 1.3; Z *= 1.3; const x1 = X * MQ_CH + Z * MQ_SH + 0.8, y1 = Y + 0.02, z1 = -X * MQ_SH + Z * MQ_CH; o[0] = x1 * MQ_CT - y1 * MQ_ST + S.ox; o[1] = x1 * MQ_ST + y1 * MQ_CT + 6 + S.oy + S.lift; o[2] = z1 + S.oz; return o; }
+function mqRay(cx, cy) { camera.updateMatrixWorld(true); _mqO.setFromMatrixPosition(camera.matrixWorld); _mqD.set(cx / window.innerWidth * 2 - 1, -(cy / window.innerHeight) * 2 + 1, 0.5).unproject(camera).sub(_mqO).normalize(); }
+function mqCenterDist(S) { mqSx(S, 0, 2.2, 0.6, _mqA); _mqC.set(_mqA[0], _mqA[1], _mqA[2]); const vx = _mqC.x - _mqO.x, vy = _mqC.y - _mqO.y, vz = _mqC.z - _mqO.z, t = vx * _mqD.x + vy * _mqD.y + vz * _mqD.z; return t < 0 ? 99 : Math.sqrt(Math.max(0, vx * vx + vy * vy + vz * vz - t * t)); }
 COL_DEF.mariquita = {
-  iso: { yaw: 0.55, pitch: 0.27, dist: 34, tg: [0, 6.5, 0] }, trav: [1.4, 11], sky: [0.85, 0.55, 0.55], hud: ['FOTOGRAMAS', 'TONOS', 'MOTAS', 'VUELO'], endAfter: 12, voice: 'mariquita', voiceEvery: 0, plate: ['Coccinella cinematographica', 'Lám. III'],
+  iso: { yaw: 0.55, pitch: 0.27, dist: 30, tg: [0, 9, 0] }, tgFn(S) { return [0, 7.2 + 1.8 * Math.min(1, S.lift / 3.6), 0]; }, trav: [1.4, 11], sky: [0.85, 0.55, 0.55], hud: ['TRAZOS', 'NITIDEZ', 'ALUCINACIONES', 'VUELO'], endAfter: 13, voice: 'mariquita', voiceEvery: 0, plate: ['Coccinella somnians', 'Lám. III'],
   txt: {
-    es: { title: 'LA CATARINA DE PANTALLAS', toast: 'Un enjambre de fotogramas que decide su rumbo.',
-      h: 'Toca los fotogramas que quieras invitar al enjambre. Cada uno le pinta una mota con su tono: necesita variedad para tomar forma. Tú no la diriges: ella decide a dónde va. Arrastra el espacio vacío para girar.',
-      s0: '…un enjambre sin forma, buscando…', join: '…un fotograma se une…', tone: '…un tono nuevo le pinta una mota…', wings: '…empieza a ser catarina…', done: '…abre los élitros, toma el vuelo y se va. Curar es invitar, y también dejar ir.' },
-    en: { title: 'THE SCREEN LADYBUG', toast: 'A swarm of frames that chooses its course.',
-      h: 'Tap the frames you want to invite into the swarm. Each paints a spot with its tone: it needs variety to take shape. You do not steer it: it decides where to go. Drag empty space to turn.',
-      s0: '…a shapeless swarm, searching…', join: '…a frame joins…', tone: '…a new tone paints a spot…', wings: '…it begins to be a ladybug…', done: '…it opens its shell, takes flight and goes. To curate is to invite, and also to let go.' }
+    es: { title: 'LA CATARINA QUE SE SUEÑA', toast: 'Una nube de ruido que imagina lo que le dibujas.',
+      h: 'Dibuja un boceto torpe en el aire, sobre la nube de ruido (arrastra): donde trazas, el ruido se condensa y el modelo imagina una catarina en volumen. Inventará detalles que no pediste: toca sus marcas doradas para conservarlos o borrarlos. Arrastra en los bordes para girar.',
+      s0: '…una nube de ruido que todavía no imagina nada…', seed: '…algo se condensa en el ruido: tu trazo es una pista, no una orden…', hall: '…el modelo inventó algo que no dibujaste. ¿Lo dejas?…', keep: '…lo conservas: ahora también es suyo…', erase: '…lo borras: lo imaginará sin ese detalle…', done: '…baja a la hoja, abre los élitros y se va. Crear con una IA es sugerir, y dejar que el otro interprete.' },
+    en: { title: 'THE LADYBUG THAT DREAMS ITSELF', toast: 'A cloud of noise that imagines what you draw.',
+      h: 'Draw a clumsy sketch in the air, through the cloud of noise (drag): where you trace, the noise condenses and the model imagines a ladybug in volume. It will invent details you did not ask for: touch its golden marks to keep or erase them. Drag at the edges to turn.',
+      s0: '…a cloud of noise that does not imagine anything yet…', seed: '…something condenses in the noise: your stroke is a hint, not an order…', hall: '…the model invented something you did not draw. Keep it?…', keep: '…you keep it: now it is hers too…', erase: '…you erase it: she will imagine it without that detail…', done: '…she descends to the leaf, opens her shell and leaves. To create with an AI is to suggest, and to let the other interpret.' }
   },
   build(g) {
-    const N = 900, rnd = Math.random;
-    const S = { N, joined: 0, pool: [], frames: [], spawnT: 0.5, tonePick: 0, fly: 0, flap: 0, f: 0, won: false, msgT: 0, wingsMsg: false, ang: [], rad: [], H: new Float32Array(N * 3), cat: [], spot: [], side: [], ord: [], open: 0, cx: 0, cy: 6, cz: 0, M: new THREE.Matrix4(), TILT: 0.13, HEAD: 0.95 };
-    // la hoja: una lámina grande, curva, con nervaduras y rocío, sobre un tallo; la catarina se posa encima
+    const rnd = Math.random, N0 = 900;
+    const S = { won: false, wonT: 0, msgT: 0, fly: 0, flap: 0, open: 0, lift: 3.6, ox: 0, oy: 0, oz: 0, TILT: 0.13, HEAD: 0.95, strokes: 0, sn: 0, drawing: false, lpx: 0, lpy: 0, frac: 0, nit: 0, mile: 0, hallMsg: false, seedMsg: false, sndT: 0, pn: 0, goldOn: false, extraOn: false, flT: 0, trailI: 0, H: [], cat: [], spot: [], side: [], ant: {} };
+    // las alucinaciones de esta vez: tres de cinco, elegidas al azar
+    const hleg = rnd() < 0.5 ? -1 : 1; S.goldK = Math.floor(rnd() * 7);
+    const ids = MQ_HALLS.slice().sort(() => rnd() - 0.5).slice(0, 3);
+    const ax = 2.6, ay = 1.9, az = 3.0, yc = 0.9, cz = -0.3;
+    const dome = (X, Z) => { const q = 1 - (X / ax) * (X / ax) - ((Z - cz) / az) * ((Z - cz) / az); return q > 0 ? yc + ay * Math.sqrt(q) : -1; };
+    const spots = COL_SPOTS.map(p => [p[0] * 1.15, p[1] * 1.2 - 0.2, 0.5]); if (ids.indexOf('spot') >= 0) spots.push([0, -1.58, 0.47]);
+    const inSpot = (X, Z) => { for (let k = 0; k < spots.length; k++) if (Math.hypot(X - spots[k][0], Z - spots[k][1]) < spots[k][2] + 0.04) return true; return false; };
+    const put = (x, y, z, cat, sp, sd) => { S.H.push(x, y, z); S.cat.push(cat); S.spot.push(sp === undefined ? -1 : sp); S.side.push(sd || 0); };
+    // la catarina en coordenadas locales (x ancho, y alto, z hacia la cabeza): élitros en cúpula con motas, pronoto, cabeza, antenas y seis patas
+    COL_SPOTS.forEach((p, k) => { const X0 = p[0] * 1.15, Z0 = p[1] * 1.2 - 0.2; for (let j = 0; j < 22; j++) { const a = rnd() * 6.283, r = Math.sqrt(rnd()) * 0.5, X = X0 + Math.cos(a) * r, Z = Z0 + Math.sin(a) * r, y = dome(X, Z); if (y < 0) { j--; continue; } put(X, y + 0.06, Z, 1, k, X < 0 ? -1 : 1); } });
+    for (let j = 0; j < 400; j++) { const X = (rnd() * 2 - 1) * ax, Z = cz + (rnd() * 2 - 1) * az, y = dome(X, Z); if (y < 0 || Math.abs(X) < 0.08 || Z > 1.3 || inSpot(X, Z)) continue; put(X, y, Z, 0, undefined, X < 0 ? -1 : 1); }
+    for (let j = 0; j < 40; j++) { const Z = cz + (j / 39 * 2 - 1) * az * 0.93, y = dome(0, Z); if (Z < 1.3 && y > 0) put(0, y + 0.03, Z, 2, undefined, 0); }
+    for (let j = 0; j < 90; j++) { const a = j / 90 * 6.283, X = Math.cos(a) * ax * 0.98, Z = cz + Math.sin(a) * az * 0.98; if (Z < 1.3) put(X, yc + 0.05, Z, 2, undefined, 0); }
+    for (let j = 0; j < 110; j++) { const a = rnd() * 6.283, b = rnd() * 1.4; put(Math.cos(a) * Math.cos(b) * 1.75, 1.7 + Math.sin(b) * 1.05, 2.15 + Math.sin(a) * Math.cos(b) * 0.95, 2); }
+    for (let k = 0; k < 2; k++) for (let j = 0; j < 8; j++) { const a = rnd() * 6.283, r = rnd() * 0.3; put((k ? 1 : -1) * 1.05 + Math.cos(a) * r, 2.25 + Math.sin(a) * r * 0.5, 2.5 + Math.sin(a) * r, 3); }
+    for (let j = 0; j < 90; j++) { const a = rnd() * 6.283, b = rnd() * 3.14; put(Math.sin(b) * Math.cos(a) * 1.05, 1.35 + Math.cos(b) * 0.85, 3.45 + Math.sin(b) * Math.sin(a) * 0.9, 2); }
+    for (let k = 0; k < 2; k++) for (let j = 0; j < 6; j++) { const a = rnd() * 6.283, r = rnd() * 0.22; put((k ? 1 : -1) * 0.62 + Math.cos(a) * r, 1.75 + Math.sin(a) * r, 4.15 + rnd() * 0.15, 3); }
+    for (let k = 0; k < 2; k++) for (let j = 0; j < 16; j++) { const u = j / 15, s = k ? 1 : -1; put(s * (0.35 + u * 1.2 + Math.sin(u * 3) * 0.2), 1.7 + u * 1.5 - u * u * 0.3, 4.1 + u * 2.4, 2, undefined, 0); S.ant[S.cat.length - 1] = s; }
+    for (let k = 0; k < 6; k++) { const s = k < 3 ? -1 : 1, li = k % 3, hz = 1.6 - li * 1.5; for (let j = 0; j < 11; j++) { const u = j / 10, kx = s * 3.1, ky = 1.5, kz = hz + (li - 1) * 0.35, fx = s * 3.5, fz = hz + (li - 1) * 1.1 + 0.8, x = u < 0.5 ? (s * 1.5 + (kx - s * 1.5) * u * 2) : (kx + (fx - kx) * (u - 0.5) * 2), y = u < 0.5 ? (0.9 + (ky - 0.9) * u * 2) : (ky * (1 - (u - 0.5) * 2)), z = u < 0.5 ? (hz + (kz - hz) * u * 2) : (kz + (fz - kz) * (u - 0.5) * 2); put(x, y, z, 2, undefined, 0); } }
+    while (S.cat.length < N0) { const X = (rnd() * 2 - 1) * ax * 0.9, Z = cz + (rnd() * 2 - 1) * az * 0.9, y0 = dome(X, Z); if (y0 < 0 || Math.abs(X) < 0.08 || Z > 1.2 || inSpot(X, Z)) continue; put(X, yc + (y0 - yc) * (0.35 + rnd() * 0.6), Z, 0, undefined, X < 0 ? -1 : 1); }
+    // los puntos que solo existen si el modelo los alucina: mota de más, séptima pata, tercera antena, corona
+    { const X0 = 0, Z0 = -1.58; for (let j = 0; j < 22; j++) { const a = rnd() * 6.283, r = Math.sqrt(rnd()) * 0.45, X = X0 + Math.cos(a) * r, Z = Z0 + Math.sin(a) * r, y = dome(X, Z); if (y < 0) { j--; continue; } put(X, y + 0.06, Z, 4, 7, 0); } }
+    for (let j = 0; j < 12; j++) { const u = j / 11, s = hleg, hz = -2.9, x = u < 0.5 ? s * (1.5 + 1.6 * u * 2) : s * (3.1 + 0.5 * (u - 0.5) * 2), y = u < 0.5 ? 0.9 + 0.6 * u * 2 : 1.5 * (1 - (u - 0.5) * 2), z = hz - 0.1 * u; put(x, y, z, 5, undefined, 0); }
+    for (let j = 0; j < 10; j++) { const u = j / 9; put(Math.sin(u * 3) * 0.2, 2.0 + u * 1.8 - u * u * 0.3, 4.2 + u * 2.4, 6, undefined, 0); S.ant[S.cat.length - 1] = 1; }
+    [[-0.45, 3.35], [0, 3.7], [0.45, 3.35]].forEach(p => { for (let j = 0; j < 6; j++) { const a = j / 6 * 6.283; put(p[0] + Math.cos(a) * 0.13, p[1] + Math.sin(a) * 0.13, 3.35, 7, undefined, 0); } });
+    const N = S.cat.length; S.N = N; S.H = new Float32Array(S.H);
+    S.q = new Float32Array(N); S.infl = new Float32Array(N); S.T = new Float32Array(N * 3); S.off = new Float32Array(N * 3); S.fl = new Float32Array(N); S.hid = new Int8Array(N).fill(-1); S.body = new Uint8Array(N);
+    for (let i = 0; i < N; i++) { const a = rnd() * 6.283, b = Math.acos(2 * rnd() - 1), r = 1.2 + 3.3 * Math.pow(rnd(), 0.8); S.off[i * 3] = Math.sin(b) * Math.cos(a) * r; S.off[i * 3 + 1] = Math.cos(b) * r * 0.8; S.off[i * 3 + 2] = Math.sin(b) * Math.sin(a) * r; S.fl[i] = rnd(); mqSx(S, S.H[i * 3], S.H[i * 3 + 1], S.H[i * 3 + 2], _mqA); S.T[i * 3] = _mqA[0]; S.T[i * 3 + 1] = _mqA[1]; S.T[i * 3 + 2] = _mqA[2]; }
+    const hdef = { spot: [0, 2.68, -1.58], leg: [hleg * 3.1, 1.2, -2.95], ant: [0, 3.3, 5.8], crown: [0, 3.7, 3.4], gold: (() => { const p = COL_SPOTS[S.goldK], X = p[0] * 1.15, Z = p[1] * 1.2 - 0.2; return [X, dome(X, Z) + 0.1, Z]; })() };
+    S.halls = ids.map((id, k) => ({ id, k, state: 0, show: false, cl: 0, vis: 0, L: hdef[id], w: new THREE.Vector3(), idx: [] }));
+    for (let i = 0; i < N; i++) {
+      const c = S.cat[i], hn = MQ_HCAT[c];
+      if (hn) { const h = S.halls.find(q => q.id === hn); if (h) { S.hid[i] = h.k; h.idx.push(i); } else S.hid[i] = -2; }
+      else { S.body[i] = 1; if (c === 1 && S.spot[i] === S.goldK) { const h = S.halls.find(q => q.id === 'gold'); if (h) { S.hid[i] = h.k; h.idx.push(i); } } }
+    }
+    S.bodyN = 0; for (let i = 0; i < N; i++) if (S.body[i]) S.bodyN++;
+    S.marks = S.halls.map(h => { const m = sptPoints(30, (i, o) => { if (i < 28) { const a = i / 28 * 6.283; o.x = Math.cos(a) * 1.05; o.y = Math.sin(a) * 1.05; } else { o.x = 0; o.y = 0; } o.z = 0; o.s = i < 28 ? 0.2 : 0.28; o.a = 1; o.r = 1; o.g = 0.84; o.b = 0.4; }); m.material.uniforms.uOpacity.value = 0; g.add(m); return m; });
+    // el enjambre que es la catarina (cada punto, una parte de ella) y la niebla de ruido que la rodea
+    S.swarm = sptPoints(N, (i, o) => { o.x = S.T[i * 3]; o.y = S.T[i * 3 + 1]; o.z = S.T[i * 3 + 2]; o.s = 0.2; o.a = 0.3; o.r = 0.5; o.g = 0.6; o.b = 0.85; });
+    { const SZ = S.swarm.geometry.attributes.aSize.array, sz = [0.15, 0.27, 0.18, 0.26, 0.27, 0.18, 0.18, 0.26]; for (let i = 0; i < N; i++) SZ[i] = sz[S.cat[i]]; } g.add(S.swarm);
+    S.NM = 800; S.mb = new Float32Array(S.NM * 4); for (let i = 0; i < S.NM; i++) { const a = rnd() * 6.283, b = Math.acos(2 * rnd() - 1), r = Math.pow(rnd(), 0.6); S.mb[i * 4] = Math.sin(b) * Math.cos(a) * 11 * r; S.mb[i * 4 + 1] = 12 + Math.cos(b) * 7 * r; S.mb[i * 4 + 2] = Math.sin(b) * Math.sin(a) * 9 * r; S.mb[i * 4 + 3] = rnd() * 6.283; }
+    S.mist = sptPoints(S.NM, (i, o) => { o.x = S.mb[i * 4]; o.y = S.mb[i * 4 + 1]; o.z = S.mb[i * 4 + 2]; o.s = 0.14 + rnd() * 0.12; o.a = 0.12 + rnd() * 0.35; o.r = 0.5; o.g = 0.62; o.b = 0.85; }); g.add(S.mist);
+    S.NT = 140; S.tage = new Float32Array(S.NT).fill(9); S.trail = sptPoints(S.NT, (i, o) => { o.x = o.y = o.z = 0; o.s = 0.3; o.a = 0; o.r = 0.5; o.g = 0.92; o.b = 1; }); g.add(S.trail);
+    S.hwh = []; S.hw = sptPoints(160, (i, o) => { const s = i % 2 ? 1 : -1, u = rnd(), a = rnd() * 6.283; S.hwh.push([s, u, a]); o.x = o.y = o.z = 0; o.s = 0.11; o.a = 0.7; o.r = 0.75; o.g = 0.9; o.b = 1; });
+    S.hw.material.uniforms.uOpacity.value = 0; g.add(S.hw);
+    // la hoja y el tallo (donde aterriza); un par de hojas lejanas
     const leaf = new THREE.Group(); leaf.position.set(0, 6, 0); leaf.rotation.z = S.TILT; g.add(leaf); S.leaf = leaf;
     const LY = (u, v) => 0.9 * v * v - 1.1 * u * u, LW = (u) => Math.sqrt(Math.max(0, 1 - u * u)) * (1 - 0.18 * u);
     const lp = (n, fn) => leaf.add(sptPoints(n, fn));
     lp(900, (i, o) => { const u = rnd() * 2 - 1, v = (rnd() * 2 - 1) * LW(u); o.x = u * 9; o.z = v * 5.6; o.y = LY(u, v / Math.max(0.2, LW(u))) - 0.05; o.s = 0.12; o.a = 0.12 + 0.18 * (1 - Math.abs(v)); o.r = 0.3; o.g = 0.58 + rnd() * 0.12; o.b = 0.42; });
-    lp(60, (i, o) => { const u = i / 59 * 2 - 1; o.x = u * 9; o.y = LY(u, 0) + 0.02; o.z = 0; o.s = 0.2; o.a = 0.8; o.r = 0.6; o.g = 0.95; o.b = 0.7; });                       // nervadura central
-    lp(8 * 2 * 16, (i, o) => { const k = Math.floor(i / 32), sd = (i % 32) < 16 ? 1 : -1, j = i % 16 / 15, u0 = -0.8 + k * 0.2, w = LW(u0 + j * 0.28) * 0.92 * j; o.x = (u0 + j * 0.28) * 9; o.z = sd * w * 5.6; o.y = LY(u0 + j * 0.28, sd * w) + 0.02; o.s = 0.14; o.a = 0.55; o.r = 0.5; o.g = 0.88; o.b = 0.62; });   // nervaduras laterales
-    lp(220, (i, o) => { const a = i / 220 * 6.283, u = Math.cos(a), v = Math.sin(a) * LW(u); o.x = u * 9; o.z = v * 5.6; o.y = LY(u, Math.sin(a)) + 0.02; o.s = 0.16; o.a = 0.6; o.r = 0.75; o.g = 1; o.b = 0.8; });                  // borde
-    lp(9, (i, o) => { const a = i * 2.4, r = 1 + (i % 4) * 0.9; o.x = 2.5 + Math.cos(a) * r * 1.8; o.z = Math.sin(a) * r * 0.9; o.y = 0.12; o.s = 0.42; o.a = 0.9; o.r = 0.8; o.g = 0.95; o.b = 1; });     // rocío
-    g.add(sptPoints(80, (i, o) => { const u = i / 79; o.x = -9.5 * u - 0.5 * Math.sin(u * 3.1) * 2; o.y = 6 - u * 6.2 + 1.5 * Math.sin(u * 3.14) * 0.4 - 0.2; o.z = 0.8 * Math.sin(u * 3); o.s = 0.28; o.a = 0.8; o.r = 0.45; o.g = 0.8; o.b = 0.5; }));      // tallo
+    lp(60, (i, o) => { const u = i / 59 * 2 - 1; o.x = u * 9; o.y = LY(u, 0) + 0.02; o.z = 0; o.s = 0.2; o.a = 0.8; o.r = 0.6; o.g = 0.95; o.b = 0.7; });
+    lp(8 * 2 * 16, (i, o) => { const k = Math.floor(i / 32), sd = (i % 32) < 16 ? 1 : -1, j = i % 16 / 15, u0 = -0.8 + k * 0.2, w = LW(u0 + j * 0.28) * 0.92 * j; o.x = (u0 + j * 0.28) * 9; o.z = sd * w * 5.6; o.y = LY(u0 + j * 0.28, sd * w) + 0.02; o.s = 0.14; o.a = 0.55; o.r = 0.5; o.g = 0.88; o.b = 0.62; });
+    lp(220, (i, o) => { const a = i / 220 * 6.283, u = Math.cos(a), v = Math.sin(a) * LW(u); o.x = u * 9; o.z = v * 5.6; o.y = LY(u, Math.sin(a)) + 0.02; o.s = 0.16; o.a = 0.6; o.r = 0.75; o.g = 1; o.b = 0.8; });
+    lp(9, (i, o) => { const a = i * 2.4, r = 1 + (i % 4) * 0.9; o.x = 2.5 + Math.cos(a) * r * 1.8; o.z = Math.sin(a) * r * 0.9; o.y = 0.12; o.s = 0.42; o.a = 0.9; o.r = 0.8; o.g = 0.95; o.b = 1; });
+    g.add(sptPoints(80, (i, o) => { const u = i / 79; o.x = -9.5 * u - 0.5 * Math.sin(u * 3.1) * 2; o.y = 6 - u * 6.2 + 1.5 * Math.sin(u * 3.14) * 0.4 - 0.2; o.z = 0.8 * Math.sin(u * 3); o.s = 0.28; o.a = 0.8; o.r = 0.45; o.g = 0.8; o.b = 0.5; }));
     for (let k = 0; k < 2; k++) { const lf = new THREE.Group(); lf.position.set(k ? 14 : -15, k ? 1.4 : 2.2, k ? -6 : -3); lf.rotation.set(0.2, k ? 2.3 : 0.7, k ? -0.3 : 0.25); lf.scale.setScalar(0.55); g.add(lf);
       lf.add(sptPoints(260, (i, o) => { const u = rnd() * 2 - 1, v = (rnd() * 2 - 1) * LW(u); o.x = u * 9; o.z = v * 5.6; o.y = LY(u, v / Math.max(0.2, LW(u))); o.s = 0.16; o.a = 0.2; o.r = 0.28; o.g = 0.55; o.b = 0.42; }));
       lf.add(sptPoints(40, (i, o) => { const u = i / 39 * 2 - 1; o.x = u * 9; o.y = LY(u, 0); o.z = 0; o.s = 0.24; o.a = 0.55; o.r = 0.5; o.g = 0.9; o.b = 0.65; })); }
-    // la catarina en coordenadas locales (x ancho, y alto, z hacia la cabeza): élitros en cúpula con motas, pronoto, cabeza, antenas y seis patas
-    const ax = 2.6, ay = 1.9, az = 3.0, yc = 0.9, cz = -0.3; let n = 0;
-    const put = (x, y, z, cat, sp, sd) => { if (n >= N) return; S.H[n * 3] = x; S.H[n * 3 + 1] = y; S.H[n * 3 + 2] = z; S.cat.push(cat); S.spot.push(sp === undefined ? -1 : sp); S.side.push(sd || 0); n++; };
-    const dome = (X, Z) => { const q = 1 - (X / ax) * (X / ax) - ((Z - cz) / az) * ((Z - cz) / az); return q > 0 ? yc + ay * Math.sqrt(q) : -1; };
-    COL_SPOTS.forEach((p, k) => { const X0 = p[0] * 1.15, Z0 = p[1] * 1.2 - 0.2; for (let j = 0; j < 22; j++) { const a = rnd() * 6.283, r = Math.sqrt(rnd()) * 0.5, X = X0 + Math.cos(a) * r, Z = Z0 + Math.sin(a) * r, y = dome(X, Z); if (y < 0) { j--; continue; } put(X, y + 0.06, Z, 1, k, X < 0 ? -1 : 1); } });
-    for (let j = 0; j < 400; j++) { const X = (rnd() * 2 - 1) * ax, Z = cz + (rnd() * 2 - 1) * az, y = dome(X, Z); if (y < 0 || Math.abs(X) < 0.08 || Z > 1.3) continue; put(X, y, Z, 0, undefined, X < 0 ? -1 : 1); }
-    for (let j = 0; j < 40; j++) { const Z = cz + (j / 39 * 2 - 1) * az * 0.93, y = dome(0, Z); if (Z < 1.3 && y > 0) put(0, y + 0.03, Z, 2, undefined, 0); }                                  // sutura central
-    for (let j = 0; j < 90; j++) { const a = j / 90 * 6.283, X = Math.cos(a) * ax * 0.98, Z = cz + Math.sin(a) * az * 0.98; if (Z < 1.3) put(X, yc + 0.05, Z, 2, undefined, 0); }              // reborde de los élitros
-    for (let j = 0; j < 110; j++) { const a = rnd() * 6.283, b = rnd() * 1.4; put(Math.cos(a) * Math.cos(b) * 1.75, 1.7 + Math.sin(b) * 1.05, 2.15 + Math.sin(a) * Math.cos(b) * 0.95, 2); }       // pronoto
-    for (let k = 0; k < 2; k++) for (let j = 0; j < 8; j++) { const a = rnd() * 6.283, r = rnd() * 0.3; put((k ? 1 : -1) * 1.05 + Math.cos(a) * r, 2.25 + Math.sin(a) * r * 0.5, 2.5 + Math.sin(a) * r, 3); }                // manchas blancas del pronoto
-    for (let j = 0; j < 90; j++) { const a = rnd() * 6.283, b = rnd() * 3.14; put(Math.sin(b) * Math.cos(a) * 1.05, 1.35 + Math.cos(b) * 0.85, 3.45 + Math.sin(b) * Math.sin(a) * 0.9, 2); }  // cabeza
-    for (let k = 0; k < 2; k++) for (let j = 0; j < 6; j++) { const a = rnd() * 6.283, r = rnd() * 0.22; put((k ? 1 : -1) * 0.62 + Math.cos(a) * r, 1.75 + Math.sin(a) * r, 4.15 + rnd() * 0.15, 3); }                    // ojos
-    for (let k = 0; k < 2; k++) for (let j = 0; j < 16; j++) { const u = j / 15, s = k ? 1 : -1; put(s * (0.35 + u * 1.2 + Math.sin(u * 3) * 0.2), 1.7 + u * 1.5 - u * u * 0.3, 4.1 + u * 2.4, 2, undefined, 0); S.ant = S.ant || {}; S.ant[n - 1] = s; }   // antenas
-    for (let k = 0; k < 6; k++) { const s = k < 3 ? -1 : 1, li = k % 3, hz = 1.6 - li * 1.5; for (let j = 0; j < 11; j++) { const u = j / 10, kx = s * 3.1, ky = 1.5, kz = hz + (li - 1) * 0.35, fx = s * 3.5, fz = hz + (li - 1) * 1.1 + 0.8, x = u < 0.5 ? (s * 1.5 + (kx - s * 1.5) * u * 2) : (kx + (fx - kx) * (u - 0.5) * 2), y = u < 0.5 ? (0.9 + (ky - 0.9) * u * 2) : (ky * (1 - (u - 0.5) * 2)), z = u < 0.5 ? (hz + (kz - hz) * u * 2) : (kz + (fz - kz) * (u - 0.5) * 2); put(x, y, z, 2, undefined, 0); } }   // patas
-    while (n < N) { const X = (rnd() * 2 - 1) * ax * 0.9, Z = cz + (rnd() * 2 - 1) * az * 0.9, y0 = dome(X, Z); if (y0 < 0 || Math.abs(X) < 0.08 || Z > 1.2) continue; put(X, yc + (y0 - yc) * (0.35 + rnd() * 0.6), Z, 0, undefined, X < 0 ? -1 : 1); }   // volumen interior
-    for (let i = 0; i < N; i++) { S.ord.push(rnd()); S.ang.push(rnd() * 6.283); S.rad.push(3.5 + rnd() * 9); }
-    S.swarm = sptPoints(N, (i, o) => { o.x = (rnd() - 0.5) * 20; o.y = 6 + (rnd() - 0.5) * 8; o.z = (rnd() - 0.5) * 20; o.s = 0.15; o.a = 0.5; o.r = 0.7; o.g = 0.72; o.b = 0.78; }); { const SZ = S.swarm.geometry.attributes.aSize.array; for (let i = 0; i < N; i++) SZ[i] = [0.15, 0.27, 0.18, 0.26][S.cat[i]]; } g.add(S.swarm);
-    S.hwh = []; S.hw = sptPoints(160, (i, o) => { const s = i % 2 ? 1 : -1, u = rnd(), a = rnd() * 6.283; S.hwh.push([s, u, a]); o.x = o.y = o.z = 0; o.s = 0.11; o.a = 0.7; o.r = 0.75; o.g = 0.9; o.b = 1; });
-    S.hw.material.uniforms.uOpacity.value = 0; g.add(S.hw);
-    S.proj = sptPoints(60, (i, o) => { o.x = (rnd() - 0.5) * 70; o.y = rnd() * 20; o.z = -20 - rnd() * 20; o.s = 0.3 + rnd() * 0.4; o.a = 0.05; o.r = 0.8; o.g = 0.8; o.b = 0.9; }); g.add(S.proj);
     return S;
   },
-  spawn(S, g) {
-    const tone = this.nextTone(S), fr = new THREE.Group(), a = Math.random() * 6.283, r = 11 + Math.random() * 6, hex = COL_TONES[tone], [cr, cg, cb] = arRGB(hex);
-    fr.add(sptPoints(26, (i, o) => { const u = i / 26 * 4; const side = Math.floor(u), w = u - side, W = 1.5, H = 1.0; if (side === 0) { o.x = -W + 2 * W * w; o.y = -H; } else if (side === 1) { o.x = W; o.y = -H + 2 * H * w; } else if (side === 2) { o.x = W - 2 * W * w; o.y = H; } else { o.x = -W; o.y = H - 2 * H * w; } o.z = 0; o.s = 0.17; o.a = 0.95; o.r = cr; o.g = cg; o.b = cb; }));
-    fr.add(sptPoints(30, (i, o) => { o.x = (Math.random() - 0.5) * 2.6; o.y = (Math.random() - 0.5) * 1.8; o.z = 0; o.s = 0.12; o.a = 0.25; o.r = cr; o.g = cg; o.b = cb; }));
-    const halo = mkHalo(hex, 4.2, 0.25); fr.add(halo);
-    const F = { g: fr, tone, a, r, y: 3 + Math.random() * 7, sp: (0.07 + Math.random() * 0.06) * (Math.random() < 0.5 ? 1 : -1), hex, join: 0, life: 0 };
-    S.frames.push(F); COLG.group.add(fr);
+  hallAt(S, cx, cy) { const sh = S.halls.map(h => h.show ? h.w : null); return colPick(sh, cx, cy, Math.max(54, window.innerHeight * 0.09)); },
+  beep(S) { if (S.sndT <= 0) { S.sndT = 0.16; MGS.ping(MGS.NOTES[S.pn++ % 6] * (1 + 0.5 * S.frac), 0, 0.5, 0.009); } },
+  stamp(S) {                                                                     // un toque de pincel: todas las partes que quedan cerca del rayo de tu dedo reciben la pista
+    const ox = _mqO.x, oy = _mqO.y, oz = _mqO.z, dx = _mqD.x, dy = _mqD.y, dz = _mqD.z, T = S.T, rho = 1.8, r2 = rho * rho;
+    for (let i = 0; i < S.N; i++) { const vx = T[i * 3] - ox, vy = T[i * 3 + 1] - oy, vz = T[i * 3 + 2] - oz, tt = vx * dx + vy * dy + vz * dz; if (tt < 0) continue; const d2 = vx * vx + vy * vy + vz * vz - tt * tt; if (d2 < r2) { const w = 1 - Math.sqrt(d2) / rho; if (w > S.infl[i]) S.infl[i] = w; } }
+    mqSx(S, 0, 2.2, 0.6, _mqA); const tc = (_mqA[0] - ox) * dx + (_mqA[1] - oy) * dy + (_mqA[2] - oz) * dz, k = S.trailI++ % S.NT, A = S.trail.geometry.attributes.position.array;   // la estela del trazo, en el aire a la profundidad de la catarina
+    A[k * 3] = ox + dx * tc; A[k * 3 + 1] = oy + dy * tc; A[k * 3 + 2] = oz + dz * tc; S.tage[k] = 0; S.sn++;
   },
-  nextTone(S) { const t = S.tonePick % 6; S.tonePick++; return [0, 1, 2, 3, 4, 5][(t + (Math.random() < 0.3 ? 1 : 0)) % 6]; },
+  down(S, cx, cy) {
+    if (S.won || COLG.view || this.hallAt(S, cx, cy) >= 0) return;
+    mqRay(cx, cy); if (mqCenterDist(S) > 9) return;
+    S.drawing = true; S.lpx = cx; S.lpy = cy; S.strokes++; this.stamp(S); this.beep(S); vibrateDevice(6);
+    if (S.strokes === 1) colSub(colT('seed'), 5);
+  },
+  drag(S, cx, cy) {
+    if (!S.drawing || S.won) return false;
+    const dd = Math.hypot(cx - S.lpx, cy - S.lpy), n = Math.max(1, Math.min(14, Math.ceil(dd / 12)));
+    for (let k = 1; k <= n; k++) { mqRay(S.lpx + (cx - S.lpx) * k / n, S.lpy + (cy - S.lpy) * k / n); this.stamp(S); }
+    S.lpx = cx; S.lpy = cy; this.beep(S); return true;
+  },
+  up(S) { S.drawing = false; },
+  tap(S, cx, cy) {
+    if (S.won) return; const k = this.hallAt(S, cx, cy); if (k < 0) return;
+    const h = S.halls[k]; h.state = h.state === 1 ? 2 : 1; for (const i of h.idx) S.q[i] *= 0.5;                  // la zona se vuelve a "denoisar"
+    if (h.state === 1) { colSub(colT('keep'), 4); MGS.arpeggio([2, 3, 5], 0.08, 1.4, 0.025); } else { colSub(colT('erase'), 4); MGS.arpeggio([5, 3, 1], 0.08, 1.4, 0.025); }
+    vibrateDevice(12); colVoice('mariquita', 0.4);
+  },
   update(S, dt, t, calm) {
-    const sw = calm ? 0 : 1; S.msgT -= dt; S.spawnT -= dt; S.flap += dt * (1.2 + S.pool.length * 0.07 + new Set(S.pool).size * 0.15);
-    if (S.spawnT <= 0 && S.frames.filter(f => !f.join).length < 7 && !S.won) { this.spawn(S); S.spawnT = 2.2; }
-    const distinct = new Set(S.pool).size, tf = Math.min(1, S.joined / 7);
-    S.f += (tf - S.f) * Math.min(1, dt * 0.8);
-    if (S.won) { S.fly += dt; S.open = Math.min(1, S.open + dt * 0.7); }
-    const fl = Math.max(0, S.fly - 1.8), ox = fl * fl * 1.4, oy = fl * 1.6 + fl * fl * 0.3, oz = -fl * fl * 3.2;
-    // la catarina vive sobre la hoja; el enjambre sin forma flota alrededor y se desvanece al posarse
-    const ch = Math.cos(S.HEAD), sh = Math.sin(S.HEAD), ct = Math.cos(S.TILT), st = Math.sin(S.TILT);
-    const sx = (X, Y, Z) => { X *= 1.3; Y *= 1.3; Z *= 1.3; const x1 = X * ch + Z * sh + 0.8, y1 = Y + 0.02, z1 = -X * sh + Z * ch; return [x1 * ct - y1 * st + ox, x1 * st + y1 * ct + 6 + oy, z1 + oz]; };
-    S.cx = 0.8 * ct + ox; S.cy = 0.8 * st + 8 + oy; S.cz = oz;
-    const A = S.swarm.geometry.attributes, pa = A.position.array, co = A.aCol.array, al = A.aAlpha.array, breath = 1 + 0.012 * Math.sin(S.flap * 2.2) * sw;
+    const sw = calm ? 0 : 1, N = S.N, view = COLG.view;
+    S.msgT -= dt; S.sndT -= dt; S.flap += dt * 1.6;
+    // 1) posada o flotando: el modelo la imagina en el aire; al terminar baja a la hoja, abre los élitros y despega
+    if (S.won) { S.wonT += dt; S.lift += (0 - S.lift) * Math.min(1, dt * 0.9); if (S.wonT > 3.4) { S.fly += dt; S.open = Math.min(1, S.open + dt * 0.7); } }
+    else if (view) S.lift += (0 - S.lift) * Math.min(1, dt * 1.5);
+    else S.lift = 3.6 + 0.25 * Math.sin(t * 0.8) * sw;
+    const fl = Math.max(0, S.fly - 1.8); S.ox = fl * fl * 1.4; S.oy = fl * 1.6 + fl * fl * 0.3; S.oz = -fl * fl * 3.2;
+    // 2) el ruido se condensa cerca de tus trazos; el resto, muy despacio (y más rápido cuando ya casi está)
+    const base = S.frac > 0.8 ? 0.25 : 0.012; let mc = 0, mcl = 0;
+    for (let i = 0; i < N; i++) {
+      let q = S.q[i];
+      if (S.won || view) q += (1 - q) * Math.min(1, dt * 1.2); else q += (1 - q) * Math.min(1, dt * (base + 0.38 * S.infl[i]) * 1.4);
+      S.q[i] = q; if (S.body[i]) { mc++; if (q > 0.7) mcl++; }
+    }
+    if (!S.won) { S.frac = mc ? mcl / mc : 0; S.nit = Math.round(S.frac * 100); }
+    while (S.mile < 3 && S.frac > [0.25, 0.5, 0.75][S.mile]) { MGS.bell(MGS.NOTES[[1, 3, 5][S.mile]], 0, 2.2, 0.028); S.mile++; }
+    // 3) las alucinaciones: aparecen cuando su zona ya es nítida
+    const q4 = camera.getWorldQuaternion(_mqQ);
+    S.halls.forEach((h, k) => {
+      let s = 0; for (let j = 0; j < h.idx.length; j++) s += S.q[h.idx[j]]; h.cl = s / Math.max(1, h.idx.length);
+      if (!h.show && h.cl > 0.6 && S.frac > 0.35 && !S.won && !view) { h.show = true; MGS.bell(MGS.NOTES[4] * 2, 0, 1.6, 0.03); if (!S.hallMsg) { S.hallMsg = true; colSub(colT('hall'), 6); } }
+      h.vis += ((h.show ? (h.state === 2 ? 0 : 1) : 0) - h.vis) * Math.min(1, dt * 5);
+      mqSx(S, h.L[0], h.L[1], h.L[2], _mqA); h.w.set(_mqA[0], _mqA[1], _mqA[2]);
+      const m = S.marks[k]; m.position.copy(h.w); m.quaternion.copy(q4);
+      const op = !h.show || S.won || view ? 0 : h.state === 0 ? 0.55 + 0.45 * Math.sin(t * 4 + k) : h.state === 1 ? 0.6 : 0.22; m.material.uniforms.uOpacity.value += (op - m.material.uniforms.uOpacity.value) * Math.min(1, dt * 6);
+    });
+    // 4) ¿ya está? nítida, con todas las alucinaciones decididas
+    if (!S.won && !view && S.frac > 0.88 && S.halls.every(h => h.state !== 0)) {
+      S.won = true; S.wonT = 0; S.goldOn = S.halls.some(h => h.id === 'gold' && h.state === 1); S.extraOn = S.halls.some(h => h.id === 'spot' && h.state === 1);
+      MGS.arpeggio([0, 2, 3, 5, 4], 0.2, 3.6, 0.03);
+    }
+    if (view) { S.goldOn = S.halls.some(h => h.id === 'gold'); S.extraOn = S.halls.some(h => h.id === 'spot'); }
+    // 5) la catarina: cada punto va a su parte del cuerpo, difuminado por el ruido que le queda
+    S.flT -= dt; if (S.flT <= 0 && !calm) { S.flT = 0.07; for (let i = 0; i < N; i++) S.fl[i] = Math.random(); }
+    const A = S.swarm.geometry.attributes, pa = A.position.array, co = A.aCol.array, al = A.aAlpha.array, T = S.T, H = S.H, breath = 1 + 0.012 * Math.sin(S.flap * 2.2) * sw, follow = Math.min(1, dt * (S.won ? 2.2 : 7));
     const th = S.open * 1.15, cT = Math.cos(th), sT = Math.sin(th), HY = 0.9 + 1.9 * 0.95;
-    for (let i = 0; i < S.N; i++) {
-      let tx, ty, tz; const inF = S.ord[i] < S.f, cat = S.cat[i];
-      if (inF) {
-        let x = S.H[i * 3], y = S.H[i * 3 + 1] * breath, z = S.H[i * 3 + 2]; const sd = S.side[i];
-        if (sd && S.open > 0) { const dx = x - sd * 0.15, dy = y - HY, c = cT, s2 = sd * sT; x = sd * 0.15 + dx * c - dy * s2; y = HY + dx * s2 + dy * c; }
-        if (S.ant && S.ant[i]) x += Math.sin(t * 3 + i) * 0.12 * sw;
-        [tx, ty, tz] = sx(x, y, z);
-      } else { const a = S.ang[i] + t * 0.15 * (i % 2 ? 1 : -1) * sw, r = S.rad[i]; tx = S.cx + Math.cos(a) * r; ty = S.cy + 1 + Math.sin(a * 1.3 + i) * (r * 0.45); tz = S.cz + Math.sin(a) * r; }
-      pa[i * 3] += (tx - pa[i * 3]) * Math.min(1, dt * 2.2); pa[i * 3 + 1] += (ty - pa[i * 3 + 1]) * Math.min(1, dt * 2.2); pa[i * 3 + 2] += (tz - pa[i * 3 + 2]) * Math.min(1, dt * 2.2);
-      if (inF) {
-        if (cat === 0) { const sh = 0.75 + 0.25 * Math.min(1, Math.max(0, (S.H[i * 3 + 1] - 0.9) / 1.9)); co[i * 3] = 0.95 * sh; co[i * 3 + 1] = 0.16 * sh; co[i * 3 + 2] = 0.14 * sh; al[i] = 0.9; }                      // élitros rojos, más claros en la cima
-        else if (cat === 1) { const k = S.spot[i]; if (k < S.pool.length) { const [cr, cg, cb] = arRGB(COL_TONES[S.pool[k]]); co[i * 3] = cr; co[i * 3 + 1] = cg; co[i * 3 + 2] = cb; al[i] = 1; } else { co[i * 3] = 0.1; co[i * 3 + 1] = 0.08; co[i * 3 + 2] = 0.12; al[i] = 0.7; } }
-        else if (cat === 2) { co[i * 3] = 0.55; co[i * 3 + 1] = 0.62; co[i * 3 + 2] = 0.85; al[i] = 1; }
-        else { co[i * 3] = 0.95; co[i * 3 + 1] = 0.97; co[i * 3 + 2] = 1; al[i] = 1; }
-      } else if (S.pool.length) { const [cr, cg, cb] = arRGB(COL_TONES[S.pool[i % S.pool.length]]); co[i * 3] = cr; co[i * 3 + 1] = cg; co[i * 3 + 2] = cb; al[i] = 0.5; } else al[i] = 0.4;
+    for (let i = 0; i < N; i++) {
+      const cat = S.cat[i], sd = S.side[i], hid = S.hid[i];
+      let x = H[i * 3], y = H[i * 3 + 1] * breath, z = H[i * 3 + 2];
+      if (sd && S.open > 0) { const dx = x - sd * 0.15, dy = y - HY; x = sd * 0.15 + dx * cT - dy * sd * sT; y = HY + dx * sd * sT + dy * cT; }
+      if (S.ant[i]) x += Math.sin(t * 3 + i) * 0.12 * sw;
+      mqSx(S, x, y, z, _mqA); T[i * 3] = _mqA[0]; T[i * 3 + 1] = _mqA[1]; T[i * 3 + 2] = _mqA[2];
+      const q = S.q[i], qs = q * q * (3 - 2 * q), nq = 1 - qs, wob = nq * 0.45 * sw, f = S.fl[i];
+      pa[i * 3] += (_mqA[0] + S.off[i * 3] * nq + Math.sin(t * 1.3 + i * 1.7) * wob - pa[i * 3]) * follow;
+      pa[i * 3 + 1] += (_mqA[1] + S.off[i * 3 + 1] * nq + Math.sin(t * 1.1 + i * 2.3) * wob - pa[i * 3 + 1]) * follow;
+      pa[i * 3 + 2] += (_mqA[2] + S.off[i * 3 + 2] * nq + Math.cos(t * 1.2 + i * 1.3) * wob - pa[i * 3 + 2]) * follow;
+      let r, g2, b, a = 1, hv = 1;
+      if (cat === 0) { const sh = 0.75 + 0.25 * Math.min(1, Math.max(0, (H[i * 3 + 1] - 0.9) / 1.9)); r = 0.95 * sh; g2 = 0.16 * sh; b = 0.14 * sh; a = 0.9; }                // élitros rojos, más claros en la cima
+      else if (cat === 1 || cat === 4) { r = 0.28; g2 = 0.3; b = 0.55; }                                                                                                          // motas: índigo (con luz aditiva el negro no se ve)
+      else if (cat === 3) { r = 0.95; g2 = 0.97; b = 1; }
+      else if (cat === 7) { r = 1; g2 = 0.86; b = 0.45; }
+      else { r = 0.55; g2 = 0.62; b = 0.85; }
+      if (hid === -2) hv = 0;
+      else if (hid >= 0) {
+        const h = S.halls[hid], pend = h.show && h.state === 0 && !S.won;
+        if (cat === 1) { if (h.show && h.state !== 2) { const gk = pend ? 0.55 + 0.45 * Math.sin(t * 4 + hid) : 1; r = r + (1 - r) * gk; g2 = g2 + (0.82 - g2) * gk; b = b + (0.3 - b) * gk; } }
+        else { if (pend) { const gk = 0.6 + 0.4 * Math.sin(t * 4 + hid); r += (1 - r) * gk; g2 += (0.84 - g2) * gk; b += (0.4 - b) * gk; a *= 0.55 + 0.45 * Math.sin(t * 4 + hid); } hv = h.vis; }
+      }
+      co[i * 3] = (0.45 + 0.3 * f) * nq + r * qs; co[i * 3 + 1] = (0.62 + 0.25 * f) * nq + g2 * qs; co[i * 3 + 2] = 0.85 * nq + b * qs;
+      al[i] = ((0.16 + 0.4 * f) * nq + a * qs) * hv;
     }
     A.position.needsUpdate = A.aCol.needsUpdate = A.aAlpha.needsUpdate = true;
+    // 6) la niebla de ruido que rodea a la catarina se va aclarando; el trazo en el aire se desvanece
+    { const P = S.mist.geometry.attributes.position.array, mb = S.mb; for (let i = 0; i < S.NM; i++) { const ph = mb[i * 4 + 3]; P[i * 3] = mb[i * 4] + Math.sin(t * 0.4 + ph) * 0.7 * sw; P[i * 3 + 1] = mb[i * 4 + 1] + S.lift * 0.6 - 2 + Math.cos(t * 0.35 + ph * 1.3) * 0.6 * sw; P[i * 3 + 2] = mb[i * 4 + 2] + Math.sin(t * 0.3 + ph * 2) * 0.7 * sw; }
+      S.mist.geometry.attributes.position.needsUpdate = true; S.mist.material.uniforms.uOpacity.value = Math.max(0, (1 - 0.85 * S.frac) * (S.won ? Math.max(0, 1 - S.wonT * 0.5) : 1)) * (view ? 0 : 1);
+      const TA = S.trail.geometry.attributes.aAlpha.array; for (let k = 0; k < S.NT; k++) { S.tage[k] += dt; TA[k] = Math.max(0, 1 - S.tage[k] / 2.4) * 0.85 * (S.won ? Math.max(0, 1 - S.wonT * 0.8) : 1); } S.trail.geometry.attributes.aAlpha.needsUpdate = true; }
     // alas membranosas que asoman al abrir los élitros y baten al despegar
     const hp = S.hw.geometry.attributes.position.array, flapW = Math.sin(S.flap * 9) * (0.25 + 0.5 * Math.min(1, fl)) * S.open * sw;
-    for (let i = 0; i < S.hwh.length; i++) { const [s, u, a] = S.hwh[i], len = 0.6 + u * 4.6, X = s * len * Math.cos(flapW), Y = 2.2 + len * Math.sin(flapW) * 0.9 * S.open + Math.sin(a) * 0.5 * (1 - u * 0.5), Z = -0.4 - Math.sin(u * 3.14) * 1.6 + Math.cos(a) * 0.6 * (1 - u * 0.5); const q = sx(X, Y, Z); hp[i * 3] = q[0]; hp[i * 3 + 1] = q[1]; hp[i * 3 + 2] = q[2]; }
+    for (let i = 0; i < S.hwh.length; i++) { const [s, u, a] = S.hwh[i], len = 0.6 + u * 4.6, X = s * len * Math.cos(flapW), Y = 2.2 + len * Math.sin(flapW) * 0.9 * S.open + Math.sin(a) * 0.5 * (1 - u * 0.5), Z = -0.4 - Math.sin(u * 3.14) * 1.6 + Math.cos(a) * 0.6 * (1 - u * 0.5); mqSx(S, X, Y, Z, _mqA); hp[i * 3] = _mqA[0]; hp[i * 3 + 1] = _mqA[1]; hp[i * 3 + 2] = _mqA[2]; }
     S.hw.geometry.attributes.position.needsUpdate = true; S.hw.material.uniforms.uOpacity.value = S.open * 0.9;
-    // fotogramas a la deriva y los que se unen
-    for (let k = S.frames.length - 1; k >= 0; k--) {
-      const F = S.frames[k]; F.life += dt;
-      if (!F.join) { F.a += F.sp * dt * sw; F.g.position.set(Math.cos(F.a) * F.r, F.y + Math.sin(t * 0.5 + F.a * 3) * 0.4, Math.sin(F.a) * F.r); F.g.rotation.y = colFace(); }
-      else { F.join += dt * 1.2; F.g.position.lerp(_colV.set(S.cx, S.cy, S.cz), Math.min(1, dt * 3)); F.g.scale.setScalar(Math.max(0.01, 1 - F.join)); if (F.join >= 1) { COLG.group.remove(F.g); mgDispose(F.g); S.frames.splice(k, 1); } }
-    }
-    if (!S.wingsMsg && S.f > 0.6) { S.wingsMsg = true; colSub(colT('wings'), 5); }
-    if (!S.won && S.joined >= 7 && distinct >= 5) { S.won = true; MGS.arpeggio([0, 2, 3, 5, 4], 0.2, 3.6, 0.03); }
-    S.distinct = distinct;
   },
-  tap(S, cx, cy) {
-    if (S.won) return;
-    const cand = S.frames.filter(f => !f.join), k = colPick(cand.map(F => colW(F.g, 0, 0, 0)), cx, cy, Math.max(56, window.innerHeight * 0.1));
-    if (k < 0) return;
-    const F = cand[k], before = new Set(S.pool).size; F.join = 0.001; S.pool.push(F.tone); S.joined++;
-    MGS.bell(MGS.NOTES[F.tone % 6], 0, 2.2, 0.03); MGS.ping(MGS.NOTES[(F.tone + 2) % 6] * 2, 0.12, 0.8, 0.015); vibrateDevice(10); colVoice('mariquita', 0.45);
-    colSub(new Set(S.pool).size > before ? colT('tone') : colT('join'), 3);
-  },
-  hudVals(S) { return [S.joined, (S.distinct || 0) + '/6', Math.min(S.pool.length, 7) + '/7', S.won ? '1' : '0']; }
+  hudVals(S) { return [S.strokes, S.nit + '%', S.halls.filter(h => h.state !== 0).length + '/' + S.halls.length, S.won ? '1' : '0']; }
 };
 
-
-// ---------- 5 · EL BARBUDITO DEL PÁRAMO (Games for Change) — escuchar el conflicto, en el páramo ----------
-const COL_FIG = [Math.PI / 2, Math.PI * 7 / 6, Math.PI * 11 / 6];
+// ---------- 5 · EL BARBUDITO DEL PÁRAMO (Games for Change) — sembrar: el viento de un colibrí colosal y un frailejón milenario ----------
+//   El gigante suelta semillas con plumas; el barbudito, posado en su corazón, bate las alas hacia donde tocas y el viento las lleva. Solo prenden en suelo húmedo o a la sombra de otro frailejón.
+//   Cada frailejón adulto guarda agua y cura el suelo; con el agua sube la laguna, llegan el abejorro, el colibrí pequeño y el barranquero, que acaba sembrando solo. Nadie sembró solo.
+function colibriGround(cx, cy) {                                                   // dónde toca el dedo el suelo (plano y = 0), o null si apunta al cielo
+  camera.updateMatrixWorld(true); _mqO.setFromMatrixPosition(camera.matrixWorld);
+  _mqD.set(cx / window.innerWidth * 2 - 1, -(cy / window.innerHeight) * 2 + 1, 0.5).unproject(camera).sub(_mqO).normalize();
+  if (_mqD.y > -0.015) return null; const t = -_mqO.y / _mqD.y; return [_mqO.x + _mqD.x * t, _mqO.z + _mqD.z * t];
+}
 COL_DEF.colibri = {
-  iso: { yaw: 0.35, pitch: 0.2, dist: 70, tg: [0, 21, 0], fov: 42 }, trav: [0.15, 15], sky: [0.5, 0.62, 0.55], hud: ['TENSIÓN', 'ESCUCHA', 'VOCES CALMAS', 'COLIBRÍ'], endAfter: 13, voice: 'colibri', voiceEvery: 0, plate: ['Oxypogon guerinii  ×  Espeletia', 'Lám. V'], voiceWin: 'colibri_song',
+  iso: { yaw: 0.35, pitch: 0.36, dist: 84, tg: [0, 16, 0], fov: 42 }, trav: [0.15, 15], sky: [0.5, 0.62, 0.55], hud: ['SEMILLAS', 'FRAILEJONES', 'AGUA', 'ESPECIES'], endAfter: 13, voice: 'colibri', voiceEvery: 0, plate: ['Oxypogon guerinii  ×  Espeletia', 'Lám. V'], voiceWin: 'colibri_song',
   txt: {
-    es: { title: 'EL BARBUDITO DEL PÁRAMO', toast: 'Un colibrí colosal en el páramo: tres voces que no se oyen.',
-      h: 'Mantén pulsada una figura para escucharla: se calma. Pero las otras se tensan donde no miras. Reparte la atención. Arrastra el espacio vacío para girar.',
-      s0: '…el colibrí eriza la cresta y chilla entre la niebla: hay tres voces y ninguna se oye…', listen: '…la escuchas. Se va calmando…', neglect: '…las otras se tensan donde no miras…', heard: '…quien es escuchado empieza a escuchar…', done: '…pliega las alas, baja la cresta y canta bajito sobre el frailejón. Nadie fue vencido.' },
-    en: { title: 'THE PÁRAMO HELMETCREST', toast: 'A colossal hummingbird of the páramo: three voices that cannot hear each other.',
-      h: 'Hold a figure to listen to it: it calms. But the others tense up where you are not looking. Share your attention. Drag empty space to turn.',
-      s0: '…the hummingbird bristles its crest and shrieks in the mist: there are three voices and none is heard…', listen: '…you listen. It slowly calms…', neglect: '…the others tense where you are not looking…', heard: '…whoever is heard begins to listen…', done: '…it folds its wings, lowers its crest and sings softly on the frailejón. No one was defeated.' }
+    es: { title: 'EL BARBUDITO DEL PÁRAMO', toast: 'Un frailejón milenario y un colibrí colosal: el páramo es una fábrica de agua, pero hay que sembrarlo.',
+      h: 'Toca o arrastra sobre el suelo: el barbudito bate las alas y el viento lleva las semillas del frailejón hacia allí. Solo prenden en suelo húmedo (verde) o a la sombra de otro frailejón. Cuida a los jóvenes de la helada. Arrastra el cielo para girar.',
+      s0: '…el páramo está seco: bajo el gigante nada prende. Sopla las semillas hacia las hondonadas verdes…', plant: '…una semilla prende. Un frailejón crece un centímetro al año; aquí, solo unos segundos…', lost: '…cae en suelo muerto y no prende. El viento decide menos que el suelo…', mature: '…un frailejón adulto: da sombra, guarda agua y cura el suelo a su alrededor…', frost: '…llega una helada: los jóvenes sin sombra no la resistirán…', saved: '…los que tenían un frailejón cerca sobrevivieron. Se cuidan unos a otros…', lost2: '…la helada se llevó a los más jóvenes. Siembra cerca de los adultos…', species: '…el agua llamó a otros: el páramo ya no es solo plantas…', barr: '…el barranquero siembra por su cuenta…', done: '…el páramo ya se sostiene solo: el colibrí pliega las alas y canta bajito sobre el frailejón. Nadie sembró solo.' },
+    en: { title: 'THE PÁRAMO HELMETCREST', toast: 'A thousand-year frailejón and a colossal hummingbird: the páramo is a water factory, but it has to be sown.',
+      h: 'Touch or drag on the ground: the helmetcrest beats its wings and the wind carries the frailejón seeds there. They only take root in damp (green) soil or in the shade of another frailejón. Protect the young from frost. Drag the sky to turn.',
+      s0: '…the páramo is dry: nothing roots under the giant. Blow the seeds toward the green hollows…', plant: '…a seed takes root. A frailejón grows a centimetre a year; here, only a few seconds…', lost: '…it falls on dead soil and does not root. The wind decides less than the ground does…', mature: '…an adult frailejón: it gives shade, keeps water and heals the soil around it…', frost: '…a frost is coming: the young without shade will not survive it…', saved: '…those with an adult nearby survived. They look after each other…', lost2: '…the frost took the youngest. Sow close to the adults…', species: '…the water called others: the páramo is no longer only plants…', barr: '…the motmot sows on its own…', done: '…the páramo now sustains itself: the hummingbird folds its wings and sings softly on the frailejón. Nobody sowed alone.' }
   },
   build(g) {
-    const S = { a: [0.85, 0.7, 0.8], listen: -1, calmT: 0, won: false, msgT: 0, breath: 0, rumT: 0, agit: 1, down: 0, figs: [], heardMsg: false, neglMsg: false, roarT: 2.5, rear: 0, rp: 0, jx: 0, hy: 0 };
-    const rnd = Math.random;
-    // --- el páramo: pajonal, frailejones, laguna, cordilleras y niebla ---
-    // suelo: pajonal denso con macollas y charcos de turba
-    g.add(sptPoints(2600, (i, o) => { const a = rnd() * 6.283, r = 6 + Math.sqrt(rnd()) * 70; o.x = Math.cos(a) * r; o.z = Math.sin(a) * r; o.y = -0.1 + Math.sin(o.x * 0.3) * Math.cos(o.z * 0.25) * 0.35; o.s = 0.1 + rnd() * 0.16; o.a = 0.1 + rnd() * 0.28; o.r = 0.4 + rnd() * 0.1; o.g = 0.5 + rnd() * 0.14; o.b = 0.34 + rnd() * 0.06; }));
-    g.add(sptPoints(700, (i, o) => { const c = Math.floor(rnd() * 70), a = c * 2.4, r = 10 + (c % 7) * 8 + rnd() * 2, h = rnd(); o.x = Math.cos(a) * r + (rnd() - 0.5) * 1.6; o.z = Math.sin(a) * r * 0.9 + (rnd() - 0.5) * 1.6; o.y = h * 0.9; o.s = 0.12; o.a = 0.5; o.r = 0.5; o.g = 0.62 + h * 0.15; o.b = 0.4; }));      // macollas de paja
-    // bosque de frailejones: muchos, de tres tamaños, más densos hacia el fondo
-    const PL = []; for (let k = 0; k < 150; k++) { const a = rnd() * 6.283, r = 17 + Math.pow(rnd(), 0.7) * 44; if (Math.abs(Math.sin(a)) > 0.6 && Math.cos(a) < 0 && r < 28) { k--; continue; } const big = rnd(); PL.push({ x: Math.cos(a) * r, z: Math.sin(a) * r * 0.9, h: big < 0.15 ? 4.6 + rnd() * 2.2 : big < 0.5 ? 2.4 + rnd() * 1.6 : 0.8 + rnd() * 1.2 }); }
-    const PER = 40;
-    S.fr = sptPoints(PL.length * PER, (i, o) => { const p = PL[Math.floor(i / PER)], j = i % PER, k = p.h / 4;
-      if (j < 7) { o.x = p.x; o.z = p.z; o.y = p.h * j / 6; o.s = 0.18; o.a = 0.8; o.r = 0.5; o.g = 0.42; o.b = 0.3; }
-      else if (j < 14) { const a = j * 2.2 + p.x; o.x = p.x + Math.cos(a) * 0.22 * (0.5 + k); o.z = p.z + Math.sin(a) * 0.22 * (0.5 + k); o.y = p.h * (j - 7) / 7; o.s = 0.14; o.a = 0.55; o.r = 0.45; o.g = 0.36; o.b = 0.25; }   // hojas muertas del tronco
-      else { const L = (j - 14) % 9, a = Math.floor((j - 14) / 9) * 1.57 + L * 0.02 + p.x, u = (0.3 + L / 8 * 1.3) * (0.55 + k * 0.6); o.x = p.x + Math.cos(a) * u * 1.2; o.z = p.z + Math.sin(a) * u * 1.2; o.y = p.h + 0.2 + Math.sin(L / 8 * 2.2) * 0.9 * (0.5 + k * 0.5) - u * 0.1; o.s = 0.16; o.a = 0.75; o.r = 0.72; o.g = 0.8; o.b = 0.7; } });
-    g.add(S.fr);
-    const BIG = PL.filter(p => p.h > 2.4);
-    S.flow = sptPoints(BIG.length * 3, (i, o) => { const p = BIG[Math.floor(i / 3)], j = i % 3; o.x = p.x + (j - 1) * 0.35; o.z = p.z + (j === 1 ? 0.3 : -0.2); o.y = p.h + 1.6 + (j === 1 ? 0.5 : 0); o.s = 0.4; o.a = 1; o.r = 1; o.g = 0.86; o.b = 0.25; });
-    S.flow.material.uniforms.uOpacity.value = 0; g.add(S.flow);
-    // laguna: espejo de agua con anillos y un reflejo del coloso que tiembla con la tensión
-    const LX = -10, LZ = -34;
-    g.add(sptPoints(700, (i, o) => { const a = rnd() * 6.283, r = Math.sqrt(rnd()); o.x = LX + Math.cos(a) * r * 17; o.z = LZ + Math.sin(a) * r * 8; o.y = 0.02; o.s = 0.18; o.a = 0.16 + rnd() * 0.12; o.r = 0.4; o.g = 0.62; o.b = 0.82; }));
-    g.add(sptPoints(260, (i, o) => { const a = i / 260 * 6.283; o.x = LX + Math.cos(a) * 17.5; o.z = LZ + Math.sin(a) * 8.4; o.y = 0.05; o.s = 0.2; o.a = 0.5; o.r = 0.7; o.g = 0.85; o.b = 0.9; }));
+    const rnd = Math.random, LX = -10, LZ = -34, NEED = 32, MAXP = 70, PER = 40, MAXS = 120, GN = 56, CELL = 1.8, HALF = GN * CELL / 2;
+    const S = { won: false, msgT: 0, breath: 0, blow: 0, hold: false, aim: [24, 6], blowT: 0, w: 0, planted: 0, mature: 0, species: 0, plants: [], seeds: [], fails: [], emitT: 0, frost: null, frostT: 60, bT: 3, down: 0, rear: 0, rp: 0, hy: 0, yaw: -0.5, okMsg: false, lostMsg: false, matMsg: false, frMsg: false, spMsg: false, barMsg: false, vOk: 0, NEED, MAXP, PER, MAXS, GN, CELL, HALF, LX, LZ, sndT: 0, agit: 0, pn: 0 };
+    const sm = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+    // --- el suelo: hondonadas húmedas, parches muertos (pisoteo, fuego) y la sombra seca del gigante ---
+    const hol = [], dead = [];
+    for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283 + rnd() * 0.5, r = 17 + rnd() * 24; hol.push([Math.cos(a) * r, Math.sin(a) * r, 6 + rnd() * 3]); }
+    hol.push([LX, LZ + 6, 9]);
+    for (let k = 0; k < 5; k++) { let tries = 0, d; do { const a = rnd() * 6.283, r = 14 + rnd() * 26; d = [Math.cos(a) * r, Math.sin(a) * r, 5 + rnd() * 3]; tries++; } while (tries < 30 && hol.some(h => Math.hypot(h[0] - d[0], h[1] - d[1]) < h[2] + d[2] + 1)); dead.push(d); }
+    S.hol = hol; S.dead = dead; const Bs = new Float32Array(GN * GN), Ms = new Float32Array(GN * GN); S.Bs = Bs; S.Ms = Ms;
+    for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const x = (i + 0.5) * CELL - HALF, z = (j + 0.5) * CELL - HALF; let v = 0.26;
+      hol.forEach(h => { const d2 = (x - h[0]) * (x - h[0]) + (z - h[1]) * (z - h[1]), s = h[2] / 1.5; v += 0.55 * Math.exp(-d2 / (2 * s * s)); });
+      dead.forEach(h => { const d2 = (x - h[0]) * (x - h[0]) + (z - h[1]) * (z - h[1]), s = h[2] / 1.7; v *= 1 - Math.exp(-d2 / (2 * s * s)); });
+      v *= 0.18 + 0.82 * sm(7, 14, Math.hypot(x, z)); Bs[j * GN + i] = Math.max(0, Math.min(1, v)); }
+    S.soil = (x, z) => { const i = Math.floor((x + HALF) / CELL), j = Math.floor((z + HALF) / CELL); if (i < 0 || j < 0 || i >= GN || j >= GN) return 0; const c = j * GN + i; return Math.max(0, Math.min(1, Bs[c] + Ms[c])); };
+    S.gr = sptPoints(GN * GN, (i, o) => { const ci = i % GN, cj = (i / GN) | 0; o.x = (ci + 0.5) * CELL - HALF + (rnd() - 0.5) * CELL * 0.8; o.z = (cj + 0.5) * CELL - HALF + (rnd() - 0.5) * CELL * 0.8; o.y = -0.1 + Math.sin(o.x * 0.3) * Math.cos(o.z * 0.25) * 0.3; o.s = 0.55; o.a = 0.3; o.r = 0.5; o.g = 0.5; o.b = 0.4; }); g.add(S.gr);
+    S.paintSoil = () => { const A = S.gr.geometry.attributes, C = A.aCol.array, AL = A.aAlpha.array, P = A.position.array;
+      for (let i = 0; i < GN * GN; i++) { const v = S.soil(P[i * 3], P[i * 3 + 2]); if (v < 0.1) { C[i * 3] = 0.3; C[i * 3 + 1] = 0.26; C[i * 3 + 2] = 0.26; AL[i] = 0.3; } else { const k = Math.min(1, (v - 0.1) / 0.6); C[i * 3] = 0.72 + (0.22 - 0.72) * k; C[i * 3 + 1] = 0.55 + (0.92 - 0.55) * k; C[i * 3 + 2] = 0.3 + (0.52 - 0.3) * k; AL[i] = 0.12 + 0.4 * k; } }
+      A.aCol.needsUpdate = A.aAlpha.needsUpdate = true; }; S.paintSoil();
+    // los límites del suelo, para que se lean desde lejos: anillos verdes en las hondonadas húmedas y rojizos en los parches muertos
+    hol.forEach(h => { g.add(sptPoints(54, (i, o) => { const a = i / 54 * 6.283 + h[0]; o.x = h[0] + Math.cos(a) * h[2] * 1.15; o.z = h[1] + Math.sin(a) * h[2] * 1.15; o.y = 0.1; o.s = 0.24; o.a = 0.55; o.r = 0.4; o.g = 1; o.b = 0.65; })); });
+    dead.forEach(h => { g.add(sptPoints(40, (i, o) => { const a = i / 40 * 6.283 + h[1]; o.x = h[0] + Math.cos(a) * h[2]; o.z = h[1] + Math.sin(a) * h[2]; o.y = 0.1; o.s = 0.2; o.a = 0.5; o.r = 0.9; o.g = 0.38; o.b = 0.32; })); });
+    g.add(sptPoints(700, (i, o) => { const c = Math.floor(rnd() * 70), a = c * 2.4, r = 10 + (c % 7) * 8 + rnd() * 2, h = rnd(); o.x = Math.cos(a) * r + (rnd() - 0.5) * 1.6; o.z = Math.sin(a) * r * 0.9 + (rnd() - 0.5) * 1.6; o.y = h * 0.9; o.s = 0.12; o.a = 0.4; o.r = 0.5; o.g = 0.62 + h * 0.15; o.b = 0.4; }));      // macollas de paja
+    // frailejones lejanos del borde (decorado): el páramo que hay más allá
+    { const PL = []; for (let k = 0; k < 20; k++) { const a = rnd() * 6.283, r = 54 + rnd() * 18; PL.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, h: 2.4 + rnd() * 3 }); }
+      g.add(sptPoints(PL.length * 40, (i, o) => { const p = PL[Math.floor(i / 40)], j = i % 40, k = p.h / 4;
+        if (j < 7) { o.x = p.x; o.z = p.z; o.y = p.h * j / 6; o.s = 0.18; o.a = 0.6; o.r = 0.5; o.g = 0.42; o.b = 0.3; }
+        else if (j < 14) { const a = j * 2.2 + p.x; o.x = p.x + Math.cos(a) * 0.22 * (0.5 + k); o.z = p.z + Math.sin(a) * 0.22 * (0.5 + k); o.y = p.h * (j - 7) / 7; o.s = 0.14; o.a = 0.4; o.r = 0.45; o.g = 0.36; o.b = 0.25; }
+        else { const L = (j - 14) % 9, a = Math.floor((j - 14) / 9) * 1.57 + L * 0.02 + p.x, u = (0.3 + L / 8 * 1.3) * (0.55 + k * 0.6); o.x = p.x + Math.cos(a) * u * 1.2; o.z = p.z + Math.sin(a) * u * 1.2; o.y = p.h + 0.2 + Math.sin(L / 8 * 2.2) * 0.9 * (0.5 + k * 0.5) - u * 0.1; o.s = 0.16; o.a = 0.55; o.r = 0.72; o.g = 0.8; o.b = 0.7; } })); }
+    // --- los frailejones que siembras: una reserva de plantas que crecen en tiempo acelerado ---
+    S.fr = sptPoints(MAXP * PER, (i, o) => { o.x = 0; o.y = -60; o.z = 0; o.s = 0.16; o.a = 0; o.r = 0.5; o.g = 0.8; o.b = 0.5; }); g.add(S.fr);
+    S.flow = sptPoints(MAXP * 3, (i, o) => { o.x = 0; o.y = -60; o.z = 0; o.s = 0.4; o.a = 0; o.r = 1; o.g = 0.86; o.b = 0.25; }); g.add(S.flow);
+    S.padSpots = hol.slice(0, 8).map((h, k) => [h[0] + Math.cos(k * 2.1) * 2.2, h[1] + Math.sin(k * 2.1) * 2.2]); S.bigP = S.padSpots.map(p => [p[0], 4.8 + 2.1, p[1]]);   // las ocho flores del compositor
+    S.plantPts = (p) => { const A = S.fr.geometry.attributes, P = A.position.array, base = p.slot * PER, hh = p.h * Math.max(0.12, p.g), k = hh / 4, gg = 0.25 + 0.75 * p.g;
+      for (let j = 0; j < PER; j++) { const q = (base + j) * 3; let x, y, z;
+        if (j < 7) { x = p.x; z = p.z; y = hh * j / 6; } else if (j < 14) { const a = j * 2.2 + p.x; x = p.x + Math.cos(a) * 0.22 * (0.5 + k) * gg; z = p.z + Math.sin(a) * 0.22 * (0.5 + k) * gg; y = hh * (j - 7) / 7; }
+        else { const L = (j - 14) % 9, a = Math.floor((j - 14) / 9) * 1.57 + L * 0.02 + p.x, u = (0.3 + L / 8 * 1.3) * (0.55 + k * 0.6) * gg; x = p.x + Math.cos(a) * u * 1.2; z = p.z + Math.sin(a) * u * 1.2; y = hh + 0.2 + Math.sin(L / 8 * 2.2) * 0.9 * (0.5 + k * 0.5) - u * 0.1; }
+        P[q] = x; P[q + 1] = y; P[q + 2] = z; } A.position.needsUpdate = true; };
+    S.plantCol = (p, mature) => { const A = S.fr.geometry.attributes, C = A.aCol.array, AL = A.aAlpha.array, SZ = A.aSize.array, base = p.slot * PER;
+      for (let j = 0; j < PER; j++) { const q = (base + j) * 3; let r, gg, b, a, s; if (j < 7) { r = 0.5; gg = 0.42; b = 0.3; a = 0.8; s = 0.18; } else if (j < 14) { r = 0.45; gg = 0.36; b = 0.25; a = 0.55; s = 0.14; } else { if (mature) { r = 0.72; gg = 0.8; b = 0.7; } else { r = 0.4; gg = 0.88; b = 0.5; } a = 0.75; s = 0.16; }
+        C[q] = r; C[q + 1] = gg; C[q + 2] = b; AL[base + j] = p.alive ? a : 0; SZ[base + j] = s; } A.aCol.needsUpdate = A.aAlpha.needsUpdate = A.aSize.needsUpdate = true; };
+    S.plantFlow = (p, on) => { if (p.h < 2.4) return; const A = S.flow.geometry.attributes, P = A.position.array, AL = A.aAlpha.array; for (let j = 0; j < 3; j++) { const q = (p.slot * 3 + j) * 3; P[q] = p.x + (j - 1) * 0.35; P[q + 1] = p.h + 1.6 + (j === 1 ? 0.5 : 0); P[q + 2] = p.z + (j === 1 ? 0.3 : -0.2); AL[p.slot * 3 + j] = on ? 1 : 0; } A.position.needsUpdate = A.aAlpha.needsUpdate = true; };
+    S.spawn = (x, z, g0, h0) => { let sl = -1, used = new Array(MAXP).fill(false); S.plants.forEach(p => { if (p.alive || p.fade > 0) used[p.slot] = true; }); for (let k = 0; k < MAXP; k++) if (!used[k]) { sl = k; break; } if (sl < 0) return null;
+      S.plants = S.plants.filter(p => p.slot !== sl); const p = { x, z, g: g0, h: h0 || (1.6 + rnd() * 3.2), slot: sl, alive: true, mature: false, fade: 0, rate: 0, age: 0 }; S.plants.push(p); S.plantPts(p); S.plantCol(p, false); S.plantFlow(p, false); return p; };
+    S.matureNow = (p, quiet) => { p.mature = true; S.mature++; S.plantCol(p, true); S.plantFlow(p, true);
+      for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const x = (i + 0.5) * CELL - HALF, z = (j + 0.5) * CELL - HALF, d2 = (x - p.x) * (x - p.x) + (z - p.z) * (z - p.z); if (d2 < 100) Ms[j * GN + i] = Math.min(1, Ms[j * GN + i] + 0.5 * Math.exp(-d2 / (2 * 2.4 * 2.4))); }
+      S.paintSoil(); if (!quiet) { MGS.bell(MGS.NOTES[S.mature % 6] * 1.5, 0, 2.6, 0.03); if (!S.matMsg) { S.matMsg = true; colSub(colT('mature'), 6); } } };
+    // laguna: se llena con el agua que guardan los frailejones; el reflejo del coloso tiembla en ella
+    S.lag = new THREE.Group(); S.lag.position.set(LX, 0, LZ); g.add(S.lag);
+    S.lag.add(sptPoints(700, (i, o) => { const a = rnd() * 6.283, r = Math.sqrt(rnd()); o.x = Math.cos(a) * r * 17; o.z = Math.sin(a) * r * 8; o.y = 0.02; o.s = 0.18; o.a = 0.2 + rnd() * 0.14; o.r = 0.4; o.g = 0.62; o.b = 0.82; }));
+    S.lag.add(sptPoints(260, (i, o) => { const a = i / 260 * 6.283; o.x = Math.cos(a) * 17.5; o.z = Math.sin(a) * 8.4; o.y = 0.05; o.s = 0.2; o.a = 0.5; o.r = 0.7; o.g = 0.85; o.b = 0.9; }));
     S.ghost = sptPoints(520, (i, o) => { const t = rnd(), k = i % 4; if (k === 0) { o.x = LX + 0.25 * t; o.y = -t * 8.6; o.z = LZ; o.s = 0.2; } else if (k === 1) { const a = rnd() * 6.283, b = rnd() * 3.14; o.x = LX + 2 + Math.sin(b) * Math.cos(a) * 2.4; o.y = -9.4 - Math.cos(b) * 2.6; o.z = LZ + Math.sin(b) * Math.sin(a) * 2.2; o.s = 0.16; } else if (k === 2) { const a = rnd() * 6.283; o.x = LX + 4.4 + Math.cos(a) * 1; o.y = -12.6 + Math.sin(a) * 1; o.z = LZ + (rnd() - 0.5); o.s = 0.16; } else { o.x = LX - 1.5 + t * 2; o.y = -9 - t * 2.4; o.z = LZ + (rnd() - 0.5) * 1.5; o.s = 0.14; } o.a = 0.45; o.r = 0.55; o.g = 0.78; o.b = 0.95; });
-    g.add(S.ghost); S.ghost.userData.y0 = 0;
-    // cordilleras: cinco capas con contornos y cumbres, en paralaje
+    g.add(S.ghost);
+    // cordilleras, bandas de niebla, niebla suelta y llovizna
     S.ridges = []; for (let L = 0; L < 5; L++) { const R = sptPoints(560, (i, o) => { const x = -130 + 260 * (i / 560); o.x = x; o.z = -62 - L * 14; const top = 9 + L * 3.2 + 7 * Math.sin(x * 0.04 + L * 2) + 3.5 * Math.sin(x * 0.12 + L) + 1.4 * Math.sin(x * 0.31 + L * 3); o.y = (i % 3 === 0) ? top - (i % 9) * 0.7 : top; o.s = 0.5; o.a = (i % 3 === 0) ? 0.1 : 0.34; o.r = 0.24 + L * 0.03; o.g = 0.34 + L * 0.03; o.b = 0.44 + L * 0.03; }); R.userData.L = L; S.ridges.push(R); g.add(R); }
-    // bandas de niebla a tres profundidades + niebla suelta
     S.bands = []; for (let L = 0; L < 3; L++) { const B = sptPoints(150, (i, o) => { o.x = (rnd() - 0.5) * 130; o.y = 1.5 + L * 3.4 + rnd() * 2.2; o.z = -8 - L * 20 - rnd() * 8; o.s = 2.4 + rnd() * 2.2; o.a = 0.05 + rnd() * 0.05; o.r = 0.72; o.g = 0.8; o.b = 0.84; }); B.userData.v = 0.35 + 0.25 * (2 - L); S.bands.push(B); g.add(B); }
     S.mist = sptPoints(170, (i, o) => { o.x = (Math.random() - 0.5) * 90; o.y = Math.random() * 12; o.z = (Math.random() - 0.5) * 70; o.s = 1.2 + Math.random() * 1.6; o.a = 0.07 + Math.random() * 0.07; o.r = 0.7; o.g = 0.78; o.b = 0.82; }); g.add(S.mist);
-    // llovizna: solo aparece con la tensión
     S.rain = sptPoints(420, (i, o) => { o.x = (rnd() - 0.5) * 70; o.y = rnd() * 36; o.z = (rnd() - 0.5) * 60; o.s = 0.1; o.a = 0.5; o.r = 0.7; o.g = 0.82; o.b = 0.95; }); S.rain.material.uniforms.uOpacity.value = 0; g.add(S.rain);
     // --- el frailejón milenario: un tronco ancho forrado por siglos de hojas muertas, cicatrices, líquenes, dos coronas laterales y una roseta plateada enorme ---
     S.root = new THREE.Group(); g.add(S.root);
@@ -14454,83 +14790,109 @@ COL_DEF.colibri = {
       const wg = colCloud(wc, [-0.3, 7.5, s * 2.7], [0, 0, 0]); wg.rotation.x = s * 1.35; wg.scale.z = 0.35; S.bird.add(wg); return wg; });
     S.eyes = [-1, 1].map(s => { const h = mkHalo(0xbfe6ff, 1.6, 0.0); h.position.set(2.8 - NP[0], 11 - NP[1], s * 1.45); S.head.add(h); return h; });
     S.sig = mkHalo(0xbfe6ff, 36, 0.08); S.sig.position.set(0, TOP + 7, 0); S.root.add(S.sig);
-    // --- las tres voces: la familia, el agua y la máquina ---
-    const FIGP = [[0, 0, -20], [-17.5, 0, 10], [17.5, 0, 10]];
-    for (let i = 0; i < 3; i++) {
-      const f = new THREE.Group(); f.position.set(FIGP[i][0], 0, FIGP[i][2]); g.add(f);
-      const ps = [];
-      if (i === 0) { ps.push(trtBlob(sptPoints, 70, 0, 1.6, 0, 0.6, 1.5, 0.6, [1, 0.6, 0.45], 0.14, 0.8), trtBlob(sptPoints, 40, 0, 3.5, 0, 0.55, 0.55, 0.55, [1, 0.6, 0.45], 0.13, 0.85));
-        ps.push(sptPoints(48, (k, o) => { const a = k / 48 * 6.283; o.x = Math.cos(a) * 1.25; o.z = Math.sin(a) * 1.25; o.y = 3.95; o.s = 0.13; o.a = 0.9; o.r = 1; o.g = 0.6; o.b = 0.45; }), sptPoints(14, (k, o) => { const a = k / 14 * 6.283; o.x = Math.cos(a) * 0.55; o.z = Math.sin(a) * 0.55; o.y = 4.3 + (k % 2) * 0.25; o.s = 0.12; o.a = 0.9; o.r = 1; o.g = 0.6; o.b = 0.45; })); }       // campesina con sombrero
-      else if (i === 1) { for (let r = 1; r <= 3; r++) ps.push(sptPoints(r * 22, (k, o) => { const a = k / (r * 22) * 6.283; o.x = Math.cos(a) * r * 1.1; o.z = Math.sin(a) * r * 1.1; o.y = 0.1; o.s = 0.13; o.a = 0.85; o.r = 1; o.g = 0.6; o.b = 0.45; }));
-        ps.push(sptPoints(46, (k, o) => { const u = k / 45; o.x = Math.sin(u * 9) * 0.3 * (1 - u); o.z = Math.cos(u * 9) * 0.3 * (1 - u); o.y = 0.2 + u * 3.6; o.s = 0.15; o.a = 0.9; o.r = 1; o.g = 0.6; o.b = 0.45; })); }                                                                                          // el agua
-      else { const bx = (k, o) => { const ax = Math.floor(Math.random() * 3), sg = Math.random() < 0.5 ? -1 : 1; let u = Math.random() * 2 - 1, v = Math.random() * 2 - 1; if (Math.random() < 0.5) { u = Math.round(u * 3) / 3; v = Math.round(v * 3) / 3; } const q = [0, 0, 0]; q[ax] = sg; q[(ax + 1) % 3] = u; q[(ax + 2) % 3] = v; o.x = q[0] * 1.5; o.y = 2.2 + q[1] * 1.3; o.z = q[2] * 1.5; o.s = 0.13; o.a = 0.85; o.r = 1; o.g = 0.6; o.b = 0.45; };
-        ps.push(sptPoints(300, bx), sptPoints(16, (k, o) => { o.x = 0; o.y = 3.6 + k * 0.12; o.z = 0; o.s = 0.12; o.a = 0.9; o.r = 1; o.g = 0.6; o.b = 0.45; }), sptPoints(18, (k, o) => { const a = k / 18 * 6.283; o.x = Math.cos(a) * 0.9; o.y = 5.5; o.z = Math.sin(a) * 0.9; o.s = 0.13; o.a = 0.9; o.r = 1; o.g = 0.6; o.b = 0.45; })); }   // la máquina: una caja de puntos con antena
-      ps.forEach(p => f.add(p));
-      const halo = mkHalo(0xff8a5c, 5, 0.3); halo.position.set(0, 2.4, 0); f.add(halo);
-      const lamp = sptPoints(1, (k, o) => { o.x = 0.9; o.y = 2.2; o.z = 0; o.s = 0.4; o.a = 0; o.r = 1; o.g = 0.9; o.b = 0.6; }); f.add(lamp);
-      S.figs.push({ g: f, ps, halo, lamp, base: f.position.clone() });
-    }
+    // --- lo que ocurre alrededor: semillas con plumas, estela del viento, gotas por el tronco, helada y las especies que llegan ---
+    S.TOP = TOP; S.FL = [[-9, TOP + 6.5, 3], [8, TOP + 8, -4], [2.5, TOP + 6, 9.5], [-5, TOP + 6.8, -8.5], [10.5, TOP + 5.5, 5.5], [-11, TOP + 4.5, -3], [4.5, TOP + 9.5, -9.5]];
+    S.sd = sptPoints(MAXS * 4, (i, o) => { const k = i % 4; o.x = 0; o.y = -60; o.z = 0; o.s = [0.36, 0.2, 0.16, 0.12][k]; o.a = 0; o.r = 1; o.g = 0.95; o.b = 0.8; }); g.add(S.sd);
+    S.ft = sptPoints(40, (i, o) => { o.x = 0; o.y = -60; o.z = 0; o.s = 0.22; o.a = 0; o.r = 0.5; o.g = 0.5; o.b = 0.52; }); g.add(S.ft);
+    S.wind = sptPoints(44, (i, o) => { o.x = 0; o.y = -60; o.z = 0; o.s = 0.3; o.a = 0; o.r = 0.8; o.g = 0.95; o.b = 1; }); g.add(S.wind);
+    S.mark = sptPoints(28, (i, o) => { const a = i / 28 * 6.283; o.x = Math.cos(a) * 1.8; o.z = Math.sin(a) * 1.8; o.y = 0.3; o.s = 0.24; o.a = 0; o.r = 1; o.g = 0.9; o.b = 0.6; }); g.add(S.mark); S.markA = [0, 0];
+    S.drip = sptPoints(60, (i, o) => { o.x = 0; o.y = -60; o.z = 0; o.s = 0.22; o.a = 0; o.r = 0.7; o.g = 0.9; o.b = 1; }); g.add(S.drip); S.dripP = Array.from({ length: 60 }, () => ({ a: rnd() * 6.283, u: rnd(), v: 0.07 + rnd() * 0.09 }));
+    S.ice = sptPoints(170, (i, o) => { o.x = 0; o.y = -60; o.z = 0; o.s = 0.4; o.a = 0.9; o.r = 0.75; o.g = 0.9; o.b = 1; }); S.ice.material.uniforms.uOpacity.value = 0; g.add(S.ice);
+    S.bee = sptPoints(10, (i, o) => { o.x = 0; o.y = 0; o.z = 0; o.s = 0.5; o.a = 0.9; o.r = 1; o.g = 0.82; o.b = 0.2; }); S.bee.material.uniforms.uOpacity.value = 0; g.add(S.bee);
+    S.hum = sptPoints(16, (i, o) => { const a = i / 16 * 6.283; o.x = i < 6 ? Math.cos(a) * 0.5 : (i % 2 ? 1 : -1) * 0.5 * (i - 5) * 0.28; o.y = i < 6 ? Math.sin(a) * 0.35 : 0.5; o.z = i < 6 ? 0 : (i % 2 ? 1 : -1) * 0.8; o.s = 0.4; o.a = 0.95; o.r = 0.3; o.g = 0.95; o.b = 0.85; }); S.hum.material.uniforms.uOpacity.value = 0; g.add(S.hum);
+    S.bar = sptPoints(38, (i, o) => { if (i < 22) { const a = rnd() * 6.283, b = Math.acos(2 * rnd() - 1); o.x = Math.sin(b) * Math.cos(a) * 1.1; o.y = Math.cos(b) * 0.7; o.z = Math.sin(b) * Math.sin(a) * 0.7; o.r = 0.3; o.g = 0.88; o.b = 0.62; o.s = 0.34; } else if (i < 30) { const u = (i - 22) / 7; o.x = -1.1 - u * 2.6; o.y = -0.2 - u * 0.3; o.z = 0; o.r = 0.3; o.g = 0.55; o.b = 1; o.s = 0.24; } else if (i < 34) { o.x = -3.9 + (i - 30) * 0.18; o.y = -0.6; o.z = (i % 2 ? 0.3 : -0.3); o.r = 0.35; o.g = 0.65; o.b = 1; o.s = 0.4; } else { o.x = 1.3 + (i - 34) * 0.25; o.y = 0.25; o.z = 0; o.r = 0.1; o.g = 0.1; o.b = 0.15; o.s = 0.2; } o.a = 0.95; }); S.bar.material.uniforms.uOpacity.value = 0; g.add(S.bar);
+    S.bm = { mode: 'perch', t: 0, dur: 1, from: [LX + 14, 1.4, LZ + 8], to: [LX + 14, 1.4, LZ + 8], t2: 3 }; S.bar.position.set(LX + 14, 1.4, LZ + 8);
     return S;
   },
   update(S, dt, t, calm) {
-    const sw = calm ? 0 : 1; S.msgT -= dt; S.rumT -= dt; S.roarT -= dt;
-    // el conflicto: lo que escuchas se calma; lo demás se tensa; quien ya se calmó ayuda a calmar a los otros
-    if (!S.won) {
-      for (let i = 0; i < 3; i++) {
-        if (S.listen === i) S.a[i] = Math.max(0, S.a[i] - 0.16 * dt);
-        else if (S.listen >= 0) S.a[i] = Math.min(1, S.a[i] + 0.035 * dt);
-        for (let j = 0; j < 3; j++) if (j !== i && S.a[j] < 0.35) S.a[i] = Math.max(0, S.a[i] - 0.02 * dt);
-      }
-      const maxA = Math.max(...S.a); if (maxA < 0.2) { S.calmT += dt; if (S.calmT > 3) S.won = true; } else S.calmT = 0;
-      if (S.listen >= 0 && S.msgT <= 0 && !S.neglMsg && S.a.some((v, i) => i !== S.listen && v > 0.9)) { S.neglMsg = true; colSub(colT('neglect'), 5); S.msgT = 5; }
-      if (!S.heardMsg && S.a.some(v => v < 0.35)) { S.heardMsg = true; colSub(colT('heard'), 5); S.msgT = 5; }
+    const sw = calm ? 0 : 1, view = COLG.view, TOP = S.TOP, rnd = Math.random, PI2 = 6.283;
+    S.msgT -= dt; S.sndT -= dt; S.breath += dt * 1.2;
+    if (view && !S.vOk) {                                                         // contemplación: el páramo ya sembrado, con sus especies y la laguna llena
+      S.vOk = 1; S.padSpots.forEach(p => { const q = S.spawn(p[0], p[1], 1, 4.8 + rnd()); if (q) S.matureNow(q, true); });
+      for (let k = 0, n = 0; k < 400 && n < 26; k++) { const a = rnd() * PI2, r = 14 + rnd() * 34, x = Math.cos(a) * r, z = Math.sin(a) * r; if (S.soil(x, z) < 0.45 || S.plants.some(p => p.alive && Math.hypot(p.x - x, p.z - z) < 1.8)) continue; const q = S.spawn(x, z, 1); if (q) { S.matureNow(q, true); n++; } }
+      S.w = 1; S.species = 3; S.matMsg = S.frMsg = S.spMsg = S.barMsg = true;
     }
-    const mean = (S.a[0] + S.a[1] + S.a[2]) / 3, tgt = S.won ? 0 : mean; S.agit += (tgt - S.agit) * Math.min(1, dt * 1.5);
-    S.breath += dt * (0.9 + 1.6 * S.agit);
-    S.down += ((S.won ? 1 : 0) - S.down) * Math.min(1, dt * 0.5);
-    // su chillido: eriza la cresta, abre las alas con un zumbido y mira al cielo
-    if (!S.won && S.agit > 0.5 && S.roarT <= 0) { S.roarT = 7 - 3 * S.agit + Math.random() * 2; S.rear = 1.9; colVoice('colibri', S.agit); if (!calm) shakeIntensity = Math.max(shakeIntensity, 0.25 * S.agit); if (MG.fx && !calm) MG.fx.burst(2, 24, 0, 6, 1.6, 1.6, 0xdff0d0, 0.3, 0.9); }
+    // el viento: el aleteo del barbudito hacia donde tocas (se queda un instante tras soltar, como una ráfaga)
+    S.blowT -= dt; S.blow += (((S.hold && !S.won) ? 1 : (S.blowT > 0 && !S.won ? 0.85 : 0)) - S.blow) * Math.min(1, dt * 4);
+    S.wT = Math.min(1, S.mature / S.NEED); S.w += (S.wT - S.w) * Math.min(1, dt * 0.8); const w = S.w;
+    // las especies que llama el agua
+    const spN = (S.mature >= 24 ? 3 : S.mature >= 16 ? 2 : S.mature >= 8 ? 1 : 0); if (!view && spN > S.species) { S.species = spN; MGS.arpeggio([2, 4, 5], 0.12, 2, 0.02); if (spN === 1 && !S.spMsg) { S.spMsg = true; colSub(colT('species'), 6); } if (spN === 3) { S.barMsg = true; setTimeout(() => { if (window.isColossusActive && COLG.id === 'colibri') colSub(colT('barr'), 5); }, 4200); } }
+    // semillas: el gigante las suelta; soplar las sacude; más con agua y con polinizadores
+    if (S.acc === undefined) S.acc = 2.2; S.acc += dt * (0.35 + 0.6 * S.blow + 0.6 * w + (S.species >= 1 ? 0.12 : 0) + (S.species >= 2 ? 0.12 : 0));
+    while (S.acc >= 1 && S.seeds.length < S.MAXS) { S.acc -= 1; const f = S.FL[(rnd() * S.FL.length) | 0], x0 = f[0] + (rnd() - 0.5) * 2, z0 = f[2] + (rnd() - 0.5) * 2; let lx, lz;
+      if (S.blow > 0.25) { const d = Math.hypot(S.aim[0], S.aim[1]), sg = 2.5 + 0.12 * d, gx = (rnd() + rnd() + rnd() - 1.5) * 2 * sg, gz = (rnd() + rnd() + rnd() - 1.5) * 2 * sg; lx = S.aim[0] + gx; lz = S.aim[1] + gz; }
+      else { const a = rnd() * PI2, r = 4 + rnd() * 9; lx = Math.cos(a) * r; lz = Math.sin(a) * r; }
+      S.seeds.push({ x0, y0: f[1], z0, lx, lz, T: f[1] / (3.4 + 1.2 * rnd()), age: 0, ph: rnd() * PI2, x: x0, y: f[1], z: z0, boost: 0 }); }
+    if (S.acc > 1) S.acc = 1;
+    if (!S.land) S.land = (x, z, sure) => {
+      const near = S.plants.some(p => p.alive && Math.hypot(p.x - x, p.z - z) < 1.5); let s = S.soil(x, z); const nurse = S.plants.some(p => p.alive && p.mature && Math.hypot(p.x - x, p.z - z) < 5); if (nurse) s = Math.min(1, s + 0.25);
+      const ok = !near && Math.hypot(x, z) < S.HALF - 2 && (sure || Math.random() < Math.pow(s, 1.9) * (S.species >= 1 ? 1.1 : 1));
+      if (ok) { const p = S.spawn(x, z, 0.04); if (p) { p.gt = 19 * (1.4 - 0.9 * s); S.planted++; if (S.sndT <= 0) { S.sndT = 0.12; MGS.ping(MGS.NOTES[S.planted % 6] * 2, 0, 0.8, 0.02); } if (!S.okMsg) { S.okMsg = true; colSub(colT('plant'), 6); } return true; } }
+      S.fails.push({ x, z, age: 0 }); if (S.fails.length > 36) S.fails.shift(); if (!S.lostMsg && S.okMsg && S.blow > 0.2) { S.lostMsg = true; colSub(colT('lost'), 6); } return false; };
+    { const SP = S.sd.geometry.attributes.position.array, SA = S.sd.geometry.attributes.aAlpha.array, wind = S.blow;
+      for (let k = S.seeds.length - 1; k >= 0; k--) { const d = S.seeds[k]; d.age += dt; const u = d.age / d.T; if (u >= 1) { S.land(d.lx, d.lz, false); S.seeds.splice(k, 1); continue; }
+        const wb = Math.sin(u * 9 + d.ph) * 0.9 * (1 - u) * sw; d.x = d.x0 + (d.lx - d.x0) * u + wb; d.z = d.z0 + (d.lz - d.z0) * u + Math.cos(u * 7 + d.ph) * 0.6 * (1 - u) * sw; d.y = Math.max(0.3, d.y0 * (1 - u) + Math.sin(u * 3.14) * 3); }
+      for (let k = 0; k < S.MAXS; k++) { const d = S.seeds[k]; for (let j = 0; j < 4; j++) { const q = (k * 4 + j); if (d) { SP[q * 3] = d.x - j * 0.12; SP[q * 3 + 1] = d.y + j * 0.45; SP[q * 3 + 2] = d.z; SA[q] = [1, 0.5, 0.3, 0.16][j]; } else SA[q] = 0; } }
+      S.sd.geometry.attributes.position.needsUpdate = S.sd.geometry.attributes.aAlpha.needsUpdate = true; }
+    { const FP = S.ft.geometry.attributes.position.array, FA = S.ft.geometry.attributes.aAlpha.array; for (let k = 0; k < 40; k++) { const f = S.fails[k]; if (f) { f.age += dt; FP[k * 3] = f.x; FP[k * 3 + 1] = 0.3 + f.age * 0.4; FP[k * 3 + 2] = f.z; FA[k] = Math.max(0, 0.7 - f.age * 0.5); } else FA[k] = 0; } S.fails = S.fails.filter(f => f.age < 1.5); S.ft.geometry.attributes.position.needsUpdate = S.ft.geometry.attributes.aAlpha.needsUpdate = true; }
+    // los frailejones crecen en tiempo acelerado: de una semilla a una roseta plateada
+    S.plants.forEach(p => { if (!p.alive) return; p.age += dt; if (p.g < 1) { p.g = Math.min(1, p.g + dt / (p.gt || 15)); if (Math.abs(p.g - (p.gw || 0)) > 0.02 || p.g >= 1) { p.gw = p.g; S.plantPts(p); } if (p.g >= 1 && !p.mature) S.matureNow(p, false); } });
+    // la helada: avanza como un anillo de escarcha; los jóvenes sin un adulto cerca no la resisten
+    if (!S.won && !view) { S.frostT -= dt; if (!S.frost && S.frostT <= 0 && S.plants.some(p => p.alive && !p.mature && p.g < 0.5)) { S.frost = { t: 0, dur: 9 }; S.frMsg = true; colSub(colT('frost'), 7); colVoice('colibri', 0.5); if (!calm) shakeIntensity = Math.max(shakeIntensity, 0.12); } }
+    if (S.frost) { const F = S.frost; F.t += dt; const R = 60 - 54 * (F.t / F.dur), IP = S.ice.geometry.attributes.position.array; S.ice.material.uniforms.uOpacity.value = Math.min(1, F.t * 0.8) * (F.t > F.dur ? Math.max(0, 1 - (F.t - F.dur) * 1.5) : 1);
+      for (let k = 0; k < 170; k++) { const a = k / 170 * PI2 + Math.sin(k * 3.1) * 0.02; IP[k * 3] = Math.cos(a) * (R + Math.sin(k * 1.7 + t) * 0.8); IP[k * 3 + 1] = 0.6 + (k % 3) * 0.5; IP[k * 3 + 2] = Math.sin(a) * (R + Math.sin(k * 1.7 + t) * 0.8); } S.ice.geometry.attributes.position.needsUpdate = true;
+      if (F.t >= F.dur && !F.done) { F.done = true; let dead = 0, saved = 0; S.plants.forEach(p => { if (p.alive && !p.mature && p.g < 0.5) { const nursed = S.plants.some(q => q !== p && q.alive && q.mature && Math.hypot(p.x - q.x, p.z - q.z) < 5); if (nursed) saved++; else { p.alive = false; S.plantCol(p, false); S.plantFlow(p, false); dead++; try { if (MG.fx && !calm) MG.fx.burst(p.x, 1.4, p.z, 6, 1, 1, 0xbfe6ff, 0.3, 0.9); } catch (e) {} } } });
+        colSub(colT(dead > saved ? 'lost2' : 'saved'), 6); MGS.arpeggio(dead ? [5, 3, 1] : [1, 3, 5], 0.1, 1.6, 0.02); S.frostT = 38 + rnd() * 18; }
+      if (F.t > F.dur + 1.8) S.frost = null; }
+    S.mature = S.plants.filter(p => p.alive && p.mature).length;
+    if (!S.won && !view && S.mature >= S.NEED) S.won = true;
+    // el barranquero: cuando llega, siembra por su cuenta (siempre en suelo que prende)
+    { const B = S.bm, show = S.species >= 3 ? 1 : 0, ou = S.bar.material.uniforms.uOpacity; ou.value += (show - ou.value) * Math.min(1, dt * 1.2);
+      if (show) { B.t += dt; if (B.mode === 'perch') { if (B.t > B.t2) { let best = null, bs = -1; for (let k = 0; k < 14; k++) { const a = rnd() * PI2, r = 14 + rnd() * 30, x = Math.cos(a) * r, z = Math.sin(a) * r, sc = S.soil(x, z) + rnd() * 0.15; if (sc > bs && !S.plants.some(p => p.alive && Math.hypot(p.x - x, p.z - z) < 1.8)) { bs = sc; best = [x, z]; } }
+            if (best) { B.mode = 'fly'; B.t = 0; B.dur = 3.4; B.from = [S.bar.position.x, S.bar.position.y, S.bar.position.z]; B.to = [best[0], 2.2, best[1]]; } else B.t = 0; } }
+        else { const u = Math.min(1, B.t / B.dur), e = u * u * (3 - 2 * u), x = B.from[0] + (B.to[0] - B.from[0]) * e, z = B.from[2] + (B.to[2] - B.from[2]) * e; S.bar.position.set(x, B.from[1] + (B.to[1] - B.from[1]) * e + Math.sin(u * 3.14) * 7, z); S.bar.rotation.y = Math.atan2(-(B.to[2] - B.from[2]), B.to[0] - B.from[0]); S.bar.rotation.z = Math.sin(t * 22) * 0.12 * sw;
+          if (u >= 1) { S.land(B.to[0], B.to[2], true); B.mode = 'perch'; B.t = 0; B.t2 = 2.6 + rnd() * 2; S.bar.rotation.z = 0; } } } }
+    // abejorro y colibrí pequeño
+    { const o1 = S.bee.material.uniforms.uOpacity, o2 = S.hum.material.uniforms.uOpacity; o1.value += ((S.species >= 1 ? 1 : 0) - o1.value) * Math.min(1, dt); o2.value += ((S.species >= 2 ? 1 : 0) - o2.value) * Math.min(1, dt);
+      const f = S.FL[Math.floor(t * 0.08) % S.FL.length]; S.bee.position.set(f[0] + Math.cos(t * 1.9) * 2.6, f[1] + 1.2 + Math.sin(t * 2.7) * 0.8, f[2] + Math.sin(t * 1.9) * 2.6);
+      const tp = S.plants.find(p => p.alive && p.mature) || { x: 12, z: 10, h: 2 }; S.hum.position.set(tp.x + Math.sin(t * 0.9) * 4, tp.h + 3.4 + Math.sin(t * 1.8) * 0.6, tp.z + Math.sin(t * 1.8) * 2.5); S.hum.rotation.y = Math.cos(t * 0.9) > 0 ? 0 : 3.14; }
+    // el aleteo del barbudito
     S.rear = Math.max(0, S.rear - dt); S.rp += ((S.rear > 0 ? 1 : 0) - S.rp) * Math.min(1, dt * 4);
-    const rp = S.rp * (0.4 + 0.6 * S.agit), calmK = 1 - S.agit, q = Math.max(rp, 0.12 * S.agit);
-    S.crest.rotation.z = -0.6 * S.agit * (1 - S.down) + 0.3 * calmK;
-    S.wings.forEach((w, k) => { const s = k ? 1 : -1; w.rotation.x = s * (1.35 - 1.95 * q) + s * Math.sin(t * 34 + k) * 0.5 * rp * sw; w.scale.z = 0.35 + 0.65 * q; });
-    let want = 0; if (S.listen >= 0 && !S.won) { const f = S.figs[S.listen].base, rel = Math.atan2(-f.z, f.x) - S.bird.rotation.y; want = Math.atan2(Math.sin(rel), Math.cos(rel)); want = Math.max(-1.1, Math.min(1.1, want)); } else want = Math.sin(t * 0.35) * 0.35 * sw;
-    S.hy += (want - S.hy) * Math.min(1, dt * 3);
-    S.head.rotation.y = S.hy + Math.sin(t * 25) * 0.03 * rp * sw; S.head.rotation.z = 0.4 * rp - 0.32 * S.down + Math.sin(S.breath * 0.6) * 0.02 * sw;
+    S.down += ((S.won ? 1 : 0) - S.down) * Math.min(1, dt * 0.5);
+    const rp = Math.max(S.blow, S.rp) * (1 - 0.6 * S.down), calmK = 1 - rp;
+    if (S.blow > 0.12) { const want = Math.atan2(-S.aim[1], S.aim[0]); let df = want - S.yaw; df = Math.atan2(Math.sin(df), Math.cos(df)); S.yaw += df * Math.min(1, dt * 2.5); }
+    S.bird.rotation.y = S.yaw;
+    S.crest.rotation.z = -0.55 * rp * (1 - S.down) + 0.3 * calmK;
+    S.wings.forEach((wg, k) => { const s = k ? 1 : -1; wg.rotation.x = s * (1.35 - 1.95 * rp) + s * Math.sin(t * 34 + k) * 0.5 * rp * sw; wg.scale.z = 0.35 + 0.65 * rp; });
+    S.head.rotation.y = Math.sin(t * 0.35) * 0.25 * sw * calmK + Math.sin(t * 25) * 0.03 * rp * sw; S.head.rotation.z = 0.3 * rp - 0.32 * S.down + Math.sin(S.breath * 0.6) * 0.02 * sw;
     S.beard.rotation.z = Math.sin(t * 1.3) * 0.05 * sw + 0.25 * rp; S.beard.scale.setScalar(1 + 0.1 * rp * Math.sin(t * 30) * sw);
-    S.body.scale.set(1 + 0.05 * S.agit + 0.015 * Math.sin(S.breath), 1 + 0.05 * S.agit + 0.025 * Math.sin(S.breath), 1 + 0.05 * S.agit);
-    S.bird.position.y = S.by0 + 1.2 * rp + Math.sin(t * 0.8) * 0.12 * sw - 0.5 * S.down; S.bird.rotation.z = -0.1 * rp;
-    S.bird.position.x = (Math.random() - 0.5) * 0.25 * S.agit * sw; S.bird.position.z = (Math.random() - 0.5) * 0.25 * S.agit * sw;
-    [S.body, S.head, S.crest, S.beard].concat(S.wings).forEach(p => { colTint(p, 1 + 0.16 * S.agit - 0.06 * calmK, 1 - 0.06 * S.agit + 0.04 * calmK, 1 - 0.14 * S.agit + 0.14 * calmK); colOp(p, 1, 0.22 + 0.78 * calmK); colJit(p, 0.03 + 0.16 * S.agit); });
-    colOp(S.bloom, 0.25 + 0.75 * Math.pow(calmK, 1.2), 0.08 + 0.92 * Math.pow(calmK, 1.4));
-    S.eyes.forEach(e => { e.material.opacity = 0.05 + 0.25 * calmK; });
-    S.sig.material.opacity = 0.04 + 0.12 * calmK;
-    if (S.agit > 0.45 && S.rumT <= 0) { S.rumT = 2.6; MGS.ping(1600 + 500 * S.agit, 0, 0.12, 0.012 * S.agit); }
-    // el páramo responde: la niebla se espesa con la tensión y los frailejones florecen con la calma
-    S.mist.material.uniforms.uOpacity.value = 0.45 + 1.4 * S.agit; S.flow.material.uniforms.uOpacity.value = Math.pow(calmK, 1.5);
-    const mp = S.mist.geometry.attributes.position.array; for (let i = 0; i < mp.length; i += 3) { mp[i] += dt * (0.5 + 1.5 * S.agit) * sw; if (mp[i] > 45) mp[i] = -45; } S.mist.geometry.attributes.position.needsUpdate = true;
-    S.bands.forEach(B => { B.material.uniforms.uOpacity.value = 0.5 + 1.1 * S.agit; const q = B.geometry.attributes.position.array; for (let i = 0; i < q.length; i += 3) { q[i] += dt * B.userData.v * (0.4 + S.agit) * sw; if (q[i] > 65) q[i] = -65; } B.geometry.attributes.position.needsUpdate = true; });
-    S.ridges.forEach(R => { R.position.x = Math.sin(t * 0.03 + R.userData.L) * (1 + R.userData.L) * 0.6; R.material.uniforms.uOpacity.value = 0.6 + 0.5 * calmK; });
-    S.rain.material.uniforms.uOpacity.value = Math.max(0, S.agit - 0.35) * 1.2;
-    { const q = S.rain.geometry.attributes.position.array, fall = 22 + 14 * S.agit; for (let i = 0; i < q.length; i += 3) { q[i + 1] -= dt * fall * sw; q[i] -= dt * 3 * sw; if (q[i + 1] < 0) { q[i + 1] = 30 + Math.random() * 6; q[i] = (Math.random() - 0.5) * 70; } } S.rain.geometry.attributes.position.needsUpdate = true; }
-    S.ghost.material.uniforms.uOpacity.value = 0.3 + 0.7 * calmK; S.ghost.position.x = Math.sin(t * 2.4) * 0.35 * S.agit * sw; S.ghost.scale.x = 1 + Math.sin(t * 3.1) * 0.06 * S.agit;
-    S.figs.forEach((f, i) => {
-      const a = S.a[i], c = a < 0.35 ? [0.6, 0.85, 1] : [1, 0.6 - 0.2 * a, 0.45 - 0.2 * a];
-      f.ps.forEach(p => p.material.uniforms.uTint.value.setRGB(c[0], c[1], c[2]));
-      f.g.position.x = f.base.x + (Math.random() - 0.5) * 0.25 * a * sw; f.g.position.z = f.base.z + (Math.random() - 0.5) * 0.25 * a * sw;
-      f.g.scale.y += ((S.won ? 0.75 : 1) - f.g.scale.y) * Math.min(1, dt);
-      f.halo.material.opacity += ((0.1 + 0.4 * a + (S.listen === i ? 0.2 : 0)) - f.halo.material.opacity) * Math.min(1, dt * 3);
-      f.halo.material.color.setHex(a < 0.35 ? 0x9fd0ff : 0xff8a5c);
-      f.lamp.geometry.attributes.aAlpha.array[0] += (((S.listen === i || a < 0.35) ? 1 : 0) - f.lamp.geometry.attributes.aAlpha.array[0]) * Math.min(1, dt * 3); f.lamp.geometry.attributes.aAlpha.needsUpdate = true;
-    });
+    S.body.scale.set(1 + 0.015 * Math.sin(S.breath), 1 + 0.025 * Math.sin(S.breath), 1);
+    S.bird.position.y = S.by0 + 0.8 * rp + Math.sin(t * 0.8) * 0.12 * sw - 0.5 * S.down;
+    [S.body, S.head, S.crest, S.beard].concat(S.wings).forEach(p => { colJit(p, 0.03 + 0.1 * rp); });
+    colOp(S.bloom, 0.25 + 0.75 * w, 0.08 + 0.92 * w); S.eyes.forEach(e => { e.material.opacity = 0.05 + 0.2 * w; }); S.sig.material.opacity = 0.04 + 0.12 * w;
+    // la estela del viento y la marca donde apuntas
+    { const WP = S.wind.geometry.attributes.position.array, WA = S.wind.geometry.attributes.aAlpha.array, ax = S.aim[0], az = S.aim[1]; for (let i = 0; i < 44; i++) { const u = (t * 0.5 + i / 44) % 1, wb = Math.sin(u * 8 + i) * 0.9 * u; WP[i * 3] = ax * u - az * 0.02 * wb; WP[i * 3 + 1] = (TOP + 3) * Math.pow(1 - u, 1.6) + 0.6 + Math.sin(u * 3.14) * 2; WP[i * 3 + 2] = az * u + ax * 0.02 * wb; WA[i] = S.blow * Math.sin(u * 3.14) * 0.7; }
+      S.wind.geometry.attributes.position.needsUpdate = S.wind.geometry.attributes.aAlpha.needsUpdate = true;
+      const MP = S.mark.geometry.attributes.position.array, MA = S.mark.geometry.attributes.aAlpha.array; for (let i = 0; i < 28; i++) { const a = i / 28 * PI2 + t * 0.6; MP[i * 3] = ax + Math.cos(a) * (1.8 + 0.3 * Math.sin(t * 3)); MP[i * 3 + 2] = az + Math.sin(a) * (1.8 + 0.3 * Math.sin(t * 3)); MA[i] = 0.75 * S.blow; } S.mark.geometry.attributes.position.needsUpdate = S.mark.geometry.attributes.aAlpha.needsUpdate = true; }
+    // gotas que bajan por el tronco del gigante hasta el suelo (el agua capturada de la niebla)
+    { const DP = S.drip.geometry.attributes.position.array, DA = S.drip.geometry.attributes.aAlpha.array; for (let i = 0; i < 60; i++) { const d = S.dripP[i]; d.u = (d.u + dt * d.v * sw) % 1; const y = TOP * (1 - d.u), r = 3.6 - 0.7 * (y / TOP) + 0.35; DP[i * 3] = Math.cos(d.a) * r; DP[i * 3 + 1] = y; DP[i * 3 + 2] = Math.sin(d.a) * r; DA[i] = (0.1 + 0.8 * w) * Math.sin(d.u * 3.14); } S.drip.geometry.attributes.position.needsUpdate = S.drip.geometry.attributes.aAlpha.needsUpdate = true; }
+    // el páramo responde al agua: la laguna se llena, la niebla se captura y llega la llovizna
+    S.lag.scale.set(0.35 + 0.65 * w, 1, 0.35 + 0.65 * w); S.ghost.material.uniforms.uOpacity.value = 0.15 + 0.85 * w; S.ghost.position.x = Math.sin(t * 2.4) * 0.15 * sw;
+    S.mist.material.uniforms.uOpacity.value = 0.45 + 1.1 * w; const mp = S.mist.geometry.attributes.position.array; for (let i = 0; i < mp.length; i += 3) { mp[i] += dt * 0.6 * sw; if (mp[i] > 45) mp[i] = -45; } S.mist.geometry.attributes.position.needsUpdate = true;
+    S.bands.forEach(B => { B.material.uniforms.uOpacity.value = 0.4 + 1.0 * w; const q = B.geometry.attributes.position.array; for (let i = 0; i < q.length; i += 3) { q[i] += dt * B.userData.v * 0.6 * sw; if (q[i] > 65) q[i] = -65; } B.geometry.attributes.position.needsUpdate = true; });
+    S.ridges.forEach(R => { R.position.x = Math.sin(t * 0.03 + R.userData.L) * (1 + R.userData.L) * 0.6; R.material.uniforms.uOpacity.value = 0.5 + 0.6 * w; });
+    S.rain.material.uniforms.uOpacity.value = Math.max(0, w - 0.45) * 1.1;
+    { const q = S.rain.geometry.attributes.position.array, fall = 26; for (let i = 0; i < q.length; i += 3) { q[i + 1] -= dt * fall * sw; q[i] -= dt * 3 * sw; if (q[i + 1] < 0) { q[i + 1] = 30 + Math.random() * 6; q[i] = (Math.random() - 0.5) * 70; } } S.rain.geometry.attributes.position.needsUpdate = true; }
+    if (S.won && !S.doneMsg) S.doneMsg = true;
   },
   down(S, cx, cy) {
-    if (S.won) return;
-    const k = colPick(S.figs.map(f => colW(f.g, 0, 2.4, 0)), cx, cy, Math.max(70, window.innerHeight * 0.12));
-    if (k >= 0) { S.listen = k; if (S.msgT <= 0) { colSub(colT('listen'), 3); S.msgT = 3; } MGS.ping(MGS.NOTES[k + 1], 0, 1.2, 0.02); vibrateDevice(8); }
+    if (S.won || COLG.view) return; const p = colibriGround(cx, cy); if (!p) { S.hold = false; return; }
+    S.hold = true; S.aim = this.clampAim(p); S.blowT = 1.8; vibrateDevice(6);
   },
-  up(S) { S.listen = -1; },
-  hudVals(S) { const calm = S.a.filter(v => v < 0.35).length; return [Math.round((S.a[0] + S.a[1] + S.a[2]) / 3 * 100) + '%', S.listen >= 0 ? (S.listen + 1) : '–', calm + '/3', S.won ? '♪' : S.agit > 0.6 ? '!!' : '·']; }
+  clampAim(p) { const d = Math.hypot(p[0], p[1]); if (d > 56) return [p[0] * 56 / d, p[1] * 56 / d]; if (d < 7) return d < 0.01 ? [7, 0] : [p[0] * 7 / d, p[1] * 7 / d]; return p; },
+  drag(S, cx, cy) { if (!S.hold || S.won) return false; const p = colibriGround(cx, cy); if (p) { S.aim = this.clampAim(p); S.blowT = 1.8; } return true; },
+  up(S) { if (S.hold) { S.hold = false; S.blowT = 1.5; } },
+  hudVals(S) { return [S.planted, S.mature + '/' + S.NEED, Math.round(S.w * 100) + '%', S.species + '/3']; }
 };
 
 // ---------- 6 · LA MEDUSA-LEVIATÁN (TouchDesigner & VR) — explorar un espacio paramétrico ----------
@@ -14606,8 +14968,397 @@ COL_DEF.medusa = {
 // estados de vitrina del modo contemplación: cada coloso muestra su mejor momento, sin juego ni final
 COL_DEF.arbol.view = function(S, dt) { S.energy = 5; S.allT = 0; S.leaves.forEach(L => { L.lit += (0.95 - L.lit) * Math.min(1, dt * 0.6); }); };
 COL_DEF.escarabajo.view = function(S, dt) { if (!S.vOk) { S.vOk = 1; const a = S.ph[0]; S.ph = [a, (a + 2) % 4, (a + 2) % 4, a, a, (a + 2) % 4]; } S.holdT = 0; };
-COL_DEF.mariquita.view = function(S, dt) { if (!S.vOk) { S.vOk = 1; S.pool = [0, 1, 2, 3, 4, 5, 0]; } S.joined = 6.99; S.frames.forEach(F => { }); };
+COL_DEF.mariquita.view = function(S, dt) { if (!S.vOk) { S.vOk = 1; S.q.fill(1); S.halls.forEach(h => { h.state = 1; h.show = true; h.vis = 1; }); S.frac = 1; S.nit = 100; } };
 COL_DEF.condor.view = function(S, dt) { S.stage = 'bow'; S.hold = false; S.back = false; S.trust += (0.9 - S.trust) * Math.min(1, dt * 0.8); S.D += (9 - S.D) * Math.min(1, dt * 1.2); };
-COL_DEF.colibri.view = function(S, dt) { for (let i = 0; i < 3; i++) S.a[i] += (0.12 - S.a[i]) * Math.min(1, dt * 0.7); S.listen = -1; };
+COL_DEF.colibri.view = function(S, dt) { S.hold = false; };
+
+// ==========================================================================================
+// ♪ CANTO DEL PÁRAMO — componer con el barbudito (se abre desde la contemplación del colibrí)
+//   Ocho flores/pads afinados en una escala sin notas "malas". Se graba un bucle de 4 compases (72 bpm), se apilan hasta 4 capas
+//   con un zumbido grave de fondo. Se descarga como MIDI (para Ableton/Unity) o como WAV (se graba en vivo lo que suena).
+// ==========================================================================================
+const CP_SC = {
+  pent: { es: 'PENTATÓNICA', en: 'PENTATONIC', st: [0, 2, 4, 7, 9] },
+  minp: { es: 'PENTAT. MENOR', en: 'MINOR PENT.', st: [0, 3, 5, 7, 10] },
+  dor: { es: 'DÓRICA', en: 'DORIAN', st: [0, 2, 3, 5, 7, 9, 10] },
+  fri: { es: 'FRIGIA', en: 'PHRYGIAN', st: [0, 1, 3, 5, 7, 8, 10] }
+};
+const CP_BPM = 72, CP_BEATS = 16, CP_LOOP = CP_BEATS * 60 / CP_BPM, CP_Q = 30 / CP_BPM, CP_MAXL = 4, CP_ROOT = 60, CP_REPS = 2, CP_PPQ = 480, CP_PADS = 8;
+const CP = { open: false, scale: 'pent', run: false, rec: false, armed: false, t: 0, layers: [], cur: [], keys: null, panel: null, openB: null, pads: [], flash: [], bar: null, stEl: null, recB: null, playB: null, wavB: null, scB: null, lastSt: '', exp: null, cap: null, kd: null, msg: '', msgT: 0 };
+function cpMidiOf(deg) { const st = CP_SC[CP.scale].st, n = st.length; return CP_ROOT + Math.floor(deg / n) * 12 + st[deg % n]; }
+function cpFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+function cpQ(t) { const q = Math.round(t / CP_Q) * CP_Q; return q >= CP_LOOP - 1e-6 ? 0 : q; }
+function cpSay(es, en, secs) { CP.msg = (MG.isEN() ? en : es); CP.msgT = secs || 4; }
+function cpPulse(i) {
+  const k = CP.keys && CP.keys[i]; if (k) k.h.material.opacity = 0.95;
+  CP.flash[i] = 0.35; const S = COLG.S; if (S) S.rear = Math.max(S.rear || 0, 0.45);
+}
+function cpPlay(deg) {
+  if (!CP.open || CP.exp) return;
+  const m = cpMidiOf(deg);
+  MGS.bell(cpFreq(m), 0, 2.4, 0.05); cpPulse(deg);
+  if (CP.rec && CP.run) { const t = cpQ(CP.t); if (!CP.cur.some(e => e.t === t && e.n === m)) CP.cur.push({ t, n: m, d: deg }); }
+}
+function cpDrone() { MGS.bell(cpFreq(CP_ROOT - 24), 0, 7, 0.022); MGS.bell(cpFreq(CP_ROOT - 17), 0.4, 7, 0.012); }
+function cpEndLayer() {                                                           // al cerrar el compás se guarda la capa que se estaba grabando
+  if (CP.rec) { if (CP.cur.length && CP.layers.length < CP_MAXL) CP.layers.push(CP.cur); CP.rec = false; CP.cur = []; cpSay('Capa guardada.', 'Layer saved.', 3); }
+  if (CP.armed) { CP.armed = false; if (CP.layers.length < CP_MAXL) { CP.rec = true; CP.cur = []; } }
+}
+function cpFire(a, b, off) {
+  CP.layers.forEach(L => L.forEach(e => { if (e.t >= a && e.t < b) { MGS.bell(cpFreq(e.n), Math.max(0, e.t - a + off), 2.4, 0.034); const dl = Math.max(0, e.t - a + off); if (dl < 0.05) cpPulse(e.d); } }));
+}
+function cpTick(S, dt) {
+  if (!CP.open) return;
+  if (CP.keys) CP.keys.forEach(k => { const o = k.h.material; if (o.opacity > 0.12) o.opacity = Math.max(0.12, o.opacity - dt * 1.6); });
+  CP.flash.forEach((f, i) => { if (f > 0) { CP.flash[i] = f - dt; if (CP.pads[i]) CP.pads[i].style.background = CP.flash[i] > 0 ? (CP.rec ? 'rgba(255,84,70,0.6)' : 'rgba(201,168,92,0.55)') : 'rgba(10,10,12,0.5)'; } });
+  CP.msgT -= dt;
+  if (CP.exp) { CP.exp.el += dt; if (CP.exp.tail !== undefined) { CP.exp.tail -= dt; if (CP.exp.tail <= 0) cpExportFinish(); } }
+  if (CP.run && !(CP.exp && CP.exp.tail !== undefined)) {
+    const p = CP.t, c = p + dt;
+    if (c >= CP_LOOP) {
+      cpFire(p, CP_LOOP, 0); CP.t = c - CP_LOOP;
+      if (CP.exp) { CP.exp.loops++; if (CP.exp.loops >= CP_REPS) { CP.exp.tail = 3.6; CP.run = false; cpStatus(); return; } }
+      else cpEndLayer();
+      cpDrone(); cpFire(0, CP.t, CP_LOOP - p);
+    } else { cpFire(p, c, 0); CP.t = c; }
+  }
+  cpStatus();
+}
+function cpStatus() {
+  const en = MG.isEN(); let s;
+  if (CP.exp) s = (en ? 'RECORDING WAV… ' : 'GRABANDO WAV… ') + Math.round(CP.exp.el) + ' s';
+  else if (CP.msgT > 0 && CP.msg) s = CP.msg;
+  else s = (CP.rec ? ico('rec') + (en ? ' RECORDING' : ' GRABANDO') : CP.armed ? (en ? 'ARMED: starts at the next bar' : 'ARMADO: empieza en el próximo compás') : CP.run ? ico('play') : ico('stop')) + '  ·  ' + CP.layers.length + '/' + CP_MAXL + (en ? ' layers' : ' capas');
+  if (s !== CP.lastSt && CP.stEl) { CP.stEl.innerHTML = s; CP.lastSt = s; }
+  if (CP.bar) CP.bar.style.width = (CP.run || CP.exp ? Math.min(100, CP.t / CP_LOOP * 100) : 0).toFixed(1) + '%';
+  const red = !!(CP.rec || CP.exp);                                                // mientras graba (notas o WAV) todo el panel se pone rojo
+  if (CP.panel) { CP.panel.style.borderColor = red ? 'rgba(255,84,70,0.9)' : CP.armed ? 'rgba(255,190,90,0.75)' : 'rgba(201,168,92,0.4)'; CP.panel.style.boxShadow = red ? '0 0 24px rgba(255,60,50,0.3)' : 'none'; }
+  if (CP.bar) CP.bar.style.background = red ? '#ff5446' : '#c9a85c';
+  if (CP.recB) { CP.recB.style.background = CP.rec ? 'rgba(255,70,60,0.3)' : 'rgba(10,10,12,0.5)'; CP.recB.style.borderColor = CP.rec ? 'rgba(255,84,70,0.95)' : CP.armed ? 'rgba(255,190,90,0.8)' : 'rgba(201,168,92,0.55)'; CP.recB.style.animation = (CP.rec && !reduceMotionMQ.matches) ? 'cpPulse 1s ease-in-out infinite' : 'none'; }
+  if (CP.wavB) { CP.wavB.style.background = CP.exp ? 'rgba(255,70,60,0.3)' : 'rgba(10,10,12,0.5)'; CP.wavB.style.borderColor = CP.exp ? 'rgba(255,84,70,0.95)' : 'rgba(201,168,92,0.55)'; }
+  if (CP.stEl) CP.stEl.style.color = red ? '#ff9a8c' : '#a8a49c';
+  if (CP.recB) { const l = (CP.rec ? ico('stop') : ico('rec')) + ' REC'; if (CP.recB.dataset.k !== l) { CP.recB.dataset.k = l; CP.recB.innerHTML = l; } CP.recB.style.color = CP.rec ? '#ff8a7a' : '#e7d9b4'; CP.recB.style.opacity = CP.armed ? '0.6' : '1'; }
+  if (CP.playB) { const l = CP.run ? ico('stop') : ico('play'); if (CP.playB.dataset.k !== l) { CP.playB.dataset.k = l; CP.playB.innerHTML = l; } }
+}
+function cpToggleRec() {
+  if (CP.exp) return;
+  if (CP.rec || CP.armed) { CP.rec = false; CP.armed = false; CP.cur = []; return; }
+  if (CP.layers.length >= CP_MAXL) { cpSay('Son 4 capas. Deshaz una para grabar otra.', 'That is 4 layers. Undo one to record again.', 4); return; }
+  if (!CP.run) { CP.run = true; CP.t = 0; cpDrone(); CP.rec = true; CP.cur = []; } else CP.armed = true;
+}
+function cpTogglePlay() { if (CP.exp) return; if (CP.run) { CP.run = false; CP.rec = false; CP.armed = false; CP.cur = []; CP.t = 0; } else { CP.run = true; CP.t = 0; cpDrone(); } }
+function cpUndo() { if (CP.exp) return; if (CP.layers.length) { CP.layers.pop(); cpSay('Capa deshecha.', 'Layer undone.', 2.5); } }
+function cpScale() { if (CP.exp) return; const ks = Object.keys(CP_SC); CP.scale = ks[(ks.indexOf(CP.scale) + 1) % ks.length]; if (CP.scB) CP.scB.textContent = CP_SC[CP.scale][MG.isEN() ? 'en' : 'es']; MGS.bell(cpFreq(cpMidiOf(0)), 0, 1.2, 0.04); }
+// ---- exportar MIDI ----
+function cpVLQ(v) { const b = [v & 127]; while ((v >>= 7) > 0) b.unshift((v & 127) | 128); return b; }
+function cpMidiBytes(layers) {
+  const tk = (s) => Math.round(s * CP_BPM / 60 * CP_PPQ), LT = CP_BEATS * CP_PPQ, NOTE_T = 2 * CP_PPQ;
+  const w32 = (v) => [(v >>> 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255], w16 = (v) => [(v >> 8) & 255, v & 255];
+  const str = (s) => Array.from(s).map(c => c.charCodeAt(0) & 127);
+  const chunk = (evs) => { evs.sort((a, b) => a.tick - b.tick || a.ord - b.ord); const d = []; let last = 0; evs.forEach(e => { cpVLQ(e.tick - last).forEach(x => d.push(x)); e.bytes.forEach(x => d.push(x)); last = e.tick; }); d.push(0, 0xFF, 0x2F, 0); return str('MTrk').concat(w32(d.length), d); };
+  const meta = (type, data) => [0xFF, type, data.length].concat(data);
+  const us = Math.round(60000000 / CP_BPM);
+  const tracks = [chunk([{ tick: 0, ord: 0, bytes: meta(0x03, str('Canto del paramo')) }, { tick: 0, ord: 1, bytes: meta(0x51, [(us >> 16) & 255, (us >> 8) & 255, us & 255]) }, { tick: 0, ord: 2, bytes: meta(0x58, [4, 2, 24, 8]) }])];
+  layers.forEach((L, i) => {
+    const ch = i, ev = [{ tick: 0, ord: 0, bytes: meta(0x03, str('Capa ' + (i + 1))) }, { tick: 0, ord: 1, bytes: [0xC0 | ch, 48] }];
+    for (let r = 0; r < CP_REPS; r++) L.forEach(e => { const t0 = tk(e.t) + r * LT; ev.push({ tick: t0, ord: 3, bytes: [0x90 | ch, e.n, 84] }, { tick: t0 + NOTE_T, ord: 2, bytes: [0x80 | ch, e.n, 0] }); });
+    tracks.push(chunk(ev));
+  });
+  const dv = [{ tick: 0, ord: 0, bytes: meta(0x03, str('Zumbido')) }, { tick: 0, ord: 1, bytes: [0xC0 | 4, 89] }];
+  for (let r = 0; r < CP_REPS; r++) [CP_ROOT - 24, CP_ROOT - 17].forEach((n, k) => { dv.push({ tick: r * LT, ord: 3, bytes: [0x90 | 4, n, k ? 50 : 70] }, { tick: (r + 1) * LT - 1, ord: 2, bytes: [0x80 | 4, n, 0] }); });
+  tracks.push(chunk(dv));
+  const out = str('MThd').concat(w32(6), w16(1), w16(tracks.length), w16(CP_PPQ)); tracks.forEach(t => t.forEach(x => out.push(x)));
+  return Uint8Array.from(out);
+}
+// ---- exportar WAV (se capta en vivo lo que sale del bus de sonido) ----
+function cpCapStart() {
+  try {
+    if (!MGS.ok()) return false;
+    const ctx = audioCtx, B = MGS.bus(); if (!B || !B.input || !ctx.createScriptProcessor) return false;
+    const tap = ctx.createGain(), proc = ctx.createScriptProcessor(4096, 2, 2), mute = ctx.createGain(); mute.gain.value = 0;
+    const cap = { ctx, B, tap, proc, mute, L: [], R: [], sr: ctx.sampleRate };
+    proc.onaudioprocess = (e) => { cap.L.push(new Float32Array(e.inputBuffer.getChannelData(0))); cap.R.push(new Float32Array(e.inputBuffer.getChannelData(Math.min(1, e.inputBuffer.numberOfChannels - 1)))); };
+    B.input.connect(tap); if (B.wet) B.wet.connect(tap); tap.connect(proc); proc.connect(mute); mute.connect(ctx.destination);
+    CP.cap = cap; return true;
+  } catch (e) { CP.cap = null; return false; }
+}
+function cpCapStop() {
+  const c = CP.cap; CP.cap = null; if (!c) return null;
+  try { c.proc.onaudioprocess = null; c.B.input.disconnect(c.tap); if (c.B.wet) c.B.wet.disconnect(c.tap); c.tap.disconnect(); c.proc.disconnect(); c.mute.disconnect(); } catch (e) {}
+  return c;
+}
+function cpWavBytes(c) {
+  const n = c.L.reduce((s, a) => s + a.length, 0), L = new Float32Array(n), R = new Float32Array(n); let o = 0;
+  for (let i = 0; i < c.L.length; i++) { L.set(c.L[i], o); R.set(c.R[i], o); o += c.L[i].length; }
+  let pk = 0; for (let i = 0; i < n; i++) pk = Math.max(pk, Math.abs(L[i]), Math.abs(R[i]));
+  const k = pk > 1e-5 ? 0.89 / pk : 1, buf = new ArrayBuffer(44 + n * 4), v = new DataView(buf), sr = c.sr;
+  const ws = (p, s) => { for (let i = 0; i < s.length; i++) v.setUint8(p + i, s.charCodeAt(i)); };
+  ws(0, 'RIFF'); v.setUint32(4, 36 + n * 4, true); ws(8, 'WAVE'); ws(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 2, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 4, true); v.setUint16(32, 4, true); v.setUint16(34, 16, true); ws(36, 'data'); v.setUint32(40, n * 4, true);
+  for (let i = 0; i < n; i++) { v.setInt16(44 + i * 4, Math.max(-1, Math.min(1, L[i] * k)) * 32767, true); v.setInt16(46 + i * 4, Math.max(-1, Math.min(1, R[i] * k)) * 32767, true); }
+  return new Uint8Array(buf);
+}
+function cpName(ext) { const d = new Date(), p = (x) => String(x).padStart(2, '0'); return 'canto-del-paramo-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + '.' + ext; }
+function cpDownload(bytes, mime, name) {
+  try { const url = URL.createObjectURL(new Blob([bytes], { type: mime })), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch (e) {} }, 1500); return true; } catch (e) { return false; }
+}
+function cpExportMidi() {
+  if (CP.exp) return; if (!CP.layers.length) { cpSay('Graba al menos una capa (REC).', 'Record at least one layer (REC) first.', 4); return; }
+  const ok = cpDownload(cpMidiBytes(CP.layers), 'audio/midi', cpName('mid')); cpSay(ok ? 'MIDI descargado.' : 'No pude descargar el archivo.', ok ? 'MIDI downloaded.' : 'Could not download the file.', 4);
+}
+function cpExportWav() {
+  if (CP.exp) return; if (!CP.layers.length) { cpSay('Graba al menos una capa (REC).', 'Record at least one layer (REC) first.', 4); return; }
+  if (!cpCapStart()) { cpSay('Este navegador no permite grabar el audio. Usa MIDI.', 'This browser cannot record the audio. Use MIDI.', 5); return; }
+  CP.rec = false; CP.armed = false; CP.cur = []; CP.run = true; CP.t = 0; CP.exp = { loops: 0, el: 0, tail: undefined }; cpDrone();
+}
+function cpExportFinish() {
+  const c = cpCapStop(); CP.exp = null; CP.run = false; CP.t = 0;
+  if (c && c.L.length) { const ok = cpDownload(cpWavBytes(c), 'audio/wav', cpName('wav')); cpSay(ok ? 'WAV descargado.' : 'No pude descargar el archivo.', ok ? 'WAV downloaded.' : 'Could not download the file.', 4); }
+  else cpSay('No se captó audio.', 'No audio was captured.', 4);
+}
+// ---- flores (teclas en 3D) y panel ----
+function cpBuildKeys(S) {
+  if (CP.keys || !S.bigP || !S.bigP.length) return;
+  const P = S.bigP.slice().sort((a, b) => a[0] - b[0]), n = Math.min(CP_PADS, P.length), ks = [];
+  for (let i = 0; i < n; i++) { const p = P[Math.round(i * (P.length - 1) / Math.max(1, n - 1))], h = mkHalo(0xffe27a, 6, 0.12); h.position.set(p[0], p[1], p[2]); COLG.group.add(h); ks.push({ h, w: new THREE.Vector3(p[0], p[1], p[2]) }); }
+  CP.keys = ks;
+}
+function cpSetOpen(on) {
+  const S = COLG.S; if (!S) return; CP.open = on; COLG.comp = on;
+  if (on) { cpBuildKeys(S); COLG.vT = 1e9; if (!CP.kd) { CP.kd = (e) => { if (!CP.open) return; const k = parseInt(e.key, 10); if (k >= 1 && k <= CP_PADS && !e.repeat && !e.ctrlKey && !e.metaKey) cpPlay(k - 1); }; document.addEventListener('keydown', CP.kd); } colSub(MG.isEN() ? '…the páramo listens: touch the pads or the golden flowers…' : '…el páramo escucha: toca los pads o las flores doradas…', 6); }
+  else { CP.run = false; CP.rec = false; CP.armed = false; CP.cur = []; CP.t = 0; COLG.vT = 9; if (CP.keys) CP.keys.forEach(k => { k.h.material.opacity = 0; }); }
+  if (CP.panel) CP.panel.style.display = on ? 'flex' : 'none'; if (CP.openB) CP.openB.style.display = on ? 'none' : 'block';
+}
+function cpDispose() {
+  try { if (CP.kd) document.removeEventListener('keydown', CP.kd); } catch (e) {} CP.kd = null; cpCapStop();
+  Object.assign(CP, { open: false, run: false, rec: false, armed: false, t: 0, layers: [], cur: [], keys: null, panel: null, openB: null, pads: [], flash: [], bar: null, stEl: null, recB: null, playB: null, wavB: null, scB: null, lastSt: '', exp: null, msg: '', msgT: 0 });
+  COLG.comp = false;
+}
+COL_DEF.colibri.viewExtra = function (S) {
+  const ui = MG.ui; if (!ui) return; const en = MG.isEN(), T = (es, e) => en ? e : es;
+  if (!document.getElementById('cp-style')) { const st = document.createElement('style'); st.id = 'cp-style'; st.textContent = '@keyframes cpPulse{0%,100%{opacity:1}50%{opacity:.45}}'; document.head.appendChild(st); }
+  const base = 'pointer-events:auto; background:rgba(10,10,12,0.5); border:1px solid rgba(201,168,92,0.55); color:#e7d9b4; font-family:inherit; font-weight:300; cursor:pointer; border-radius:2px;';
+  const guard = (el, evs) => evs.forEach(ev => el.addEventListener(ev, (e) => e.stopPropagation()));
+  const G1 = ['mousedown', 'touchstart', 'mouseup', 'touchend', 'pointerdown', 'pointerup'];
+  const mk = (label, fn, extra) => { const b = document.createElement('button'); b.innerHTML = label; b.style.cssText = base + 'padding:9px 12px; font-size:0.66rem; letter-spacing:0.2em;' + (extra || ''); b.addEventListener('click', (e) => { e.stopPropagation(); try { fn(); } catch (er) {} }); guard(b, G1); return b; };
+  const ob = mk(ico('note') + '  ' + T('CANTO DEL PÁRAMO', 'SONG OF THE PÁRAMO'), () => cpSetOpen(true), 'position:absolute; left:50%; transform:translateX(-50%); bottom:calc(140px + env(safe-area-inset-bottom,0px)); padding:10px 22px; font-size:0.72rem; letter-spacing:0.3em;');
+  ui.root.appendChild(ob); CP.openB = ob;
+  const pn = document.createElement('div'); pn.style.cssText = 'position:absolute; left:50%; transform:translateX(-50%); bottom:calc(140px + env(safe-area-inset-bottom,0px)); width:min(94vw,620px); display:none; flex-direction:column; gap:8px; padding:10px; pointer-events:auto; background:rgba(8,9,12,0.62); border:1px solid rgba(201,168,92,0.4); border-radius:3px; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); box-sizing:border-box;';
+  guard(pn, G1.concat(['click']));
+  const top = document.createElement('div'); top.style.cssText = 'display:flex; justify-content:space-between; align-items:center; font-size:0.62rem; letter-spacing:0.3em; color:#c9a85c;';
+  const ti = document.createElement('span'); ti.innerHTML = ico('note') + '  ' + T('CANTO DEL PÁRAMO', 'SONG OF THE PÁRAMO'); top.appendChild(ti); top.appendChild(mk(ico('x'), () => cpSetOpen(false), 'padding:3px 9px;')); pn.appendChild(top);
+  const row = document.createElement('div'); row.style.cssText = 'display:flex; gap:5px;'; CP.pads = []; CP.flash = [];
+  for (let i = 0; i < CP_PADS; i++) { const b = document.createElement('button'); b.textContent = String(i + 1); b.style.cssText = base + 'flex:1; height:46px; font-size:0.8rem; letter-spacing:0; touch-action:none;';
+    b.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); try { cpPlay(i); } catch (er) {} }); guard(b, ['mousedown', 'touchstart', 'mouseup', 'touchend', 'pointerup', 'click']); row.appendChild(b); CP.pads.push(b); }
+  pn.appendChild(row);
+  const bw = document.createElement('div'); bw.style.cssText = 'height:2px; background:rgba(201,168,92,0.18);'; const bar = document.createElement('div'); bar.style.cssText = 'height:100%; width:0%; background:#c9a85c;'; bw.appendChild(bar); pn.appendChild(bw); CP.bar = bar;
+  const st = document.createElement('div'); st.style.cssText = 'font-size:0.66rem; letter-spacing:0.16em; color:#a8a49c; min-height:1em;'; pn.appendChild(st); CP.stEl = st;
+  const ctl = document.createElement('div'); ctl.style.cssText = 'display:flex; flex-wrap:wrap; gap:6px;';
+  CP.recB = mk(ico('rec') + ' REC', cpToggleRec); CP.playB = mk(ico('play'), cpTogglePlay); CP.scB = mk(CP_SC[CP.scale][en ? 'en' : 'es'], cpScale);
+  CP.wavB = mk(ico('dl') + ' WAV', cpExportWav);
+  [CP.recB, CP.playB, mk(ico('undo'), cpUndo), CP.scB, mk(ico('dl') + ' MIDI', cpExportMidi), CP.wavB].forEach(b => ctl.appendChild(b)); pn.appendChild(ctl);
+  const tip = document.createElement('div'); tip.style.cssText = 'font-size:0.58rem; letter-spacing:0.1em; color:#8d8a83; line-height:1.5;';
+  tip.textContent = T('Pads o teclas 1–8, o toca las flores doradas. REC graba un bucle de 4 compases; apila hasta 4 capas. El WAV se graba en vivo (~30 s).', 'Pads or keys 1–8, or touch the golden flowers. REC records a 4-bar loop; stack up to 4 layers. The WAV records live (~30 s).'); pn.appendChild(tip);
+  ui.root.appendChild(pn); CP.panel = pn; CP.lastSt = '';
+};
+COL_DEF.colibri.tap = function (S, cx, cy) { if (!COLG.comp || !CP.keys) return; const k = colPick(CP.keys.map(q => q.w), cx, cy, Math.max(64, window.innerHeight * 0.11)); if (k >= 0) cpPlay(k); };
+COL_DEF.colibri.dispose = cpDispose;
+{ const _cpv = COL_DEF.colibri.view; COL_DEF.colibri.view = function (S, dt, t) { _cpv.call(this, S, dt, t); cpTick(S, dt); }; }
+
+// ==========================================================================================
+// HUELLA EN EL PLANETA — al ganar el coloso de una sección, su planeta guarda una marca fina de tinta y oro.
+//   Solo aparece al acercarse (por tamaño aparente del planeta en pantalla, así también responde al zoom) y se esconde durante los juegos.
+// ==========================================================================================
+const PTR_ID = { arbol: 1, escarabajo: 2, mariquita: 3, condor: 4, colibri: 5, medusa: 6 };
+const PTR_FADE = [0.2, 0.4];                                                   // fracción del alto de pantalla que ocupa el radio del planeta: 0 → invisible, 1 → completa
+const PTR = { map: {}, checkT: 0, t: 0, v: null, w: null, s: null, last: 0 };
+function ptrBuild(name) {
+  const g = new THREE.Group(), mats = [], rnd = Math.random, TAU = Math.PI * 2, sn = Math.sin, cs = Math.cos;
+  const mk = (n, fn, op, parent) => { const p = sptPoints(n, fn); p.material.uniforms.uOpacity.value = 0; (parent || g).add(p); mats.push([p.material.uniforms.uOpacity, op == null ? 1 : op]); return p; };
+  let anim = () => {};
+  if (name === 'arbol') {                                                         // pewen: corona de ramas en candelabro, con yemas doradas
+    g.rotation.z = 0.32;
+    mk(12 * 14, (i, o) => { const k = Math.floor(i / 14), j = i % 14, u = j / 13, a = k / 12 * TAU + 0.15 * sn(k * 3.1), r = 3.5 + 1.3 * u * (1.2 - 0.5 * u);
+      o.x = cs(a) * r; o.z = sn(a) * r; o.y = 0.1 + 2.1 * Math.pow(u, 0.8) * (0.8 + 0.2 * sn(k * 2.3)); o.s = 0.1 + u * 0.06; o.a = 0.35 + 0.4 * u; o.r = 0.55; o.g = 0.82; o.b = 0.5;
+      if (j === 13) { o.s = 0.24; o.a = 1; o.r = 1; o.g = 0.86; o.b = 0.45; } }, 0.95);
+    mk(90, (i, o) => { const a = i / 90 * TAU; o.x = cs(a) * 3.5; o.z = sn(a) * 3.5; o.y = 0.05; o.s = 0.07; o.a = 0.4; o.r = 0.6; o.g = 0.85; o.b = 0.55; }, 0.8);
+    anim = (t) => { g.rotation.y = t * 0.05; };
+  } else if (name === 'escarabajo') {                                             // escarabajo: dos anillos que laten en coherencia
+    g.rotation.x = 0.4;
+    const A = mk(30, (i, o) => { const a = i / 30 * TAU; o.x = cs(a) * 4.5; o.z = sn(a) * 4.5; o.y = sn(a * 3) * 0.25; o.s = 0.2; o.a = 0.95; o.r = 0.95; o.g = 0.62; o.b = 0.28; }, 1);
+    const B = mk(90, (i, o) => { const a = i / 90 * TAU; o.x = cs(a) * 5.1; o.z = sn(a) * 5.1; o.y = -sn(a * 3) * 0.25; o.s = 0.09; o.a = 0.55; o.r = 1; o.g = 0.85; o.b = 0.45; }, 0.8);
+    anim = (t) => { A.rotation.y = t * 0.12; B.rotation.y = -t * 0.07; A.scale.setScalar(1 + 0.03 * sn(t * 1.6)); };
+  } else if (name === 'mariquita') {                                              // catarina: un puntito rojo que orbita despacio, con su estela
+    g.rotation.x = 0.5; g.rotation.z = 0.2;
+    mk(100, (i, o) => { const a = i / 100 * TAU; o.x = cs(a) * 4.9; o.z = sn(a) * 4.9; o.y = 0; o.s = 0.06; o.a = 0.3; o.r = 1; o.g = 0.5; o.b = 0.45; }, 0.9);
+    const bug = mk(7, (i, o) => { if (i < 3) { o.x = (i - 1) * 0.09; o.y = 0.02; o.z = 0; o.s = 0.44 - (i === 1 ? 0 : 0.1); o.a = 1; o.r = 1; o.g = 0.25; o.b = 0.22; } else { const a = (i - 3) / 4 * TAU; o.x = cs(a) * 0.13; o.y = 0.1; o.z = sn(a) * 0.13; o.s = 0.12; o.a = 1; o.r = 0.08; o.g = 0.08; o.b = 0.1; } }, 1);
+    anim = (t) => { const a = t * 0.35; bug.position.set(cs(a) * 4.9, 0, sn(a) * 4.9); };
+  } else if (name === 'condor') {                                                 // cóndor: cordillera en el ecuador y una V que planea
+    mk(140 * 4, (i, o) => { const k = Math.floor(i / 4), j = i % 4, a = k / 140 * TAU, h = 0.35 + 0.55 * Math.abs(sn(a * 5.3 + 1)) + 0.4 * Math.abs(sn(a * 11.7));
+      o.x = cs(a) * 3.6; o.z = sn(a) * 3.6; o.y = -0.1 + h * (j / 3); if (j === 3) { o.s = 0.2; o.a = 1; o.r = 0.96; o.g = 0.97; o.b = 1; } else { o.s = 0.1; o.a = 0.45; o.r = 0.7; o.g = 0.78; o.b = 0.9; } }, 0.95);
+    const bird = mk(9, (i, o) => { const u = i - 4, s = u < 0 ? -1 : 1, w = Math.abs(u); o.x = -w * 0.05; o.z = s * w * 0.22; o.y = 0; o.s = i === 4 ? 0.2 : 0.12; o.a = 1; o.r = 0.9; o.g = 0.92; o.b = 0.98; }, 1);
+    anim = (t) => { g.rotation.y = t * 0.03; const a = -t * 0.22; bird.position.set(cs(a) * 5.7, 1.2 + 0.25 * sn(t * 0.6), sn(a) * 5.7); bird.rotation.y = -a + Math.PI / 2; };
+  } else if (name === 'colibri') {                                                // colibrí: florecillas doradas sobre el planeta y un hilo de niebla
+    const N = 24, ga = 2.399963;
+    mk(N * 5, (i, o) => { const k = Math.floor(i / 5), j = i % 5, y = 1 - (k + 0.5) / N * 2, rr = Math.sqrt(1 - y * y), ph = k * ga, nx = cs(ph) * rr, ny = y, nz = sn(ph) * rr;
+      let tx = -nz, ty = 0, tz = nx; const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl; const bx = ny * tz - nz * ty, by = nz * tx - nx * tz, bz = nx * ty - ny * tx;
+      let px = nx * 3.3, py = ny * 3.3, pz = nz * 3.3;
+      if (j === 0) { o.s = 0.27; o.r = 1; o.g = 0.84; o.b = 0.3; } else { const a = (j - 1) / 4 * TAU; px += (tx * cs(a) + bx * sn(a)) * 0.14; py += (ty * cs(a) + by * sn(a)) * 0.14; pz += (tz * cs(a) + bz * sn(a)) * 0.14; o.s = 0.1; o.r = 1; o.g = 0.93; o.b = 0.6; }
+      o.x = px + nx * 0.06; o.y = py + ny * 0.06; o.z = pz + nz * 0.06; o.a = 1; }, 1);
+    const M = mk(40, (i, o) => { const a = i / 40 * TAU; o.x = cs(a) * 4.6; o.z = sn(a) * 4.6; o.y = (rnd() - 0.5) * 0.7; o.s = 0.55; o.a = 0.09; o.r = 0.5; o.g = 0.83; o.b = 0.75; }, 1);
+    anim = (t) => { g.rotation.y = t * 0.04; M.rotation.y = -t * 0.05; };
+  } else {                                                                         // medusa: dos anillos que respiran y unos tentáculos que cuelgan
+    const A = mk(100, (i, o) => { const a = i / 100 * TAU; o.x = cs(a) * 4.5; o.z = sn(a) * 4.5; o.y = 0.3; o.s = 0.1; o.a = 0.7; o.r = 0.85; o.g = 0.65; o.b = 0.98; }, 1);
+    const B = mk(130, (i, o) => { const a = i / 130 * TAU; o.x = cs(a) * 5.3; o.z = sn(a) * 5.3; o.y = 0.3; o.s = 0.07; o.a = 0.5; o.r = 0.55; o.g = 0.85; o.b = 1; }, 1);
+    mk(8 * 12, (i, o) => { const k = Math.floor(i / 8), j = i % 8, a = j / 8 * TAU, u = k / 11; o.x = cs(a) * (1.8 + 0.4 * u) + sn(u * 5 + j) * 0.18 * u; o.z = sn(a) * (1.8 + 0.4 * u) + cs(u * 4 + j) * 0.18 * u; o.y = -3.1 - u * 2.6; o.s = 0.1 * (1 - u * 0.5); o.a = 0.55 * (1 - u * 0.6); o.r = 0.85; o.g = 0.65; o.b = 0.98; }, 1);
+    anim = (t) => { A.scale.setScalar(1 + 0.06 * sn(t * 1.4)); B.scale.setScalar(1 + 0.06 * sn(t * 1.4 - 0.9)); g.rotation.y = t * 0.03; };
+  }
+  return { g, mats, anim };
+}
+function ptrRefresh() {
+  let got; try { got = colossiGot(); } catch (e) { return; }
+  for (const name in PTR_ID) {
+    if (!got[name] || PTR.map[name]) continue;
+    const pl = categoryPlanets.find(p => p.userData && p.userData.id === PTR_ID[name]); if (!pl) continue;
+    const b = ptrBuild(name); b.g.visible = false; scene.add(b.g); PTR.map[name] = { g: b.g, mats: b.mats, anim: b.anim, planet: pl };
+  }
+}
+function ptrTick(dt) {
+  if (!PTR.v) { PTR.v = new THREE.Vector3(); PTR.w = new THREE.Vector3(); PTR.s = new THREE.Vector3(); }
+  PTR.t += dt; PTR.checkT -= dt; if (PTR.checkT <= 0) { PTR.checkT = 1.5; ptrRefresh(); }
+  const names = Object.keys(PTR.map); if (!names.length) return;
+  const busy = window.isColossusActive || window.isHogueraActive || window.isWhaleActive || window.isTortugaActive || window.isSputnikActive || window.isTuningGameActive || window.isWiringGameActive || (renderer.xr && renderer.xr.isPresenting);
+  camera.getWorldPosition(PTR.v); const tanH = Math.tan(camera.fov * Math.PI / 360), A = PTR_FADE[0], B = PTR_FADE[1];
+  names.forEach(n => {
+    const e = PTR.map[n], pl = e.planet;
+    if (busy || !pl || pl.visible === false) { e.g.visible = false; return; }
+    pl.getWorldPosition(PTR.w); pl.getWorldScale(PTR.s);
+    const R = (pl.userData.traceRatio || 3) * PTR.s.x, d = Math.max(0.1, PTR.w.distanceTo(PTR.v)), f = R / (d * tanH), x = Math.max(0, Math.min(1, (f - A) / (B - A))), al = x * x * (3 - 2 * x);
+    if (al <= 0.004) { e.g.visible = false; return; }
+    e.g.visible = true; e.g.position.copy(PTR.w); e.g.scale.setScalar(R / 3);
+    for (let i = 0; i < e.mats.length; i++) e.mats[i][0].value = al * e.mats[i][1];
+    e.anim(reduceMotionMQ.matches ? 0 : PTR.t);
+  });
+}
+window.planetTracesRefresh = ptrRefresh; window.planetTracesTick = ptrTick;
 COL_DEF.medusa.view = function(S, dt) { S.vT = (S.vT === undefined ? 0 : S.vT) - dt; if (S.vT <= 0) { S.vT = 8; S.vi = ((S.vi === undefined ? -1 : S.vi) + 1) % 3; S.v = S.targets[S.vi].slice(); S.lock = 1; S.lockHex = COL_DIAL[S.vi].hex; MGS.bell(MGS.NOTES[S.vi * 2], 0.1, 3, 0.04); } };
 
+// =====================================================================================
+//  GLOSAS MUISCAS
+//  Palabras sueltas en muisca repartidas por el sitio, siempre con su significado, a modo de nota al margen.
+//  Fuente: Saravia, «Diccionario muisca» (alfabeto práctico). Cada palabra fue tomada del diccionario, no de memoria.
+//  Se pueden apagar desde el menú; las que se han visto se guardan en el «Glosario muisca».
+// =====================================================================================
+const MUI_W = {                                   // clave: [muisca, español, inglés]
+  sie: ['sié', 'agua · mar', 'water · sea'], chie: ['chié', 'luna · luz', 'moon · light'], zha: ['zha', 'noche', 'night'],
+  swa: ['swa', 'sol · día', 'sun · day'], fawa: ['fawá', 'estrella', 'star'], hicha: ['hicha', 'tierra', 'earth'],
+  kyba: ['kyba', 'sueño · adormecimiento', 'sleep · drowsiness'], mysy: ['mysy', 'soñar', 'to dream'],
+  pkwa: ['pkwa', 'jugar · tejer', 'to play · to weave'], ky: ['ky', 'hacer', 'to make'], chiby: ['chiby', 'ver · mirar', 'to see · to look'],
+  chichwa: ['chichwa', 'aprender', 'to learn'], nyky: ['nyky', 'cuidar', 'to care for'], pky: ['pky', 'memoria', 'memory'],
+  kye: ['kye', 'árbol · bosque', 'tree · forest'], hwa: ['hwa', 'hongo', 'fungus'], chihiza: ['chihizhá', 'raíz', 'root'],
+  kynzha: ['kynzha', 'colibrí', 'hummingbird'], kuspkwa: ['kuspkwa', 'semilla', 'seed'], si: ['si', 'sembrar', 'to sow'], zhoky: ['zhoky', 'páramo', 'páramo'],
+  swe: ['swe', 'pájaro', 'bird'], chumny: ['chumny', 'escarabajo', 'beetle'], uba: ['uba', 'flor', 'flower'], simky: ['simky', 'ola (en el agua)', 'wave (on water)'],
+  ty: ['ty', 'canto', 'song'], myso: ['myso', 'culebra', 'snake'], gata: ['gata', 'fuego', 'fire'], kwewi: ['kwewí', 'tortuga', 'turtle'],
+  nypkwa: ['nypkwa', 'oír', 'to hear'], bty: ['btý', 'cantar', 'to sing'], chywa: ['chywa', 'eco', 'echo'], fiba: ['fiba', 'aire', 'air'],
+  chyzha: ['chyzha', 'voz', 'voice'], achkisa: ['achkisá', 'solo', 'alone'], kubun: ['kubun', 'palabra', 'word'], tyzhy: ['tyzhy', 'amar', 'to love'],
+  ie: ['ïe', 'camino', 'path'], we: ['we', 'casa', 'house']
+};
+const MUI = { on: true, seen: {}, ambI: 0 };
+try { MUI.on = localStorage.getItem('mui_on') !== '0'; MUI.seen = JSON.parse(localStorage.getItem('mui_seen') || '{}') || {}; } catch (e) {}
+function muiSave() { try { localStorage.setItem('mui_on', MUI.on ? '1' : '0'); localStorage.setItem('mui_seen', JSON.stringify(MUI.seen)); } catch (e) {} }
+function muiEN() { return window.currentLang === 'en'; }
+function muiText(k) { const w = MUI_W[k]; if (!w) return ''; MUI.seen[k] = 1; muiSave(); return w[0] + '  —  ' + (muiEN() ? w[2] : w[1]); }
+window.muiOn = () => MUI.on;
+window.muiText = muiText;
+
+// Un elemento de glosa por superficie: se apaga con el interruptor y se redibuja al cambiar de idioma
+const MUI_CSS = 'font:italic 300 0.9rem Georgia,"Times New Roman",serif; letter-spacing:0.08em; color:#bfe6ff; text-shadow:0 0 12px rgba(0,0,0,0.9); pointer-events:none;';
+function muiMount(parent, keys, css, every) {
+  const el = document.createElement('div'); el.className = 'mui-gloss'; el.style.cssText = MUI_CSS + (css || '') + 'transition:opacity 1.4s ease;';
+  let i = 0; const show = () => { if (!MUI.on) { el.style.opacity = '0'; return; } el.textContent = muiText(keys[i % keys.length]); el.style.opacity = '0.85'; };
+  show(); parent.appendChild(el);
+  const iv = keys.length > 1 ? setInterval(() => { if (!el.isConnected) { clearInterval(iv); return; } el.style.opacity = '0'; setTimeout(() => { i++; show(); }, 1400); }, (every || 8) * 1000) : 0;
+  el._redo = show; return el;
+}
+function muiRefresh() { document.querySelectorAll('.mui-gloss').forEach(e => e._redo && e._redo()); muiMenu(); }
+
+// ----- Inicio y carga -----
+function muiStart() {
+  const sc = document.querySelector('#start-screen .ethereal-float'); if (sc && !sc.querySelector('.mui-gloss')) muiMount(sc, ['kyba', 'zha', 'chie'], 'margin-top:14px; font-size:1.05rem; animation:driftText2 12s ease-in-out infinite alternate;', 7);
+  const ld = document.getElementById('loading-screen'); if (ld && !ld.querySelector('.mui-gloss')) muiMount(ld, ['chie'], 'margin-top:18px;');
+}
+
+// ----- Proyectos: una palabra por proyecto, bajo el título -----
+const MUI_PROJ = { 1: 'pkwa', 2: 'ky', 3: 'chiby', 4: 'chichwa', 5: 'nyky', 6: 'mysy', 7: 'pky', 8: 'hicha' };
+function muiProject() {
+  const t = document.getElementById('project-title'); if (!t) return;
+  const txt = (t.textContent || '').trim(), p = categoryPlanetData.find(d => d.title && (d.title.es === txt || d.title.en === txt));
+  let g = document.getElementById('mui-proj');
+  if (!p || !MUI_PROJ[p.id]) { if (g) g.style.display = 'none'; return; }
+  if (!g) { g = document.createElement('div'); g.id = 'mui-proj'; g.className = 'mui-gloss'; g.style.cssText = MUI_CSS + 'text-align:center; margin:-14px 0 14px; transition:opacity 1s ease;'; t.parentNode.parentNode.insertBefore(g, t.parentNode.nextSibling); }
+  const k = MUI_PROJ[p.id]; g._redo = () => { g.style.display = MUI.on ? 'block' : 'none'; if (MUI.on) g.textContent = muiText(k); }; g._redo();
+}
+
+// ----- Colosos: palabras que rotan en la esquina de la lámina -----
+const MUI_COL = { serpiente: ['myso', 'gata'], ballena: [], tortuga: ['kwewi', 'si', 'hicha'], arbol: ['kye', 'hwa', 'chihiza'], escarabajo: ['chumny', 'hicha'],
+  mariquita: ['mysy', 'uba'], condor: ['swe', 'swa'], colibri: ['kynzha', 'kuspkwa', 'si', 'zhoky'], medusa: ['simky', 'ty'] };
+window.muiColGloss = function(id, root) { const ks = MUI_COL[id]; if (ks && ks.length && root) muiMount(root, ks, 'position:absolute; right:18px; bottom:calc(22px + env(safe-area-inset-bottom,0px)); text-align:right; font-size:0.95rem;', 9); };
+
+// ----- Menú: interruptor y glosario -----
+function muiMenu() {
+  const m = document.getElementById('menu-retro'); if (!m) return; const ul = m.closest('ul'), en = muiEN();
+  let a = document.getElementById('menu-muisca');
+  if (!a) {
+    const li = document.createElement('li'); li.innerHTML = '<a href="#" id="menu-muisca" class="social-item"></a>'; ul.insertBefore(li, m.closest('li'));
+    const li2 = document.createElement('li'); li2.innerHTML = '<a href="#" id="menu-muisca-gl" class="social-item"></a>'; ul.insertBefore(li2, m.closest('li'));
+    a = li.firstChild; a.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); MUI.on = !MUI.on; muiSave(); muiRefresh(); });
+    li2.firstChild.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); const sm = document.getElementById('side-menu'); if (sm) sm.classList.remove('open'); muiGlossary(); });
+  }
+  a.textContent = '◈ ' + (en ? 'Muisca glosses: ' : 'Glosas muiscas: ') + (MUI.on ? 'ON' : 'OFF'); a.style.color = '#bfe6ff';
+  const g = document.getElementById('menu-muisca-gl'); const n = Object.keys(MUI.seen).filter(k => MUI_W[k]).length;
+  g.textContent = '◈ ' + (en ? 'Muisca glossary' : 'Glosario muisca') + ' · ' + n + '/' + Object.keys(MUI_W).length; g.style.color = '#bfe6ff';
+}
+function muiGlossaryHTML() {
+  const en = muiEN(), keys = Object.keys(MUI_W), n = keys.filter(k => MUI.seen[k]).length;
+  const rows = keys.map(k => { const w = MUI_W[k], s = MUI.seen[k]; return s
+    ? `<li><b>${w[0]}</b><span>${en ? w[2] : w[1]}</span></li>` : `<li class="mui-off"><b>· · ·</b><span>${en ? 'not seen yet' : 'aún sin ver'}</span></li>`; }).join('');
+  return `<button type="button" class="ach-close" aria-label="${en ? 'Close' : 'Cerrar'}" style="position:absolute;top:8px;right:12px;background:none;border:0;color:#e7e4de;font-size:1.6rem;cursor:pointer">×</button>
+    <h2 style="font-weight:300;letter-spacing:.2em;margin:0 0 6px">${en ? 'Muisca glossary' : 'Glosario muisca'}</h2>
+    <p style="font-size:.8rem;color:#cfd3da;line-height:1.7;margin:0 0 10px">${en ? 'Words scattered through the universe. Each one appears with its meaning; the ones you have seen are kept here.' : 'Palabras repartidas por el universo. Cada una aparece con su significado; las que ya viste quedan guardadas aquí.'}</p>
+    <p style="font-size:.7rem;letter-spacing:.2em;color:#a8a49c;margin:0 0 8px">${n} / ${keys.length}</p><ul class="mui-list">${rows}</ul>
+    <p style="font-size:.7rem;line-height:1.7;color:#9a968f;margin:16px 0 0;font-style:italic">${en ? 'Source: Saravia, “Diccionario muisca” (practical alphabet). The Muisca language is being recovered today by its own peoples: these glosses are an invitation to learn from them, and the list should be reviewed with speakers and teachers before being treated as definitive.' : 'Fuente: Saravia, «Diccionario muisca» (alfabeto práctico). La lengua muisca la recuperan hoy sus propios pueblos: estas glosas son una invitación a aprender de ellos, y la lista debe revisarse con hablantes y maestros antes de darla por definitiva.'}</p>`;
+}
+function muiGlossary() {
+  let p = document.getElementById('mui-panel');
+  if (!document.getElementById('mui-style')) { const st = document.createElement('style'); st.id = 'mui-style';
+    st.textContent = '#mui-panel{position:fixed;inset:0;z-index:2147483200;display:flex;align-items:center;justify-content:center;background:rgba(4,5,8,.72);backdrop-filter:blur(6px);font-family:-apple-system,Helvetica,Arial,sans-serif;color:#e7e4de} #mui-panel[hidden]{display:none} #mui-panel .mui-box{position:relative;width:min(94vw,560px);max-height:88vh;overflow:auto;padding:26px 22px;background:rgba(10,12,16,.94);border:1px solid rgba(231,228,222,.16);font-weight:300} .mui-list{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:0 18px} .mui-list li{display:flex;gap:10px;justify-content:space-between;padding:6px 0;border-top:1px solid rgba(231,228,222,.08);font-size:.8rem} .mui-list b{font:italic 400 .95rem Georgia,serif;color:#bfe6ff} .mui-list span{color:#cfd3da;text-align:right} .mui-off{opacity:.4}';
+    document.head.appendChild(st); }
+  if (!p) { p = document.createElement('div'); p.id = 'mui-panel'; p.innerHTML = '<div class="mui-box"></div>'; document.body.appendChild(p);
+    p.addEventListener('click', (e) => { if (e.target === p || (e.target.classList && e.target.classList.contains('ach-close'))) p.hidden = true; });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !p.hidden) p.hidden = true; }); }
+  p.firstChild.innerHTML = muiGlossaryHTML(); p.hidden = false;
+}
+window.openMuiGlossary = muiGlossary;
+
+// ----- Glosa ambiental: una palabra del cielo y la tierra que cambia despacio, solo en la pantalla principal -----
+function muiAmbient() {
+  const el = document.createElement('div'); el.className = 'mui-gloss'; el.id = 'mui-amb';
+  el.style.cssText = MUI_CSS + 'position:fixed; left:18px; bottom:calc(46px + env(safe-area-inset-bottom,0px)); z-index:9990; font-size:0.85rem; opacity:0; transition:opacity 2.2s ease;';
+  document.body.appendChild(el); const seq = ['swa', 'chie', 'fawa', 'zha', 'sie', 'hicha', 'fiba', 'kye'];
+  const busy = () => { const ov = document.getElementById('modal-overlay'), ss = document.getElementById('start-screen');
+    return window.isColossusActive || window.isWhaleActive || window.isHogueraActive || window.isSputnikActive || window.isTortugaActive || window.isTuningGameActive || window.isWiringGameActive
+      || (ov && !ov.classList.contains('hidden')) || (ss && getComputedStyle(ss).display !== 'none' && parseFloat(getComputedStyle(ss).opacity) > 0.05); };
+  el._redo = () => { if (el._k) el.textContent = muiText(el._k); };
+  const tick = () => { if (!MUI.on || busy()) { el.style.opacity = '0'; return; } el._k = seq[MUI.ambI++ % seq.length]; el.textContent = muiText(el._k); el.style.opacity = '0.55'; setTimeout(() => { el.style.opacity = '0'; }, 9000); };
+  setInterval(tick, 24000); setTimeout(tick, 6000);
+}
+
+function muiInit() {
+  muiStart(); muiMenu(); muiAmbient();
+  const t = document.getElementById('project-title'); if (t) new MutationObserver(muiProject).observe(t, { childList: true, characterData: true, subtree: true });
+  document.getElementById('lang-toggle-btn')?.addEventListener('click', () => setTimeout(muiRefresh, 60));
+  // etiquetas del bestiario: nombre científico y una palabra muisca bajo cada coloso
+  const mu = { serpiente: 'myso (culebra)', ballena: 'ty (canto) · sié (agua)', tortuga: 'kwewí (tortuga)', arbol: 'kye (árbol)', escarabajo: 'chumny (escarabajo)', mariquita: 'mysy (soñar)', condor: 'swe (pájaro)', colibri: 'kynzha (colibrí)', medusa: 'simky (ola)' };
+  COLOSSI.forEach(c => { if (!c.sci && COL_DEF[c.id] && COL_DEF[c.id].plate) c.sci = COL_DEF[c.id].plate[0]; if (mu[c.id]) c.mu = mu[c.id]; });
+  if (!MUI.on) return;
+}
+muiInit();
