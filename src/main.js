@@ -9620,7 +9620,7 @@ const MG = window.MG = {
   },
 
   enter(camZ) {
-    this.lastT = 0; this.time = 0; try { document.body.classList.add('mg-active'); } catch (e) {}
+    this.lastT = 0; this.time = 0; this.t0 = Date.now(); this._armT = 0; try { document.body.classList.add('mg-active'); } catch (e) {}
     if (!this.plane) this.plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
     const objs = this._targets(), prevSaved = this.saved;
     this.saved = {
@@ -9708,7 +9708,7 @@ const MG = window.MG = {
     const bottom = document.createElement('div');
     bottom.style.cssText = 'position:absolute; bottom:calc(22px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:14px; width:min(92vw,560px);';
 
-    const hint = document.createElement('div');
+    const hint = document.createElement('div'); hint.className = 'mg-hint';
     hint.textContent = hintText;
     hint.style.cssText = 'font-size:0.74rem; font-weight:300; letter-spacing:0.05em; line-height:1.7; text-align:center; color:#a8a49c; text-shadow:0 0 14px rgba(0,0,0,0.9);';
 
@@ -9717,7 +9717,7 @@ const MG = window.MG = {
     btn.style.cssText = 'pointer-events:auto; background:rgba(10,10,12,0.35); border:1px solid rgba(255,255,255,0.14); color:#a8a49c; padding:9px 20px; font-family:inherit; font-size:0.66rem; font-weight:300; letter-spacing:0.28em; cursor:pointer; border-radius:0; backdrop-filter:blur(10px); transition:color .3s, border-color .3s;';
     btn.addEventListener('mouseenter', () => { btn.style.color = '#e7e4de'; btn.style.borderColor = 'rgba(255,255,255,0.35)'; });
     btn.addEventListener('mouseleave', () => { btn.style.color = '#a8a49c'; btn.style.borderColor = 'rgba(255,255,255,0.14)'; });
-    btn.addEventListener('click', (e) => { e.stopPropagation(); MG.abort(); });
+    btn.className = 'mg-leave'; btn.addEventListener('click', (e) => { e.stopPropagation(); MG.leave(); });
     ['mousedown', 'touchstart', 'mouseup', 'touchend'].forEach(ev => btn.addEventListener(ev, (e) => e.stopPropagation()));
 
     bottom.appendChild(hint); bottom.appendChild(btn);
@@ -9727,7 +9727,7 @@ const MG = window.MG = {
     this.ui = { root, extra, hint };
 
     this.keyHandler = (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); MG.abort(); }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); MG.leave(); }
     };
     window.addEventListener('keydown', this.keyHandler, true);
     return this.ui;
@@ -9739,6 +9739,13 @@ const MG = window.MG = {
     if (this.keyHandler) { window.removeEventListener('keydown', this.keyHandler, true); this.keyHandler = null; }
   },
 
+  leave() {                                                                       // SOLTAR / ESC: a mitad de un juego pide un segundo toque; en contemplación o recién entrado sale directo
+    let view = false; try { view = !!((window.isColossusActive && COLG.view) || (window.isHogueraActive && HG.view) || (window.isWhaleActive && WH.view) || (window.isTortugaActive && TRP.view)); } catch (e) {}
+    const now = Date.now(), young = now - (this.t0 || 0) < 7000;
+    if (view || young || (this._armT && now - this._armT < 3500)) { this._armT = 0; this.abort(); return; }
+    this._armT = now; const b = document.querySelector('#minigame-ui .mg-leave'), en = this.isEN();
+    if (b) { const old = b.textContent; b.textContent = en ? 'LEAVE? TAP AGAIN' : '¿SOLTAR? TOCA DE NUEVO'; b.style.color = '#d9bb72'; b.style.borderColor = 'rgba(201,168,92,.6)'; setTimeout(() => { if (b.isConnected && Date.now() - this._armT >= 3400) { b.textContent = old; b.style.color = ''; b.style.borderColor = ''; } }, 3500); }
+  },
   abort() {
     if (window.isTuningGameActive) window.abortTuningGame();
     else if (window.isWiringGameActive) window.abortWiringGame();
@@ -13818,6 +13825,7 @@ function colossiCount() { const g = colossiGot(); return COLOSSI.filter(c => g[c
 function colossusFound(id) {                                                       // se llama al terminar el Juego Otro de cada coloso
   const c = COLOSSI.find(x => x.id === id); if (!c) return false;
   const g = colossiGot(); if (g[id]) return false;
+  try { if (!window._savedToast && typeof showSystemToast === 'function') { window._savedToast = 1; setTimeout(() => showSystemToast(window.currentLang === 'en' ? 'Progress saved on this device' : 'Progreso guardado en este dispositivo', '#e7e4de'), 4000); } } catch (e) {}
   window._colNewUntil = Date.now() + 25000;
   const u = readUnlocks(); u.colossi = Object.assign({}, g, { [id]: Date.now() }); writeUnlocks(u);
   const en = window.currentLang === 'en', n = colossiCount();
@@ -15779,3 +15787,85 @@ body:not(.retro-mode) #leaderboard-ui [style*="border-bottom"] { border-bottom-c
   window.modalsTidy = titles;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else setTimeout(init, 300);
 })();
+
+// ============================================================================
+//  MEJORAS DE LA EVALUACIÓN HEURÍSTICA — "estás aquí", ayuda dentro de los juegos, tamaño de letra, restablecer ajustes
+// ============================================================================
+const FS = { v: (() => { try { return Math.max(0, Math.min(2, +localStorage.getItem('gamelab_fs') || 0)); } catch (e) { return 0; } })() };
+const FS_PCT = [100, 112.5, 125], FS_NAME = ['A', 'A+', 'A++'];
+function fsApply() { try { document.documentElement.style.fontSize = FS_PCT[FS.v] + '%'; } catch (e) {} }
+fsApply();
+function uxCss() {
+  if (document.getElementById('ux-style')) return;
+  const st = document.createElement('style'); st.id = 'ux-style';
+  const M = ['about-ui', 'contact-ui', 'tutorial-ui', 'leaderboard-ui', 'blog-ui', 'portfolio-ui'].map(i => 'body:not(.retro-mode) #' + i).join(',');
+  st.textContent = `${M} { background:rgba(9,9,13,.84) !important; }
+    #you-are-here { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(10px + env(safe-area-inset-bottom,0px)); z-index:9980; pointer-events:none; font:300 .58rem -apple-system,"Helvetica Neue",Arial,sans-serif; letter-spacing:.34em; text-transform:uppercase; color:#a8a49c; text-shadow:0 0 10px rgba(0,0,0,.9); white-space:nowrap; max-width:92vw; overflow:hidden; text-overflow:ellipsis; opacity:.85; }
+    body.mg-active #you-are-here, body.ex-mode-active #you-are-here { display:none !important; }
+    #minigame-ui .mg-help { position:absolute; left:14px; top:calc(16px + env(safe-area-inset-top,0px)); width:30px; height:30px; pointer-events:auto; background:rgba(10,10,12,.55); border:1px solid rgba(201,168,92,.5); color:#d9bb72; font:300 .9rem Georgia,serif; cursor:pointer; padding:0; }
+    @media (min-width:701px){ #minigame-ui .mg-help { top:78px; } }
+    #mg-help-card { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(86vw,420px); pointer-events:auto; background:rgba(9,9,13,.92); border:1px solid rgba(201,168,92,.4); padding:20px 22px; font:300 .86rem/1.7 -apple-system,"Helvetica Neue",Arial,sans-serif; color:#d3cfc6; z-index:5; }
+    #mg-help-card b { display:block; font-weight:300; font-size:.62rem; letter-spacing:.3em; color:#c9a85c; text-transform:uppercase; margin-bottom:8px; }
+    #mg-help-card small { display:block; margin-top:12px; color:#8a867f; font-size:.72rem; }`;
+  (document.head || document.documentElement).appendChild(st);
+}
+// 1) "Estás aquí"
+function uxWhere() {
+  uxCss();
+  let el = document.getElementById('you-are-here'); if (!el) { el = document.createElement('div'); el.id = 'you-are-here'; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el); }
+  const tick = () => {
+    try {
+      const en = window.currentLang === 'en'; let t = '';
+      const pu = document.getElementById('portfolio-ui'), h = document.getElementById('project-title');
+      if (typeof isGameStarted !== 'undefined' && !isGameStarted) t = '';
+      else if (pu && !pu.classList.contains('hidden') && h && h.textContent) t = (en ? 'Project · ' : 'Proyecto · ') + h.textContent.trim();
+      else if (document.querySelector('.modal-ui:not(.hidden)')) t = '';
+      else t = (en ? 'Universe · ' : 'Universo · ') + (typeof isAligned !== 'undefined' && isAligned ? (en ? 'carousel' : 'carrusel') : (en ? 'constellation' : 'constelación'));
+      if (el.textContent !== t) el.textContent = t; el.style.display = t ? '' : 'none';
+    } catch (e) {}
+  };
+  tick(); setInterval(tick, 700);
+}
+// 2) Ayuda dentro de los juegos: botón "?" que explica cómo se juega y cómo salir
+function uxHelpInGame() {
+  const ui = document.getElementById('minigame-ui'); if (!ui || ui.querySelector('.mg-help')) return;
+  uxCss(); const en = window.currentLang === 'en';
+  const b = document.createElement('button'); b.className = 'mg-help'; b.type = 'button'; b.textContent = '?'; b.setAttribute('aria-label', en ? 'Help' : 'Ayuda');
+  ['mousedown', 'touchstart', 'pointerdown', 'mouseup', 'touchend', 'pointerup'].forEach(ev => b.addEventListener(ev, (e) => e.stopPropagation()));
+  b.addEventListener('click', (e) => {
+    e.stopPropagation(); let c = document.getElementById('mg-help-card'); if (c) { c.remove(); return; }
+    const hint = ui.querySelector('.mg-hint'); const tx = hint ? hint.textContent : '';
+    c = document.createElement('div'); c.id = 'mg-help-card'; c.setAttribute('role', 'dialog');
+    c.innerHTML = '<b>' + (en ? 'How to play' : 'Cómo se juega') + '</b>' + (tx ? '<div></div>' : '') + '<small>' + (en ? 'Leave any time with LET GO or Esc. Your progress is saved on this device.' : 'Sal cuando quieras con SOLTAR o Esc. Tu progreso se guarda en este dispositivo.') + '</small>';
+    if (tx) c.firstChild.nextSibling.textContent = tx;
+    ['mousedown', 'touchstart', 'pointerdown', 'click'].forEach(ev => c.addEventListener(ev, (e) => { e.stopPropagation(); if (ev === 'click') c.remove(); }));
+    ui.appendChild(c);
+  });
+  ui.appendChild(b);
+}
+// 3) Menú: tamaño de letra y restablecer ajustes
+function uxMenu() {
+  const r = document.getElementById('menu-retro'); if (!r) return false; const ul = r.closest('ul'), en = window.currentLang === 'en';
+  const mk = (id, fn) => { let a = document.getElementById(id); if (!a) { const li = document.createElement('li'); li.innerHTML = '<a href="#" id="' + id + '" class="social-item"></a>'; ul.insertBefore(li, r.closest('li')); a = li.firstChild; a.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); fn(a); }); } return a; };
+  const f = mk('menu-fs', () => { FS.v = (FS.v + 1) % 3; try { localStorage.setItem('gamelab_fs', String(FS.v)); } catch (e) {} fsApply(); uxMenu(); });
+  f.textContent = '◈ ' + (en ? 'Text size: ' : 'Tamaño de letra: ') + FS_NAME[FS.v];
+  const d = mk('menu-defaults', (a) => {
+    if (!a._arm) { a._arm = true; a.textContent = '⚠ ' + (window.currentLang === 'en' ? 'Tap again to restore defaults' : 'Toca otra vez para restablecer'); setTimeout(() => { a._arm = false; uxMenu(); }, 4500); return; }
+    restoreDefaults();
+  });
+  if (!d._arm) d.textContent = '↺ ' + (en ? 'Restore defaults' : 'Restablecer ajustes por defecto');
+  return true;
+}
+function restoreDefaults() {                                                       // ajustes (calidad, resplandor, vista, glosas, letra, subtítulos) vuelven a su valor por defecto; el progreso no se toca
+  ['gamelab_prefs', 'gamelab_glow2', 'gamelab_quality', 'gamelab_constellation', 'gamelab_caps', 'gamelab_fs', 'mui_on', 'mt_open'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+  try { if (typeof showSystemToast === 'function') showSystemToast(window.currentLang === 'en' ? 'Defaults restored' : 'Ajustes por defecto restaurados', '#e7e4de'); } catch (e) {}
+  setTimeout(() => { location.reload(); }, 700);
+}
+window.restoreDefaults = restoreDefaults;
+function uxInit() {
+  uxWhere();
+  const go = () => { if (!uxMenu()) setTimeout(go, 500); }; go(); setTimeout(uxMenu, 1300);
+  ['lang-toggle-btn', 'menu-toggle'].forEach(id => { const b = document.getElementById(id); if (b) b.addEventListener('click', () => { setTimeout(uxMenu, 140); }); });
+  try { new MutationObserver(() => uxHelpInGame()).observe(document.body, { childList: true }); } catch (e) {}
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', uxInit); else setTimeout(uxInit, 400);
