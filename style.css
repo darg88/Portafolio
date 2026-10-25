@@ -61,7 +61,7 @@ body, html {
 }
 
 /* Asignamos animaciones de flotación independientes a cada elemento */
-.ethereal-float h1 {
+.ethereal-float h1, .ethereal-float .start-title {
   display: inline-block;
   animation: driftText1 9s ease-in-out infinite alternate;
 }
@@ -111,7 +111,7 @@ body, html {
 }
 
 /* Tipografía limpia y separada */
-#start-screen h1 { 
+#start-screen h1, #start-screen .start-title { 
   font-size: 2.8rem; text-shadow: 0 0 30px rgba(255,255,255,0.1); margin: 0 0 10px 0; 
   letter-spacing: 8px; font-weight: 300; font-family: -apple-system, sans-serif; color: #ffffff; 
 }

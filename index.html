@@ -4,9 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Daniel Alejandro Rodríguez García | Portafolio Interactivo</title>
-    <meta name="description" content="Daniel Alejandro Rodríguez García (Daniel Rodríguez): profesor de Diseño Interactivo y director del GameLab Tadeo, Universidad Jorge Tadeo Lozano. Candidato a Doctorado en Diseño, Arte y Ciencia. Videojuegos, WebXR y experiencias interactivas." />
+    <meta name="description" content="Daniel Alejandro Rodríguez García, profesor de Diseño Interactivo y director del GameLab Tadeo. Videojuegos, WebXR y experiencias interactivas." />
     <meta name="author" content="Daniel Alejandro Rodríguez García" />
     <link rel="canonical" href="https://danielrodriguez.xyz/" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
 
     <!-- Open Graph y Twitter Cards -->
     <meta property="og:type" content="website" />
@@ -55,6 +57,19 @@
       <h1>Daniel Alejandro Rodríguez García - Portafolio interactivo</h1>
       <p>Profesor de Diseño Interactivo y director del GameLab Tadeo (Universidad Jorge Tadeo Lozano). Candidato a Doctorado en Diseño, Arte y Ciencia. Videojuegos, WebXR y experiencias interactivas.</p>
       <p>Bienvenido. Presiona la tecla Tabulador (Tab) para navegar.</p>
+      <nav aria-label="Proyectos y perfil">
+        <ul>
+          <li><a href="/proyectos/gamelab-tadeo/">GameLab Tadeo</a></li>
+          <li><a href="/proyectos/consola-arduino/">Consola Arduino</a></li>
+          <li><a href="/proyectos/medialab-cinemateca/">MediaLab Cinemateca</a></li>
+          <li><a href="/proyectos/docencia-en-diseno/">Docencia en Diseño</a></li>
+          <li><a href="/proyectos/games-for-change/">Games for Change</a></li>
+          <li><a href="/proyectos/touchdesigner-y-vr/">TouchDesigner & VR</a></li>
+          <li><a href="/proyectos/galeria-archivos/">Galería Archivos</a></li>
+          <li><a href="/proyectos/modulo-webar/">Módulo WebAR</a></li>
+          <li><a href="/perfil/">Perfil</a></li>
+        </ul>
+      </nav>
     </div>
 
     <!-- Pantalla de Carga -->
@@ -66,7 +81,7 @@
     <!-- Pantalla de Inicio -->
     <div id="start-screen">
       <div class="ethereal-float">
-        <h1>DANIEL_OS <br><span>Sistema en reposo...</span></h1>
+        <div class="start-title">DANIEL_OS <br><span>Sistema en reposo...</span></div>
       <button id="start-btn" style="display: none;">&gt; EXPLORAR PORTAFOLIO _</button>
    <button id="skip-btn" style="display: none;">[ JUGAR MINIJUEGO ARCADIA ]</button>
       </div>
@@ -181,7 +196,7 @@
       <button class="close-btn" onclick="window.closeAllUIs()">X</button>
       
       <div style="text-align: center; border-bottom: 2px dashed #00ffcc; padding-bottom: 20px; margin-bottom: 20px; margin-top: 30px; position: relative; z-index: 10;">
-        <h1 class="dac-glitch-text" style="color: #00ffcc; margin: 0; font-size: 2rem; font-family: 'Share Tech Mono', monospace;">RETÓRICA MATERIAL DE LA DIGITALIDAD</h1>
+        <h2 class="dac-glitch-text" style="color: #00ffcc; margin: 0; font-size: 2rem; font-family: 'Share Tech Mono', monospace;">RETÓRICA MATERIAL DE LA DIGITALIDAD</h2>
         <p class="dac-glitch-text" style="color: #aaa; font-size: 1.1rem; margin-top: 10px;">> DOCTORADO EN DISEÑO, ARTE Y CIENCIA</p>
       </div>
       
@@ -211,7 +226,7 @@
       <button class="close-btn" onclick="window.closeAllUIs()">X</button>
       <div id="project-nav-bar" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px; margin-top: 20px;">
         <button id="btn-prev-project" style="background: transparent; border: none; color: #888; padding: 5px; cursor: pointer; font-size: 1.5rem; transition: 0.3s;">&lt;</button>
-        <h1 id="project-title" style="margin: 0; font-size: 1.4rem; text-align: center; flex-grow: 1; text-transform: uppercase; color: #fff;">Título</h1>
+        <h2 id="project-title" style="margin: 0; font-size: 1.4rem; text-align: center; flex-grow: 1; text-transform: uppercase; color: #fff;">Título</h2>
         <button id="btn-next-project" style="background: transparent; border: none; color: #888; padding: 5px; cursor: pointer; font-size: 1.5rem; transition: 0.3s;">&gt;</button>
       </div>
       <div id="project-role" style="font-size: 0.85rem; color: #888899; margin-bottom: 15px; font-weight: 300; letter-spacing: 1px;"></div>
@@ -228,7 +243,7 @@
     <!-- Ventana de Leaderboard -->
     <div id="leaderboard-ui" class="modal-ui hidden" style="border-color: #ff0000;">
       <button class="close-btn" onclick="window.closeAllUIs()">X</button>
-      <h1 style="text-align:center; color:#ff0000; text-shadow:0 0 10px #ff0000; margin-top:0;">¡BATALLA FINALIZADA!</h1>
+      <h2 style="text-align:center; color:#ff0000; text-shadow:0 0 10px #ff0000; margin-top:0;">¡BATALLA FINALIZADA!</h2>
       <p style="text-align:center;">El encuentro con la nave nodriza ha concluido.</p>
       <div style="text-align:center; font-size: 24px; margin: 20px 0;">TU PUNTUACIÓN: <span id="final-score-display" style="color:#00ffff; font-weight:bold;">0</span></div>
       <form id="score-form" style="margin-bottom: 20px;">
@@ -263,25 +278,25 @@
         
         <ul style="color: #8a867f; font-weight: 300; text-align: left; line-height: 1.8; margin-bottom: 30px; list-style-type: none; padding-left: 0; font-size: 0.85rem;">
           <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px;">
-            <strong style="color: #e7e4de; font-weight: 400; letter-spacing: 1px;">[ VISUALIZAR ]</strong> Alterna en cualquier momento entre la exploración del <b>Universo 3D (Inmersivo)</b> y la lectura limpia del <b>Archivo 2D (Ejecutivo)</b> con el botón superior derecho.
+            <span style="font-weight:700; color: #e7e4de; font-weight: 400; letter-spacing: 1px;">[ VISUALIZAR ]</span> Alterna en cualquier momento entre la exploración del <b>Universo 3D (Inmersivo)</b> y la lectura limpia del <b>Archivo 2D (Ejecutivo)</b> con el botón superior derecho.
           </li>
           <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-top: 5px;">
-            <strong style="color: #e7e4de; font-weight: 400; letter-spacing: 1px;">[ NAVEGAR ]</strong> En el universo 3D, arrastra el vacío para girar la vista, arrastra los planetas para reordenarlos, o usa la rueda para acercarte.
+            <span style="font-weight:700; color: #e7e4de; font-weight: 400; letter-spacing: 1px;">[ NAVEGAR ]</span> En el universo 3D, arrastra el vacío para girar la vista, arrastra los planetas para reordenarlos, o usa la rueda para acercarte.
           </li>
           <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-top: 5px;">
-            <strong style="color: #e7e4de; font-weight: 400; letter-spacing: 1px;">[ DESENCRIPTAR ]</strong> Toca cualquier planeta para abrir y leer los archivos del proyecto.
+            <span style="font-weight:700; color: #e7e4de; font-weight: 400; letter-spacing: 1px;">[ DESENCRIPTAR ]</span> Toca cualquier planeta para abrir y leer los archivos del proyecto.
           </li>
           <li style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-top: 5px;">
-            <strong style="color: #e7e4de; font-weight: 400; letter-spacing: 1px;">[ SINCRONIZAR ]</strong> Activa el Modo Extracción (▶) en el menú lateral. Usa <kbd style="background:rgba(255,255,255,0.1); padding:1px 5px; border-radius:3px;">←</kbd> <kbd style="background:rgba(255,255,255,0.1); padding:1px 5px; border-radius:3px;">→</kbd> para moverte y <kbd style="background:rgba(255,255,255,0.1); padding:1px 5px; border-radius:3px;">ESPACIO</kbd> para emitir pulsos a la basura electrónica y anomalías.
+            <span style="font-weight:700; color: #e7e4de; font-weight: 400; letter-spacing: 1px;">[ SINCRONIZAR ]</span> Activa el Modo Extracción (▶) en el menú lateral. Usa <kbd style="background:rgba(255,255,255,0.1); padding:1px 5px; border-radius:3px;">←</kbd> <kbd style="background:rgba(255,255,255,0.1); padding:1px 5px; border-radius:3px;">→</kbd> para moverte y <kbd style="background:rgba(255,255,255,0.1); padding:1px 5px; border-radius:3px;">ESPACIO</kbd> para emitir pulsos a la basura electrónica y anomalías.
           </li>
         </ul>
 
         <h2 style="color: #ffffff; text-align: left; margin-top: 0; text-transform: uppercase; border-left: 4px solid #e7e4de; background: rgba(255, 255, 255, 0.05); padding: 8px 15px; font-weight: 300; font-size: 1.1rem; letter-spacing: 0.15em; clip-path: polygon(0 0, 98% 0, 100% 100%, 0% 100%);">> BASE_DE_CONOCIMIENTO (F.A.Q.)</h2>
         
         <div style="text-align: left; color: #bdb9b1; font-weight: 300; line-height: 1.6; font-size: 0.85rem; max-height: 180px; overflow-y: auto; padding-right: 10px; margin-bottom: 20px;">
-          <p style="margin-top: 10px;"><strong style="color: #e7e4de; font-weight: 400;">Q: ¿Puedo explorar el sistema en Realidad Virtual o Aumentada?</strong><br>A: Sí. Desde un dispositivo móvil o visor compatible con WebXR, aparecerán los botones [AR] o [VR] para proyectar el universo en tu propio entorno.</p>
-          <p><strong style="color: #e7e4de; font-weight: 400;">Q: ¿Qué es el núcleo central (D.A.C.)?</strong><br>A: Es el ecosistema interactivo de la investigación doctoral. Tócalo en el modo 3D para aislarlo y experimentar sus tres máquinas conceptuales.</p>
-          <p><strong style="color: #e7e4de; font-weight: 400;">Q: ¿Hay algún secreto en la simulación?</strong><br>A: El sistema está diseñado para premiar la curiosidad. Juega, sincroniza los datos, lee los archivos pacientemente y mantén los ojos abiertos a las anomalías. La Insignia de Soberanía aguarda a quienes exploran a fondo.</p>
+          <p style="margin-top: 10px;"><span style="font-weight:700; color: #e7e4de; font-weight: 400;">Q: ¿Puedo explorar el sistema en Realidad Virtual o Aumentada?</span><br>A: Sí. Desde un dispositivo móvil o visor compatible con WebXR, aparecerán los botones [AR] o [VR] para proyectar el universo en tu propio entorno.</p>
+          <p><span style="font-weight:700; color: #e7e4de; font-weight: 400;">Q: ¿Qué es el núcleo central (D.A.C.)?</span><br>A: Es el ecosistema interactivo de la investigación doctoral. Tócalo en el modo 3D para aislarlo y experimentar sus tres máquinas conceptuales.</p>
+          <p><span style="font-weight:700; color: #e7e4de; font-weight: 400;">Q: ¿Hay algún secreto en la simulación?</span><br>A: El sistema está diseñado para premiar la curiosidad. Juega, sincroniza los datos, lee los archivos pacientemente y mantén los ojos abiertos a las anomalías. La Insignia de Soberanía aguarda a quienes exploran a fondo.</p>
         </div>
       </div>
       
@@ -300,12 +315,12 @@
         <img src="/imge/perfil.jpg" alt="Daniel" style="width: 120px; height: 120px; border-radius: 50%; border: 2px solid #00ffff; object-fit: cover; box-shadow: 0 0 15px rgba(0,255,255,0.5);">
       </div>
       <div style="line-height: 1.6; font-size: 1.1rem; color: #ddd; text-align: left;">
-        <p><strong style="color:#00ffff;">Nombre:</strong> Daniel [Rodriguez Garcia]</p>
-        <p><strong style="color:#00ffff;">Ocupación:</strong> Profesor Diseño Interactivo | Dir. GameLab Tadeo</p>
-        <p><strong style="color:#00ffff;">Background:</strong> Candidato a Doctorado en Diseño, Arte y Ciencia. Ex-coordinador MediaLab Cinemateca. Profesor de Planta Universidad Jorge Tadeo Lozano.</p>
-        <p><strong style="color:#00ffff;">About:</strong> Mi preparación y experiencia se enfocan en el diseño, creación y producción de videojuegos y experiencias interactivas en espectro de lo virtual y otras disciplinas, especialmente en su aspecto artístico y técnico, pero también en su conceptualización, en el ambiente interdisciplinario propio del diseño y producción.</p>
-        <p><strong style="color:#00ffff;">Skills:</strong> Game Mechanics, TouchDesigner, VR/AR, WebXR., Blender, Unity, Unreal, Godot</p>
-        <p><strong style="color:#00ffff;">Redes:</strong> <a href="https://www.linkedin.com/in/dargdesigner/" target="_blank" style="color: #ffaa00; text-decoration: none;">[LinkedIn ↗]</a> | <a href="https://github.com/darg88" target="_blank" style="color: #ffaa00; text-decoration: none;">[GitHub ↗]</a></p>
+        <p><span style="font-weight:700; color:#00ffff;">Nombre:</span> Daniel [Rodriguez Garcia]</p>
+        <p><span style="font-weight:700; color:#00ffff;">Ocupación:</span> Profesor Diseño Interactivo | Dir. GameLab Tadeo</p>
+        <p><span style="font-weight:700; color:#00ffff;">Background:</span> Candidato a Doctorado en Diseño, Arte y Ciencia. Ex-coordinador MediaLab Cinemateca. Profesor de Planta Universidad Jorge Tadeo Lozano.</p>
+        <p><span style="font-weight:700; color:#00ffff;">About:</span> Mi preparación y experiencia se enfocan en el diseño, creación y producción de videojuegos y experiencias interactivas en espectro de lo virtual y otras disciplinas, especialmente en su aspecto artístico y técnico, pero también en su conceptualización, en el ambiente interdisciplinario propio del diseño y producción.</p>
+        <p><span style="font-weight:700; color:#00ffff;">Skills:</span> Game Mechanics, TouchDesigner, VR/AR, WebXR., Blender, Unity, Unreal, Godot</p>
+        <p><span style="font-weight:700; color:#00ffff;">Redes:</span> <a href="https://www.linkedin.com/in/dargdesigner/" target="_blank" style="color: #ffaa00; text-decoration: none;">[LinkedIn ↗]</a> | <a href="https://github.com/darg88" target="_blank" style="color: #ffaa00; text-decoration: none;">[GitHub ↗]</a></p>
       </div>
       <button onclick="window.closeAllUIs(); document.getElementById('contact-ui').classList.remove('hidden');" style="margin-top: 20px; width: 100%; padding: 10px; background: transparent; color: #00ffff; border: 2px solid #00ffff; font-family:'Share Tech Mono'; font-weight: bold; font-size:1.2rem; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='#00ffff'; this.style.color='#000'" onmouseout="this.style.background='transparent'; this.style.color='#00ffff'">INICIAR CONEXIÓN</button>
     </div>
