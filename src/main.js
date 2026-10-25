@@ -9710,7 +9710,7 @@ const MG = window.MG = {
 
     const hint = document.createElement('div');
     hint.textContent = hintText;
-    hint.style.cssText = 'font-size:0.74rem; font-weight:300; letter-spacing:0.05em; line-height:1.7; text-align:center; color:#8a867f; text-shadow:0 0 14px rgba(0,0,0,0.9);';
+    hint.style.cssText = 'font-size:0.74rem; font-weight:300; letter-spacing:0.05em; line-height:1.7; text-align:center; color:#a8a49c; text-shadow:0 0 14px rgba(0,0,0,0.9);';
 
     const btn = document.createElement('button');
     btn.textContent = en ? 'LET GO  ·  ESC' : 'SOLTAR  ·  ESC';
@@ -11818,7 +11818,7 @@ function hgBurn(c) {
 //   'sigh' = un largo suspiro al terminar. Cada gruñido también mueve la cabeza, enciende los ojos y suelta aliento de ceniza.
 function hgGrowl(kind) {
   const calm = reduceMotionMQ.matches;
-  const menace = kind === 'menace';
+  const menace = kind === 'menace'; try { if (MGS.ok()) sndCap(menace ? 'menace' : kind === 'sigh' ? 'sigh' : 'growl'); } catch (e) {}
   const loud = menace ? 1.9 : kind === 'click' ? 1 : kind === 'angry' ? 1.2 : kind === 'sigh' ? 0.5 : 0.7;
   const dur = menace ? 3.6 + Math.random() * 1.4 : kind === 'click' ? 2.2 : kind === 'angry' ? 2.8 : kind === 'sigh' ? 3.2 : 1.8 + Math.random();
   HG.growlP = 0; HG.growlAmp = loud; HG.growlDur = dur;
@@ -12434,7 +12434,7 @@ const _whM = new THREE.Vector3();
 
 // ---------- Sonido: voz de ballena (senoidal con glissando, armónicos y vibrato) + lecho de mar ----------
 function whSing(freq, dur, vol, low) {
-  if (!MGS.ok()) return;
+  if (!MGS.ok()) return; sndCap('whale');
   try {
     const ctx = audioCtx, t = ctx.currentTime, f = freq * (low ? 0.8 : 1);
     const out = ctx.createGain(); out.gain.setValueAtTime(0, t); out.gain.linearRampToValueAtTime(vol, t + 0.22); out.gain.setValueAtTime(vol, t + dur * 0.55); out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
@@ -14061,7 +14061,7 @@ let _colNB = null;
 function colNoiseBuf(ctx) { if (!_colNB || _colNB.sampleRate !== ctx.sampleRate) { _colNB = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 2), ctx.sampleRate); const d = _colNB.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } return _colNB; }
 function colVoice(kind, k) {                                                       // k = intensidad 0..1
   try {
-    if (!MGS.ok()) return;
+    if (!MGS.ok()) return; sndCap(kind);
     k = k === undefined ? 1 : k;
     const ctx = audioCtx, t = ctx.currentTime, B = MGS.bus();
     const out = ctx.createGain(), comp = ctx.createDynamicsCompressor(); comp.threshold.value = -22; comp.ratio.value = 5;
@@ -15465,6 +15465,10 @@ function muiGlossary() {
     p.addEventListener('click', (e) => { if (e.target === p || (e.target.classList && e.target.classList.contains('ach-close'))) p.hidden = true; });
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !p.hidden) p.hidden = true; }); }
   p.firstChild.innerHTML = muiGlossaryHTML(); p.hidden = false;
+  p.setAttribute('role', 'dialog'); p.setAttribute('aria-modal', 'true'); p.setAttribute('aria-label', muiEN() ? 'Muisca glossary' : 'Glosario muisca');
+  if (!p._a11y) { p._a11y = 1; p.addEventListener('keydown', (e) => { if (e.key === 'Tab') { e.preventDefault(); const c = p.querySelector('.ach-close'); if (c) c.focus(); } }); }
+  if (!window._muiPrev) window._muiPrev = document.activeElement; const cb = p.querySelector('.ach-close'); if (cb) cb.focus();
+  if (!p._obs) { p._obs = new MutationObserver(() => { if (p.hidden && window._muiPrev) { try { window._muiPrev.focus(); } catch (e) {} window._muiPrev = null; } }); p._obs.observe(p, { attributes: true, attributeFilter: ['hidden'] }); }
 }
 window.openMuiGlossary = muiGlossary;
 
@@ -15543,7 +15547,7 @@ muiInit();
   }
   function head(g) {
     if (heads[g.k]) return heads[g.k];
-    const li = document.createElement('li'); li.className = 'mt-head'; li.dataset.g = g.k;
+    const li = document.createElement('li'); li.className = 'mt-head'; li.dataset.g = g.k; li.tabIndex = 0; li.setAttribute('role', 'button');
     li.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); state[g.k] = !isOpen(g); try { localStorage.setItem('mt_open', JSON.stringify(state)); } catch (er) {} run(); });
     return (heads[g.k] = li);
   }
@@ -15562,7 +15566,7 @@ muiInit();
       lis.filter(li => li.style.display === 'none' && gid(li) === 'hide').forEach(li => want.push(li));
       const cur = Array.from(ul.children);
       if (cur.length !== want.length || cur.some((c, i) => c !== want[i])) want.forEach(el => ul.appendChild(el));
-      GROUPS.forEach(g => { const h = heads[g.k]; if (!h) return; const o = isOpen(g); h.innerHTML = '<span>' + (en() ? g.en : g.es) + '</span><i>' + (o ? '−' : '+') + '</i>';
+      GROUPS.forEach(g => { const h = heads[g.k]; if (!h) return; const o = isOpen(g); h.setAttribute('aria-expanded', o ? 'true' : 'false'); h.innerHTML = '<span>' + (en() ? g.en : g.es) + '</span><i aria-hidden="true">' + (o ? '−' : '+') + '</i>';
         by[g.k].forEach(li => { li.style.display = o ? (g.k === 'ln' ? 'inline-block' : '') : 'none'; }); });
     } catch (e) {} finally { busy = false; }
   }
@@ -15633,6 +15637,7 @@ function pjAfter(data) {                                                        
   pjCss();
   const ui = document.getElementById('portfolio-ui'), nav = document.getElementById('project-nav-bar'), h = document.getElementById('project-title'); if (!ui || !nav || !h) return;
   const en = window.currentLang === 'en';
+  ui.setAttribute('role', 'dialog'); ui.setAttribute('aria-modal', 'true'); ui.setAttribute('aria-labelledby', 'project-title'); h.setAttribute('tabindex', '-1'); try { h.focus({ preventScroll: true }); } catch (e) {}
   if (h.parentNode === nav) nav.parentNode.insertBefore(h, nav.nextSibling);      // el título sale de la barra: queda solo, centrado
   const ep = document.getElementById('mui-proj'); if (ep && ep.previousSibling !== h) h.parentNode.insertBefore(ep, h.nextSibling);
   let c = document.getElementById('pj-count'); if (!c) { c = document.createElement('span'); c.id = 'pj-count'; const nx = document.getElementById('btn-next-project'); nav.insertBefore(c, nx); }
@@ -15653,3 +15658,72 @@ function pjAfter(data) {                                                        
 }
 window.pjAfter = pjAfter;
 function pjIsPh(s) { try { return typeof s === 'string' && s.indexOf('data:image/svg+xml;utf8,') === 0 && decodeURIComponent(s.slice(24)).indexOf('font-family="monospace"') >= 0; } catch (e) { return false; } }
+
+// ============================================================================
+//  ACCESIBILIDAD Y PROGRESO — subtítulos de sonidos, teclado en fichas/glosario/menú, contraste de la lámina, reiniciar progreso
+// ============================================================================
+const SC = { on: (() => { try { return localStorage.getItem('gamelab_caps') !== '0'; } catch (e) { return true; } })(), last: 0, key: '', t: 0 };
+const SC_TXT = {
+  condor: ['chillido agudo de rapaz', 'sharp raptor screech'], condor_coo: ['arrullo grave', 'low cooing'], arbol: ['crujido de madera y zumbido grave', 'creaking wood and low hum'],
+  escarabajo: ['zumbido mecánico y chasquidos', 'mechanical buzz and clicks'], mariquita: ['zumbido suave y trino', 'soft buzz and trill'], oso: ['rugido grave de pecho', 'deep chest roar'],
+  oso_sigh: ['suspiro profundo', 'deep sigh'], colibri: ['chillido y castañeteo', 'shriek and chatter'], colibri_song: ['trino veloz', 'rapid trill'], medusa: ['pulso resonante', 'resonant pulse'],
+  tortuga: ['respiración lenta', 'slow breathing'], tortuga_roar: ['rugido lento y grave', 'slow, low roar'], menace: ['rugido amenazante', 'menacing roar'], growl: ['gruñido grave', 'low growl'],
+  sigh: ['suspiro', 'sigh'], whale: ['canto de ballena', 'whale song']
+};
+function sndCap(kind) {                                                            // subtítulo breve y discreto para cada sonido grande
+  try {
+    if (!SC.on) return; const now = Date.now(); if (kind === SC.key && now - SC.last < 4000) return; SC.key = kind; SC.last = now;
+    const w = SC_TXT[kind]; if (!w) return; const en = window.currentLang === 'en';
+    let el = document.getElementById('snd-cap');
+    if (!el) { el = document.createElement('div'); el.id = 'snd-cap'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); document.body.appendChild(el); }
+    el.textContent = '♪ [ ' + (en ? w[1] : w[0]) + ' ]'; el.style.opacity = '1'; clearTimeout(SC.t); SC.t = setTimeout(() => { el.style.opacity = '0'; }, 2800);
+  } catch (e) {}
+}
+window.sndCap = sndCap;
+function a11yCss() {
+  if (document.getElementById('a11y-style')) return;
+  const st = document.createElement('style'); st.id = 'a11y-style';
+  st.textContent = `#snd-cap { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(120px + env(safe-area-inset-bottom,0px)); z-index:100040; pointer-events:none; font:italic 300 .8rem Georgia,"Times New Roman",serif; letter-spacing:.06em; color:#e7e4de; background:rgba(5,5,10,.62); padding:4px 14px; border-radius:2px; opacity:0; transition:opacity .5s ease; max-width:90vw; text-align:center; }
+    @media (max-width:700px){ #snd-cap { bottom:calc(244px + env(safe-area-inset-bottom,0px)); } #minigame-ui .mg-plate { opacity:1 !important; background:rgba(5,5,10,.58); padding:3px 10px; border-radius:2px; color:#d9bb72 !important; } #minigame-ui div[style*="#8a867f"] { color:#b4b0a8 !important; } }
+    #portfolio-ui button:focus-visible, #portfolio-ui a:focus-visible, #side-menu a:focus-visible, #side-menu li.mt-head:focus-visible, #mui-panel button:focus-visible, #project-title:focus-visible { outline:1px solid #c9a85c !important; outline-offset:2px; }
+    #project-title:focus { outline:none; }`;
+  (document.head || document.documentElement).appendChild(st);
+}
+function a11yMenu() {                                                              // interruptores de menú: subtítulos y reiniciar progreso
+  const r = document.getElementById('menu-retro'); if (!r) return false; const ul = r.closest('ul'), en = window.currentLang === 'en';
+  const mk = (id, fn) => { let a = document.getElementById(id); if (!a) { const li = document.createElement('li'); li.innerHTML = '<a href="#" id="' + id + '" class="social-item"></a>'; ul.insertBefore(li, r.closest('li')); a = li.firstChild; a.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); fn(a); }); } return a; };
+  const capA = mk('menu-caps', (a) => { SC.on = !SC.on; try { localStorage.setItem('gamelab_caps', SC.on ? '1' : '0'); } catch (e) {} a11yMenu(); });
+  capA.textContent = '◈ ' + (en ? 'Sound captions: ' : 'Subtítulos de sonido: ') + (SC.on ? 'ON' : 'OFF');
+  const rs = mk('menu-reset', (a) => {
+    if (!a._arm) { a._arm = true; a.textContent = '⚠ ' + (window.currentLang === 'en' ? 'Tap again to erase progress' : 'Toca otra vez para borrar el progreso'); setTimeout(() => { a._arm = false; a11yMenu(); }, 4500); return; }
+    resetProgress();
+  });
+  if (!rs._arm) rs.textContent = '↺ ' + (en ? 'Reset progress' : 'Reiniciar progreso');
+  return true;
+}
+function resetProgress() {                                                         // borra lo guardado en este navegador (logros, colosos, tortuga, glosas vistas); conserva los ajustes
+  const KEEP = ['gamelab_prefs', 'gamelab_glow2', 'gamelab_quality', 'gamelab_constellation', 'gamelab_caps', 'mt_open', 'mui_on'];
+  try { Object.keys(localStorage).forEach(k => { if (KEEP.indexOf(k) < 0 && (/^(gamelab_|dac_)/.test(k) || k === 'mui_seen')) localStorage.removeItem(k); }); } catch (e) {}
+  try { Object.keys(sessionStorage).forEach(k => { if (/^(gamelab_|dac_)/.test(k)) sessionStorage.removeItem(k); }); } catch (e) {}
+  try { if (typeof showSystemToast === 'function') showSystemToast(window.currentLang === 'en' ? 'Progress erased' : 'Progreso borrado', '#e7e4de'); } catch (e) {}
+  setTimeout(() => { location.reload(); }, 700);
+}
+window.resetProgress = resetProgress;
+function a11yKeys() {                                                              // fichas: flechas para pasar de proyecto; menú: encabezados con teclado
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const ui = document.getElementById('portfolio-ui'); if (!ui || ui.classList.contains('hidden') || (e.target && /^(INPUT|TEXTAREA|SELECT|VIDEO)$/.test(e.target.tagName))) return;
+    const b = document.getElementById(e.key === 'ArrowLeft' ? 'btn-prev-project' : 'btn-next-project'); if (b && b.offsetParent !== null) { e.preventDefault(); b.click(); }
+  });
+  document.addEventListener('keydown', (e) => {
+    const h = e.target && e.target.classList && e.target.classList.contains('mt-head') ? e.target : null;
+    if (h && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); h.click(); }
+  });
+}
+function a11yInit() {
+  a11yCss(); a11yKeys();
+  const go = () => { if (!a11yMenu()) setTimeout(go, 500); };
+  go(); setTimeout(a11yMenu, 1200);
+  ['lang-toggle-btn', 'menu-toggle'].forEach(id => { const b = document.getElementById(id); if (b) b.addEventListener('click', () => { setTimeout(a11yMenu, 120); }); });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', a11yInit); else setTimeout(a11yInit, 350);
