@@ -8127,6 +8127,9 @@ window.addEventListener('click', (e) => {
     #btn-recenter { bottom: 85px !important; }
     #helpBtn { bottom: 35px !important; }
     #scroll-hint { bottom: 45px !important; z-index: 9998 !important; pointer-events: none; }
+    /* columna alineada: mismo borde derecho, mismo tamaño y separación de 50px */
+    body #btn-recenter, body #helpBtn, body #btn-sword, body #btn-collection { right: 20px !important; width: 40px !important; height: 40px !important; min-width: 0 !important; box-sizing: border-box !important; padding: 0 !important; }
+    body #helpBtn { bottom: 35px !important; } body #btn-recenter { bottom: 85px !important; } body #btn-sword { bottom: 135px !important; } body #btn-collection { bottom: 185px !important; }
 
     #btn-recenter:hover, #helpBtn:hover { background: rgba(255,255,255,0.09) !important; border-color: rgba(255,255,255,0.5) !important; box-shadow: 0 0 24px rgba(255,255,255,0.12) !important; }
 
@@ -8337,6 +8340,10 @@ const EX_PROFILE = {
   skills: ['Game Mechanics', 'Creative Coding', 'TouchDesigner', 'Processing', 'Unity', 'Blender', 'FMOD', 'Physical Computing'],
   cv: '/docs/CV_Daniel.pdf',
   links: [
+    { label: 'ORCID', url: 'https://orcid.org/0000-0002-6219-9831' },
+    { label: 'Google Scholar', url: 'https://scholar.google.com/citations?user=OCnI7XIAAAAJ&hl=en&oi=ao' },
+    { label: 'CvLAC', url: 'https://scienti.minciencias.gov.co/cvlac/visualizador/generarCurriculoCv.do?cod_rh=0001791978' },
+    { label: 'Universidad Jorge Tadeo Lozano', url: 'https://www.utadeo.edu.co/es/comunidad/directorio-de-investigadores/297427/daniel-alejandro-rodriguez-garcia' },
     { label: 'LinkedIn', url: 'https://www.linkedin.com/in/dargdesigner/' },
     { label: 'GitHub', url: 'https://github.com/darg88' },
     { label: 'Instagram', url: 'https://www.instagram.com/danielrodgarc/' },
@@ -9661,7 +9668,7 @@ const MG = window.MG = {
 
   fxUpdate(dt) {
     this.time += dt;
-    GLOW_SCALE.value = renderer.domElement.height * 0.5 * Math.tan(THREE.MathUtils.degToRad(37.5)) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));   // el tamaño en mundo no depende del FOV
+    GLOW_SCALE.value = renderer.domElement.height * 0.5 * Math.tan(THREE.MathUtils.degToRad(37.5)) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * (window.__glowBoost || 1);   // el tamaño en mundo no depende del FOV; en móvil, durante un coloso, se agranda
     if (this.fx) this.fx.update(dt);
     if (this.dust) this.dust.update(this.time, reduceMotionMQ.matches);
     this.rings.forEach(r => {
@@ -13550,7 +13557,8 @@ function trtPlantFill(B, k, T, dt, calm) {
   const t = M.t, sw = calm ? 0 : 1, dr = M.flood > 0 ? 1 : 0, ST = TRT_ST;
   P.pulse = Math.max(0, P.pulse - dt * 1.4);
   al.fill(0);
-  if (!M.seed) { pa[0] = P.x; pa[1] = P.y + 0.12; pa[2] = P.z; al[0] = 0.3 + 0.15 * Math.sin(T * 1.5 + k); sz[0] = 0.15 * sk; co[0] = 0.8; co[1] = 0.9; co[2] = 0.95; }
+  if (!M.seed) { pa[0] = P.x; pa[1] = P.y + 0.12; pa[2] = P.z; al[0] = 0.65 + 0.3 * Math.sin(T * 1.8 + k); sz[0] = 0.3 * sk; co[0] = 0.8; co[1] = 0.9; co[2] = 0.95;   // el hueco donde se siembra: más visible y con un halo que late
+    P.halo.position.set(P.x, P.y + 0.3, P.z); P.halo.material.color.setHex(0xcfe8f5); P.halo.material.opacity += ((0.16 + 0.1 * Math.sin(T * 1.8 + k) + P.pulse * 0.4) - P.halo.material.opacity) * Math.min(1, dt * 4); }
   else {
     const stemH = 0.3 + 2.9 * trtSm(ST.sprout, ST.bud, t), sprouted = t >= ST.sprout;
     const swayX = (u) => Math.sin(T * 0.9 + u * 2.5 + P.ph) * 0.18 * u * sw * (1 + dr) + dr * u * u * 0.9;
@@ -13571,7 +13579,7 @@ function trtPlantFill(B, k, T, dt, calm) {
           al[idx] = (0.45 + 0.5 * bl) * (dr ? 0.5 : 1); sz[idx] = (0.12 + 0.2 * bl + P.pulse * 0.12) * sk;
           if (inner) { co[idx * 3] = 1; co[idx * 3 + 1] = 0.93; co[idx * 3 + 2] = 0.72; }
         }
-        P.halo.position.set(topx, topy, P.z);
+        P.halo.position.set(topx, topy, P.z); P.halo.material.color.setHex(P.hex);
         P.halo.material.opacity += (((bl > 0.9 ? 0.3 : 0.06) + P.pulse * 0.4) - P.halo.material.opacity) * Math.min(1, dt * 3);
       } else P.halo.material.opacity *= 0.9;
     }
@@ -13951,6 +13959,7 @@ function colSky(g, tint) {
 function colStart(id, view) {
   const D = COL_DEF[id]; if (!D || window.isColossusActive) return;
   window.isColossusActive = true; COLG.id = id; COLG.def = D;
+  window.__glowBoost = window.innerWidth <= 700 ? 1.4 : 1;                          // en pantallas pequeñas los puntos se ven pequeños: más grandes
   MG.enter(24);
   camera.fov = D.iso.fov || 42; targetFov = camera.fov; camera.updateProjectionMatrix();
   userGroup.rotation.order = 'YXZ';
@@ -13987,7 +13996,7 @@ window.startColossusGame = function(id, data, view) {
     { cancelable: true, onCancel: () => { MG.pending = false; if (data && typeof openProjectPopup === 'function') openProjectPopup(data); } });
 };
 function colTeardown() {
-  window.isColossusActive = false; colMachineStop(); hgCamUnbind(); COL_INK.length = 0;
+  window.isColossusActive = false; window.__glowBoost = 1; colMachineStop(); hgCamUnbind(); COL_INK.length = 0;
   const tg = window.travelerGroup; if (tg && COLG.tsave) { tg.position.copy(COLG.tsave.pos); tg.quaternion.copy(COLG.tsave.quat); tg.scale.copy(COLG.tsave.scale); if (tg.userData) { tg.userData.baseX = undefined; tg.userData.baseY = undefined; } }   // la levitación recalcula su base desde donde quedó
   COLG.tsave = null; COLG.pose = null; COLG.pad = null; window.hgPose = null;
   if (COLG.def && COLG.def.dispose && COLG.S) { try { COLG.def.dispose(COLG.S); } catch (e) {} }
@@ -14388,7 +14397,7 @@ function colMycelium(g, rx, rz) {
     if (bj < 0) continue; links++; const A = tips[i], B = tips[bj], n = Math.ceil(bd / 0.3), sag = bd * 0.22 + rn() * 0.5;
     for (let k = 0; k <= n; k++) { const u = k / n, x = A.p[0] + (B.p[0] - A.p[0]) * u, y = A.p[1] + (B.p[1] - A.p[1]) * u - Math.sin(u * 3.1416) * sag, z = A.p[2] + (B.p[2] - A.p[2]) * u; add(x, y, z, A.d + (B.d - A.d) * u, 2, 5, 1); } }
   const N = P.length / 3, net = { N, dmax: 0 }; for (let i = 0; i < N; i++) net.dmax = Math.max(net.dmax, Dd[i]);
-  net.pts = sptPoints(N, (i, o) => { o.x = P[i * 3]; o.y = P[i * 3 + 1]; o.z = P[i * 3 + 2]; o.r = Cc[i * 3]; o.g = Cc[i * 3 + 1]; o.b = Cc[i * 3 + 2]; o.s = Zs[i]; o.a = Bs[i]; }); g.add(net.pts);
+  net.pts = sptPoints(N, (i, o) => { o.x = P[i * 3]; o.y = P[i * 3 + 1]; o.z = P[i * 3 + 2]; o.r = Cc[i * 3]; o.g = Cc[i * 3 + 1]; o.b = Cc[i * 3 + 2]; o.s = Zs[i] * (window.innerWidth <= 700 ? 1.8 : 1); o.a = Math.min(1, Bs[i] * (window.innerWidth <= 700 ? 1.5 : 1)); }); g.add(net.pts);
   net.D = Float32Array.from(Dd); net.B = Float32Array.from(Bs); net.K = Uint8Array.from(Kd); net.ph = new Float32Array(N); for (let i = 0; i < N; i++) net.ph[i] = rn() * 6.283;
   // nódulos: perlas de luz en algunas puntas
   const nods = tips.filter((_, i) => i % 3 === 0).slice(0, 110);
@@ -14421,7 +14430,7 @@ function colMycelium(g, rx, rz) {
 
 // ---------- 1 · EL ÁRBOL-SERVIDOR (GameLab Tadeo) — una red de cuidado ----------
 COL_DEF.arbol = {
-  iso: { yaw: 0.6, pitch: 0.1, dist: 90, tg: [0, 5.5, 0] }, trav: [0.1, 9], sky: [0.45, 0.8, 0.65], hud: ['ENERGÍA', 'RAMAS', 'ESPORAS', 'RED'], endAfter: 13, voice: 'arbol', voiceEvery: 20, plate: ['Araucaria araucana', 'Lám. I'],
+  iso: { yaw: 0.6, pitch: 0.1, dist: 90, tg: [0, 5.5, 0] }, fitK: 0.4, trav: [0.1, 9], sky: [0.45, 0.8, 0.65], hud: ['ENERGÍA', 'RAMAS', 'ESPORAS', 'RED'], endAfter: 13, voice: 'arbol', voiceEvery: 20, plate: ['Araucaria araucana', 'Lám. I'],
   txt: {
     es: { title: 'EL PEWEN-SERVIDOR', toast: 'El árbol sagrado mapuche: se apaga si nadie lo cuida.',
       h: 'Toca una rama apagada para enviarle una espora desde las raíces. La energía se recarga despacio. Las ramas se apagan despacio y las vecinas comparten su luz: reparte el cuidado. Arrastra el espacio vacío para girar.',
@@ -14444,7 +14453,7 @@ COL_DEF.arbol = {
     edgesDef.forEach(([a, b, lv]) => { const ls = lv.length ? lv : (b === 1 ? S.leaves.map((_, i) => i) : mainLeaves[b] || []); S.edges.push({ a, b, ls }); });
     const PE = 20, total = S.edges.length * PE;
     S.lines = sptPoints(total, (i, o) => { const e = S.edges[Math.floor(i / PE)], u = (i % PE) / (PE - 1), A = nodes[e.a], B = nodes[e.b];
-      o.x = A[0] + (B[0] - A[0]) * u + (Math.random() - 0.5) * 0.12; o.y = A[1] + (B[1] - A[1]) * u; o.z = A[2] + (B[2] - A[2]) * u + (Math.random() - 0.5) * 0.12; o.s = 0.22; o.a = 0.3; o.r = 0.95; o.g = 0.78; o.b = 0.4; });
+      o.x = A[0] + (B[0] - A[0]) * u + (Math.random() - 0.5) * 0.12; o.y = A[1] + (B[1] - A[1]) * u; o.z = A[2] + (B[2] - A[2]) * u + (Math.random() - 0.5) * 0.12; o.s = window.innerWidth <= 700 ? 0.4 : 0.22; o.a = 0.3; o.r = 0.95; o.g = 0.78; o.b = 0.4; });
     g.add(S.lines); S.PE = PE;
     g.add((() => { const c = []; colTube(c, [[0, -2.2, 0], [0.3, 12, 0.2], [0, 27, 0]], 1600, 1.9, 1.5, (x, y, z, nx, ny, nz, lit) => { const v = 0.25 + 0.55 * lit; return [v, v * 0.9, v * 0.75]; }, { fur: 0.5, s: 0.2 }); return colCloud(c, [0, 0, 0]); })());                                     // el tronco: una columna de racks
     S.racks = sptPoints(46, (i, o) => { const row = Math.floor(i / 2); o.x = (i % 2 ? 0.9 : -0.9); o.y = -1 + row * 1.15; o.z = 1.75; o.s = 0.2; o.a = 0.6; o.r = 1; o.g = 0.8; o.b = 0.4; }); g.add(S.racks);
@@ -14458,6 +14467,7 @@ COL_DEF.arbol = {
     S.pin = sptPoints(S.leaves.length * 5, (i, o) => { const L = S.leaves[Math.floor(i / 5)], a = i * 2.4; o.x = L.pos.x + Math.cos(a) * 2.2; o.z = L.pos.z + Math.sin(a) * 2.2; o.y = L.pos.y - 0.4 - (i % 3) * 0.5; o.s = 0.5; o.a = 1; o.r = 1; o.g = 0.78; o.b = 0.4; });
     S.pin.material.uniforms.uOpacity.value = 0; g.add(S.pin);
     S.pp = sptPoints(36, (i, o) => { o.a = 0; o.s = 0.3; o.r = 0.9; o.g = 1; o.b = 0.85; }); g.add(S.pp);
+    S.bcn = sptPoints(S.leaves.length * 24, (i, o) => { const L = S.leaves[(i / 24) | 0], k = i % 24, y = 1 - 2 * (k + 0.5) / 24, rr = Math.sqrt(1 - y * y), a = k * 2.39996; o.x = L.pos.x + Math.cos(a) * rr * 3.6; o.y = L.pos.y + 0.8 + y * 2.6; o.z = L.pos.z + Math.sin(a) * rr * 3.6; o.a = 0; o.s = 0.4; o.r = 1; o.g = 0.85; o.b = 0.45; }); g.add(S.bcn);   // aura que late en las ramas apagadas: dónde tocar
     return S;
   },
   update(S, dt, t, calm) {
@@ -14483,17 +14493,18 @@ COL_DEF.arbol = {
     A.position.needsUpdate = A.aAlpha.needsUpdate = true;
     // aspecto: aristas según lo encendido de sus hojas, racks según la energía
     const LA = S.lines.geometry.attributes.aAlpha.array;
-    S.edges.forEach((e, ei) => { let m = 0; e.ls.forEach(i => { m = Math.max(m, S.leaves[i].lit); }); for (let j = 0; j < S.PE; j++) LA[ei * S.PE + j] = 0.14 + 0.7 * m; });
+    S.edges.forEach((e, ei) => { let m = 0; e.ls.forEach(i => { m = Math.max(m, S.leaves[i].lit); }); for (let j = 0; j < S.PE; j++) LA[ei * S.PE + j] = 0.3 + 0.7 * m; });
     S.lines.geometry.attributes.aAlpha.needsUpdate = true;
     const RA = S.racks.geometry.attributes.aAlpha.array; for (let i = 0; i < RA.length; i++) RA[i] = (i / RA.length < S.energy / 5 ? 0.9 : 0.15) * (0.7 + 0.3 * Math.sin(t * 3 + i * 1.7));
     S.racks.geometry.attributes.aAlpha.needsUpdate = true;
-    S.leaves.forEach((L, i) => { L.canopy.material.uniforms.uOpacity.value = 0.12 + 0.88 * L.lit; L.canopy.position.y = Math.sin(t * 0.7 + i) * 0.08 * (calm ? 0 : 1); L.halo.material.opacity += ((0.5 * L.lit * L.lit) - L.halo.material.opacity) * Math.min(1, dt * 2); });
+    S.leaves.forEach((L, i) => { L.canopy.material.uniforms.uOpacity.value = 0.3 + 0.7 * L.lit; L.canopy.position.y = Math.sin(t * 0.7 + i) * 0.08 * (calm ? 0 : 1); L.halo.material.opacity += ((0.5 * L.lit * L.lit) - L.halo.material.opacity) * Math.min(1, dt * 2); });
+    { const BA = S.bcn.geometry.attributes.aAlpha.array, rdy = S.energy >= 1 ? 1 : 0.3; S.leaves.forEach((L, i) => { const a = Math.max(0, 1 - L.lit * 1.4) * rdy * (0.55 + 0.35 * Math.sin(t * 2.4 + i * 1.3)); for (let k = 0; k < 24; k++) BA[i * 24 + k] = a; }); S.bcn.geometry.attributes.aAlpha.needsUpdate = true; }
     S.srcHalo.material.opacity = 0.12 + 0.05 * S.energy;
     S.pin.material.uniforms.uOpacity.value = Math.pow(S.leaves.reduce((m, L) => m + L.lit, 0) / S.leaves.length, 2);
     S.net.tick(t, dt, S.leaves.reduce((m, L) => m + L.lit, 0) / S.leaves.length, calm);
   },
   tap(S, cx, cy) {
-    const k = colPick(S.leaves.map(L => colW(COLG.group, L.pos.x, L.pos.y + 0.8, L.pos.z)), cx, cy, Math.max(52, window.innerHeight * 0.09));
+    const k = colPick(S.leaves.map(L => colW(COLG.group, L.pos.x, L.pos.y + 0.8, L.pos.z)), cx, cy, window.innerWidth <= 700 ? 1e4 : Math.max(52, window.innerHeight * 0.09));   // en móvil, el toque va a la rama más cercana: no hay que acertar
     if (k < 0) return;
     if (S.energy < 1) { if (S.msgT <= 0) { colSub(colT('empty'), 3); S.msgT = 3; } return; }
     S.energy -= 1; S.sent++;
@@ -14825,6 +14836,7 @@ COL_DEF.colibri = {
     S.paintSoil = () => { const A = S.gr.geometry.attributes, C = A.aCol.array, AL = A.aAlpha.array, P = A.position.array;
       for (let i = 0; i < GN * GN; i++) { const v = S.soil(P[i * 3], P[i * 3 + 2]); if (v < 0.1) { C[i * 3] = 0.3; C[i * 3 + 1] = 0.26; C[i * 3 + 2] = 0.26; AL[i] = 0.3; } else { const k = Math.min(1, (v - 0.1) / 0.6); C[i * 3] = 0.72 + (0.22 - 0.72) * k; C[i * 3 + 1] = 0.55 + (0.92 - 0.55) * k; C[i * 3 + 2] = 0.3 + (0.52 - 0.3) * k; AL[i] = 0.12 + 0.4 * k; } }
       A.aCol.needsUpdate = A.aAlpha.needsUpdate = true; }; S.paintSoil();
+    S.holRing = sptPoints(hol.length * 36, (i, o) => { const h = hol[(i / 36) | 0], q = (i % 36) / 36 * 6.2832; o.x = h[0] + Math.cos(q) * h[2] * 0.62; o.z = h[1] + Math.sin(q) * h[2] * 0.62; o.y = 0.15; o.s = 0.42; o.a = 0.5; o.r = 0.55; o.g = 0.95; o.b = 0.6; }); g.add(S.holRing);   // anillo verde en cada hueco fértil: dónde soplar las semillas
     // los límites del suelo, para que se lean desde lejos: anillos verdes en las hondonadas húmedas y rojizos en los parches muertos
     hol.forEach(h => { g.add(sptPoints(54, (i, o) => { const a = i / 54 * 6.283 + h[0]; o.x = h[0] + Math.cos(a) * h[2] * 1.15; o.z = h[1] + Math.sin(a) * h[2] * 1.15; o.y = 0.1; o.s = 0.24; o.a = 0.55; o.r = 0.4; o.g = 1; o.b = 0.65; })); });
     dead.forEach(h => { g.add(sptPoints(40, (i, o) => { const a = i / 40 * 6.283 + h[1]; o.x = h[0] + Math.cos(a) * h[2]; o.z = h[1] + Math.sin(a) * h[2]; o.y = 0.1; o.s = 0.2; o.a = 0.5; o.r = 0.9; o.g = 0.38; o.b = 0.32; })); });
@@ -15031,7 +15043,7 @@ COL_DEF.colibri = {
 // ---------- 6 · LA MEDUSA-LEVIATÁN (TouchDesigner & VR) — explorar un espacio paramétrico ----------
 const COL_DIAL = [{ x: -6, hex: 0x8fe0ff }, { x: 0, hex: 0xffd28a }, { x: 6, hex: 0xe6a0d0 }];
 COL_DEF.medusa = {
-  iso: { yaw: 0.25, pitch: 0.2, dist: 38, tg: [0, 7, 0] }, trav: [1.55, 12], sky: [0.8, 0.6, 0.85], hud: ['FRECUENCIA', 'DENSIDAD', 'FASE', 'RESONANCIAS'], endAfter: 13, voice: 'medusa', voiceEvery: 24, fitK: 0.72, plate: ['Medusa parametrica', 'Lám. VI'],
+  iso: { yaw: 0.25, pitch: 0.2, dist: 38, tg: [0, 7, 0] }, trav: [1.55, 12], sky: [0.8, 0.6, 0.85], hud: ['FRECUENCIA', 'DENSIDAD', 'FASE', 'RESONANCIAS'], endAfter: 13, voice: 'medusa', voiceEvery: 24, fitK: 0.62, plate: ['Medusa parametrica', 'Lám. VI'],
   txt: {
     es: { title: 'LA MEDUSA-LEVIATÁN', toast: 'Su cuerpo es una función de tres perillas.',
       h: 'Toca una perilla (cian, ámbar, rosa) para girarla. Su cuerpo cambia con cada valor; cuando una combinación resuena, canta. Hay tres. Arrastra el espacio vacío para girar.',
@@ -15044,9 +15056,9 @@ COL_DEF.medusa = {
     const S = { v: [0, 0, 0], sm: [0, 0, 0], targets: [], found: [], lock: 0, lockHex: 0xffffff, warm: 0, won: false, msgT: 0, bloom: 0, lastW: 0 };
     const used = [];
     while (S.targets.length < 3) { const c = [Math.floor(Math.random() * 5), Math.floor(Math.random() * 5), Math.floor(Math.random() * 5)]; if (c.every(x => x === 0)) continue; if (used.every(u => Math.abs(u[0] - c[0]) + Math.abs(u[1] - c[1]) + Math.abs(u[2] - c[2]) >= 3)) { used.push(c); S.targets.push(c); } }
-    S.NB = 900; S.bell = sptPoints(S.NB, (i, o) => { o.s = 0.17; o.a = 0.7; o.r = 0.85; o.g = 0.7; o.b = 0.95; }); g.add(S.bell);
+    S.NB = 900; S.bell = sptPoints(S.NB, (i, o) => { o.s = window.innerWidth <= 700 ? 0.28 : 0.17; o.a = 0.7; o.r = 0.85; o.g = 0.7; o.b = 0.95; }); g.add(S.bell);
     S.NT = 16; S.TL = 22; S.tent = sptPoints(S.NT * S.TL, (i, o) => { o.s = 0.13; o.a = 0.5; o.r = 0.85; o.g = 0.6; o.b = 0.9; }); g.add(S.tent);
-    S.ring = sptPoints(120, (i, o) => { o.a = 0; o.s = 0.22; o.r = 1; o.g = 1; o.b = 1; }); g.add(S.ring);
+    S.ring = sptPoints(120, (i, o) => { o.a = 0; o.s = window.innerWidth <= 700 ? 0.38 : 0.22; o.r = 1; o.g = 1; o.b = 1; }); g.add(S.ring);
     S.halo = mkHalo(0xcfa3c4, 26, 0.1); S.halo.position.set(0, 9, 0); g.add(S.halo);
     S.dials = COL_DIAL.map((D, k) => {
       const dg = new THREE.Group(); dg.position.set(D.x, 1.6, 14); g.add(dg); const [r, gg, b] = arRGB(D.hex);
@@ -15060,7 +15072,7 @@ COL_DEF.medusa = {
   },
   dist(S) { let best = 99; S.targets.forEach((c, i) => { if (S.found[i]) return; best = Math.min(best, Math.abs(c[0] - S.v[0]) + Math.abs(c[1] - S.v[1]) + Math.abs(c[2] - S.v[2])); }); return best; },
   update(S, dt, t, calm) {
-    const sw = calm ? 0 : 1; S.msgT -= dt; S.lock = Math.max(0, S.lock - dt * 0.25);
+    const sw = calm ? 0 : 1; S.msgT -= dt; S.lock = Math.max(0, S.lock - dt * 0.15);
     for (let k = 0; k < 3; k++) S.sm[k] += (S.v[k] - S.sm[k]) * Math.min(1, dt * 3.5);
     const d = this.dist(S), warm = d >= 99 ? 1 : Math.max(0, 1 - d / 8); S.warm += (warm - S.warm) * Math.min(1, dt * 2);
     const f = S.sm[0], dn = S.sm[1], ph = S.sm[2], lobes = 2 + f, rings = 2 + dn * 1.5, tw = ph * 0.38, A = 0.16 + 0.05 * f / 4 + 0.14 * S.lock;
@@ -15070,7 +15082,7 @@ COL_DEF.medusa = {
       const r = 6.2 * (1 + A * Math.sin(lobes * p2) * Math.sin(th * 1.6)), rr = r * Math.sin(th);
       bp[i * 3] = rr * Math.cos(phi); bp[i * 3 + 1] = 9 + r * 0.78 * Math.cos(th) * pulse; bp[i * 3 + 2] = rr * Math.sin(phi);
       const band = Math.pow(Math.abs(Math.sin(th * rings * 1.9)), 3);
-      ba[i] = 0.25 + 0.65 * band + 0.2 * S.lock; const w = S.warm;
+      ba[i] = 0.4 + 0.6 * band + 0.2 * S.lock; const w = S.warm;
       bc[i * 3] = 0.75 + 0.2 * w + (lc[0] - 0.8) * S.lock * 0.5; bc[i * 3 + 1] = 0.62 + 0.25 * w * band + (lc[1] - 0.8) * S.lock * 0.5; bc[i * 3 + 2] = 0.95 - 0.25 * w + (lc[2] - 0.8) * S.lock * 0.5;
     }
     BA.position.needsUpdate = BA.aAlpha.needsUpdate = BA.aCol.needsUpdate = true;
@@ -15079,7 +15091,7 @@ COL_DEF.medusa = {
       for (let j = 0; j < S.TL; j++) { const idx = k * S.TL + j, u = j / (S.TL - 1);
         tp[idx * 3] = bx * (1 - u * 0.25) + Math.sin(t * 1.1 * sw + k + u * (2 + f)) * amp * u * 2.4; tp[idx * 3 + 1] = 9 + 0.5 - u * 11; tp[idx * 3 + 2] = bz * (1 - u * 0.25) + Math.cos(t * 0.9 * sw + k * 1.3 + u * (2 + ph)) * amp * u * 2.4; ta[idx] = 0.55 * (1 - u * 0.8); } }
     TA.position.needsUpdate = TA.aAlpha.needsUpdate = true;
-    S.halo.material.opacity = 0.06 + 0.2 * S.warm + 0.2 * S.lock;
+    S.halo.material.opacity = 0.1 + 0.32 * S.warm + 0.4 * S.lock;
     const RA = S.ring.geometry.attributes; for (let i = 0; i < 120; i++) { const a = i / 120 * 6.283 + t * 0.2 * sw; RA.position.array[i * 3] = Math.cos(a) * 7.6; RA.position.array[i * 3 + 1] = 9 + Math.sin(a * 4 + t) * 0.4; RA.position.array[i * 3 + 2] = Math.sin(a) * 7.6; RA.aAlpha.array[i] = S.lock * 0.9; RA.aCol.array[i * 3] = lc[0]; RA.aCol.array[i * 3 + 1] = lc[1]; RA.aCol.array[i * 3 + 2] = lc[2]; }
     RA.position.needsUpdate = RA.aAlpha.needsUpdate = RA.aCol.needsUpdate = true;
     S.dials.forEach((D, k) => { D.needle.rotation.z = -S.sm[k] * 1.2566; D.halo.material.opacity = 0.1 + 0.25 * S.warm; });
@@ -15802,7 +15814,7 @@ function uxCss() {
   st.textContent = `${M} { background:rgba(9,9,13,.84) !important; }
     #you-are-here { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(10px + env(safe-area-inset-bottom,0px)); z-index:9980; pointer-events:none; font:300 .58rem -apple-system,"Helvetica Neue",Arial,sans-serif; letter-spacing:.34em; text-transform:uppercase; color:#a8a49c; text-shadow:0 0 10px rgba(0,0,0,.9); white-space:nowrap; max-width:92vw; overflow:hidden; text-overflow:ellipsis; opacity:.85; }
     body.mg-active #you-are-here, body.ex-mode-active #you-are-here { display:none !important; }
-    #minigame-ui .mg-help { position:absolute; left:14px; top:calc(16px + env(safe-area-inset-top,0px)); width:30px; height:30px; pointer-events:auto; background:rgba(10,10,12,.55); border:1px solid rgba(201,168,92,.5); color:#d9bb72; font:300 .9rem Georgia,serif; cursor:pointer; padding:0; }
+    #minigame-ui .mg-help { position:absolute; left:14px; top:calc(16px + env(safe-area-inset-top,0px)); width:30px; height:30px; pointer-events:auto; background:rgba(10,10,12,.55); border:1px solid rgba(201,168,92,.5); color:#d9bb72; font:300 .9rem Georgia,serif; cursor:pointer; padding:0; box-sizing:border-box; min-width:0; width:30px !important; height:30px !important; border-radius:50% !important; display:flex; align-items:center; justify-content:center; line-height:1; text-align:center; }
     @media (min-width:701px){ #minigame-ui .mg-help { top:78px; } }
     #mg-help-card { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(86vw,420px); pointer-events:auto; background:rgba(9,9,13,.92); border:1px solid rgba(201,168,92,.4); padding:20px 22px; font:300 .86rem/1.7 -apple-system,"Helvetica Neue",Arial,sans-serif; color:#d3cfc6; z-index:5; }
     #mg-help-card b { display:block; font-weight:300; font-size:.62rem; letter-spacing:.3em; color:#c9a85c; text-transform:uppercase; margin-bottom:8px; }
