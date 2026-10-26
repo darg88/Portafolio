@@ -1202,11 +1202,11 @@ function initSystem(skip = false) {
     startScreen.style.opacity = '0';
     setTimeout(() => { 
       startScreen.style.display = 'none'; 
-      // 🔥 2. LANZAR TUTORIAL AL TERMINAR LA TRANSICIÓN
+      // 🔥 2. LANZAR TUTORIAL AL TERMINAR LA TRANSICIÓN (el desvanecimiento dura 2.5 s; el manual entra después, suave)
       if (!skip) {
-        openUIWindow('tutorial-ui');
+        setTimeout(() => { if (isGameStarted) openUIWindow('tutorial-ui'); }, 700);
       }
-    }, 1500); 
+    }, 2600); 
   }
   
   isGameStarted = true; 
@@ -13959,7 +13959,7 @@ function colSky(g, tint) {
 function colStart(id, view) {
   const D = COL_DEF[id]; if (!D || window.isColossusActive) return;
   window.isColossusActive = true; COLG.id = id; COLG.def = D;
-  window.__glowBoost = window.innerWidth <= 700 ? 1.4 : 1;                          // en pantallas pequeñas los puntos se ven pequeños: más grandes
+  window.__glowBoost = window.innerWidth <= 700 ? (D.boost !== undefined ? D.boost : 1.4) : 1;                          // en pantallas pequeñas los puntos se ven pequeños: más grandes
   MG.enter(24);
   camera.fov = D.iso.fov || 42; targetFov = camera.fov; camera.updateProjectionMatrix();
   userGroup.rotation.order = 'YXZ';
@@ -14808,6 +14808,7 @@ function colibriGround(cx, cy) {                                                
   if (_mqD.y > -0.015) return null; const t = -_mqO.y / _mqD.y; return [_mqO.x + _mqD.x * t, _mqO.z + _mqD.z * t];
 }
 COL_DEF.colibri = {
+  boost: 1,                                                                       // sin brillo general: solo el apuntador y los huecos se refuerzan
   iso: { yaw: 0.35, pitch: 0.36, dist: 84, tg: [0, 16, 0], fov: 42 }, trav: [0.15, 15], sky: [0.5, 0.62, 0.55], hud: ['SEMILLAS', 'FRAILEJONES', 'AGUA', 'ESPECIES'], endAfter: 13, voice: 'colibri', voiceEvery: 0, plate: ['Oxypogon guerinii  ×  Espeletia', 'Lám. V'], voiceWin: 'colibri_song',
   txt: {
     es: { title: 'EL BARBUDITO DEL PÁRAMO', toast: 'Un frailejón milenario y un colibrí colosal: el páramo es una fábrica de agua, pero hay que sembrarlo.',
@@ -14836,7 +14837,7 @@ COL_DEF.colibri = {
     S.paintSoil = () => { const A = S.gr.geometry.attributes, C = A.aCol.array, AL = A.aAlpha.array, P = A.position.array;
       for (let i = 0; i < GN * GN; i++) { const v = S.soil(P[i * 3], P[i * 3 + 2]); if (v < 0.1) { C[i * 3] = 0.3; C[i * 3 + 1] = 0.26; C[i * 3 + 2] = 0.26; AL[i] = 0.3; } else { const k = Math.min(1, (v - 0.1) / 0.6); C[i * 3] = 0.72 + (0.22 - 0.72) * k; C[i * 3 + 1] = 0.55 + (0.92 - 0.55) * k; C[i * 3 + 2] = 0.3 + (0.52 - 0.3) * k; AL[i] = 0.12 + 0.4 * k; } }
       A.aCol.needsUpdate = A.aAlpha.needsUpdate = true; }; S.paintSoil();
-    S.holRing = sptPoints(hol.length * 36, (i, o) => { const h = hol[(i / 36) | 0], q = (i % 36) / 36 * 6.2832; o.x = h[0] + Math.cos(q) * h[2] * 0.62; o.z = h[1] + Math.sin(q) * h[2] * 0.62; o.y = 0.15; o.s = 0.42; o.a = 0.5; o.r = 0.55; o.g = 0.95; o.b = 0.6; }); g.add(S.holRing);   // anillo verde en cada hueco fértil: dónde soplar las semillas
+    S.holRing = sptPoints(hol.length * 36, (i, o) => { const h = hol[(i / 36) | 0], q = (i % 36) / 36 * 6.2832; o.x = h[0] + Math.cos(q) * h[2] * 0.62; o.z = h[1] + Math.sin(q) * h[2] * 0.62; o.y = 0.15; o.s = window.innerWidth <= 700 ? 0.8 : 0.5; o.a = 0.8; o.r = 0.55; o.g = 0.95; o.b = 0.6; }); g.add(S.holRing);   // anillo verde en cada hueco fértil: dónde soplar las semillas
     // los límites del suelo, para que se lean desde lejos: anillos verdes en las hondonadas húmedas y rojizos en los parches muertos
     hol.forEach(h => { g.add(sptPoints(54, (i, o) => { const a = i / 54 * 6.283 + h[0]; o.x = h[0] + Math.cos(a) * h[2] * 1.15; o.z = h[1] + Math.sin(a) * h[2] * 1.15; o.y = 0.1; o.s = 0.24; o.a = 0.55; o.r = 0.4; o.g = 1; o.b = 0.65; })); });
     dead.forEach(h => { g.add(sptPoints(40, (i, o) => { const a = i / 40 * 6.283 + h[1]; o.x = h[0] + Math.cos(a) * h[2]; o.z = h[1] + Math.sin(a) * h[2]; o.y = 0.1; o.s = 0.2; o.a = 0.5; o.r = 0.9; o.g = 0.38; o.b = 0.32; })); });
@@ -14939,8 +14940,8 @@ COL_DEF.colibri = {
     S.TOP = TOP; S.FL = [[-9, TOP + 6.5, 3], [8, TOP + 8, -4], [2.5, TOP + 6, 9.5], [-5, TOP + 6.8, -8.5], [10.5, TOP + 5.5, 5.5], [-11, TOP + 4.5, -3], [4.5, TOP + 9.5, -9.5]];
     S.sd = sptPoints(MAXS * 4, (i, o) => { const k = i % 4; o.x = 0; o.y = -60; o.z = 0; o.s = [0.36, 0.2, 0.16, 0.12][k]; o.a = 0; o.r = 1; o.g = 0.95; o.b = 0.8; }); g.add(S.sd);
     S.ft = sptPoints(40, (i, o) => { o.x = 0; o.y = -60; o.z = 0; o.s = 0.22; o.a = 0; o.r = 0.5; o.g = 0.5; o.b = 0.52; }); g.add(S.ft);
-    S.wind = sptPoints(44, (i, o) => { o.x = 0; o.y = -60; o.z = 0; o.s = 0.3; o.a = 0; o.r = 0.8; o.g = 0.95; o.b = 1; }); g.add(S.wind);
-    S.mark = sptPoints(28, (i, o) => { const a = i / 28 * 6.283; o.x = Math.cos(a) * 1.8; o.z = Math.sin(a) * 1.8; o.y = 0.3; o.s = 0.24; o.a = 0; o.r = 1; o.g = 0.9; o.b = 0.6; }); g.add(S.mark); S.markA = [0, 0];
+    S.wind = sptPoints(44, (i, o) => { o.x = 0; o.y = -60; o.z = 0; o.s = window.innerWidth <= 700 ? 0.55 : 0.3; o.a = 0; o.r = 0.8; o.g = 0.95; o.b = 1; }); g.add(S.wind);
+    S.mark = sptPoints(28, (i, o) => { const a = i / 28 * 6.283; o.x = Math.cos(a) * 1.8; o.z = Math.sin(a) * 1.8; o.y = 0.3; o.s = window.innerWidth <= 700 ? 0.6 : 0.3; o.a = 0; o.r = 1; o.g = 0.9; o.b = 0.6; }); g.add(S.mark); S.markA = [0, 0];
     S.drip = sptPoints(60, (i, o) => { o.x = 0; o.y = -60; o.z = 0; o.s = 0.22; o.a = 0; o.r = 0.7; o.g = 0.9; o.b = 1; }); g.add(S.drip); S.dripP = Array.from({ length: 60 }, () => ({ a: rnd() * 6.283, u: rnd(), v: 0.07 + rnd() * 0.09 }));
     S.ice = sptPoints(170, (i, o) => { o.x = 0; o.y = -60; o.z = 0; o.s = 0.4; o.a = 0.9; o.r = 0.75; o.g = 0.9; o.b = 1; }); S.ice.material.uniforms.uOpacity.value = 0; g.add(S.ice);
     S.bee = sptPoints(10, (i, o) => { o.x = 0; o.y = 0; o.z = 0; o.s = 0.5; o.a = 0.9; o.r = 1; o.g = 0.82; o.b = 0.2; }); S.bee.material.uniforms.uOpacity.value = 0; g.add(S.bee);
@@ -15016,9 +15017,10 @@ COL_DEF.colibri = {
     [S.body, S.head, S.crest, S.beard].concat(S.wings).forEach(p => { colJit(p, 0.03 + 0.1 * rp); });
     colOp(S.bloom, 0.25 + 0.75 * w, 0.08 + 0.92 * w); S.eyes.forEach(e => { e.material.opacity = 0.05 + 0.2 * w; }); S.sig.material.opacity = 0.04 + 0.12 * w;
     // la estela del viento y la marca donde apuntas
-    { const WP = S.wind.geometry.attributes.position.array, WA = S.wind.geometry.attributes.aAlpha.array, ax = S.aim[0], az = S.aim[1]; for (let i = 0; i < 44; i++) { const u = (t * 0.5 + i / 44) % 1, wb = Math.sin(u * 8 + i) * 0.9 * u; WP[i * 3] = ax * u - az * 0.02 * wb; WP[i * 3 + 1] = (TOP + 3) * Math.pow(1 - u, 1.6) + 0.6 + Math.sin(u * 3.14) * 2; WP[i * 3 + 2] = az * u + ax * 0.02 * wb; WA[i] = S.blow * Math.sin(u * 3.14) * 0.7; }
+    { const WP = S.wind.geometry.attributes.position.array, WA = S.wind.geometry.attributes.aAlpha.array, ax = S.aim[0], az = S.aim[1]; for (let i = 0; i < 44; i++) { const u = (t * 0.5 + i / 44) % 1, wb = Math.sin(u * 8 + i) * 0.9 * u; WP[i * 3] = ax * u - az * 0.02 * wb; WP[i * 3 + 1] = (TOP + 3) * Math.pow(1 - u, 1.6) + 0.6 + Math.sin(u * 3.14) * 2; WP[i * 3 + 2] = az * u + ax * 0.02 * wb; WA[i] = S.blow * Math.sin(u * 3.14) * 0.95; }
+      S.holRing.material.uniforms.uOpacity.value = 0.55 + 0.45 * Math.sin(t * 2.2);
       S.wind.geometry.attributes.position.needsUpdate = S.wind.geometry.attributes.aAlpha.needsUpdate = true;
-      const MP = S.mark.geometry.attributes.position.array, MA = S.mark.geometry.attributes.aAlpha.array; for (let i = 0; i < 28; i++) { const a = i / 28 * PI2 + t * 0.6; MP[i * 3] = ax + Math.cos(a) * (1.8 + 0.3 * Math.sin(t * 3)); MP[i * 3 + 2] = az + Math.sin(a) * (1.8 + 0.3 * Math.sin(t * 3)); MA[i] = 0.75 * S.blow; } S.mark.geometry.attributes.position.needsUpdate = S.mark.geometry.attributes.aAlpha.needsUpdate = true; }
+      const MP = S.mark.geometry.attributes.position.array, MA = S.mark.geometry.attributes.aAlpha.array; for (let i = 0; i < 28; i++) { const a = i / 28 * PI2 + t * 0.6; MP[i * 3] = ax + Math.cos(a) * (2.6 + 0.4 * Math.sin(t * 3)); MP[i * 3 + 2] = az + Math.sin(a) * (2.6 + 0.4 * Math.sin(t * 3)); MA[i] = 1 * S.blow; } S.mark.geometry.attributes.position.needsUpdate = S.mark.geometry.attributes.aAlpha.needsUpdate = true; }
     // gotas que bajan por el tronco del gigante hasta el suelo (el agua capturada de la niebla)
     { const DP = S.drip.geometry.attributes.position.array, DA = S.drip.geometry.attributes.aAlpha.array; for (let i = 0; i < 60; i++) { const d = S.dripP[i]; d.u = (d.u + dt * d.v * sw) % 1; const y = TOP * (1 - d.u), r = 3.6 - 0.7 * (y / TOP) + 0.35; DP[i * 3] = Math.cos(d.a) * r; DP[i * 3 + 1] = y; DP[i * 3 + 2] = Math.sin(d.a) * r; DA[i] = (0.1 + 0.8 * w) * Math.sin(d.u * 3.14); } S.drip.geometry.attributes.position.needsUpdate = S.drip.geometry.attributes.aAlpha.needsUpdate = true; }
     // el páramo responde al agua: la laguna se llena, la niebla se captura y llega la llovizna
@@ -15057,7 +15059,7 @@ COL_DEF.medusa = {
     const used = [];
     while (S.targets.length < 3) { const c = [Math.floor(Math.random() * 5), Math.floor(Math.random() * 5), Math.floor(Math.random() * 5)]; if (c.every(x => x === 0)) continue; if (used.every(u => Math.abs(u[0] - c[0]) + Math.abs(u[1] - c[1]) + Math.abs(u[2] - c[2]) >= 3)) { used.push(c); S.targets.push(c); } }
     S.NB = 900; S.bell = sptPoints(S.NB, (i, o) => { o.s = window.innerWidth <= 700 ? 0.28 : 0.17; o.a = 0.7; o.r = 0.85; o.g = 0.7; o.b = 0.95; }); g.add(S.bell);
-    S.NT = 16; S.TL = 22; S.tent = sptPoints(S.NT * S.TL, (i, o) => { o.s = 0.13; o.a = 0.5; o.r = 0.85; o.g = 0.6; o.b = 0.9; }); g.add(S.tent);
+    S.NT = 16; S.TL = 40; S.tent = sptPoints(S.NT * S.TL, (i, o) => { o.s = window.innerWidth <= 700 ? 0.3 : 0.17; o.a = 0.5; o.r = 0.85; o.g = 0.6; o.b = 0.9; }); g.add(S.tent);
     S.ring = sptPoints(120, (i, o) => { o.a = 0; o.s = window.innerWidth <= 700 ? 0.38 : 0.22; o.r = 1; o.g = 1; o.b = 1; }); g.add(S.ring);
     S.halo = mkHalo(0xcfa3c4, 26, 0.1); S.halo.position.set(0, 9, 0); g.add(S.halo);
     S.dials = COL_DIAL.map((D, k) => {
@@ -15089,7 +15091,7 @@ COL_DEF.medusa = {
     const TA = S.tent.geometry.attributes, tp = TA.position.array, ta = TA.aAlpha.array, amp = 0.5 + 0.2 * dn;
     for (let k = 0; k < S.NT; k++) { const a = k / S.NT * 6.283 + tw * 0.3, bx = Math.cos(a) * 6.0, bz = Math.sin(a) * 6.0;
       for (let j = 0; j < S.TL; j++) { const idx = k * S.TL + j, u = j / (S.TL - 1);
-        tp[idx * 3] = bx * (1 - u * 0.25) + Math.sin(t * 1.1 * sw + k + u * (2 + f)) * amp * u * 2.4; tp[idx * 3 + 1] = 9 + 0.5 - u * 11; tp[idx * 3 + 2] = bz * (1 - u * 0.25) + Math.cos(t * 0.9 * sw + k * 1.3 + u * (2 + ph)) * amp * u * 2.4; ta[idx] = 0.55 * (1 - u * 0.8); } }
+        tp[idx * 3] = bx * (1 - u * 0.25) + Math.sin(t * 1.1 * sw + k + u * (2 + f)) * amp * u * 2.4; tp[idx * 3 + 1] = 9 + 0.5 - u * 11; tp[idx * 3 + 2] = bz * (1 - u * 0.25) + Math.cos(t * 0.9 * sw + k * 1.3 + u * (2 + ph)) * amp * u * 2.4; ta[idx] = (0.85 + 0.15 * S.lock) * (1 - u * 0.55); } }
     TA.position.needsUpdate = TA.aAlpha.needsUpdate = true;
     S.halo.material.opacity = 0.1 + 0.32 * S.warm + 0.4 * S.lock;
     const RA = S.ring.geometry.attributes; for (let i = 0; i < 120; i++) { const a = i / 120 * 6.283 + t * 0.2 * sw; RA.position.array[i * 3] = Math.cos(a) * 7.6; RA.position.array[i * 3 + 1] = 9 + Math.sin(a * 4 + t) * 0.4; RA.position.array[i * 3 + 2] = Math.sin(a) * 7.6; RA.aAlpha.array[i] = S.lock * 0.9; RA.aCol.array[i * 3] = lc[0]; RA.aCol.array[i * 3 + 1] = lc[1]; RA.aCol.array[i * 3 + 2] = lc[2]; }
@@ -15419,17 +15421,18 @@ window.muiText = muiText;
 const MUI_CSS = 'font:italic 300 0.9rem Georgia,"Times New Roman",serif; letter-spacing:0.08em; color:#bfe6ff; text-shadow:0 0 12px rgba(0,0,0,0.9); pointer-events:none;';
 function muiMount(parent, keys, css, every) {
   const el = document.createElement('div'); el.className = 'mui-gloss' + (css && css.indexOf('position:absolute') >= 0 ? ' mui-corner' : ''); el.style.cssText = MUI_CSS + (css || '') + 'transition:opacity 1.4s ease;';
-  let i = 0; const show = () => { if (!MUI.on) { el.style.opacity = '0'; return; } el.textContent = muiText(keys[i % keys.length]); el.style.opacity = '0.85'; };
+  const RND = keys === 'random'; let last = ''; const pick = () => { if (!RND) return keys[i % keys.length]; const ks = Object.keys(MUI_W); let k; do { k = ks[Math.floor(Math.random() * ks.length)]; } while (k === last && ks.length > 1); last = k; return k; };
+  let i = 0; const show = () => { if (!MUI.on) { el.style.opacity = '0'; return; } el.textContent = muiText(pick()); el.style.opacity = '0.85'; };
   show(); parent.appendChild(el);
-  const iv = keys.length > 1 ? setInterval(() => { if (!el.isConnected) { clearInterval(iv); return; } el.style.opacity = '0'; setTimeout(() => { i++; show(); }, 1400); }, (every || 8) * 1000) : 0;
+  const iv = (RND || keys.length > 1) ? setInterval(() => { if (!el.isConnected) { clearInterval(iv); return; } el.style.opacity = '0'; setTimeout(() => { i++; show(); }, 1400); }, (every || 8) * 1000) : 0;
   el._redo = show; return el;
 }
 function muiRefresh() { document.querySelectorAll('.mui-gloss').forEach(e => e._redo && e._redo()); muiMenu(); }
 
 // ----- Inicio y carga -----
 function muiStart() {
-  const sc = document.querySelector('#start-screen .ethereal-float'); if (sc && !sc.querySelector('.mui-gloss')) muiMount(sc, ['kyba', 'zha', 'chie'], 'margin-top:64px; font-size:1.05rem; animation:driftText2 12s ease-in-out infinite alternate;', 7);
-  const ld = document.getElementById('loading-screen'); if (ld && !ld.querySelector('.mui-gloss')) muiMount(ld, ['chie'], 'margin-top:18px;');
+  const sc = document.querySelector('#start-screen .ethereal-float'); if (sc && !sc.querySelector('.mui-gloss')) muiMount(sc, 'random', 'margin-top:64px; font-size:1.05rem; animation:driftText2 12s ease-in-out infinite alternate;', 7);
+  const ld = document.getElementById('loading-screen'); if (ld && !ld.querySelector('.mui-gloss')) muiMount(ld, 'random', 'margin-top:18px;', 5);
 }
 
 // ----- Proyectos: una palabra por proyecto, bajo el título -----
@@ -15810,6 +15813,7 @@ fsApply();
 function uxCss() {
   if (document.getElementById('ux-style')) return;
   const st = document.createElement('style'); st.id = 'ux-style';
+  document.head.appendChild(Object.assign(document.createElement('style'), { id: 'fade-style', textContent: '@keyframes uxFadeIn{from{opacity:0}to{opacity:1}} .modal-ui:not(.hidden){animation:uxFadeIn .7s ease both} #modal-overlay:not(.hidden){animation:uxFadeIn .5s ease both} @media (prefers-reduced-motion:reduce){.modal-ui:not(.hidden),#modal-overlay:not(.hidden){animation:none}}' }));
   const M = ['about-ui', 'contact-ui', 'tutorial-ui', 'leaderboard-ui', 'blog-ui', 'portfolio-ui'].map(i => 'body:not(.retro-mode) #' + i).join(',');
   st.textContent = `${M} { background:rgba(9,9,13,.84) !important; }
     #you-are-here { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(10px + env(safe-area-inset-bottom,0px)); z-index:9980; pointer-events:none; font:300 .58rem -apple-system,"Helvetica Neue",Arial,sans-serif; letter-spacing:.34em; text-transform:uppercase; color:#a8a49c; text-shadow:0 0 10px rgba(0,0,0,.9); white-space:nowrap; max-width:92vw; overflow:hidden; text-overflow:ellipsis; opacity:.85; }
