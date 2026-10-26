@@ -9435,10 +9435,12 @@ window.glowCycle = () => glowSetMode(GLOW_MODE.value + 1);
 (function () {                                                                    // durante un juego/coloso: se oculta lo que estorba (banner, AR, botones flotantes, puntaje) y en móvil se reordena lo de abajo
   try {
     const st = document.createElement('style'); st.id = 'mg-active-style';
-    st.textContent = 'body.mg-active #wip-banner, body.mg-active #ar-desktop-msg, body.mg-active #btn-sword, body.mg-active #btn-recenter, body.mg-active #helpBtn, body.mg-active #btn-collection, body.mg-active #unified-hud, body.mg-active #scroll-hint { display:none !important; }' +
+    st.textContent = 'body.mg-active #wip-banner, body.mg-active #ar-desktop-msg, body.mg-active #btn-sword, body.mg-active #btn-recenter, body.mg-active #helpBtn, body.mg-active #btn-collection, body.mg-active #scroll-hint { display:none !important; }' +
       '@media (max-width:700px){ body.mg-active #combat-toggle-btn, body.mg-active #ARButton, body.mg-active #VRButton, body.mg-active #lang-toggle-btn, body.mg-active #mode-toggle-btn, body.mg-active #portfolio-header, body.mg-active #menu-toggle, body.mg-active #universe-legend, body.mg-active #legend-toggle-btn, body.mg-active #legend-sidebar { display:none !important; }' +
-      ' #minigame-ui .mg-extra { top:calc(16px + env(safe-area-inset-top,0px)) !important; }' +
-      ' #minigame-ui .mg-tag { right:auto !important; left:50% !important; transform:translateX(-50%); top:calc(58px + env(safe-area-inset-top,0px)) !important; white-space:nowrap; }' +
+      ' body.mg-active #unified-hud { position:fixed !important; top:env(safe-area-inset-top,0px) !important; left:0 !important; pointer-events:none; }' +                       // el estado del juego (HUD del coloso) sigue visible, en una franja compacta arriba
+      ' #minigame-ui .mg-extra { top:calc(52px + env(safe-area-inset-top,0px)) !important; }' +
+      ' #minigame-ui .mg-help { top:calc(48px + env(safe-area-inset-top,0px)) !important; }' +
+      ' #minigame-ui .mg-tag { right:auto !important; left:50% !important; transform:translateX(-50%); top:calc(92px + env(safe-area-inset-top,0px)) !important; white-space:nowrap; }' +
       ' body.mg-active #mui-amb { display:none !important; }' +
       ' #minigame-ui .mg-listen { bottom:calc(140px + env(safe-area-inset-bottom,0px)) !important; }' +
       ' #minigame-ui .mg-plate { left:50% !important; transform:translateX(-50%); bottom:calc(196px + env(safe-area-inset-bottom,0px)) !important; white-space:nowrap; } }';
@@ -14859,7 +14861,7 @@ COL_DEF.colibri = {
         P[q] = x; P[q + 1] = y; P[q + 2] = z; } A.position.needsUpdate = true; };
     S.plantCol = (p, mature) => { const A = S.fr.geometry.attributes, C = A.aCol.array, AL = A.aAlpha.array, SZ = A.aSize.array, base = p.slot * PER;
       for (let j = 0; j < PER; j++) { const q = (base + j) * 3; let r, gg, b, a, s; if (j < 7) { r = 0.5; gg = 0.42; b = 0.3; a = 0.8; s = 0.18; } else if (j < 14) { r = 0.45; gg = 0.36; b = 0.25; a = 0.55; s = 0.14; } else { if (mature) { r = 0.72; gg = 0.8; b = 0.7; } else { r = 0.4; gg = 0.88; b = 0.5; } a = 0.75; s = 0.16; }
-        C[q] = r; C[q + 1] = gg; C[q + 2] = b; AL[base + j] = p.alive ? a : 0; SZ[base + j] = s; } A.aCol.needsUpdate = A.aAlpha.needsUpdate = A.aSize.needsUpdate = true; };
+        C[q] = r; C[q + 1] = gg; C[q + 2] = b; AL[base + j] = p.alive ? a : 0; SZ[base + j] = s * (window.innerWidth <= 700 ? 1.9 : 1); } A.aCol.needsUpdate = A.aAlpha.needsUpdate = A.aSize.needsUpdate = true; };
     S.plantFlow = (p, on) => { if (p.h < 2.4) return; const A = S.flow.geometry.attributes, P = A.position.array, AL = A.aAlpha.array; for (let j = 0; j < 3; j++) { const q = (p.slot * 3 + j) * 3; P[q] = p.x + (j - 1) * 0.35; P[q + 1] = p.h + 1.6 + (j === 1 ? 0.5 : 0); P[q + 2] = p.z + (j === 1 ? 0.3 : -0.2); AL[p.slot * 3 + j] = on ? 1 : 0; } A.position.needsUpdate = A.aAlpha.needsUpdate = true; };
     S.spawn = (x, z, g0, h0) => { let sl = -1, used = new Array(MAXP).fill(false); S.plants.forEach(p => { if (p.alive || p.fade > 0) used[p.slot] = true; }); for (let k = 0; k < MAXP; k++) if (!used[k]) { sl = k; break; } if (sl < 0) return null;
       S.plants = S.plants.filter(p => p.slot !== sl); const p = { x, z, g: g0, h: h0 || (1.6 + rnd() * 3.2), slot: sl, alive: true, mature: false, fade: 0, rate: 0, age: 0 }; S.plants.push(p); S.plantPts(p); S.plantCol(p, false); S.plantFlow(p, false); return p; };
@@ -15885,3 +15887,26 @@ function uxInit() {
   try { new MutationObserver(() => uxHelpInGame()).observe(document.body, { childList: true }); } catch (e) {}
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', uxInit); else setTimeout(uxInit, 400);
+
+// ============================================================
+//  BOTÓN «ATRÁS» (Android / navegador) — cierra la capa abierta en lugar de salir de la página
+//  Con una ventana, un juego, el menú o el bestiario abiertos, «atrás» equivale a Esc. Sin nada abierto avisa y,
+//  si se repite en 2,5 s, deja salir. Antes de empezar (pantalla de inicio) sale con normalidad.
+// ============================================================
+(function backGuard() {
+  let lastBack = 0, leaving = false;
+  const vis = (el) => { if (!el) return false; const cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden' && !el.classList.contains('hidden'); };
+  const layerOpen = () => !!(document.querySelector('.modal-ui:not(.hidden)') || document.body.classList.contains('mg-active') || window._bstOpen || document.getElementById('side-menu')?.classList.contains('open') || document.getElementById('ach-panel')?.classList.contains('open'));
+  const started = () => { const s = document.getElementById('start-screen'); return !s || !vis(s); };
+  try { if (typeof history.state === 'function' || typeof history.pushState !== 'function' || typeof window.addEventListener !== 'function') return; history.replaceState({ dos: 0 }, ''); history.pushState({ dos: 1 }, ''); } catch (e) { return; }
+  window.addEventListener('popstate', () => {
+    if (leaving) return;
+    if (!started()) { leaving = true; try { history.go(-1); } catch (e) {} return; }                // aún en la pantalla de inicio: salir normal
+    try { history.pushState({ dos: 1 }, ''); } catch (e) {}                                          // nos quedamos: se repone la entrada
+    if (layerOpen()) { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return; }
+    const now = Date.now();
+    if (now - lastBack < 2500) { leaving = true; try { history.go(-2); } catch (e) {} return; }
+    lastBack = now; const en = window.currentLang === 'en';
+    if (typeof showSystemToast === 'function') showSystemToast(en ? 'Press back again to leave' : 'Pulsa «atrás» otra vez para salir', '#e7e4de');
+  });
+})();
