@@ -15898,7 +15898,10 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
   const vis = (el) => { if (!el) return false; const cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden' && !el.classList.contains('hidden'); };
   const layerOpen = () => !!(document.querySelector('.modal-ui:not(.hidden)') || document.body.classList.contains('mg-active') || window._bstOpen || document.getElementById('side-menu')?.classList.contains('open') || document.getElementById('ach-panel')?.classList.contains('open'));
   const started = () => { const s = document.getElementById('start-screen'); return !s || !vis(s); };
-  try { if (typeof history.state === 'function' || typeof history.pushState !== 'function' || typeof window.addEventListener !== 'function') return; history.replaceState({ dos: 0 }, ''); history.pushState({ dos: 1 }, ''); } catch (e) { return; }
+  try { if (typeof history.state === 'function' || typeof history.pushState !== 'function' || typeof window.addEventListener !== 'function') return; history.replaceState({ dos: 0 }, ''); } catch (e) { return; }
+  // Chrome de Android ignora las entradas de historial creadas sin gesto del usuario: el paso fantasma se (re)crea con cada toque o tecla
+  const arm = () => { try { if (!history.state || history.state.dos !== 1) history.pushState({ dos: 1 }, ''); } catch (e) {} };
+  ['pointerdown', 'touchend', 'keydown'].forEach(ev => window.addEventListener(ev, arm, true));
   window.addEventListener('popstate', () => {
     if (leaving) return;
     if (!started()) { leaving = true; try { history.go(-1); } catch (e) {} return; }                // aún en la pantalla de inicio: salir normal
