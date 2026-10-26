@@ -1113,14 +1113,21 @@ function createTextSprite(message, colorHex = "#ffffff", fontPx = 35) {
   return sprite; 
 }
 
+function startButtonsIn() {                                                      // los botones de inicio aparecen despacio y uno tras otro (también al volver a esta pantalla)
+  [['start-btn', 700], ['skip-btn', 1900]].forEach(([id, delay]) => {
+    const b = document.getElementById(id); if (!b) return;
+    b.style.display = 'block'; b.style.transition = 'opacity 2.2s ease'; b.style.opacity = '0';
+    setTimeout(() => { b.style.opacity = '1'; setTimeout(() => { b.style.transition = ''; }, 2400); }, delay);
+  });
+}
+window.startButtonsIn = startButtonsIn;
 function finishLoading() { 
   document.getElementById('loading-text').innerText = "> SISTEMA OPERATIVO LISTO_"; 
   document.getElementById('loading-bar').style.width = '100%'; 
   setTimeout(() => { 
-    document.getElementById('start-btn').style.display = 'block'; 
-    document.getElementById('skip-btn').style.display = 'block'; 
-    document.getElementById('loading-screen').style.opacity = '0'; 
-    setTimeout(() => { document.getElementById('loading-screen').style.display = 'none'; }, 500); 
+    const ls = document.getElementById('loading-screen'); ls.style.transition = 'opacity 1.4s ease'; ls.style.opacity = '0'; 
+    setTimeout(() => { ls.style.display = 'none'; }, 1500); 
+    startButtonsIn(); 
   }, 1000); 
 }
 
@@ -1196,6 +1203,13 @@ let isCombatActive = false;
 function checkOnboarding() { if(hasMoved && hasShot) document.getElementById('onboarding-ui')?.classList.add('hidden'); }
 
 function initSystem(skip = false) { 
+  if (window._worldInit) {                                                        // se vuelve desde la pantalla de inicio: el mundo ya está armado, solo se descubre
+    const ss = document.getElementById('start-screen');
+    window.__atStart = false; isPaused = false;
+    if (ss) { ss.style.pointerEvents = 'none'; ss.style.opacity = '0'; setTimeout(() => { if (!window.__atStart) ss.style.display = 'none'; }, 2600); }
+    return;
+  }
+  window._worldInit = true;
   // 🔥 1. Transición cinematográfica: Desvanece la pantalla negra
   const startScreen = document.getElementById('start-screen');
   if (startScreen) {
@@ -1237,6 +1251,13 @@ function initSystem(skip = false) {
   for(let i=0; i<3; i++) spawnAsteroid(); 
   setInterval(spawnAsteroid, 1000); 
 }
+window.returnToStart = function() {                                              // «atrás» sin nada abierto: se regresa a la pantalla de inicio (DANIEL_OS)
+  const ss = document.getElementById('start-screen'); if (!ss || !isGameStarted) return;
+  try { window.closeAllUIs(); document.getElementById('side-menu')?.classList.remove('open'); } catch (e) {}
+  window.__atStart = true; isPaused = true;
+  ss.style.pointerEvents = ''; ss.style.display = 'flex'; ss.style.opacity = '0'; void ss.offsetWidth; ss.style.opacity = '1';
+  startButtonsIn();
+};
 // 🔥 ANCLAR VIAJERO AL PRIMER PLANETA
   setTimeout(() => {
     if (categoryPlanets.length > 0 && window.travelerGroup && !window.travelerGroup.userData.anchoredPlanet) {
@@ -15897,7 +15918,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
   let lastBack = 0, leaving = false;
   const vis = (el) => { if (!el) return false; const cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden' && !el.classList.contains('hidden'); };
   const layerOpen = () => !!(document.querySelector('.modal-ui:not(.hidden)') || document.body.classList.contains('mg-active') || window._bstOpen || document.getElementById('side-menu')?.classList.contains('open') || document.getElementById('ach-panel')?.classList.contains('open'));
-  const started = () => { const s = document.getElementById('start-screen'); return !s || !vis(s); };
+  const started = () => !!window._worldInit && !window.__atStart;
   try { if (typeof history.state === 'function' || typeof history.pushState !== 'function' || typeof window.addEventListener !== 'function') return; history.replaceState({ dos: 0 }, ''); } catch (e) { return; }
   // Chrome de Android ignora las entradas de historial creadas sin gesto del usuario: el paso fantasma se (re)crea con cada toque o tecla
   const arm = () => { try { if (!history.state || history.state.dos !== 1) history.pushState({ dos: 1 }, ''); } catch (e) {} };
@@ -15908,8 +15929,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
     try { history.pushState({ dos: 1 }, ''); } catch (e) {}                                          // nos quedamos: se repone la entrada
     if (layerOpen()) { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return; }
     const now = Date.now();
-    if (now - lastBack < 2500) { leaving = true; try { history.go(-2); } catch (e) {} return; }
-    lastBack = now; const en = window.currentLang === 'en';
-    if (typeof showSystemToast === 'function') showSystemToast(en ? 'Press back again to leave' : 'Pulsa «atrás» otra vez para salir', '#e7e4de');
+    lastBack = now;                                                                                  // sin nada abierto: se vuelve a la pantalla de inicio; desde allí, «atrás» sale
+    if (typeof window.returnToStart === 'function') window.returnToStart();
   });
 })();
