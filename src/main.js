@@ -1113,20 +1113,38 @@ function createTextSprite(message, colorHex = "#ffffff", fontPx = 35) {
   return sprite; 
 }
 
-function startButtonsIn() {                                                      // los botones de inicio aparecen despacio y uno tras otro (también al volver a esta pantalla)
-  [['start-btn', 700], ['skip-btn', 1900]].forEach(([id, delay]) => {
-    const b = document.getElementById(id); if (!b) return;
-    b.style.display = 'block'; b.style.transition = 'opacity 2.2s ease'; b.style.opacity = '0';
-    setTimeout(() => { b.style.opacity = '1'; setTimeout(() => { b.style.transition = ''; }, 2400); }, delay);
+{ const t0 = document.querySelector('#start-screen .start-title'); if (t0) t0.style.opacity = '0'; }   // el título espera su turno en la revelación
+let _sbDone = false;
+// La pantalla de inicio se revela en pausa y por capas: primero el título, luego la palabra muisca, después cada botón (también al volver a ella)
+function startButtonsIn(again) {
+  if (_sbDone && !again) return; _sbDone = true; window._startRevealed = true;
+  const EASE = 'cubic-bezier(.22,.61,.36,1)';
+  const steps = [
+    { get: () => document.querySelector('#start-screen .start-title'), delay: 300, dur: 3200, blur: 8 },
+    { get: () => document.querySelector('#start-screen .mui-gloss'), delay: 2400, dur: 3600, blur: 6, gloss: true },
+    { get: () => document.getElementById('start-btn'), delay: 4400, dur: 3400, blur: 10, block: true },
+    { get: () => document.getElementById('terminal-start-btn'), delay: 6600, dur: 3400, blur: 10 },       // el botón del modo ejecutivo y su texto (los muestra otro módulo cuando aparece el principal)
+    { get: () => document.getElementById('ex-start-hint'), delay: 8200, dur: 3600, blur: 6 },
+    { get: () => document.getElementById('skip-btn'), delay: 9600, dur: 3400, blur: 10, block: true }
+  ];
+  const hide = (el, st) => { el.style.transition = 'none'; el.style.opacity = '0'; el.style.filter = 'blur(' + st.blur + 'px)'; void el.offsetWidth; };
+  steps.forEach(st => {
+    const el0 = st.get(); if (el0) { clearTimeout(el0._sbT); el0._hold = !!st.gloss; if (st.block) el0.style.display = 'block'; hide(el0, st); }   // nace invisible y desenfocado
+    setTimeout(() => {
+      const el = st.get(); if (!el) return; if (el !== el0) hide(el, st);
+      el._hold = false; el.style.transition = 'opacity ' + st.dur + 'ms ' + EASE + ', filter ' + st.dur + 'ms ' + EASE;
+      el.style.opacity = st.gloss ? '0.85' : '1'; el.style.filter = 'blur(0)';
+      el._sbT = setTimeout(() => { el.style.transition = st.gloss ? 'opacity 1.4s ease' : ''; el.style.filter = ''; }, st.dur + 200);
+    }, st.delay);
   });
 }
-window.startButtonsIn = startButtonsIn;
+window.startButtonsIn = () => startButtonsIn(true);
 function finishLoading() { 
   document.getElementById('loading-text').innerText = "> SISTEMA OPERATIVO LISTO_"; 
   document.getElementById('loading-bar').style.width = '100%'; 
   setTimeout(() => { 
-    const ls = document.getElementById('loading-screen'); ls.style.transition = 'opacity 1.4s ease'; ls.style.opacity = '0'; 
-    setTimeout(() => { ls.style.display = 'none'; }, 1500); 
+    const ls = document.getElementById('loading-screen'); ls.style.transition = 'opacity 2s ease'; ls.style.opacity = '0'; 
+    setTimeout(() => { ls.style.display = 'none'; }, 2100); 
     startButtonsIn(); 
   }, 1000); 
 }
@@ -1210,17 +1228,21 @@ function initSystem(skip = false) {
     return;
   }
   window._worldInit = true;
+  if (!skip) {                                                                    // la interfaz del mundo (título, HUD, botones) entra por capas, despacio, mientras se revela el universo
+    const G = [[['portfolio-header', 'mode-toggle-btn'], 2000], [['unified-hud'], 2900], [['lang-toggle-btn', 'ARButton', 'VRButton', 'menu-toggle', 'combat-toggle-btn', 'gamepad-btn'], 3800], [['btn-collection', 'btn-sword', 'btn-recenter', 'helpBtn', 'scroll-hint'], 4700]];
+    G.forEach(([ids, delay]) => ids.forEach(id => { const el = document.getElementById(id); if (!el) return;
+      el.style.transition = 'none'; el.style.opacity = '0'; el.style.filter = 'blur(6px)';
+      setTimeout(() => { el.style.transition = 'opacity 2.4s ease, filter 2.4s ease'; el.style.opacity = ''; el.style.filter = ''; setTimeout(() => { el.style.transition = ''; }, 2600); }, delay); }));
+  }
   // 🔥 1. Transición cinematográfica: Desvanece la pantalla negra
   const startScreen = document.getElementById('start-screen');
   if (startScreen) {
     startScreen.style.opacity = '0';
-    setTimeout(() => { 
-      startScreen.style.display = 'none'; 
-      // 🔥 2. LANZAR TUTORIAL AL TERMINAR LA TRANSICIÓN (el desvanecimiento dura 2.5 s; el manual entra después, suave)
-      if (!skip) {
-        setTimeout(() => { if (isGameStarted) openUIWindow('tutorial-ui'); }, 700);
-      }
-    }, 2600); 
+    const cv = document.getElementById('bg-canvas');                                  // el mundo se revela desde la sombra y el desenfoque mientras llega la ayuda
+    if (cv && !skip) { cv.style.transition = 'none'; cv.style.filter = 'blur(14px) brightness(0.2)'; void cv.offsetWidth; cv.style.transition = 'filter 4.2s cubic-bezier(.22,.61,.36,1)'; cv.style.filter = 'blur(0) brightness(1)'; setTimeout(() => { cv.style.transition = ''; cv.style.filter = ''; }, 4500); }
+    setTimeout(() => { startScreen.style.display = 'none'; }, 2600);
+    // 🔥 2. LANZAR TUTORIAL mientras el inicio aún se desvanece (el manual entra despacio, sobre el mundo que se revela)
+    if (!skip) setTimeout(() => { if (isGameStarted) openUIWindow('tutorial-ui'); }, 1700);
   }
   
   isGameStarted = true; 
@@ -1256,7 +1278,7 @@ window.returnToStart = function() {                                             
   try { window.closeAllUIs(); document.getElementById('side-menu')?.classList.remove('open'); } catch (e) {}
   window.__atStart = true; isPaused = true;
   ss.style.pointerEvents = ''; ss.style.display = 'flex'; ss.style.opacity = '0'; void ss.offsetWidth; ss.style.opacity = '1';
-  startButtonsIn();
+  startButtonsIn(true);
 };
 // 🔥 ANCLAR VIAJERO AL PRIMER PLANETA
   setTimeout(() => {
@@ -6966,7 +6988,7 @@ if (typeof combatCombo !== 'undefined') combatCombo = Math.max(0, combatCombo - 
         if (typeof secretDiscovered !== 'undefined' && !secretDiscovered) {
            planet.visible = false;
            // Constelación: dar la vuelta a la cámara. Carrusel (móvil por defecto): una vuelta completa del anillo
-           if ((!isAligned && Math.abs(userGroup.rotation.y) > 2.6) || (isAligned && window.totalRotated > Math.PI * 2)) {
+           if (!document.body.classList.contains('mg-active') && ((!isAligned && Math.abs(userGroup.rotation.y) > 2.6) || (isAligned && window.totalRotated > Math.PI * 2))) {   // dentro de un coloso/juego, girar la cámara no cuenta
              secretDiscovered = true; 
              planet.visible = true;
              playSound('boss_hit'); 
@@ -8967,6 +8989,7 @@ window.toggleTerminalMode = function() {
       el.style.opacity = exSaved[id].opacity;
       delete exSaved[id];
     });
+    if (!window._worldInit && typeof initSystem === 'function') { try { initSystem(false); } catch (e) { console.error(e); } }   // se empezó en modo ejecutivo: al pasar al 3D por primera vez se arma el mundo y llega la guía
   }
 };
 
@@ -9460,7 +9483,7 @@ window.glowCycle = () => glowSetMode(GLOW_MODE.value + 1);
       '@media (max-width:700px){ body.mg-active #combat-toggle-btn, body.mg-active #ARButton, body.mg-active #VRButton, body.mg-active #lang-toggle-btn, body.mg-active #mode-toggle-btn, body.mg-active #portfolio-header, body.mg-active #menu-toggle, body.mg-active #universe-legend, body.mg-active #legend-toggle-btn, body.mg-active #legend-sidebar { display:none !important; }' +
       ' body.mg-active #unified-hud { position:fixed !important; top:env(safe-area-inset-top,0px) !important; left:0 !important; pointer-events:none; }' +                       // el estado del juego (HUD del coloso) sigue visible, en una franja compacta arriba
       ' #minigame-ui .mg-extra { top:calc(52px + env(safe-area-inset-top,0px)) !important; }' +
-      ' #minigame-ui .mg-help { top:calc(48px + env(safe-area-inset-top,0px)) !important; }' +
+      ' #minigame-ui .mg-help, #minigame-ui .mg-txt { top:calc(48px + env(safe-area-inset-top,0px)) !important; }' +
       ' #minigame-ui .mg-tag { right:auto !important; left:50% !important; transform:translateX(-50%); top:calc(92px + env(safe-area-inset-top,0px)) !important; white-space:nowrap; }' +
       ' body.mg-active #mui-amb { display:none !important; }' +
       ' #minigame-ui .mg-listen { bottom:calc(140px + env(safe-area-inset-bottom,0px)) !important; }' +
@@ -9651,6 +9674,7 @@ const MG = window.MG = {
 
   enter(camZ) {
     this.lastT = 0; this.time = 0; this.t0 = Date.now(); this._armT = 0; try { document.body.classList.add('mg-active'); } catch (e) {}
+    { const pt = document.getElementById('paint-tools'); if (pt && this._pt === undefined) { this._pt = [pt.style.display, !!window.isPainting]; } if (pt) pt.style.display = 'none'; }   // «Disolver máquina / Exportar» no se traslapan con el juego
     if (!this.plane) this.plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
     const objs = this._targets(), prevSaved = this.saved;
     this.saved = {
@@ -9718,6 +9742,7 @@ const MG = window.MG = {
     this.rings.forEach(r => { scene.remove(r.mesh); r.mesh.geometry.dispose(); r.mesh.material.dispose(); });
     this.rings = [];
     this.removeUI(); try { document.body.classList.remove('mg-active'); } catch (e) {}
+    if (this._pt !== undefined) { const pt = document.getElementById('paint-tools'); if (pt) pt.style.display = this._pt[0]; window.isPainting = this._pt[1]; this._pt = undefined; if (typeof colMachineFx === 'function') colMachineFx(0, true); }
     if (window._exReturn) { window._exReturn = false; setTimeout(() => { try { if (!isTerminalMode) window.toggleTerminalMode(); } catch (e) {} }, 700); }   // si venías del modo ejecutivo, vuelves a él
     morphHUD('normal');
     shakeIntensity = 0;
@@ -9792,7 +9817,8 @@ const MG = window.MG = {
 };
 
 window.updateMiniGames = function() {
-  const dt = MG.tick();
+  let dt = MG.tick();
+  if (isFriccionActive && document.body.classList.contains('mg-active')) dt *= 0.55;   // Máquina Friccional: todo el juego pasa más lento
   MG.fxUpdate(dt);
   if (window.isTuningGameActive) tgUpdate(dt);
   if (window.isWiringGameActive) wgUpdate(dt);
@@ -9800,7 +9826,7 @@ window.updateMiniGames = function() {
   if (window.isWhaleActive) whUpdate(dt);
   if (window.isSputnikActive) sptUpdate(dt);
   if (window.isTortugaActive) trpUpdate(dt);
-  if (window.isColossusActive) colUpdate(dt);
+  if (window.isColossusActive) colUpdate(dt); else colMachineFx(dt, reduceMotionMQ.matches);
 };
 
 // ============================================================
@@ -12051,7 +12077,7 @@ function hgBuildUI() {
   const fill = document.createElement('div'); fill.style.cssText = 'position:absolute; left:0; top:0; height:1px; width:0%; background:#e7e4de; box-shadow:0 0 8px rgba(231,228,222,0.6);';
   prog.appendChild(fill); ui.extra.appendChild(title); ui.extra.appendChild(prog);
 
-  const sub = document.createElement('div');
+  const sub = document.createElement('div'); sub.className = 'mg-sub';
   sub.style.cssText = 'position:absolute; left:50%; bottom:calc(150px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); width:min(90vw,640px); text-align:center; font-size:0.95rem; font-weight:300; letter-spacing:0.12em; line-height:1.8; color:#cfd8e3; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 14px rgba(0,0,0,0.9), 1px 0 rgba(214,74,58,0.35);';
   ui.root.appendChild(sub);
 
@@ -12580,7 +12606,7 @@ function whBuildUI() {
   const prog = document.createElement('div'); prog.style.cssText = 'margin:14px auto 0; width:min(60vw,240px); height:1px; background:rgba(231,228,222,0.15); position:relative;';
   const fill = document.createElement('div'); fill.style.cssText = 'position:absolute; left:0; top:0; height:1px; width:0%; background:#bfe6ff; box-shadow:0 0 8px rgba(191,230,255,0.6);';
   prog.appendChild(fill); ui.extra.appendChild(title); ui.extra.appendChild(dots); ui.extra.appendChild(prog);
-  const sub = document.createElement('div');
+  const sub = document.createElement('div'); sub.className = 'mg-sub';
   sub.style.cssText = 'position:absolute; left:50%; bottom:calc(150px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); width:min(90vw,640px); text-align:center; font-size:0.95rem; font-weight:300; letter-spacing:0.12em; line-height:1.8; color:#cfd8e3; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 14px rgba(0,0,0,0.9);';
   ui.root.appendChild(sub);
   const cold = document.createElement('div');
@@ -13268,7 +13294,7 @@ function sptBuildUI() {
   title.style.cssText = 'font-size:0.66rem; font-weight:300; letter-spacing:0.34em; color:#a8a49c;'; title.textContent = sptT('title');
   const chap = document.createElement('div'); chap.style.cssText = 'margin-top:10px; font-size:0.72rem; font-weight:300; letter-spacing:0.3em; color:#e7e4de;';
   ui.extra.appendChild(title); ui.extra.appendChild(chap);
-  const sub = document.createElement('div');
+  const sub = document.createElement('div'); sub.className = 'mg-sub';
   sub.style.cssText = 'position:absolute; left:50%; top:calc(150px + env(safe-area-inset-top,0px)); transform:translateX(-50%); width:min(90vw,640px); text-align:center; font-size:0.95rem; font-weight:300; letter-spacing:0.12em; line-height:1.8; color:#cfd8e3; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 14px rgba(0,0,0,0.9);';
   ui.root.appendChild(sub);
   const panel = document.createElement('div');
@@ -13663,7 +13689,7 @@ function trpBuildUI() {
   const ui = MG.buildUI(trtT('h'));
   const title = document.createElement('div'); title.style.cssText = 'font-size:0.66rem; font-weight:300; letter-spacing:0.34em; color:#a8a49c;'; title.textContent = trtT('title');
   ui.extra.appendChild(title);
-  const sub = document.createElement('div');
+  const sub = document.createElement('div'); sub.className = 'mg-sub';
   sub.style.cssText = 'position:absolute; left:50%; top:calc(150px + env(safe-area-inset-top,0px)); transform:translateX(-50%); width:min(90vw,640px); text-align:center; font-size:0.95rem; font-weight:300; letter-spacing:0.12em; line-height:1.8; color:#cfd8e3; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 14px rgba(0,0,0,0.9); pointer-events:none;';
   ui.root.appendChild(sub);
   const pl = document.createElement('div'); pl.className = 'mg-plate';                                      // la lámina: la tortuga del río Magdalena
@@ -13997,7 +14023,7 @@ function colStart(id, view) {
   COLG.pad = sptPoints(46, (i, o) => { const a = i / 46 * 6.283; o.x = Math.cos(a) * 1.9; o.z = Math.sin(a) * 1.9; o.y = 0.04; o.s = 0.1; o.a = 0.5; o.r = 0.75; o.g = 0.85; o.b = 1; }); g.add(COLG.pad);
   const ui = MG.buildUI(colT('h'));
   const title = document.createElement('div'); title.style.cssText = 'font-size:0.66rem; font-weight:300; letter-spacing:0.34em; color:#a8a49c;'; title.textContent = colT('title'); ui.extra.appendChild(title);
-  const sub = document.createElement('div');
+  const sub = document.createElement('div'); sub.className = 'mg-sub';
   sub.style.cssText = 'position:absolute; left:50%; top:calc(150px + env(safe-area-inset-top,0px)); transform:translateX(-50%); width:min(90vw,640px); text-align:center; font-size:0.95rem; font-weight:300; letter-spacing:0.12em; line-height:1.8; color:#cfd8e3; opacity:0; transition:opacity 1.4s ease; text-shadow:0 0 14px rgba(0,0,0,0.9); pointer-events:none;';
   ui.root.appendChild(sub); COLG.els = { title, sub, hint: ui.hint };
   if (D.plate) { const pl = document.createElement('div'); pl.className = 'mg-plate';                              // la lámina: nombre científico y número, como en un bestiario grabado
@@ -14045,8 +14071,8 @@ window.colMaybeBestiary = function() { const u = readUnlocks(); if (colossiCount
 //   Nunca cambian las reglas del juego, y el temblor constante de la fricción y el modo pintura quedan apagados mientras dura la escena.
 const COLMX = { mode: '', el: null, gT: 4 };
 const COLMX_CSS = {
-  poetica: 'background:radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.13), rgba(235,240,255,0.04) 58%, rgba(255,255,255,0) 100%); mix-blend-mode:screen;',
-  erratica: 'background:radial-gradient(ellipse at center, rgba(255,40,20,0) 38%, rgba(255,32,12,0.26) 100%); mix-blend-mode:screen;',
+  poetica: 'background:radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.2), rgba(235,240,255,0.08) 58%, rgba(255,255,255,0.03) 100%); mix-blend-mode:screen;',
+  erratica: 'background:radial-gradient(ellipse at center, rgba(255,40,20,0.09) 25%, rgba(255,32,12,0.46) 100%); mix-blend-mode:screen;',
   friccion: 'background:radial-gradient(ellipse at center, rgba(205,160,90,0.16) 20%, rgba(70,42,8,0.5) 100%); mix-blend-mode:multiply;'
 };
 function colMachineMode() { return isPoeticaActive ? 'poetica' : isErraticaActive ? 'erratica' : isFriccionActive ? 'friccion' : ''; }
@@ -14057,8 +14083,13 @@ function colMachineStart() {
   if (m && !COLG.view) { const T = { poetica: ['La Máquina Poética sigue encendida: el coloso se vuelve luz.', 'The Poetic Machine is still on: the colossus turns to light.'], erratica: ['La Máquina Errática sigue encendida: nada se queda quieto.', 'The Erratic Machine is still on: nothing holds still.'], friccion: ['La Fricción sigue encendida: todo pesa más.', 'Friction is still on: everything weighs more.'] }; setTimeout(() => { if (window.isColossusActive) showSystemToast(T[m][en ? 1 : 0], m === 'erratica' ? '#ff6655' : m === 'friccion' ? '#ddbb66' : '#ffffff'); }, 1600); }
 }
 function colMachineStop() { if (COLMX.el) { COLMX.el.remove(); COLMX.el = null; } COLMX.mode = ''; }
+function colErrGlitch() {                                                         // sacudida roja breve (el glitch normal se calla durante los juegos): el lienzo salta y se satura dos veces
+  const cv = document.getElementById('bg-canvas'); if (!cv || reduceMotionMQ.matches) return;
+  const hit = (k) => { cv.style.transition = 'none'; cv.style.filter = 'saturate(2.4) contrast(1.35) hue-rotate(-22deg)'; cv.style.transform = 'translate(' + ((Math.random() - 0.5) * 12).toFixed(1) + 'px,' + ((Math.random() - 0.5) * 4).toFixed(1) + 'px)'; setTimeout(() => { cv.style.filter = ''; cv.style.transform = ''; }, 70 + k * 30); };
+  hit(0); setTimeout(() => hit(1), 160);
+}
 function colMachineFx(dt, calm) {
-  const m = window.isColossusActive ? colMachineMode() : '';
+  const m = document.body.classList.contains('mg-active') ? colMachineMode() : '';
   if (m !== COLMX.mode) {
     COLMX.mode = m;
     if (!m) { if (COLMX.el) { const e = COLMX.el; COLMX.el = null; e.style.opacity = '0'; setTimeout(() => e.remove(), 1300); } }
@@ -14067,7 +14098,7 @@ function colMachineFx(dt, calm) {
   }
   if (m === 'erratica') {
     COL_INK.forEach(x => { if (x.uniforms.uJit.value < 0.075) x.uniforms.uJit.value = 0.075; });
-    if (!calm && !COLG.view) { COLMX.gT -= dt; if (COLMX.gT <= 0) { COLMX.gT = 3.5 + Math.random() * 5; if (typeof triggerSubtleGlitch === 'function') triggerSubtleGlitch(); } }
+    if (!calm && !COLG.view) { COLMX.gT -= dt; if (COLMX.gT <= 0) { COLMX.gT = 3.5 + Math.random() * 5; colErrGlitch(); } }
   }
 }
 function colUpdate(dt) {
@@ -14077,7 +14108,7 @@ function colUpdate(dt) {
   if (COLG.els.sub && COLG.subT <= 0) COLG.els.sub.style.opacity = '0';
   COLG.stars.rotation.y += dt * 0.004 * sw; COLG.dust.rotation.y += dt * 0.01 * sw;
   if (COLG.view && D.view) D.view(S, dt, t);
-  D.update(S, dt, t, calm); colMachineFx(dt, calm);
+  D.update(S, dt, t, calm); colMachineFx(dt, calm);   // (en los otros juegos lo llama updateMiniGames)
   COL_INK.forEach(m => { m.uniforms.uTime.value = t; });
   const P = COLG.pose; if (P) { const tp = D.travPos ? D.travPos(S) : (D.trav ? [Math.sin(D.trav[0]) * D.trav[1], Math.cos(D.trav[0]) * D.trav[1]] : [0, 12]); P.pos.x = tp[0]; P.pos.z = tp[1]; P.pos.y = ((typeof TRAVELER_FEET !== 'undefined') ? TRAVELER_FEET : 0.6) + (tp[2] || 0); P.yaw = Math.atan2(-tp[0], -tp[1]); COLG.pad.position.set(tp[0], tp[2] || 0, tp[1]); }
   if (COLG.view) { COLG.vT -= dt; if (COLG.vT <= 0) { COLG.vT = 11 + Math.random() * 5; if (D.voice) colVoice(D.voice, 0.7); } }
@@ -14961,7 +14992,7 @@ COL_DEF.colibri = {
     S.sig = mkHalo(0xbfe6ff, 36, 0.08); S.sig.position.set(0, TOP + 7, 0); S.root.add(S.sig);
     // --- lo que ocurre alrededor: semillas con plumas, estela del viento, gotas por el tronco, helada y las especies que llegan ---
     S.TOP = TOP; S.FL = [[-9, TOP + 6.5, 3], [8, TOP + 8, -4], [2.5, TOP + 6, 9.5], [-5, TOP + 6.8, -8.5], [10.5, TOP + 5.5, 5.5], [-11, TOP + 4.5, -3], [4.5, TOP + 9.5, -9.5]];
-    S.sd = sptPoints(MAXS * 4, (i, o) => { const k = i % 4; o.x = 0; o.y = -60; o.z = 0; o.s = [0.36, 0.2, 0.16, 0.12][k]; o.a = 0; o.r = 1; o.g = 0.95; o.b = 0.8; }); g.add(S.sd);
+    S.sd = sptPoints(MAXS * 4, (i, o) => { const k = i % 4; o.x = 0; o.y = -60; o.z = 0; o.s = [0.36, 0.26, 0.2, 0.15][k] * (window.innerWidth <= 700 ? 2.3 : 1.6); o.a = 0; o.r = 1; o.g = 0.97; o.b = 0.75; }); g.add(S.sd);
     S.ft = sptPoints(40, (i, o) => { o.x = 0; o.y = -60; o.z = 0; o.s = 0.22; o.a = 0; o.r = 0.5; o.g = 0.5; o.b = 0.52; }); g.add(S.ft);
     S.wind = sptPoints(44, (i, o) => { o.x = 0; o.y = -60; o.z = 0; o.s = window.innerWidth <= 700 ? 0.55 : 0.3; o.a = 0; o.r = 0.8; o.g = 0.95; o.b = 1; }); g.add(S.wind);
     S.mark = sptPoints(28, (i, o) => { const a = i / 28 * 6.283; o.x = Math.cos(a) * 1.8; o.z = Math.sin(a) * 1.8; o.y = 0.3; o.s = window.innerWidth <= 700 ? 0.6 : 0.3; o.a = 0; o.r = 1; o.g = 0.9; o.b = 0.6; }); g.add(S.mark); S.markA = [0, 0];
@@ -15001,7 +15032,7 @@ COL_DEF.colibri = {
     { const SP = S.sd.geometry.attributes.position.array, SA = S.sd.geometry.attributes.aAlpha.array, wind = S.blow;
       for (let k = S.seeds.length - 1; k >= 0; k--) { const d = S.seeds[k]; d.age += dt; const u = d.age / d.T; if (u >= 1) { S.land(d.lx, d.lz, false); S.seeds.splice(k, 1); continue; }
         const wb = Math.sin(u * 9 + d.ph) * 0.9 * (1 - u) * sw; d.x = d.x0 + (d.lx - d.x0) * u + wb; d.z = d.z0 + (d.lz - d.z0) * u + Math.cos(u * 7 + d.ph) * 0.6 * (1 - u) * sw; d.y = Math.max(0.3, d.y0 * (1 - u) + Math.sin(u * 3.14) * 3); }
-      for (let k = 0; k < S.MAXS; k++) { const d = S.seeds[k]; for (let j = 0; j < 4; j++) { const q = (k * 4 + j); if (d) { SP[q * 3] = d.x - j * 0.12; SP[q * 3 + 1] = d.y + j * 0.45; SP[q * 3 + 2] = d.z; SA[q] = [1, 0.5, 0.3, 0.16][j]; } else SA[q] = 0; } }
+      for (let k = 0; k < S.MAXS; k++) { const d = S.seeds[k]; for (let j = 0; j < 4; j++) { const q = (k * 4 + j); if (d) { SP[q * 3] = d.x - j * 0.2; SP[q * 3 + 1] = d.y + j * 0.7; SP[q * 3 + 2] = d.z; SA[q] = [1, 0.8, 0.55, 0.32][j]; } else SA[q] = 0; } }
       S.sd.geometry.attributes.position.needsUpdate = S.sd.geometry.attributes.aAlpha.needsUpdate = true; }
     { const FP = S.ft.geometry.attributes.position.array, FA = S.ft.geometry.attributes.aAlpha.array; for (let k = 0; k < 40; k++) { const f = S.fails[k]; if (f) { f.age += dt; FP[k * 3] = f.x; FP[k * 3 + 1] = 0.3 + f.age * 0.4; FP[k * 3 + 2] = f.z; FA[k] = Math.max(0, 0.7 - f.age * 0.5); } else FA[k] = 0; } S.fails = S.fails.filter(f => f.age < 1.5); S.ft.geometry.attributes.position.needsUpdate = S.ft.geometry.attributes.aAlpha.needsUpdate = true; }
     // los frailejones crecen en tiempo acelerado: de una semilla a una roseta plateada
@@ -15445,7 +15476,7 @@ const MUI_CSS = 'font:italic 300 0.9rem Georgia,"Times New Roman",serif; letter-
 function muiMount(parent, keys, css, every) {
   const el = document.createElement('div'); el.className = 'mui-gloss' + (css && css.indexOf('position:absolute') >= 0 ? ' mui-corner' : ''); el.style.cssText = MUI_CSS + (css || '') + 'transition:opacity 1.4s ease;';
   const RND = keys === 'random'; let last = ''; const pick = () => { if (!RND) return keys[i % keys.length]; const ks = Object.keys(MUI_W); let k; do { k = ks[Math.floor(Math.random() * ks.length)]; } while (k === last && ks.length > 1); last = k; return k; };
-  let i = 0; const show = () => { if (!MUI.on) { el.style.opacity = '0'; return; } el.textContent = muiText(pick()); el.style.opacity = '0.85'; };
+  let i = 0; const show = () => { if (!MUI.on) { el.style.opacity = '0'; return; } el.textContent = muiText(pick()); el.style.opacity = el._hold ? '0' : '0.85'; };
   show(); parent.appendChild(el);
   const iv = (RND || keys.length > 1) ? setInterval(() => { if (!el.isConnected) { clearInterval(iv); return; } el.style.opacity = '0'; setTimeout(() => { i++; show(); }, 1400); }, (every || 8) * 1000) : 0;
   el._redo = show; return el;
@@ -15454,7 +15485,7 @@ function muiRefresh() { document.querySelectorAll('.mui-gloss').forEach(e => e._
 
 // ----- Inicio y carga -----
 function muiStart() {
-  const sc = document.querySelector('#start-screen .ethereal-float'); if (sc && !sc.querySelector('.mui-gloss')) muiMount(sc, 'random', 'margin-top:64px; font-size:1.05rem; animation:driftText2 12s ease-in-out infinite alternate;', 7);
+  const sc = document.querySelector('#start-screen .ethereal-float'); if (sc && !sc.querySelector('.mui-gloss')) { muiMount(sc, 'random', 'margin-top:64px; font-size:1.05rem; animation:driftText2 12s ease-in-out infinite alternate;', 7); const g0 = sc.querySelector('.mui-gloss'); if (g0 && !window._startRevealed) { g0._hold = true; g0.style.opacity = '0'; } }
   const ld = document.getElementById('loading-screen'); if (ld && !ld.querySelector('.mui-gloss')) muiMount(ld, 'random', 'margin-top:18px;', 5);
 }
 
@@ -15748,7 +15779,7 @@ function a11yMenu() {                                                           
   return true;
 }
 function resetProgress() {                                                         // borra lo guardado en este navegador (logros, colosos, tortuga, glosas vistas); conserva los ajustes
-  const KEEP = ['gamelab_prefs', 'gamelab_glow2', 'gamelab_quality', 'gamelab_constellation', 'gamelab_caps', 'mt_open', 'mui_on'];
+  const KEEP = ['gamelab_prefs', 'gamelab_glow2', 'gamelab_quality', 'gamelab_constellation', 'gamelab_caps', 'gamelab_fs', 'gamelab_quiet', 'mt_open', 'mui_on'];
   try { Object.keys(localStorage).forEach(k => { if (KEEP.indexOf(k) < 0 && (/^(gamelab_|dac_)/.test(k) || k === 'mui_seen')) localStorage.removeItem(k); }); } catch (e) {}
   try { Object.keys(sessionStorage).forEach(k => { if (/^(gamelab_|dac_)/.test(k)) sessionStorage.removeItem(k); }); } catch (e) {}
   try { if (typeof showSystemToast === 'function') showSystemToast(window.currentLang === 'en' ? 'Progress erased' : 'Progreso borrado', '#e7e4de'); } catch (e) {}
@@ -15779,7 +15810,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 //  Solo CSS por id + limpieza de títulos: no depende de cómo estén escritos los estilos en línea del HTML.
 // ============================================================================
 (function modalsTidy() {
-  const IDS = ['about-ui', 'contact-ui', 'tutorial-ui', 'leaderboard-ui', 'blog-ui'];
+  const IDS = ['about-ui', 'contact-ui', 'tutorial-ui', 'leaderboard-ui', 'blog-ui', 'files-ui'];
   const SC = IDS.map(i => '#' + i);
   const sel = (suffix) => SC.map(s => 'body:not(.retro-mode) ' + s + (suffix || '')).join(',\n');
   const accents = ['#00ffff', 'rgb(0, 255, 255)', '#00ffaa', 'rgb(0, 255, 170)', '#ffff00', 'rgb(255, 255, 0)', '#ff0000', 'rgb(255, 0, 0)', '#ffaa00', 'rgb(255, 170, 0)', '#00ffcc', 'rgb(0, 255, 204)'];
@@ -15836,8 +15867,8 @@ fsApply();
 function uxCss() {
   if (document.getElementById('ux-style')) return;
   const st = document.createElement('style'); st.id = 'ux-style';
-  document.head.appendChild(Object.assign(document.createElement('style'), { id: 'fade-style', textContent: '@keyframes uxFadeIn{from{opacity:0}to{opacity:1}} .modal-ui:not(.hidden){animation:uxFadeIn .7s ease both} #modal-overlay:not(.hidden){animation:uxFadeIn .5s ease both} @media (prefers-reduced-motion:reduce){.modal-ui:not(.hidden),#modal-overlay:not(.hidden){animation:none}}' }));
-  const M = ['about-ui', 'contact-ui', 'tutorial-ui', 'leaderboard-ui', 'blog-ui', 'portfolio-ui'].map(i => 'body:not(.retro-mode) #' + i).join(',');
+  document.head.appendChild(Object.assign(document.createElement('style'), { id: 'fade-style', textContent: '@keyframes uxFadeIn{from{opacity:0}to{opacity:1}} .modal-ui:not(.hidden){animation:uxFadeIn 1.2s cubic-bezier(.22,.61,.36,1) both} #modal-overlay:not(.hidden){animation:uxFadeIn .5s ease both} @media (prefers-reduced-motion:reduce){.modal-ui:not(.hidden),#modal-overlay:not(.hidden){animation:none}}' }));
+  const M = ['about-ui', 'contact-ui', 'tutorial-ui', 'leaderboard-ui', 'blog-ui', 'files-ui', 'portfolio-ui'].map(i => 'body:not(.retro-mode) #' + i).join(',');
   st.textContent = `${M} { background:rgba(9,9,13,.84) !important; }
     #you-are-here { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(10px + env(safe-area-inset-bottom,0px)); z-index:9980; pointer-events:none; font:300 .58rem -apple-system,"Helvetica Neue",Arial,sans-serif; letter-spacing:.34em; text-transform:uppercase; color:#a8a49c; text-shadow:0 0 10px rgba(0,0,0,.9); white-space:nowrap; max-width:92vw; overflow:hidden; text-overflow:ellipsis; opacity:.85; }
     body.mg-active #you-are-here, body.ex-mode-active #you-are-here { display:none !important; }
@@ -15845,7 +15876,16 @@ function uxCss() {
     @media (min-width:701px){ #minigame-ui .mg-help { top:78px; } }
     #mg-help-card { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(86vw,420px); pointer-events:auto; background:rgba(9,9,13,.92); border:1px solid rgba(201,168,92,.4); padding:20px 22px; font:300 .86rem/1.7 -apple-system,"Helvetica Neue",Arial,sans-serif; color:#d3cfc6; z-index:5; }
     #mg-help-card b { display:block; font-weight:300; font-size:.62rem; letter-spacing:.3em; color:#c9a85c; text-transform:uppercase; margin-bottom:8px; }
-    #mg-help-card small { display:block; margin-top:12px; color:#8a867f; font-size:.72rem; }`;
+    #mg-help-card small { display:block; margin-top:12px; color:#8a867f; font-size:.72rem; }
+    #minigame-ui .mg-hint, #minigame-ui .mg-sub, #minigame-ui .mg-plate, #minigame-ui .mg-tag { transition:opacity .8s ease; }
+    #minigame-ui.mg-quiet .mg-hint, #minigame-ui.mg-quiet .mg-sub, #minigame-ui.mg-quiet .mg-plate, #minigame-ui.mg-quiet .mg-tag { opacity:0 !important; pointer-events:none; }
+    #minigame-ui .mg-txt { position:absolute; left:52px; top:calc(16px + env(safe-area-inset-top,0px)); width:30px; height:30px; box-sizing:border-box; padding:0; min-width:0; border-radius:50% !important; pointer-events:auto; background:rgba(10,10,12,.55); border:1px solid rgba(201,168,92,.5); color:#d9bb72; font:300 .66rem Georgia,serif; letter-spacing:0; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .4s, border-color .4s, opacity .4s; }
+    #minigame-ui.mg-quiet .mg-txt { background:rgba(201,168,92,.22); border-color:#d9bb72; }
+    @media (min-width:701px){ #minigame-ui .mg-txt { display:none; } }
+    @media (max-width:700px){ #minigame-ui .mg-row { display:flex; align-items:center; justify-content:center; gap:10px; pointer-events:none; }
+      #minigame-ui .mg-row > * { pointer-events:auto; flex:none; }
+      #minigame-ui .mg-row .mg-help, #minigame-ui .mg-row .mg-txt { position:static !important; top:auto !important; left:auto !important; width:36px !important; height:36px !important; margin:0 !important; }
+      #minigame-ui .mg-row .mg-leave { height:36px; box-sizing:border-box; padding-top:0 !important; padding-bottom:0 !important; display:flex; align-items:center; } }`;
   (document.head || document.documentElement).appendChild(st);
 }
 // 1) "Estás aquí"
@@ -15881,6 +15921,16 @@ function uxHelpInGame() {
     ui.appendChild(c);
   });
   ui.appendChild(b);
+  const q = document.createElement('button'); q.className = 'mg-txt'; q.type = 'button'; q.textContent = 'Aa';                      // oculta/muestra los textos del juego (útil en pantallas pequeñas)
+  const qSet = (on) => { ui.classList.toggle('mg-quiet', on); q.setAttribute('aria-pressed', on ? 'true' : 'false'); q.setAttribute('aria-label', on ? (en ? 'Show texts' : 'Mostrar textos') : (en ? 'Hide texts' : 'Ocultar textos')); q.title = q.getAttribute('aria-label'); };
+  let qOn = false; try { qOn = localStorage.getItem('gamelab_quiet') === '1'; } catch (e) {} qSet(qOn);
+  ['mousedown', 'touchstart', 'pointerdown', 'mouseup', 'touchend', 'pointerup'].forEach(ev => q.addEventListener(ev, (e) => e.stopPropagation()));
+  q.addEventListener('click', (e) => { e.stopPropagation(); qOn = !ui.classList.contains('mg-quiet'); qSet(qOn); try { localStorage.setItem('gamelab_quiet', qOn ? '1' : '0'); } catch (er) {} });
+  ui.appendChild(q);
+  if (window.innerWidth <= 700) {                                                  // en móvil: «?» · SOLTAR · «Aa» en una sola fila abajo, alineados
+    const lv = ui.querySelector('.mg-leave');
+    if (lv && lv.parentNode && !lv.parentNode.classList.contains('mg-row')) { const row = document.createElement('div'); row.className = 'mg-row'; lv.parentNode.insertBefore(row, lv); row.appendChild(b); row.appendChild(lv); row.appendChild(q); }
+  }
 }
 // 3) Menú: tamaño de letra y restablecer ajustes
 function uxMenu() {
@@ -15896,7 +15946,7 @@ function uxMenu() {
   return true;
 }
 function restoreDefaults() {                                                       // ajustes (calidad, resplandor, vista, glosas, letra, subtítulos) vuelven a su valor por defecto; el progreso no se toca
-  ['gamelab_prefs', 'gamelab_glow2', 'gamelab_quality', 'gamelab_constellation', 'gamelab_caps', 'gamelab_fs', 'mui_on', 'mt_open'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+  ['gamelab_prefs', 'gamelab_glow2', 'gamelab_quality', 'gamelab_constellation', 'gamelab_caps', 'gamelab_fs', 'gamelab_quiet', 'mui_on', 'mt_open'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
   try { if (typeof showSystemToast === 'function') showSystemToast(window.currentLang === 'en' ? 'Defaults restored' : 'Ajustes por defecto restaurados', '#e7e4de'); } catch (e) {}
   setTimeout(() => { location.reload(); }, 700);
 }
@@ -15918,7 +15968,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
   let lastBack = 0, leaving = false;
   const vis = (el) => { if (!el) return false; const cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden' && !el.classList.contains('hidden'); };
   const layerOpen = () => !!(document.querySelector('.modal-ui:not(.hidden)') || document.body.classList.contains('mg-active') || window._bstOpen || document.getElementById('side-menu')?.classList.contains('open') || document.getElementById('ach-panel')?.classList.contains('open'));
-  const started = () => !!window._worldInit && !window.__atStart;
+  const started = () => (!!window._worldInit || isGameStarted) && !window.__atStart;
   try { if (typeof history.state === 'function' || typeof history.pushState !== 'function' || typeof window.addEventListener !== 'function') return; history.replaceState({ dos: 0 }, ''); } catch (e) { return; }
   // Chrome de Android ignora las entradas de historial creadas sin gesto del usuario: el paso fantasma se (re)crea con cada toque o tecla
   const arm = () => { try { if (!history.state || history.state.dos !== 1) history.pushState({ dos: 1 }, ''); } catch (e) {} };
@@ -15932,4 +15982,98 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
     lastBack = now;                                                                                  // sin nada abierto: se vuelve a la pantalla de inicio; desde allí, «atrás» sale
     if (typeof window.returnToStart === 'function') window.returnToStart();
   });
+})();
+
+// ============================================================
+//  ARCHIVO — sustituye a la «leyenda»: tocar ARCHIVOS n/13 abre la lista de los 13 elementos (encontrados y pendientes)
+//  y el color de cada proyecto hace de clave. Los que aún no se han visto salen como «???».
+// ============================================================
+(function filesPanel() {
+  const SPECIAL = [[98, 'LOG_WHL // BESTIARIO', 'LOG_WHL // BESTIARY'], [77, 'LOG_SPUTNIK // SONDA', 'LOG_SPUTNIK // PROBE'], [888, 'SYS_GAMBER // GUARDIÁN ALFA', 'SYS_GAMBER // ALPHA GUARDIAN'], [889, 'SYS_CHAPLIN // GUARDIÁN BETA', 'SYS_CHAPLIN // BETA GUARDIAN'], [999, 'ANOMALÍA // 0xDEADBEEF', 'ANOMALY // 0xDEADBEEF']];
+  let panel = null;
+  const css = () => {
+    if (document.getElementById('fx-style')) return;
+    const st = document.createElement('style'); st.id = 'fx-style';
+    st.textContent = `#universe-legend, #legend-toggle-btn, #legend-sidebar { display:none !important; }
+      #unified-hud .hud-files { cursor:pointer; pointer-events:auto; position:relative; }
+      #unified-hud .hud-files::after { content:''; position:absolute; left:3px; right:3px; bottom:-3px; border-bottom:1px dotted rgba(201,168,92,.55); }
+      body.mg-active #unified-hud .hud-files { pointer-events:none; }
+      #files-ui { max-width:520px; }
+      #files-ui .fx-sub { margin:0 0 14px; color:#8a867f; font-size:.78rem; letter-spacing:.06em; text-align:center; }
+      #files-ui ul { list-style:none; margin:0; padding:0; }
+      #files-ui li { display:flex; align-items:center; gap:12px; padding:9px 4px; border-bottom:1px solid rgba(255,255,255,.06); font-size:.9rem; letter-spacing:.04em; }
+      #files-ui li .fx-dot { flex:none; width:10px; height:10px; border-radius:50%; border:1px solid rgba(255,255,255,.35); }
+      #files-ui li.on .fx-dot { border-color:transparent; }
+      #files-ui li.off { color:#6d6a64; }
+      #files-ui li.go { cursor:pointer; } #files-ui li.go:hover { background:rgba(255,255,255,.04); }
+      #files-ui li .fx-n { margin-left:auto; color:#6d6a64; font-size:.7rem; letter-spacing:.2em; }`;
+    document.head.appendChild(st);
+  };
+  const hex = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0').slice(-6);
+  function rows() {
+    const en = window.currentLang === 'en', out = [];
+    categoryPlanetData.forEach(d => { const t = d.title && (d.title[en ? 'en' : 'es'] || d.title.es); out.push({ id: d.id, name: String(t || d.id).replace(/^DIR:\s*\//, ''), color: d.color, data: d, on: foundProjects.has(d.id) }); });
+    SPECIAL.forEach(([id, es, e]) => { const on = foundProjects.has(id); out.push({ id, name: on ? (en ? e : es) : '???', color: 0xcfc9bd, on, special: true }); });
+    return out;
+  }
+  function build() {
+    const en = window.currentLang === 'en', R = rows(), n = R.filter(r => r.on).length;
+    if (!panel) {
+      panel = document.createElement('div'); panel.id = 'files-ui'; panel.className = 'modal-ui hidden'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true');
+      document.body.appendChild(panel);
+    }
+    panel.setAttribute('aria-label', en ? 'File archive' : 'Archivo');
+    panel.innerHTML = '<button class="close-btn" onclick="window.closeAllUIs()">X</button><h2>' + (en ? 'ARCHIVE' : 'ARCHIVO') + ' · ' + n + ' / ' + R.length + '</h2><p class="fx-sub">' + (en ? 'Eight projects and five hidden files. Explore the universe to find the rest.' : 'Ocho proyectos y cinco archivos ocultos. Explora el universo para encontrar los que faltan.') + '</p>';
+    const ul = document.createElement('ul');
+    R.forEach((r, i) => {
+      const li = document.createElement('li'); li.className = r.on ? 'on' : 'off';
+      const dot = document.createElement('span'); dot.className = 'fx-dot'; if (r.on) dot.style.background = hex(r.color); li.appendChild(dot);
+      const nm = document.createElement('span'); nm.textContent = r.name; li.appendChild(nm);
+      const no = document.createElement('span'); no.className = 'fx-n'; no.textContent = String(i + 1).padStart(2, '0'); li.appendChild(no);
+      if (r.data && r.on) { li.classList.add('go'); li.tabIndex = 0; li.addEventListener('click', () => { if (typeof openProjectPopup === 'function') openProjectPopup(r.data); }); li.addEventListener('keydown', (e) => { if (e.key === 'Enter') li.click(); }); }
+      ul.appendChild(li);
+    });
+    panel.appendChild(ul);
+  }
+  function open() { css(); build(); if (typeof playSound === 'function') playSound('ui'); openUIWindow('files-ui'); }
+  const _close = window.closeAllUIs; window.closeAllUIs = function() { _close.apply(this, arguments); document.getElementById('files-ui')?.classList.add('hidden'); };
+  window.openFilesPanel = open;
+  const bind = () => { css(); const it = document.querySelector('#unified-hud .hud-files'); if (it && !it._fx) { it._fx = 1; it.setAttribute('role', 'button'); it.tabIndex = 0; it.addEventListener('click', (e) => { e.stopPropagation(); if (!window.isColossusActive && !document.body.classList.contains('mg-active')) open(); }); it.addEventListener('keydown', (e) => { if (e.key === 'Enter') it.click(); }); } };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else setTimeout(bind, 300);
+})();
+
+// ============================================================
+//  BARRA SUPERIOR SIN LEYENDA — escritorio: «Archivo ejecutivo» junto a los botones de la derecha;
+//  móvil: la barra de pestañas ocupa todo el ancho y el nombre del portafolio queda centrado.
+// ============================================================
+(function topBarLayout() {
+  if (typeof history === 'undefined' || typeof history.state === 'function' || typeof document.getElementById !== 'function') return;   // (los arneses de prueba no tienen navegador real)
+  const st = document.createElement('style'); st.id = 'tb-style';
+  st.textContent = `@media (max-width: 768px) {
+      body #portfolio-header { left:0 !important; right:0 !important; width:100% !important; transform:none !important; justify-content:center !important; text-align:center !important; }
+      body:not(.ex-mode-active) #mode-toggle-btn { left:0 !important; width:28vw !important; min-width:28vw !important; border-bottom-left-radius:10px !important; }
+      body #ARButton { left:28vw !important; width:14vw !important; min-width:14vw !important; }
+      body #VRButton { left:42vw !important; width:14vw !important; min-width:14vw !important; }
+      body #combat-toggle-btn { left:56vw !important; width:14vw !important; min-width:14vw !important; }
+      body #lang-toggle-btn { left:70vw !important; width:14vw !important; min-width:14vw !important; }
+      body #menu-toggle { left:84vw !important; width:16vw !important; min-width:16vw !important; }
+      body #ARButton[style*="display: none"] ~ #VRButton { left:28vw !important; width:28vw !important; min-width:28vw !important; }
+    }`;
+  (document.head || document.documentElement).appendChild(st);
+  const vis = (el) => { if (!el) return false; const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden') return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const PROPS = ['position', 'top', 'right', 'left', 'height', 'width', 'min-width', 'margin', 'display'];
+  function place() {
+    const b = document.getElementById('mode-toggle-btn'); if (!b) return;
+    const clear = () => { if (b._tb) { b._tb = 0; ['top', 'right', 'left', 'height', 'line-height'].forEach(p => b.style.removeProperty(p)); } };
+    if (window.innerWidth <= 768 || document.body.classList.contains('ex-mode-active') || b.style.display === 'none') { clear(); return; }
+    const anchor = ['ARButton', 'VRButton', 'combat-toggle-btn'].map(id => document.getElementById(id)).find(vis); if (!anchor) { clear(); return; }
+    const r = anchor.getBoundingClientRect(); if (!r.width) return;
+    b._tb = 1; const imp = (k, v) => b.style.setProperty(k, v, 'important');
+    imp('position', 'fixed'); imp('left', 'auto'); imp('right', Math.round(window.innerWidth - r.left + 12) + 'px'); imp('top', Math.round(r.top) + 'px'); imp('height', Math.round(r.height) + 'px'); imp('line-height', '1');
+  }
+  let raf = 0; const sched = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; place(); }); };
+  window.addEventListener('resize', sched);
+  try { new MutationObserver(sched).observe(document.body, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
+  setInterval(place, 1200);
+  setTimeout(place, 300);
 })();
