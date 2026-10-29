@@ -3537,9 +3537,17 @@ const handleProjectClick = (data) => {
       if (window._whaleReady && window.startWhaleGame && !window.isWhaleActive && !window.isHogueraActive) { window._whaleReady = false; window.startWhaleGame(whaleData); return; }
       if ((!window.travelerGroup.userData.anchoredPlanet || window._hogueraReady) && window.startHogueraGame && !(window.isHogueraActive || window.isWhaleActive || (window.isSputnikActive || window.isTortugaActive || window.isColossusActive))) { window._hogueraReady = false; window.startHogueraGame(); return; }
       playSound('project_open'); // Sonido especial celestial
+      if (window.vjIntroMaybe && window.vjIntroMaybe()) return;                 // primer toque: el Viajero se presenta (ver módulo «Introducción del Viajero»)
       
       // 🔥 MATRIZ DE PENSAMIENTOS DEL VIAJERO
-      const oraculoFrases = [
+      const oraculoFrases = window.currentLang === 'en' ? [
+        "I am the architect of this system. Here I sow ideas, and time makes them bloom.",
+        "We are not mere spectators. Every interaction rewrites the code of this digital territory.",
+        "There are hidden 'Other Games' in the margins of memory. Look for them where the light does not reach.",
+        "Space is not an inert grid; it is a pulsing network of infinite possibilities.",
+        "We are code interacting with itself. In every flash, the universe recognizes itself.",
+        "The glitch is not a failure; it is the system revealing its true, fragile, human nature."
+      ] : [
         "Soy el arquitecto de este sistema. Aquí siembro ideas, y el tiempo las hace florecer.",
         "No somos meros espectadores. Cada interacción reescribe el código de este territorio digital.",
         "Existen 'Juegos Otros' ocultos en los márgenes de la memoria. Búscalos donde la luz no alcanza.",
@@ -3557,6 +3565,12 @@ const handleProjectClick = (data) => {
       if (window._oraculoClicks % 4 === 0 && isAligned) window._hogueraReady = true;
       const pistaBallena = window.currentLang === 'en' ? "Listen: something enormous sings beneath the silence. Touch me again and answer it." : "Escucha: bajo el silencio canta algo enorme. Tócame otra vez y respóndele.";
       if (window._oraculoClicks % 7 === 0 && window._oraculoClicks % 4 !== 0) window._whaleReady = true;
+      try {                                                                      // frases que dependen de lo que ya has hecho
+        const en = window.currentLang === 'en', nc = (typeof colossiCount === 'function') ? colossiCount() : 0;
+        if (ACH && ACH.got && ACH.got.sovereignty) oraculoFrases.push(en ? 'You did it: the system matures with you. Thank you for staying.' : 'Lo lograste: el sistema madura contigo. Gracias por quedarte.');
+        else if (nc >= 1 && nc < 9) oraculoFrases.push(en ? 'You already know ' + nc + ' of the nine colossi. The others are still waiting.' : 'Ya conoces ' + nc + ' de los nueve colosos. Los demás te siguen esperando.');
+        else if (foundProjects.size === 0) oraculoFrases.push(en ? 'Touch a planet. Every one hides a file.' : 'Toca un planeta. Cada uno esconde un archivo.');
+      } catch (e) {}
       const fraseElegida = (window._oraculoClicks % 4 === 0) ? pistaHoguera : (window._oraculoClicks % 7 === 0 ? pistaBallena : oraculoFrases[Math.floor(Math.random() * oraculoFrases.length)]);
       
       showPoeticReflection(fraseElegida, "#aaccff");
@@ -4748,6 +4762,17 @@ const ACHIEVEMENTS = [
   { id: 'colossus',     es: ['Primer coloso', 'Encuentra tu primer coloso.'],                       en: ['First colossus', 'Find your first colossus.'] },
   { id: 'bestiary',     es: ['Colección de colosos', 'Encuentra los nueve colosos del universo.'],   en: ['Colossi collection', 'Find all nine colossi of the universe.'],
     reward: { es: 'Recompensa: la Colección completa', en: 'Reward: the complete Collection' } },
+  { id: 'col_serpiente', es: ['Suficiencia', 'Calma a la Serpiente con un fuego pequeño.'], en: ['Sufficiency', 'Calm the Serpent with a small fire.'] },
+  { id: 'col_ballena', es: ['Eco', 'Responde al canto de la Ballena.'], en: ['Echo', 'Answer the Whale\'s song.'] },
+  { id: 'col_tortuga', es: ['Paso lento', 'Acompaña a la Tortuga y a su jardín.'], en: ['Slow step', 'Accompany the Turtle and her garden.'] },
+  { id: 'col_condor', es: ['Permiso', 'Acércate al Cóndor sabiendo esperar.'], en: ['Permission', 'Approach the Condor by knowing how to wait.'] },
+  { id: 'col_arbol', es: ['Red de cuidado', 'Mantén vivo al Pewen con su red.'], en: ['Network of care', 'Keep the Pewen alive through its network.'] },
+  { id: 'col_escarabajo', es: ['Circuito cerrado', 'Haz caminar al Escarabajo.'], en: ['Closed circuit', 'Make the Beetle walk.'] },
+  { id: 'col_mariquita', es: ['Co-creación', 'Sueña la Catarina junto a una IA.'], en: ['Co-creation', 'Dream the Ladybug alongside an AI.'] },
+  { id: 'col_colibri', es: ['Sembrador', 'Siembra el páramo con el Barbudito.'], en: ['Sower', 'Sow the páramo with the Helmetcrest.'] },
+  { id: 'col_medusa', es: ['Resonancia', 'Encuentra las tres formas de la Medusa.'], en: ['Resonance', 'Find the Jellyfish\'s three shapes.'] },
+  { id: 'colossus3', es: ['Tres colosos', 'Encuentra tres colosos.'], en: ['Three colossi', 'Find three colossi.'] },
+  { id: 'colossus6', es: ['Seis colosos', 'Encuentra seis colosos.'], en: ['Six colossi', 'Find six colossi.'] },
   { id: 'sovereignty', secret: true, es: ['Soberanía', 'Alcanza la madurez del sistema (100%).'], en: ['Sovereignty', 'Reach system maturity (100%).'], reward: { es: 'Insignia de Sistema', en: 'System Badge' } }
 ];
 const ACH = { got: Object.assign({}, readUnlocks().ach), initialLang: null, toggles: 0, open: false, lastLang: null };
@@ -4792,6 +4817,7 @@ const ACH_CATS = {
   poetica: 'create', erratica: 'create', friccion: 'create', trio: 'create', retro: 'create', painter: 'create',
   combo: 'combat', boss: 'combat', untouched: 'combat', slash: 'combat', dispel: 'combat',
   colossus: 'colossi', bestiary: 'colossi',
+  col_serpiente: 'colossi', col_ballena: 'colossi', col_tortuga: 'colossi', col_condor: 'colossi', col_arbol: 'colossi', col_escarabajo: 'colossi', col_mariquita: 'colossi', col_colibri: 'colossi', col_medusa: 'colossi', colossus3: 'colossi', colossus6: 'colossi',
   hall: 'system', twoWorlds: 'system', reader: 'system', polyglot: 'system', sovereignty: 'system'
 };
 const ACH_CAT_LABEL = {
@@ -5059,6 +5085,7 @@ function buildAchievementsPanel() {
     const act = e.target.closest('[data-act]');
     if (act && act.dataset.act === 'inverted') toggleInvertedMode();
     if (act && act.dataset.act === 'bestiary' && window.openBestiary) window.openBestiary();
+    if (act && act.dataset.act === 'viajero' && window.verViajero) window.verViajero();
   });
   // el panel no debe disparar acciones del juego (arrastre, clics sobre planetas)
   ['touchstart', 'touchmove', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'wheel'].forEach(evt => p.addEventListener(evt, (e) => e.stopPropagation(), { passive: true }));
@@ -5089,6 +5116,7 @@ function renderAchievementsPanel() {
   if (colossiCount() >= 1) rewards.push(`<li class="ach-reward"><span aria-hidden="true">🐾</span><div><strong>${en ? 'Colossi collection' : 'Colección de colosos'} · ${colossiCount()}/${COLOSSI.length}</strong>
       <small>${colossiCount() >= COLOSSI.length ? (en ? 'Complete: with the concept map.' : 'Completo: con el mapa de conceptos.') : (en ? 'Each colossus adds its entry; the concept map appears when all nine are found.' : 'Cada coloso suma su ficha; el mapa de conceptos aparece al encontrar los nueve.')}</small></div>
       <button type="button" class="ach-act" data-act="bestiary">${en ? 'Open' : 'Abrir'}</button></li>`);
+  if (ACH.got.sovereignty) rewards.push(`<li class="ach-reward"><span aria-hidden="true">◈</span><div><strong>${en ? 'See the Traveler, whole' : 'Ver al Viajero, entero'}</strong><small>${en ? 'A contemplation scene: turn around the giant figure.' : 'Una escena de contemplación: gira alrededor de la figura gigante.'}</small></div><button type="button" class="ach-act" data-act="viajero">${en ? 'See' : 'Ver'}</button></li>`);
   if (window.pulseSword.unlocked) rewards.push(`<li class="ach-reward"><span aria-hidden="true">⚔</span><div><strong>${en ? 'Pulse sword' : 'Espada de pulsos'}</strong>
       <small>${en ? 'Press Q or the sword button: dispels the active creative mode.' : 'Pulsa Q o el botón de la espada: disipa el modo creativo activo.'}</small></div><span></span></li>`);
   p.innerHTML = `<div class="ach-box">
@@ -5139,6 +5167,17 @@ const ACH_CHECKS = {
   painter:      () => !!window.isPainting,
   combo:        () => combatCombo >= 10,
   colossus:     () => colossiCount() >= 1,
+  col_serpiente: () => !!colossiGot().serpiente,
+  col_ballena: () => !!colossiGot().ballena,
+  col_tortuga: () => !!colossiGot().tortuga,
+  col_condor: () => !!colossiGot().condor,
+  col_arbol: () => !!colossiGot().arbol,
+  col_escarabajo: () => !!colossiGot().escarabajo,
+  col_mariquita: () => !!colossiGot().mariquita,
+  col_colibri: () => !!colossiGot().colibri,
+  col_medusa: () => !!colossiGot().medusa,
+  colossus3: () => colossiCount() >= 3,
+  colossus6: () => colossiCount() >= 6,
   bestiary:     () => colossiCount() >= COLOSSI.length,
   boss:         () => !!window.pulseSword.unlocked,
  polyglot:     () => !!ACH.initialLang && window.currentLang !== ACH.initialLang,
@@ -5393,6 +5432,7 @@ function runSovereigntyCeremony() {
         [[0xe7e4de, 0], [0xff6644, 260], [0xb89947, 520]].forEach(([hex, delay]) => setTimeout(() => createExplosion(p.x, p.y + 1.4, p.z, 3.0, hex), delay));
         shakeIntensity = 0.3;
       }
+      setTimeout(() => { try { if (!window.isColossusActive && !isUIOpen && window.verViajero && !sessionStorage.getItem('vjBigOffered')) { sessionStorage.setItem('vjBigOffered', '1'); window.verViajero(); } } catch (e) {} }, 2600);
     }, 500);
   }
   el.addEventListener('click', (e) => { e.stopPropagation(); close(); });
@@ -9481,7 +9521,7 @@ window.glowCycle = () => glowSetMode(GLOW_MODE.value + 1);
     const st = document.createElement('style'); st.id = 'mg-active-style';
     st.textContent = 'body.mg-active #wip-banner, body.mg-active #ar-desktop-msg, body.mg-active #btn-sword, body.mg-active #btn-recenter, body.mg-active #helpBtn, body.mg-active #btn-collection, body.mg-active #scroll-hint { display:none !important; }' +
       '@media (max-width:700px){ body.mg-active #combat-toggle-btn, body.mg-active #ARButton, body.mg-active #VRButton, body.mg-active #lang-toggle-btn, body.mg-active #mode-toggle-btn, body.mg-active #portfolio-header, body.mg-active #menu-toggle, body.mg-active #universe-legend, body.mg-active #legend-toggle-btn, body.mg-active #legend-sidebar { display:none !important; }' +
-      ' body.mg-active #unified-hud { position:fixed !important; top:env(safe-area-inset-top,0px) !important; left:0 !important; pointer-events:none; }' +                       // el estado del juego (HUD del coloso) sigue visible, en una franja compacta arriba
+      ' body.mg-active #unified-hud { position:fixed !important; top:env(safe-area-inset-top,0px) !important; left:0 !important; right:0 !important; width:100% !important; max-width:100% !important; transform:none !important; margin:0 !important; box-sizing:border-box !important; justify-content:center !important; gap:14px !important; text-align:center !important; pointer-events:none; }\n body.mg-active #unified-hud .hud-item { text-align:center !important; }' +                       // el estado del juego (HUD del coloso) sigue visible, en una franja compacta arriba
       ' #minigame-ui .mg-extra { top:calc(52px + env(safe-area-inset-top,0px)) !important; }' +
       ' #minigame-ui .mg-help, #minigame-ui .mg-txt { top:calc(48px + env(safe-area-inset-top,0px)) !important; }' +
       ' #minigame-ui .mg-tag { right:auto !important; left:50% !important; transform:translateX(-50%); top:calc(92px + env(safe-area-inset-top,0px)) !important; white-space:nowrap; }' +
@@ -13891,14 +13931,18 @@ function colossusFound(id) {                                                    
   try { if (window.planetTracesRefresh) window.planetTracesRefresh(); } catch (e) {}
   return true;
 }
-function colGlyph(id, hex, locked) {                                                // silueta de puntos y trazos de cada coloso (24×16)
-  const G = {
+const COL_GLYPH_D = {
     serpiente: 'M2 12c3-6 5 4 8-1s4-6 7-2 3 3 5 0M19 7l3-2M19 7l3 1', ballena: 'M2 9c4-6 12-6 17 0l3-3M2 9c3 4 12 5 17 0M7 8h.1M17 8c0 1-1 2-3 2',
     tortuga: 'M5 11c0-6 12-6 14 0zM4 11h16M19 9l3-1M7 11v3M16 11v3M9 7l2 2M13 7l-1 2', condor: 'M12 8l-9-5 4 6-4 3 9-2 9 2-4-3 4-6zM12 8v-3M12 5l1 1',
     arbol: 'M12 17V8M12 8l-7-3M12 8l7-3M12 6l-3-3M12 6l3-3M12 10l-4-1M12 10l4-1M8 17h8M5 5h.1M19 5h.1', escarabajo: 'M7 6c0-3 10-3 10 0v6c0 3-10 3-10 0zM12 4v10M7 7l-4-1M7 10l-4 1M17 7l4-1M17 10l4 1M10 3l-1-2M14 3l1-2',
     mariquita: 'M12 15c-5 0-6-8 0-9 6 1 5 9 0 9zM12 6v9M9 9h.1M15 9h.1M9 12h.1M15 12h.1M10 4l-1-2M14 4l1-2M7 10l-3-1M17 10l3-1', colibri: 'M6 13c0-5 5-7 9-5l5-2-4 3 1 3-5 3-3 3-1-3zM15 9h.1M9 9l-5-5M11 8l-1-4M13 7l1-3',
     medusa: 'M5 7c0-6 14-6 14 0zM8 7v6c0 1-1 1-1 2M12 7v7c0 1 1 1 1 2M16 7v6c0 1 1 1 1 2'
-  };
+};
+COLOSSI.forEach(c => { if (COL_GLYPH_D[c.id]) ACH_ICONS['col_' + c.id] = '<g transform="translate(0,3)"><path d="' + COL_GLYPH_D[c.id] + '"/></g>'; });
+ACH_ICONS.colossus3 = '<path d="M3 19c1.5-5 3-7 5-7s3.500 2 5 7zM11 19c1.500-6 4-9 6.500-9s4 3 5.500 9z" fill="currentColor" fill-opacity=".12"/><circle cx="8" cy="8" r="1.400"/><circle cx="17.500" cy="5.500" r="1.400"/>';
+ACH_ICONS.colossus6 = '<path d="M2.500 19c1-4 2-5.500 3.500-5.500S8.500 15 9.500 19zM9 19c1-5 2.500-7.500 5-7.500s4 2.500 5 7.500zM15.500 19c.8-3.500 1.800-5 3-5s2.200 1.500 3 5z" fill="currentColor" fill-opacity=".12"/><circle cx="6" cy="10.500" r="1.100"/><circle cx="14" cy="7" r="1.400"/><circle cx="19" cy="11" r="1.100"/>';
+function colGlyph(id, hex, locked) {
+  const G = COL_GLYPH_D;
   const col = locked ? '#5c6068' : '#' + hex.toString(16).padStart(6, '0');
   return `<svg viewBox="0 0 24 18" width="46" height="35" fill="none" stroke="${col}" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${G[id]}" stroke-dasharray="${locked ? '0.4 1.6' : 'none'}"/></svg>`;
 }
@@ -15098,6 +15142,35 @@ COL_DEF.colibri = {
 
 // ---------- 6 · LA MEDUSA-LEVIATÁN (TouchDesigner & VR) — explorar un espacio paramétrico ----------
 const COL_DIAL = [{ x: -6, hex: 0x8fe0ff }, { x: 0, hex: 0xffd28a }, { x: 6, hex: 0xe6a0d0 }];
+// ---------- El Viajero en grande: escena de contemplación (premio de la Soberanía). No es un coloso: no cuenta en el bestiario ----------
+COL_DEF.viajero = {
+  iso: { yaw: 0.0, pitch: 0.12, dist: 34, tg: [0, 6.2, 0], fov: 40 }, trav: [0, 0], travPos: () => [0, 0, 0], sky: [0.85, 0.82, 0.7], hud: ['SOBERANÍA', 'LOGROS', 'COLOSOS', 'PULSOS'], fitK: 0.8, boost: 1.2, camDist: null,
+  txt: {
+    es: { title: 'EL VIAJERO', toast: 'Por fin lo ves entero.', h: 'Contemplación: gira, acércate. Es la misma figura que te acompañó, ahora a la medida de lo que recorrió.', s0: '' , done: '' },
+    en: { title: 'THE TRAVELER', toast: 'At last you see them whole.', h: 'Contemplation: turn, come closer. The same figure that kept you company, now the size of what it crossed.', s0: '', done: '' }
+  },
+  build(g) {
+    const S = { t: 0 };
+    S.halo = mkHalo(0xe7dfc4, 46, 0.1); S.halo.position.set(0, 7, -5); g.add(S.halo);
+    S.ring = sptPoints(160, (i, o) => { const a = i / 160 * 6.283; o.x = Math.cos(a) * 9; o.z = Math.sin(a) * 9; o.y = 0.05; o.s = 0.16; o.a = 0.5; o.r = 0.9; o.g = 0.85; o.b = 0.65; }); g.add(S.ring);
+    S.orb = sptPoints(90, (i, o) => { const a = i / 90 * 6.283 * 3, h = i / 90; o.x = Math.cos(a) * (5 + h * 6); o.z = Math.sin(a) * (5 + h * 6); o.y = 1 + h * 16; o.s = 0.14; o.a = 0.55; o.r = 0.8; o.g = 0.9; o.b = 1; }); g.add(S.orb);
+    return S;
+  },
+  viewExtra(S) {
+    const SC = 5.2, feet = (typeof TRAVELER_FEET !== 'undefined') ? TRAVELER_FEET : 0.6;
+    window.hgPose = COLG.vpose = { pos: new THREE.Vector3(0, feet * SC, 0), yaw: 0.35, scale: SC };
+    if (COLG.pad) COLG.pad.visible = false;
+    try { const r = MG.ui && MG.ui.root; if (r) { const b = r.querySelector('.mg-listen'); if (b) b.remove(); } } catch (e) {}
+    if (COLG.els.hint) COLG.els.hint.textContent = window.currentLang === 'en' ? 'Drag to turn, wheel or pinch to come closer.' : 'Arrastra para girar, rueda o pellizco para acercarte.';
+  },
+  update(S, dt, t, calm) {
+    const P = COLG.vpose; if (!P) return; if (window.hgPose !== P) window.hgPose = P;
+    S.ring.rotation.y += dt * 0.05; S.orb.rotation.y -= dt * 0.08;
+    if (!calm) P.yaw = 0.35 + Math.sin(t * 0.25) * 0.18;
+  },
+  hudVals() { return [ACH.got.sovereignty ? '✦' : '—', achCount() + '/' + ACHIEVEMENTS.length, colossiCount() + '/' + COLOSSI.length, window.pulseSword && window.pulseSword.unlocked ? '⚔' : '—']; }
+};
+window.verViajero = function() { if (!ACH.got.sovereignty) return; colVisit('viajero', true); };
 COL_DEF.medusa = {
   iso: { yaw: 0.25, pitch: 0.2, dist: 38, tg: [0, 7, 0] }, trav: [1.55, 12], sky: [0.8, 0.6, 0.85], hud: ['FRECUENCIA', 'DENSIDAD', 'FASE', 'RESONANCIAS'], endAfter: 13, voice: 'medusa', voiceEvery: 24, fitK: 0.62, plate: ['Medusa parametrica', 'Lám. VI'],
   txt: {
@@ -16076,4 +16149,102 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
   try { new MutationObserver(sched).observe(document.body, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
   setInterval(place, 1200);
   setTimeout(place, 300);
+})();
+
+// ============================================================
+//  INTRODUCCIÓN DEL VIAJERO — al principio late un halo con la marca «Tócame»; el primer toque lo hace presentarse
+//  (quién es, qué hay que explorar) en pocas líneas que aparecen solas; luego vuelve el Oráculo de siempre.
+//  Se recuerda en este dispositivo (gamelab_vj); «Restablecer progreso» la repite.
+// ============================================================
+(function vjIntro() {
+  if (typeof history === 'undefined' || typeof history.state === 'function' || typeof document.getElementById !== 'function') return;   // (sin navegador real: arneses de prueba)
+  const KEY = 'gamelab_vj';
+  const seen = () => { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } };
+  const setSeen = () => { try { localStorage.setItem(KEY, '1'); } catch (e) {} };
+  const en = () => window.currentLang === 'en';
+  const LINES = {
+    es: ['Hola. Llevo mucho tiempo esperando a alguien que se detuviera aquí.',
+         'Esto es un portafolio, pero también es un mapa: cada planeta guarda un proyecto, y hay trece archivos que encontrar.',
+         'Al abrir un proyecto puede esperarte un coloso: un juego pequeño que no se gana, se comprende. Cada uno explica algo con sus propias reglas.',
+         'Si tocas las lunas del planeta D.A.C., se encienden máquinas que cambian cómo se ve todo. Pruébalas.',
+         'Yo no me voy a ningún lado. Tócame cuando quieras: siempre tengo algo que contarte. Ahora, explora.'],
+    en: ['Hello. I have been waiting a long time for someone to stop here.',
+         'This is a portfolio, but it is also a map: every planet holds a project, and there are thirteen files to find.',
+         'When you open a project, a colossus may be waiting: a small game that is not won but understood. Each one explains something with its own rules.',
+         'If you touch the moons of the D.A.C. planet, machines switch on and change how everything looks. Try them.',
+         'I am not going anywhere. Touch me whenever you like: I always have something to tell you. Now, explore.']
+  };
+  const busy = () => {
+    const ss = document.getElementById('start-screen');
+    if (!window._worldInit || window.__atStart || (ss && getComputedStyle(ss).display !== 'none')) return true;
+    if (document.body.classList.contains('mg-active') || document.body.classList.contains('ex-mode-active')) return true;
+    if (document.querySelector('.modal-ui:not(.hidden)') || window.isMiniIntro || window._bstOpen) return true;
+    return false;
+  };
+  let halo = null, tag = null, say = null, raf = 0, active = false, quietFor = 0, talking = false, lastT = 0;
+  const calm = () => (typeof reduceMotionMQ !== 'undefined') && reduceMotionMQ.matches;
+  function css() {
+    if (document.getElementById('vj-style')) return;
+    const st = document.createElement('style'); st.id = 'vj-style';
+    st.textContent = `#vj-tag { position:fixed; z-index:99990; pointer-events:none; transform:translate(-50%,0); font:italic 300 .9rem Georgia,"Times New Roman",serif; letter-spacing:.14em; color:#cfe0ff; text-shadow:0 0 12px rgba(120,170,255,.9),0 0 3px #000; opacity:0; white-space:nowrap; }
+      #vj-say { position:fixed; left:50%; bottom:calc(16vh + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); z-index:100020; width:min(86vw,540px); box-sizing:border-box; padding:20px 24px 16px; text-align:center; cursor:pointer;
+        background:linear-gradient(rgba(5,8,14,0), rgba(5,8,14,.72) 40%); border-bottom:1px solid rgba(170,204,255,.22); opacity:0; transition:opacity 1.2s ease; }
+      #vj-say .vj-t { font:italic 300 1.08rem/1.75 Georgia,"Times New Roman",serif; color:#d8e6ff; text-shadow:0 0 14px rgba(0,0,0,.95); letter-spacing:.02em; transition:opacity .9s ease; }
+      #vj-say .vj-h { margin-top:12px; font:300 .6rem -apple-system,Helvetica,Arial,sans-serif; letter-spacing:.3em; text-transform:uppercase; color:#7f8aa0; }`;
+    document.head.appendChild(st);
+  }
+  function ensure() {
+    const tg = window.travelerGroup; if (!tg || typeof mkHalo !== 'function') return false;
+    css();
+    if (!halo) { halo = mkHalo(0xaaccff, 7, 0); halo.position.set(0, 1.2, 0); halo.userData = { name: 'viajero' }; tg.add(halo); }     // el brillo también cuenta como zona de toque
+    if (!tag) { tag = document.createElement('div'); tag.id = 'vj-tag'; tag.setAttribute('aria-hidden', 'true'); document.body.appendChild(tag); }
+    tag.textContent = en() ? 'Touch me' : 'Tócame';
+    return true;
+  }
+  const _v = (typeof THREE !== 'undefined') ? new THREE.Vector3() : null;
+  function loop(now) {
+    if (!active) { raf = 0; return; }
+    raf = requestAnimationFrame(loop);
+    const dt = Math.min(0.1, (now - (lastT || now)) / 1000); lastT = now;
+    const t = now / 1000, tg = window.travelerGroup;
+    const off = busy() || talking || !tg || !tg.visible;
+    const want = off ? 0 : (calm() ? 0.28 : 0.2 + 0.2 * (0.5 + 0.5 * Math.sin(t * 2.1)));
+    if (halo) halo.material.opacity += (want - halo.material.opacity) * Math.min(1, dt * 3);
+    if (tag && _v && tg) {
+      tg.getWorldPosition(_v); _v.y += 3.2; _v.project(camera);
+      const ok = !off && _v.z < 1 && Math.abs(_v.x) < 1.1 && Math.abs(_v.y) < 1.1;
+      const px = (_v.x * 0.5 + 0.5) * window.innerWidth, py = (-_v.y * 0.5 + 0.5) * window.innerHeight;
+      tag.style.left = px + 'px'; tag.style.top = py + 'px';
+      const a = ok ? (quietFor > 3 ? (calm() ? 0.85 : 0.5 + 0.4 * Math.sin(t * 2.1 + 1)) : 0) : 0;
+      tag.style.opacity = String(Math.max(0, a));
+    }
+    quietFor = off ? 0 : quietFor + dt;
+  }
+  function start() { if (active || seen()) return; if (!ensure()) return; active = true; lastT = 0; if (!raf) raf = requestAnimationFrame(loop); }
+  function stopBeacon() { active = false; if (raf) { cancelAnimationFrame(raf); raf = 0; } if (halo) halo.material.opacity = 0; if (tag) { tag.remove(); tag = null; } }
+  function say1(lines, i, done) {
+    const T = say.querySelector('.vj-t'); T.style.opacity = '0';
+    setTimeout(() => { if (!talking) return; T.textContent = lines[i]; T.style.opacity = '1'; if (typeof playSound === 'function') try { playSound('ui'); } catch (e) {}
+      const wait = Math.max(4200, lines[i].length * 70);
+      clearTimeout(say._t); say._t = setTimeout(() => next(), wait); }, 650);
+    function next() { clearTimeout(say._t); if (i + 1 < lines.length) say1(lines, i + 1, done); else done(); }
+    say._next = next;
+  }
+  function intro() {
+    css(); talking = true; if (tag) tag.style.opacity = '0';
+    const L = LINES[en() ? 'en' : 'es'];
+    say = document.createElement('div'); say.id = 'vj-say'; say.setAttribute('role', 'status'); say.setAttribute('aria-live', 'polite');
+    say.innerHTML = '<div class="vj-t"></div><div class="vj-h">' + (en() ? 'tap to continue' : 'toca para seguir') + '</div>';
+    document.body.appendChild(say); void say.offsetWidth; say.style.opacity = '1';
+    const end = () => { talking = false; clearTimeout(say._t); document.removeEventListener('keydown', onKey, true); say.style.opacity = '0'; const el = say; say = null; setTimeout(() => el.remove(), 1300); setSeen(); stopBeacon();
+      if (window.travelerSword && window.travelerSwordMat) { window.travelerSword.rotation.z = Math.PI / -6; window.travelerSwordMat.color.setHex(0xffffff); } };
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); end(); } };
+    document.addEventListener('keydown', onKey, true);
+    say.addEventListener('click', (e) => { e.stopPropagation(); if (say && say._next) say._next(); });
+    ['mousedown', 'touchstart', 'pointerdown'].forEach(ev => say.addEventListener(ev, (e) => e.stopPropagation()));
+    if (window.travelerSword && window.travelerSwordMat) { window.travelerSword.rotation.z = Math.PI / 4; window.travelerSwordMat.color.setHex(0x00ffff); window.travelerSwordMat.color.multiplyScalar(2.0); }   // alza la espada como saludo
+    say1(L, 0, end);
+  }
+  window.vjIntroMaybe = function() { if (seen() || talking) return talking; intro(); return true; };
+  const watch = setInterval(() => { if (seen()) { clearInterval(watch); return; } if (!active && !busy()) { quietFor += 1; if (quietFor > 5) { start(); quietFor = 0; } } else if (!active) quietFor = 0; }, 1000);
 })();
